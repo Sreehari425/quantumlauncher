@@ -1,14 +1,16 @@
 name: Build AppImage
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
 
 jobs:
-  build:
+  build-appimage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -16,21 +18,18 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Install dependencies (libfuse2)
+      - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y libfuse2
 
-      - name: Install AppImage tool
+      - name: Download AppImage tool
         run: |
           wget https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
 
-      - name: Build binary
+      - name: Build quantum_launcher binary
         run: cargo build --release --package quantum_launcher
 
-      - name: Debug: List contents of assets/appimage
-        run: ls -l assets/appimage/
-
-      - name: Setup AppDir and build AppImage
+      - name: Prepare AppDir
         run: |
           mkdir -p AppDir/usr/bin
           mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
@@ -41,4 +40,12 @@ jobs:
           echo '#!/bin/sh' > AppDir/AppRun
           echo 'exec usr/bin/quantum_launcher "$@"' >> AppDir/AppRun
           chmod +x AppDir/AppRun
-          ./appimagetool-x86_64.AppImage AppDir
+
+      - name: Build AppImage
+        run: ./appimagetool-x86_64.AppImage AppDir
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: quantum_launcher.AppImage
+          path: ./QuantumLauncher*.AppImage
