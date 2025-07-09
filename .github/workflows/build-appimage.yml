@@ -27,6 +27,9 @@ jobs:
       - name: Build binary
         run: cargo build --release --package quantum_launcher
 
+      - name: Debug: List contents of assets/appimage
+        run: ls -l assets/appimage/
+
       - name: Setup AppDir and build AppImage
         run: |
           mkdir -p AppDir/usr/bin
