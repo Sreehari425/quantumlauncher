@@ -29,30 +29,25 @@ jobs:
       - name: Build quantum_launcher binary
         run: cargo build --release --package quantum_launcher
 
-      - name: DEBUG: Show current directory
-        run: pwd
-
-      - name: DEBUG: List everything in repo
-        run: ls -lR
-
-      - name: DEBUG: List contents of assets/appimage
-        run: ls -l assets/appimage/
+      - name: Check for .desktop file and icon
+        run: |
+          if [ ! -f assets/appimage/quantum-launcher.desktop ]; then
+            echo "ERROR: assets/appimage/quantum-launcher.desktop not found!"
+            exit 1
+          fi
+          if [ ! -f assets/icon/512x512/quantum_launcher.png ]; then
+            echo "ERROR: assets/icon/512x512/quantum_launcher.png not found!"
+            exit 1
+          fi
 
       - name: Prepare AppDir
         run: |
           mkdir -p AppDir/usr/bin
-          mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
           mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
           cp target/release/quantum_launcher AppDir/usr/bin/
-          cp assets/icon/512x512/ql_logo.png AppDir/usr/share/icons/hicolor/512x512/apps/io.github.QuantumLauncher.png
-
-          # Explicitly check for the desktop file before copying
-          if [ ! -f assets/appimage/quantum-launcher.desktop ]; then
-            echo "quantum-launcher.desktop not found!"
-            exit 1
-          fi
           cp assets/appimage/quantum-launcher.desktop AppDir/usr/share/applications/
-
+          cp assets/icon/512x512/quantum_launcher.png AppDir/usr/share/icons/hicolor/512x512/apps/quantum-launcher.png
           echo '#!/bin/sh' > AppDir/AppRun
           echo 'exec usr/bin/quantum_launcher "$@"' >> AppDir/AppRun
           chmod +x AppDir/AppRun
