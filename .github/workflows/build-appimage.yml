@@ -45,7 +45,7 @@ jobs:
         run: ./appimagetool-x86_64.AppImage AppDir
 
       - name: Upload AppImage artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: quantum_launcher.AppImage
-          path: ./QuantumLauncher*.AppImage
+          path: ./*.AppImage
