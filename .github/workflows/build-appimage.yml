@@ -35,8 +35,8 @@ jobs:
             echo "ERROR: assets/appimage/quantum-launcher.desktop not found!"
             exit 1
           fi
-          if [ ! -f assets/icon/512x512/quantum_launcher.png ]; then
-            echo "ERROR: assets/icon/512x512/quantum_launcher.png not found!"
+          if [ ! -f assets/icon/512x512/ql_logo.png ]; then
+            echo "ERROR: assets/icon/512x512/ql_logo.png not found!"
             exit 1
           fi
 
@@ -47,7 +47,7 @@ jobs:
           mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
           cp target/release/quantum_launcher AppDir/usr/bin/
           cp assets/appimage/quantum-launcher.desktop AppDir/usr/share/applications/
-          cp assets/icon/512x512/quantum_launcher.png AppDir/usr/share/icons/hicolor/512x512/apps/quantum-launcher.png
+          cp assets/icon/512x512/ql_logo.png AppDir/usr/share/icons/hicolor/512x512/apps/quantum-launcher.png
           echo '#!/bin/sh' > AppDir/AppRun
           echo 'exec usr/bin/quantum_launcher "$@"' >> AppDir/AppRun
           chmod +x AppDir/AppRun
