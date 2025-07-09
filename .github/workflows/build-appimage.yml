@@ -10,18 +10,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          override: true
 
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y libfuse2
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libfuse2
+
+      - name: Cache AppImage tool
+        id: cache-appimagetool
+        uses: actions/cache@v4
+        with:
+          path: appimagetool-x86_64.AppImage
+          key: ${{ runner.os }}-appimagetool-13
 
       - name: Download AppImage tool
+        if: steps.cache-appimagetool.outputs.cache-hit != 'true'
         run: |
           wget https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
@@ -29,7 +49,7 @@ jobs:
       - name: Build quantum_launcher binary
         run: cargo build --release --package quantum_launcher
 
-      - name: Check for .desktop file and icon
+      - name: Verify .desktop file and icon
         run: |
           if [ ! -f assets/appimage/quantum-launcher.desktop ]; then
             echo "ERROR: assets/appimage/quantum-launcher.desktop not found!"
@@ -49,9 +69,23 @@ jobs:
           cp assets/appimage/quantum-launcher.desktop AppDir/
           cp assets/appimage/quantum-launcher.desktop AppDir/usr/share/applications/
           cp assets/icon/512x512/ql_logo.png AppDir/usr/share/icons/hicolor/512x512/apps/quantum-launcher.png
+          cp assets/icon/512x512/ql_logo.png AppDir/quantum-launcher.png
           echo '#!/bin/sh' > AppDir/AppRun
-          echo 'exec usr/bin/quantum_launcher "$@"' >> AppDir/AppRun
+          echo 'exec $APPDIR/usr/bin/quantum_launcher "$@"' >> AppDir/AppRun
           chmod +x AppDir/AppRun
+
+      - name: Verify AppDir structure
+        run: |
+          echo "Listing AppDir contents:"
+          find AppDir -type f
+          if [ ! -f AppDir/AppRun ]; then
+            echo "ERROR: AppRun not found!"
+            exit 1
+          fi
+          if [ ! -f AppDir/usr/bin/quantum_launcher ]; then
+            echo "ERROR: quantum_launcher binary not found!"
+            exit 1
+          fi
 
       - name: Build AppImage
         run: ./appimagetool-x86_64.AppImage AppDir
@@ -60,4 +94,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: quantum_launcher.AppImage
-          path: ./*.AppImage
+          path: quantum_launcher*.AppImage
+          retention-days: 7
