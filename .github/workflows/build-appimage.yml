@@ -1,0 +1,41 @@
+name: Build AppImage
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install AppImage tool
+        run: |
+          wget https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+
+      - name: Build binary
+        run: cargo build --release --package quantum_launcher
+
+      - name: Setup AppDir and build AppImage
+        run: |
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
+          mkdir -p AppDir/usr/share/applications
+
+          cp target/release/quantum_launcher AppDir/usr/bin/
+          cp assets/icon/512x512/ql_logo.png AppDir/usr/share/icons/hicolor/512x512/apps/io.github.QuantumLauncher.png
+          cp assets/appimage/quantum-launcher.desktop AppDir/usr/share/applications/
+
+          echo '#!/bin/sh' > AppDir/AppRun
+          echo 'exec usr/bin/quantum_launcher "$@"' >> AppDir/AppRun
+          chmod +x AppDir/AppRun
+
+          ./appimagetool-x86_64.AppImage AppDir
