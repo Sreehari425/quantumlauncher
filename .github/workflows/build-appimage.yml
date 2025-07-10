@@ -5,7 +5,8 @@ on:
     branches:
       - main
     tags:
-      - 'v*'
+      - 'v[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 permissions:
   contents: write
@@ -15,8 +16,34 @@ env:
   PROJECT_NAME: quantum_launcher
 
 jobs:
-  build_x86_64:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-20.04
+            rust_target: x86_64-unknown-linux-gnu
+            appimage_tool: appimagetool-x86_64.AppImage
+            lib_path: /lib/x86_64-linux-gnu
+            ld_path: /lib64/ld-linux-x86-64.so.2
+            cross: false
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+            rust_target: aarch64-unknown-linux-gnu
+            appimage_tool: appimagetool-aarch64.AppImage
+            lib_path: /lib/aarch64-linux-gnu
+            ld_path: /lib/ld-linux-aarch64.so.1
+            cross: false
+          - arch: armv7
+            runner: ubuntu-20.04
+            rust_target: armv7-unknown-linux-gnueabihf
+            appimage_tool: appimagetool-armhf.AppImage
+            lib_path: /usr/arm-linux-gnueabihf/lib
+            ld_path: /usr/arm-linux-gnueabihf/lib/ld-linux-armhf.so.3
+            cross: true
+      fail-fast: false
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -25,6 +52,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
+          targets: ${{ matrix.rust_target }}
+
+      - name: Install cross for armv7
+        if: matrix.cross
+        run: cargo install cross --locked
 
       - name: Cache Rust dependencies
         uses: actions/cache@v4
@@ -33,20 +65,40 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-x86_64-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ matrix.runner }}-cargo-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-x86_64-
+            ${{ matrix.runner }}-cargo-${{ matrix.arch }}-
 
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libfuse2 python3 python3-pip
+          sudo apt-get install -y --no-install-recommends libfuse2
+          if [ "${{ matrix.arch }}" == "x86_64" ] || [ "${{ matrix.arch }}" == "aarch64" ]; then
+            sudo apt-get install -y --no-install-recommends libc6-dev
+          elif [ "${{ matrix.arch }}" == "armv7" ]; then
+            sudo apt-get install -y --no-install-recommends libc6-dev-armhf-cross
+          fi
 
-      - name: Install appimage-builder
-        run: pip install appimage-builder
+      - name: Cache AppImage tool
+        id: cache-appimagetool
+        uses: actions/cache@v4
+        with:
+          path: ${{ matrix.appimage_tool }}
+          key: ${{ matrix.runner }}-appimagetool-13-${{ matrix.arch }}
 
-      - name: Build quantum_launcher
-        run: cargo build --release --package quantum_launcher
+      - name: Download AppImage tool
+        if: steps.cache-appimagetool.outputs.cache-hit != 'true'
+        run: |
+          wget https://github.com/AppImage/AppImageKit/releases/download/13/${{ matrix.appimage_tool }}
+          chmod +x ${{ matrix.appimage_tool }}
+
+      - name: Build quantum_launcher binary
+        run: |
+          if [ "${{ matrix.cross }}" == "true" ]; then
+            cross build --release --package quantum_launcher --target ${{ matrix.rust_target }}
+          else
+            cargo build --release --package quantum_launcher --target ${{ matrix.rust_target }}
+          fi
 
       - name: Verify .desktop file and icon
         run: |
@@ -59,282 +111,67 @@ jobs:
             exit 1
           fi
 
-      - name: Create AppImage recipe
+      - name: Prepare AppDir
         run: |
-          cat > AppImageBuilder.yml <<EOF
-          version: 1
-          script:
-            - rm -rf AppDir/*
-            - mkdir -p AppDir/usr/bin
-            - mkdir -p AppDir/usr/share/applications
-            - mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
-            - cp target/release/${{ env.BIN_NAME }} AppDir/usr/bin/
-            - cp assets/appimage/quantum-launcher.desktop AppDir/
-            - cp assets/appimage/quantum-launcher.desktop AppDir/usr/share/applications/
-            - cp assets/icon/512x512/ql_logo.png AppDir/usr/share/icons/hicolor/512x512/apps/quantum-launcher.png
-            - echo '#!/bin/sh' > AppDir/AppRun
-            - echo 'exec \$APPDIR/usr/bin/${{ env.BIN_NAME }} "\$@"' >> AppDir/AppRun
-            - chmod +x AppDir/AppRun
-          AppDir:
-            path: ./AppDir
-            app_info:
-              id: com.example.quantum_launcher
-              name: quantum_launcher
-              icon: quantum-launcher
-              version: 1.0.0
-              exec: AppRun
-            apt:
-              arch: amd64
-              allow_unauthenticated: true
-              sources:
-                - sourceline: 'deb [trusted=yes] http://deb.debian.org/debian bookworm main'
-              include:
-                - libfuse2
-                - libglib2.0-0
-            test:
-              fedora:
-                image: fedora:37
-                command: "./AppRun"
-                use_host_x: true
-          EOF
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/lib
+          mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
+          cp target/${{ matrix.rust_target }}/release/${{ env.BIN_NAME }} AppDir/usr/bin/
+          cp assets/appimage/quantum-launcher.desktop AppDir/
+          cp assets/appimage/quantum-launcher.desktop AppDir/usr/share/applications/
+          cp assets/icon/512x512/ql_logo.png AppDir/usr/share/icons/hicolor/512x512/apps/quantum-launcher.png
+          cp ${{ matrix.lib_path }}/libc.so.6 AppDir/usr/lib/
+          cp ${{ matrix.lib_path }}/libm.so.6 AppDir/usr/lib/
+          cp ${{ matrix.lib_path }}/libdl.so.2 AppDir/usr/lib/
+          cp ${{ matrix.lib_path }}/libpthread.so.0 AppDir/usr/lib/
+          cp ${{ matrix.ld_path }} AppDir/usr/lib/
+          echo '#!/bin/sh' > AppDir/AppRun
+          echo 'export LD_LIBRARY_PATH=$APPDIR/usr/lib:$LD_LIBRARY_PATH' >> AppDir/AppRun
+          echo 'exec $APPDIR/usr/bin/${{ env.BIN_NAME }} "$@"' >> AppDir/AppRun
+          chmod +x AppDir/AppRun
+
+      - name: Verify AppDir structure
+        run: |
+          echo "Listing AppDir contents:"
+          find AppDir -type f
+          if [ ! -f AppDir/AppRun ]; then
+            echo "ERROR: AppRun not found!"
+            exit 1
+          fi
+          if [ ! -f AppDir/usr/bin/${{ env.BIN_NAME }} ]; then
+            echo "ERROR: ${{ env.BIN_NAME }} binary not found!"
+            exit 1
+          fi
+          if [ ! -f AppDir/usr/lib/libc.so.6 ]; then
+            echo "ERROR: glibc (libc.so.6) not found in AppDir!"
+            exit 1
+          fi
 
       - name: Build AppImage
-        run: appimage-builder --recipe AppImageBuilder.yml
+        run: ./${{ matrix.appimage_tool }} AppDir ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
 
       - name: Rename AppImage
         run: |
-          if [ -f Quantum_Launcher-x86_64.AppImage ]; then
-            mv Quantum_Launcher-x86_64.AppImage ${{ env.PROJECT_NAME }}-x86_64.AppImage
-            echo "Renamed Quantum_Launcher-x86_64.AppImage to ${{ env.PROJECT_NAME }}-x86_64.AppImage"
+          if [ -f Quantum_Launcher-${{ matrix.arch }}.AppImage ]; then
+            mv Quantum_Launcher-${{ matrix.arch }}.AppImage ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
+            echo "Renamed Quantum_Launcher-${{ matrix.arch }}.AppImage to ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage"
           fi
-          if [ ! -f ${{ env.PROJECT_NAME }}-x86_64.AppImage ]; then
-            echo "ERROR: ${{ env.PROJECT_NAME }}-x86_64.AppImage was not created!"
+          if [ ! -f ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage ]; then
+            echo "ERROR: ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage was not created!"
             exit 1
           fi
-          echo "AppImage created successfully: ${{ env.PROJECT_NAME }}-x86_64.AppImage"
+          echo "AppImage created successfully: ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage"
 
-      - name: Upload AppImage
+      - name: Upload AppImage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.PROJECT_NAME }}-x86_64.AppImage
-          path: ${{ env.PROJECT_NAME }}-x86_64.AppImage
-          retention-days: 7
-
-  build_aarch64:
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          target: aarch64-unknown-linux-gnu
-
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-aarch64-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-aarch64-
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libfuse2 python3 python3-pip
-
-      - name: Install appimage-builder
-        run: pip install appimage-builder
-
-      - name: Build quantum_launcher
-        run: cargo build --release --package quantum_launcher --target aarch64-unknown-linux-gnu
-
-      - name: Verify .desktop file and icon
-        run: |
-          if [ ! -f assets/appimage/quantum-launcher.desktop ]; then
-            echo "ERROR: assets/appimage/quantum-launcher.desktop not found!"
-            exit 1
-          fi
-          if [ ! -f assets/icon/512x512/ql_logo.png ]; then
-            echo "ERROR: assets/icon/512x512/ql_logo.png not found!"
-            exit 1
-          fi
-
-      - name: Create AppImage recipe
-        run: |
-          cat > AppImageBuilder.yml <<EOF
-          version: 1
-          script:
-            - rm -rf AppDir/*
-            - mkdir -p AppDir/usr/bin
-            - mkdir -p AppDir/usr/share/applications
-            - mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
-            - cp target/aarch64-unknown-linux-gnu/release/${{ env.BIN_NAME }} AppDir/usr/bin/
-            - cp assets/appimage/quantum-launcher.desktop AppDir/
-            - cp assets/appimage/quantum-launcher.desktop AppDir/usr/share/applications/
-            - cp assets/icon/512x512/ql_logo.png AppDir/usr/share/icons/hicolor/512x512/apps/quantum-launcher.png
-            - echo '#!/bin/sh' > AppDir/AppRun
-            - echo 'exec \$APPDIR/usr/bin/${{ env.BIN_NAME }} "\$@"' >> AppDir/AppRun
-            - chmod +x AppDir/AppRun
-          AppDir:
-            path: ./AppDir
-            app_info:
-              id: com.example.quantum_launcher
-              name: quantum_launcher
-              icon: quantum-launcher
-              version: 1.0.0
-              exec: AppRun
-            apt:
-              arch: arm64
-              allow_unauthenticated: true
-              sources:
-                - sourceline: 'deb [trusted=yes] http://deb.debian.org/debian bookworm main'
-              include:
-                - libfuse2
-                - libglib2.0-0
-            test:
-              fedora:
-                image: fedora:37
-                command: "./AppRun"
-                use_host_x: true
-          EOF
-
-      - name: Build AppImage
-        run: appimage-builder --recipe AppImageBuilder.yml
-
-      - name: Rename AppImage
-        run: |
-          if [ -f Quantum_Launcher-aarch64.AppImage ]; then
-            mv Quantum_Launcher-aarch64.AppImage ${{ env.PROJECT_NAME }}-aarch64.AppImage
-            echo "Renamed Quantum_Launcher-aarch64.AppImage to ${{ env.PROJECT_NAME }}-aarch64.AppImage"
-          fi
-          if [ ! -f ${{ env.PROJECT_NAME }}-aarch64.AppImage ]; then
-            echo "ERROR: ${{ env.PROJECT_NAME }}-aarch64.AppImage was not created!"
-            exit 1
-          fi
-          echo "AppImage created successfully: ${{ env.PROJECT_NAME }}-aarch64.AppImage"
-
-      - name: Upload AppImage
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.PROJECT_NAME }}-aarch64.AppImage
-          path: ${{ env.PROJECT_NAME }}-aarch64.AppImage
-          retention-days: 7
-
-  build_armv7:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          target: armv7-unknown-linux-gnueabihf
-
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-armv7-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-armv7-
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libfuse2 python3 python3-pip gcc-arm-linux-gnueabihf
-
-      - name: Install appimage-builder
-        run: pip install appimage-builder
-
-      - name: Build quantum_launcher
-        run: |
-          cargo build --release --package quantum_launcher --target armv7-unknown-linux-gnueabihf
-
-      - name: Verify .desktop file and icon
-        run: |
-          if [ ! -f assets/appimage/quantum-launcher.desktop ]; then
-            echo "ERROR: assets/appimage/quantum-launcher.desktop not found!"
-            exit 1
-          fi
-          if [ ! -f assets/icon/512x512/ql_logo.png ]; then
-            echo "ERROR: assets/icon/512x512/ql_logo.png not found!"
-            exit 1
-          fi
-
-      - name: Create AppImage recipe
-        run: |
-          cat > AppImageBuilder.yml <<EOF
-          version: 1
-          script:
-            - rm -rf AppDir/*
-            - mkdir -p AppDir/usr/bin
-            - mkdir -p AppDir/usr/share/applications
-            - mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
-            - cp target/armv7-unknown-linux-gnueabihf/release/${{ env.BIN_NAME }} AppDir/usr/bin/
-            - cp assets/appimage/quantum-launcher.desktop AppDir/
-            - cp assets/appimage/quantum-launcher.desktop AppDir/usr/share/applications/
-            - cp assets/icon/512x512/ql_logo.png AppDir/usr/share/icons/hicolor/512x512/apps/quantum-launcher.png
-            - echo '#!/bin/sh' > AppDir/AppRun
-            - echo 'exec \$APPDIR/usr/bin/${{ env.BIN_NAME }} "\$@"' >> AppDir/AppRun
-            - chmod +x AppDir/AppRun
-          AppDir:
-            path: ./AppDir
-            app_info:
-              id: com.example.quantum_launcher
-              name: quantum_launcher
-              icon: quantum-launcher
-              version: 1.0.0
-              exec: AppRun
-            apt:
-              arch: armhf
-              allow_unauthenticated: true
-              sources:
-                - sourceline: 'deb [trusted=yes] http://deb.debian.org/debian bookworm main'
-              include:
-                - libfuse2
-                - libglib2.0-0
-            test:
-              fedora:
-                image: fedora:37
-                command: "./AppRun"
-                use_host_x: true
-          EOF
-
-      - name: Build AppImage
-        run: appimage-builder --recipe AppImageBuilder.yml
-
-      - name: Rename AppImage
-        run: |
-          if [ -f Quantum_Launcher-armhf.AppImage ]; then
-            mv Quantum_Launcher-armhf.AppImage ${{ env.PROJECT_NAME }}-armv7.AppImage
-            echo "Renamed Quantum_Launcher-armhf.AppImage to ${{ env.PROJECT_NAME }}-armv7.AppImage"
-          fi
-          if [ ! -f ${{ env.PROJECT_NAME }}-armv7.AppImage ]; then
-            echo "ERROR: ${{ env.PROJECT_NAME }}-armv7.AppImage was not created!"
-            exit 1
-          fi
-          echo "AppImage created successfully: ${{ env.PROJECT_NAME }}-armv7.AppImage"
-
-      - name: Upload AppImage
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.PROJECT_NAME }}-armv7.AppImage
-          path: ${{ env.PROJECT_NAME }}-armv7.AppImage
+          name: ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
+          path: ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
           retention-days: 7
 
   release:
-    needs: [build_x86_64, build_aarch64, build_armv7]
+    needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
@@ -349,9 +186,9 @@ jobs:
       - name: Prepare release artifacts
         run: |
           mkdir dist
-          mv artifacts/${{ env.PROJECT_NAME }}-x86_64.AppImage/${{ env.PROJECT_NAME }}-x86_64.AppImage dist/
-          mv artifacts/${{ env.PROJECT_NAME }}-aarch64.AppImage/${{ env.PROJECT_NAME }}-aarch64.AppImage dist/
-          mv artifacts/${{ env.PROJECT_NAME }}-armv7.AppImage/${{ env.PROJECT_NAME }}-armv7.AppImage dist/
+          for arch in x86_64 aarch64 armv7; do
+            mv artifacts/${{ env.PROJECT_NAME }}-${arch}.AppImage/${{ env.PROJECT_NAME }}-${arch}.AppImage dist/
+          done
           ls -l dist/
 
       - name: Create release
