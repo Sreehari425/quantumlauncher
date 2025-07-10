@@ -24,27 +24,18 @@ jobs:
         include:
           - arch: x86_64
             runner: ubuntu-22.04
-            rust_target: x86_64-unknown-linux-gnu
+            rust_target: x86_64-unknown-linux-musl
             appimage_tool: appimagetool-x86_64.AppImage
-            lib_path: /lib/x86_64-linux-gnu
-            ld_path: /lib64/ld-linux-x86-64.so.2
-            ld_name: ld-linux-x86-64.so.2
             cross: false
           - arch: aarch64
             runner: ubuntu-24.04-arm
-            rust_target: aarch64-unknown-linux-gnu
+            rust_target: aarch64-unknown-linux-musl
             appimage_tool: appimagetool-aarch64.AppImage
-            lib_path: /lib/aarch64-linux-gnu
-            ld_path: /lib/ld-linux-aarch64.so.1
-            ld_name: ld-linux-aarch64.so.1
             cross: false
           - arch: armv7
             runner: ubuntu-22.04
-            rust_target: armv7-unknown-linux-gnueabihf
+            rust_target: armv7-unknown-linux-musleabihf
             appimage_tool: appimagetool-armhf.AppImage
-            lib_path: /usr/arm-linux-gnueabihf/lib
-            ld_path: /usr/arm-linux-gnueabihf/lib/ld-linux-armhf.so.3
-            ld_name: ld-linux-armhf.so.3
             cross: true
       fail-fast: false
 
@@ -76,11 +67,9 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libfuse2
-          if [ "${{ matrix.arch }}" == "x86_64" ] || [ "${{ matrix.arch }}" == "aarch64" ]; then
-            sudo apt-get install -y --no-install-recommends libc6-dev
-          elif [ "${{ matrix.arch }}" == "armv7" ]; then
-            sudo apt-get install -y --no-install-recommends libc6-dev-armhf-cross
+          sudo apt-get install -y --no-install-recommends libfuse2 musl-tools
+          if [ "${{ matrix.cross }}" == "true" ]; then
+            sudo apt-get install -y --no-install-recommends gcc-arm-linux-gnueabihf
           fi
 
       - name: Cache AppImage tool
@@ -121,23 +110,16 @@ jobs:
       - name: Prepare AppDir
         run: |
           mkdir -p AppDir/usr/bin
-          mkdir -p AppDir/usr/lib
           mkdir -p AppDir/usr/share/applications
-          mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
           cp target/${{ matrix.rust_target }}/release/${{ env.BIN_NAME }} AppDir/usr/bin/
           cp assets/appimage/quantum-launcher.desktop AppDir/
           cp assets/appimage/quantum-launcher.desktop AppDir/usr/share/applications/
-          cp assets/icon/512x512/ql_logo.png AppDir/quantum-launcher.png
-          cp assets/icon/512x512/ql_logo.png AppDir/usr/share/icons/hicolor/512x512/apps/quantum-launcher.png
-          cp -L ${{ matrix.lib_path }}/libc.so.6 AppDir/usr/lib/
-          cp -L ${{ matrix.lib_path }}/libm.so.6 AppDir/usr/lib/
-          cp -L ${{ matrix.lib_path }}/libdl.so.2 AppDir/usr/lib/
-          cp -L ${{ matrix.lib_path }}/libpthread.so.0 AppDir/usr/lib/
-          cp -L ${{ matrix.ld_path }} AppDir/usr/lib/${{ matrix.ld_name }}
+          convert assets/icon/512x512/ql_logo.png -resize 256x256 AppDir/usr/share/icons/hicolor/256x256/apps/quantum-launcher.png
+          cp AppDir/usr/share/icons/hicolor/256x256/apps/quantum-launcher.png AppDir/quantum-launcher.png
           echo '#!/bin/sh' > AppDir/AppRun
           echo 'APPDIR=$(dirname "$0")' >> AppDir/AppRun
-          echo 'export LD_LIBRARY_PATH=$APPDIR/usr/lib:$LD_LIBRARY_PATH' >> AppDir/AppRun
-          echo 'exec $APPDIR/usr/lib/${{ matrix.ld_name }} $APPDIR/usr/bin/${{ env.BIN_NAME }} "$@"' >> AppDir/AppRun
+          echo 'exec $APPDIR/usr/bin/${{ env.BIN_NAME }} "$@"' >> AppDir/AppRun
           chmod +x AppDir/AppRun
 
       - name: Verify icon file
@@ -149,7 +131,7 @@ jobs:
           file AppDir/quantum-launcher.png
 
       - name: Check binary architecture
-        run: file target/${{ matrix.rust_target }}/release/${{ env.BIN_NAME }}
+        run: file AppDir/usr/bin/${{ env.BIN_NAME }}
 
       - name: Verify AppDir structure
         run: |
@@ -163,15 +145,14 @@ jobs:
             echo "ERROR: ${{ env.BIN_NAME }} binary not found!"
             exit 1
           fi
-          if [ ! -f AppDir/usr/lib/libc.so.6 ]; then
-            echo "ERROR: glibc (libc.so.6) not found in AppDir!"
+          if [ ! -f AppDir/quantum-launcher.png ]; then
+            echo "ERROR: quantum-launcher.png not found in AppDir!"
             exit 1
           fi
 
       - name: Build AppImage
         if: matrix.arch != 'armv7'
-        run: |
-          ARCH=${{ matrix.arch }} ./${{ matrix.appimage_tool }} AppDir ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
+        run: ARCH=${{ matrix.arch }} ./${{ matrix.appimage_tool }} AppDir ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
         env:
           ARCH: ${{ matrix.arch }}
 
@@ -181,6 +162,10 @@ jobs:
         with:
           arch: armhf
           distro: ubuntu20.04
+          githubToken: ${{ github.token }}
+          setup: |
+            wget https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-armhf.AppImage
+            chmod +x appimagetool-armhf.AppImage
           run: |
             ARCH=armv7 ./appimagetool-armhf.AppImage AppDir ${{ env.PROJECT_NAME }}-armv7.AppImage
 
