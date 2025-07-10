@@ -23,7 +23,7 @@ jobs:
       matrix:
         include:
           - arch: x86_64
-            runner: ubuntu-20.04
+            runner: ubuntu-22.04
             rust_target: x86_64-unknown-linux-gnu
             appimage_tool: appimagetool-x86_64.AppImage
             lib_path: /lib/x86_64-linux-gnu
@@ -37,7 +37,7 @@ jobs:
             ld_path: /lib/ld-linux-aarch64.so.1
             cross: false
           - arch: armv7
-            runner: ubuntu-20.04
+            runner: ubuntu-22.04
             rust_target: armv7-unknown-linux-gnueabihf
             appimage_tool: appimagetool-armhf.AppImage
             lib_path: /usr/arm-linux-gnueabihf/lib
@@ -66,7 +66,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ matrix.runner }}-cargo-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lockreact') }}
+          key: ${{ matrix.runner }}-cargo-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ matrix.runner }}-cargo-${{ matrix.arch }}-
 
@@ -137,9 +137,6 @@ jobs:
           echo 'exec $APPDIR/usr/bin/${{ env.BIN_NAME }} "$@"' >> AppDir/AppRun
           chmod +x AppDir/AppRun
 
-      - name: Check binary dependencies
-        run: ldd AppDir/usr/bin/${{ env.BIN_NAME }}
-
       - name: Verify AppDir structure
         run: |
           echo "Listing AppDir contents:"
@@ -156,8 +153,6 @@ jobs:
             echo "ERROR: glibc (libc.so.6) not found in AppDir!"
             exit 1
           fi
-          file AppDir/usr/bin/${{ env.BIN_NAME }}
-          file AppDir/usr/lib/libc.so.6
 
       - name: Build AppImage
         if: matrix.arch != 'armv7'
@@ -169,7 +164,8 @@ jobs:
         if: matrix.arch == 'armv7'
         uses: uraimo/run-on-arch-action@v2
         with:
-          image: arm32v7/ubuntu:20.04
+          arch: armhf
+          distro: ubuntu20.04
           run: |
             apt-get update
             apt-get install -y libfuse2 wget
