@@ -1,6 +1,7 @@
 name: Build and Release Quantum Launcher AppImages
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -22,25 +23,28 @@ jobs:
       matrix:
         include:
           - arch: x86_64
-            runner: ubuntu-22.04  # Updated from ubuntu-20.04
+            runner: ubuntu-22.04
             rust_target: x86_64-unknown-linux-gnu
             appimage_tool: appimagetool-x86_64.AppImage
             lib_path: /lib/x86_64-linux-gnu
             ld_path: /lib64/ld-linux-x86-64.so.2
+            ld_name: ld-linux-x86-64.so.2
             cross: false
           - arch: aarch64
-            runner: ubuntu-24.04-arm  # Arm64 runner
+            runner: ubuntu-24.04-arm
             rust_target: aarch64-unknown-linux-gnu
             appimage_tool: appimagetool-aarch64.AppImage
             lib_path: /lib/aarch64-linux-gnu
             ld_path: /lib/ld-linux-aarch64.so.1
+            ld_name: ld-linux-aarch64.so.1
             cross: false
           - arch: armv7
-            runner: ubuntu-22.04  # Using ubuntu-22.04 with emulation
+            runner: ubuntu-22.04
             rust_target: armv7-unknown-linux-gnueabihf
             appimage_tool: appimagetool-armhf.AppImage
             lib_path: /usr/arm-linux-gnueabihf/lib
             ld_path: /usr/arm-linux-gnueabihf/lib/ld-linux-armhf.so.3
+            ld_name: ld-linux-armhf.so.3
             cross: true
       fail-fast: false
 
@@ -121,14 +125,15 @@ jobs:
           cp assets/appimage/quantum-launcher.desktop AppDir/
           cp assets/appimage/quantum-launcher.desktop AppDir/usr/share/applications/
           cp assets/icon/512x512/ql_logo.png AppDir/usr/share/icons/hicolor/512x512/apps/quantum-launcher.png
-          cp ${{ matrix.lib_path }}/libc.so.6 AppDir/usr/lib/
-          cp ${{ matrix.lib_path }}/libm.so.6 AppDir/usr/lib/
-          cp ${{ matrix.lib_path }}/libdl.so.2 AppDir/usr/lib/
-          cp ${{ matrix.lib_path }}/libpthread.so.0 AppDir/usr/lib/
-          cp ${{ matrix.ld_path }} AppDir/usr/lib/
+          cp -L ${{ matrix.lib_path }}/libc.so.6 AppDir/usr/lib/
+          cp -L ${{ matrix.lib_path }}/libm.so.6 AppDir/usr/lib/
+          cp -L ${{ matrix.lib_path }}/libdl.so.2 AppDir/usr/lib/
+          cp -L ${{ matrix.lib_path }}/libpthread.so.0 AppDir/usr/lib/
+          cp -L ${{ matrix.ld_path }} AppDir/usr/lib/${{ matrix.ld_name }}
           echo '#!/bin/sh' > AppDir/AppRun
+          echo 'APPDIR=$(dirname "$0")' >> AppDir/AppRun
           echo 'export LD_LIBRARY_PATH=$APPDIR/usr/lib:$LD_LIBRARY_PATH' >> AppDir/AppRun
-          echo 'exec $APPDIR/usr/bin/${{ env.BIN_NAME }} "$@"' >> AppDir/AppRun
+          echo 'exec $APPDIR/usr/lib/${{ matrix.ld_name }} $APPDIR/usr/bin/${{ env.BIN_NAME }} "$@"' >> AppDir/AppRun
           chmod +x AppDir/AppRun
 
       - name: Verify AppDir structure
