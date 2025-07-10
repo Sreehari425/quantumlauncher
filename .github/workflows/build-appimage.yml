@@ -106,12 +106,8 @@ jobs:
         run: |
           mkdir -p AppDir/usr/bin AppDir/usr/lib AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
           cp target/${{ matrix.rust_target }}/release/${{ env.BIN_NAME }} AppDir/usr/bin/
-          echo "[Desktop Entry]
-          Name=Quantum Launcher
-          Exec=quantum_launcher
-          Type=Application
-          Icon=quantum-launcher
-          Terminal=false" > AppDir/usr/share/applications/quantum-launcher.desktop
+          cp assets/appimage/quantum-launcher.desktop AppDir/usr/share/applications/quantum-launcher.desktop
+          cp assets/appimage/quantum-launcher.desktop AppDir/quantum-launcher.desktop
           cp AppDir/usr/share/applications/quantum-launcher.desktop AppDir/quantum-launcher.desktop
           # Replace 'path/to/your/icon.png' with the actual path to your icon in the repository
           cp assets/icon/256x256/ql_logo.png AppDir/usr/share/icons/hicolor/256x256/apps/quantum-launcher.png
