@@ -114,8 +114,8 @@ jobs:
           Terminal=false" > AppDir/usr/share/applications/quantum-launcher.desktop
           cp AppDir/usr/share/applications/quantum-launcher.desktop AppDir/quantum-launcher.desktop
           # Replace 'path/to/your/icon.png' with the actual path to your icon in the repository
-          cp path/to/your/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/quantum-launcher.png
-          cp path/to/your/icon.png AppDir/quantum-launcher.png
+          cp assets/icon/256x256/ql_logo.png AppDir/usr/share/icons/hicolor/256x256/apps/quantum-launcher.png
+          cp assets/icon/256x256/ql_logo.png AppDir/quantum-launcher.png
           # Copy the dynamic linker
           cp -L ${{ matrix.ld_linux }} AppDir/usr/lib/${{ matrix.ld_name }}
           # Copy glibc and other required libraries
