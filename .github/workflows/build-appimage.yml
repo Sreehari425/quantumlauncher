@@ -42,7 +42,7 @@ jobs:
         build: [x86_64-linux, aarch64-linux, armv7-linux]
         include:
           - build: x86_64-linux
-            runner: ubuntu-20.04
+            runner: ubuntu-24.04
             rust_target: x86_64-unknown-linux-gnu
             appimage_tool: appimagetool-x86_64.AppImage
             lib_path: /lib/x86_64-linux-gnu
@@ -56,7 +56,7 @@ jobs:
             appimage_arch: aarch64
             cross: false
           - build: armv7-linux
-            runner: ubuntu-20.04
+            runner: ubuntu-24.04
             rust_target: armv7-unknown-linux-gnueabihf
             appimage_tool: appimagetool-x86_64.AppImage
             lib_path: /usr/arm-linux-gnueabihf/lib
