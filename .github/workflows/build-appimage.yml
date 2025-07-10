@@ -1,201 +1,143 @@
-name: Build and Release Quantum Launcher AppImages
+# Copyright 2021- Dotan Nahum
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# This file is modified by Mrmayman, ApicalShark on 2024
+# This file is modified by Sreehari425 on 2025
 
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-    tags:
-      - 'v[0-9]+.[0-9]+'
-      - 'v[0-9]+.[0-9]+.[0-9]+'
+name: Release AppImages
 
 permissions:
   contents: write
 
+on:
+  workflow_dispatch: # Allows manual triggering
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
 env:
   BIN_NAME: quantum_launcher
   PROJECT_NAME: quantum_launcher
+  CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  dist:
+    name: Build AppImage
     runs-on: ${{ matrix.runner }}
     strategy:
+      fail-fast: false
       matrix:
+        build: [x86_64-linux, aarch64-linux, armv7-linux]
         include:
-          - arch: x86_64
-            runner: ubuntu-22.04
+          - build: x86_64-linux
+            runner: ubuntu-20.04
             rust_target: x86_64-unknown-linux-gnu
             appimage_tool: appimagetool-x86_64.AppImage
             lib_path: /lib/x86_64-linux-gnu
-            ld_path: /lib64/ld-linux-x86-64.so.2
+            appimage_arch: x86_64
             cross: false
-          - arch: aarch64
+          - build: aarch64-linux
             runner: ubuntu-24.04-arm
             rust_target: aarch64-unknown-linux-gnu
             appimage_tool: appimagetool-aarch64.AppImage
             lib_path: /lib/aarch64-linux-gnu
-            ld_path: /lib/ld-linux-aarch64.so.1
+            appimage_arch: aarch64
             cross: false
-          - arch: armv7
-            runner: ubuntu-22.04
+          - build: armv7-linux
+            runner: ubuntu-20.04
             rust_target: armv7-unknown-linux-gnueabihf
-            appimage_tool: appimagetool-armhf.AppImage
+            appimage_tool: appimagetool-x86_64.AppImage
             lib_path: /usr/arm-linux-gnueabihf/lib
-            ld_path: /usr/arm-linux-gnueabihf/lib/ld-linux-armhf.so.3
+            appimage_arch: armhf
             cross: true
-      fail-fast: false
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libdbus-1-dev pkg-config libdbus-1-3 libfuse2 wget
+          if [ "${{ matrix.cross }}" == "true" ]; then
+            sudo apt-get install -y gcc-arm-linux-gnueabihf libc6-dev-armhf-cross
+          fi
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          targets: ${{ matrix.rust_target }}
+          target: ${{ matrix.rust_target }}
+          override: true
 
       - name: Install cross for armv7
         if: matrix.cross
         run: cargo install cross --locked
 
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ matrix.runner }}-cargo-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ matrix.runner }}-cargo-${{ matrix.arch }}-
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libfuse2 imagemagick
-          if [ "${{ matrix.arch }}" == "x86_64" ] || [ "${{ matrix.arch }}" == "aarch64" ]; then
-            sudo apt-get install -y --no-install-recommends libc6-dev
-          elif [ "${{ matrix.arch }}" == "armv7" ]; then
-            sudo apt-get install -y --no-install-recommends libc6-dev-armhf-cross
-          fi
-
-      - name: Cache AppImage tool
-        id: cache-appimagetool
-        uses: actions/cache@v4
-        with:
-          path: ${{ matrix.appimage_tool }}
-          key: ${{ matrix.runner }}-appimagetool-13-${{ matrix.arch }}
-
-      - name: Download AppImage tool
-        if: steps.cache-appimagetool.outputs.cache-hit != 'true'
-        run: |
-          wget https://github.com/AppImage/AppImageKit/releases/download/13/${{ matrix.appimage_tool }}
-          chmod +x ${{ matrix.appimage_tool }}
-
-      - name: Build quantum_launcher binary
+      - name: Build binary
         run: |
           if [ "${{ matrix.cross }}" == "true" ]; then
-            cross build --release --package quantum_launcher --target ${{ matrix.rust_target }}
+            cross build --release --target ${{ matrix.rust_target }}
           else
-            cargo build --release --package quantum_launcher --target ${{ matrix.rust_target }}
+            cargo build --release --target ${{ matrix.rust_target }}
           fi
-
-      - name: Verify .desktop file and icon
-        run: |
-          if [ ! -f assets/appimage/quantum-launcher.desktop ]; then
-            echo "ERROR: assets/appimage/quantum-launcher.desktop not found!"
-            exit 1
-          fi
-          if [ ! -f assets/icon/512x512/ql_logo.png ]; then
-            echo "ERROR: assets/icon/512x512/ql_logo.png not found!"
-            exit 1
-          fi
-
-      - name: Clean AppDir
-        run: rm -rf AppDir || true
 
       - name: Prepare AppDir
         run: |
-          mkdir -p AppDir/usr/bin
-          mkdir -p AppDir/usr/lib
-          mkdir -p AppDir/usr/share/applications
-          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          mkdir -p AppDir/usr/bin AppDir/usr/lib AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
           cp target/${{ matrix.rust_target }}/release/${{ env.BIN_NAME }} AppDir/usr/bin/
-          cp assets/appimage/quantum-launcher.desktop AppDir/
-          cp assets/appimage/quantum-launcher.desktop AppDir/usr/share/applications/
-          convert assets/icon/512x512/ql_logo.png -resize 256x256 AppDir/usr/share/icons/hicolor/256x256/apps/quantum-launcher.png
+          echo "[Desktop Entry]
+          Name=Quantum Launcher
+          Exec=quantum_launcher
+          Type=Application
+          Icon=quantum-launcher
+          Terminal=false" > AppDir/usr/share/applications/quantum-launcher.desktop
+          cp AppDir/usr/share/applications/quantum-launcher.desktop AppDir/quantum-launcher.desktop
+          wget -O icon.png https://via.placeholder.com/512 # Replace with your icon URL or path
+          convert icon.png -resize 256x256 AppDir/usr/share/icons/hicolor/256x256/apps/quantum-launcher.png
           cp AppDir/usr/share/icons/hicolor/256x256/apps/quantum-launcher.png AppDir/quantum-launcher.png
           cp -L ${{ matrix.lib_path }}/libc.so.6 AppDir/usr/lib/
           cp -L ${{ matrix.lib_path }}/libm.so.6 AppDir/usr/lib/
           cp -L ${{ matrix.lib_path }}/libdl.so.2 AppDir/usr/lib/
           cp -L ${{ matrix.lib_path }}/libpthread.so.0 AppDir/usr/lib/
-          cp -L ${{ matrix.ld_path }} AppDir/usr/lib/
-          echo '#!/bin/sh' > AppDir/AppRun
-          echo 'APPDIR=$(dirname "$0")' >> AppDir/AppRun
-          echo 'export LD_LIBRARY_PATH=$APPDIR/usr/lib:$LD_LIBRARY_PATH' >> AppDir/AppRun
-          echo 'exec $APPDIR/usr/bin/${{ env.BIN_NAME }} "$@"' >> AppDir/AppRun
+          echo '#!/bin/sh
+          APPDIR=$(dirname "$0")
+          exec $APPDIR/usr/bin/${{ env.BIN_NAME }} "$@"' > AppDir/AppRun
           chmod +x AppDir/AppRun
 
-      - name: Verify AppDir structure
+      - name: Download appimagetool
         run: |
-          echo "Listing AppDir contents:"
-          find AppDir -type f
-          if [ ! -f AppDir/AppRun ]; then
-            echo "ERROR: AppRun not found!"
-            exit 1
-          fi
-          if [ ! -f AppDir/usr/bin/${{ env.BIN_NAME }} ]; then
-            echo "ERROR: ${{ env.BIN_NAME }} binary not found!"
-            exit 1
-          fi
-          if [ ! -f AppDir/usr/lib/libc.so.6 ]; then
-            echo "ERROR: glibc (libc.so.6) not found in AppDir!"
-            exit 1
-          fi
+          wget https://github.com/AppImage/AppImageKit/releases/download/13/${{ matrix.appimage_tool }}
+          chmod +x ${{ matrix.appimage_tool }}
 
       - name: Build AppImage
-        if: matrix.arch != 'armv7'
-        run: ARCH=${{ matrix.arch }} ./${{ matrix.appimage_tool }} AppDir ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
-        env:
-          ARCH: ${{ matrix.arch }}
-
-      - name: Build AppImage for armv7
-        if: matrix.arch == 'armv7'
-        uses: uraimo/run-on-arch-action@v2
-        with:
-          arch: armhf
-          distro: ubuntu20.04
-          run: |
-            apt-get update
-            apt-get install -y libfuse2 wget
-            wget https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-armhf.AppImage
-            chmod +x appimagetool-armhf.AppImage
-            ARCH=armv7 ./appimagetool-armhf.AppImage AppDir ${{ env.PROJECT_NAME }}-armv7.AppImage
-
-      - name: Rename AppImage
         run: |
-          if [ -f Quantum_Launcher-${{ matrix.arch }}.AppImage ]; then
-            mv Quantum_Launcher-${{ matrix.arch }}.AppImage ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
-            echo "Renamed Quantum_Launcher-${{ matrix.arch }}.AppImage to ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage"
-          fi
-          if [ ! -f ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage ]; then
-            echo "ERROR: ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage was not created!"
-            exit 1
-          fi
-          echo "AppImage created successfully: ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage"
+          ARCH=${{ matrix.appimage_arch }} ./${{ matrix.appimage_tool }} AppDir ${{ env.PROJECT_NAME }}-${{ matrix.build }}.AppImage
 
-      - name: Upload AppImage artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
-          path: ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
-          retention-days: 7
+          name: ${{ env.PROJECT_NAME }}-${{ matrix.build }}
+          path: ${{ env.PROJECT_NAME }}-${{ matrix.build }}.AppImage
 
-  release:
-    needs: build
+  publish:
+    name: Publish
+    needs: [dist]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -205,20 +147,22 @@ jobs:
         with:
           path: artifacts
 
-      - name: Prepare release artifacts
+      - name: Calculate tag name
+        id: tagname
         run: |
-          mkdir dist
-          for arch in x86_64 aarch64 armv7; do
-            mv artifacts/${{ env.PROJECT_NAME }}-${arch}.AppImage/${{ env.PROJECT_NAME }}-${arch}.AppImage dist/
-          done
-          ls -l dist/
+          name=dev
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            name=${GITHUB_REF:10}
+          fi
+          echo "val=$name" >> $GITHUB_OUTPUT
+          echo "TAG=$name" >> $GITHUB_ENV
 
-      - name: Create release
-        uses: softprops/action-gh-release@v1
+      - name: Upload to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: svenstaro/upload-release-action@v2
         with:
-          files: |
-            dist/${{ env.PROJECT_NAME }}-x86_64.AppImage
-            dist/${{ env.PROJECT_NAME }}-aarch64.AppImage
-            dist/${{ env.PROJECT_NAME }}-armv7.AppImage
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: artifacts/*/*.AppImage
+          file_glob: true
+          tag: ${{ steps.tagname.outputs.val }}
+          overwrite: true
