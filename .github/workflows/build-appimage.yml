@@ -154,7 +154,20 @@ jobs:
           fi
 
       - name: Build AppImage
-        run: ./${{ matrix.appimage_tool }} AppDir ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
+        if: matrix.arch != 'armv7'
+        run: |
+          ARCH=${{ matrix.arch }} ./${{ matrix.appimage_tool }} AppDir ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
+        env:
+          ARCH: ${{ matrix.arch }}
+
+      - name: Build AppImage for armv7
+        if: matrix.arch == 'armv7'
+        uses: uraimo/run-on-arch-action@v2
+        with:
+          arch: armhf
+          distro: ubuntu22.04
+          run: |
+            ARCH=armv7 ./appimagetool-armhf.AppImage AppDir ${{ env.PROJECT_NAME }}-armv7.AppImage
 
       - name: Rename AppImage
         run: |
