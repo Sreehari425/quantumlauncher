@@ -115,6 +115,9 @@ jobs:
             exit 1
           fi
 
+      - name: Clean AppDir
+        run: rm -rf AppDir || true
+
       - name: Prepare AppDir
         run: |
           mkdir -p AppDir/usr/bin
@@ -124,6 +127,7 @@ jobs:
           cp target/${{ matrix.rust_target }}/release/${{ env.BIN_NAME }} AppDir/usr/bin/
           cp assets/appimage/quantum-launcher.desktop AppDir/
           cp assets/appimage/quantum-launcher.desktop AppDir/usr/share/applications/
+          cp assets/icon/512x512/ql_logo.png AppDir/quantum-launcher.png
           cp assets/icon/512x512/ql_logo.png AppDir/usr/share/icons/hicolor/512x512/apps/quantum-launcher.png
           cp -L ${{ matrix.lib_path }}/libc.so.6 AppDir/usr/lib/
           cp -L ${{ matrix.lib_path }}/libm.so.6 AppDir/usr/lib/
@@ -135,6 +139,17 @@ jobs:
           echo 'export LD_LIBRARY_PATH=$APPDIR/usr/lib:$LD_LIBRARY_PATH' >> AppDir/AppRun
           echo 'exec $APPDIR/usr/lib/${{ matrix.ld_name }} $APPDIR/usr/bin/${{ env.BIN_NAME }} "$@"' >> AppDir/AppRun
           chmod +x AppDir/AppRun
+
+      - name: Verify icon file
+        run: |
+          if [ ! -f AppDir/quantum-launcher.png ]; then
+            echo "ERROR: AppDir/quantum-launcher.png not found!"
+            exit 1
+          fi
+          file AppDir/quantum-launcher.png
+
+      - name: Check binary architecture
+        run: file target/${{ matrix.rust_target }}/release/${{ env.BIN_NAME }}
 
       - name: Verify AppDir structure
         run: |
@@ -165,7 +180,7 @@ jobs:
         uses: uraimo/run-on-arch-action@v2
         with:
           arch: armhf
-          distro: ubuntu22.04
+          distro: ubuntu20.04
           run: |
             ARCH=armv7 ./appimagetool-armhf.AppImage AppDir ${{ env.PROJECT_NAME }}-armv7.AppImage
 
