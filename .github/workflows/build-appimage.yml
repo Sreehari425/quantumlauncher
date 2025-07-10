@@ -48,6 +48,8 @@ jobs:
             lib_path: /lib/x86_64-linux-gnu
             appimage_arch: x86_64
             cross: false
+            ld_linux: /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+            ld_name: ld-linux-x86-64.so.2
           - build: aarch64-linux
             runner: ubuntu-24.04-arm
             rust_target: aarch64-unknown-linux-gnu
@@ -55,6 +57,8 @@ jobs:
             lib_path: /lib/aarch64-linux-gnu
             appimage_arch: aarch64
             cross: false
+            ld_linux: /lib/aarch64-linux-gnu/ld-linux-aarch64.so.1
+            ld_name: ld-linux-aarch64.so.1
           - build: armv7-linux
             runner: ubuntu-24.04
             rust_target: armv7-unknown-linux-gnueabihf
@@ -62,6 +66,8 @@ jobs:
             lib_path: /usr/arm-linux-gnueabihf/lib
             appimage_arch: armhf
             cross: true
+            ld_linux: /usr/arm-linux-gnueabihf/lib/ld-linux-armhf.so.3
+            ld_name: ld-linux-armhf.so.3
 
     steps:
       - name: Checkout code
@@ -107,16 +113,23 @@ jobs:
           Icon=quantum-launcher
           Terminal=false" > AppDir/usr/share/applications/quantum-launcher.desktop
           cp AppDir/usr/share/applications/quantum-launcher.desktop AppDir/quantum-launcher.desktop
-          wget -O icon.png https://via.placeholder.com/512 # Replace with your icon URL or path
-          convert icon.png -resize 256x256 AppDir/usr/share/icons/hicolor/256x256/apps/quantum-launcher.png
-          cp AppDir/usr/share/icons/hicolor/256x256/apps/quantum-launcher.png AppDir/quantum-launcher.png
+          # Replace 'path/to/your/icon.png' with the actual path to your icon in the repository
+          cp path/to/your/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/quantum-launcher.png
+          cp path/to/your/icon.png AppDir/quantum-launcher.png
+          # Copy the dynamic linker
+          cp -L ${{ matrix.ld_linux }} AppDir/usr/lib/${{ matrix.ld_name }}
+          # Copy glibc and other required libraries
           cp -L ${{ matrix.lib_path }}/libc.so.6 AppDir/usr/lib/
           cp -L ${{ matrix.lib_path }}/libm.so.6 AppDir/usr/lib/
           cp -L ${{ matrix.lib_path }}/libdl.so.2 AppDir/usr/lib/
           cp -L ${{ matrix.lib_path }}/libpthread.so.0 AppDir/usr/lib/
+          cp -L ${{ matrix.lib_path }}/librt.so.1 AppDir/usr/lib/
+          cp -L ${{ matrix.lib_path }}/libgcc_s.so.1 AppDir/usr/lib/
+          cp -L ${{ matrix.lib_path }}/libdbus-1.so.3 AppDir/usr/lib/
+          # Create AppRun to use bundled dynamic linker and libraries
           echo '#!/bin/sh
           APPDIR=$(dirname "$0")
-          exec $APPDIR/usr/bin/${{ env.BIN_NAME }} "$@"' > AppDir/AppRun
+          exec $APPDIR/usr/lib/${{ matrix.ld_name }} --library-path $APPDIR/usr/lib $APPDIR/usr/bin/${{ env.BIN_NAME }} "$@"' > AppDir/AppRun
           chmod +x AppDir/AppRun
 
       - name: Download appimagetool
@@ -159,7 +172,7 @@ jobs:
 
       - name: Upload to release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: svenstaro/upload-release-action@v2
+        uses: actions/upload-artifact@v4
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: artifacts/*/*.AppImage
