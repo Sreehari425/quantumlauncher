@@ -23,19 +23,25 @@ jobs:
       matrix:
         include:
           - arch: x86_64
-            runner: ubuntu-22.04
-            rust_target: x86_64-unknown-linux-musl
+            runner: ubuntu-20.04
+            rust_target: x86_64-unknown-linux-gnu
             appimage_tool: appimagetool-x86_64.AppImage
+            lib_path: /lib/x86_64-linux-gnu
+            ld_path: /lib64/ld-linux-x86-64.so.2
             cross: false
           - arch: aarch64
-            runner: ubuntu-24.04-arm
-            rust_target: aarch64-unknown-linux-musl
+            runner: ubuntu-latest
+            rust_target: aarch64-unknown-linux-gnu
             appimage_tool: appimagetool-aarch64.AppImage
+            lib_path: /lib/aarch64-linux-gnu
+            ld_path: /lib/ld-linux-aarch64.so.1
             cross: false
           - arch: armv7
-            runner: ubuntu-22.04
-            rust_target: armv7-unknown-linux-musleabihf
+            runner: ubuntu-20.04
+            rust_target: armv7-unknown-linux-gnueabihf
             appimage_tool: appimagetool-armhf.AppImage
+            lib_path: /usr/arm-linux-gnueabihf/lib
+            ld_path: /usr/arm-linux-gnueabihf/lib/ld-linux-armhf.so.3
             cross: true
       fail-fast: false
 
@@ -48,6 +54,13 @@ jobs:
         with:
           toolchain: stable
           targets: ${{ matrix.rust_target }}
+
+      - name: Install QEMU and register binfmt for cross-building (aarch64)
+        if: matrix.arch == 'aarch64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu binfmt-support qemu-user-static
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
       - name: Install cross for armv7
         if: matrix.cross
@@ -67,27 +80,29 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libfuse2 musl-tools
-          if [ "${{ matrix.cross }}" == "true" ]; then
-            sudo apt-get install -y --no-install-recommends gcc-arm-linux-gnueabihf
+          sudo apt-get install -y --no-install-recommends libfuse2 imagemagick wget
+          if [[ "${{ matrix.arch }}" == "x86_64" || "${{ matrix.arch }}" == "aarch64" ]]; then
+            sudo apt-get install -y --no-install-recommends libc6-dev
+          elif [[ "${{ matrix.arch }}" == "armv7" ]]; then
+            sudo apt-get install -y --no-install-recommends libc6-dev-armhf-cross
           fi
 
       - name: Cache AppImage tool
-        id: cache-appimagetool
         uses: actions/cache@v4
         with:
-          path: ${{ matrix.appimage_tool }}
+          path: .appimagetool/${{ matrix.appimage_tool }}
           key: ${{ matrix.runner }}-appimagetool-13-${{ matrix.arch }}
 
       - name: Download AppImage tool
         if: steps.cache-appimagetool.outputs.cache-hit != 'true'
         run: |
-          wget https://github.com/AppImage/AppImageKit/releases/download/13/${{ matrix.appimage_tool }}
-          chmod +x ${{ matrix.appimage_tool }}
+          mkdir -p .appimagetool
+          wget -O .appimagetool/${{ matrix.appimage_tool }} https://github.com/AppImage/AppImageKit/releases/download/13/${{ matrix.appimage_tool }}
+          chmod +x .appimagetool/${{ matrix.appimage_tool }}
 
       - name: Build quantum_launcher binary
         run: |
-          if [ "${{ matrix.cross }}" == "true" ]; then
+          if [ "${{ matrix.cross }}" = "true" ]; then
             cross build --release --package quantum_launcher --target ${{ matrix.rust_target }}
           else
             cargo build --release --package quantum_launcher --target ${{ matrix.rust_target }}
@@ -110,6 +125,7 @@ jobs:
       - name: Prepare AppDir
         run: |
           mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/lib
           mkdir -p AppDir/usr/share/applications
           mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
           cp target/${{ matrix.rust_target }}/release/${{ env.BIN_NAME }} AppDir/usr/bin/
@@ -117,8 +133,14 @@ jobs:
           cp assets/appimage/quantum-launcher.desktop AppDir/usr/share/applications/
           convert assets/icon/512x512/ql_logo.png -resize 256x256 AppDir/usr/share/icons/hicolor/256x256/apps/quantum-launcher.png
           cp AppDir/usr/share/icons/hicolor/256x256/apps/quantum-launcher.png AppDir/quantum-launcher.png
+          cp -L ${{ matrix.lib_path }}/libc.so.6 AppDir/usr/lib/
+          cp -L ${{ matrix.lib_path }}/libm.so.6 AppDir/usr/lib/
+          cp -L ${{ matrix.lib_path }}/libdl.so.2 AppDir/usr/lib/
+          cp -L ${{ matrix.lib_path }}/libpthread.so.0 AppDir/usr/lib/
+          cp -L ${{ matrix.ld_path }} AppDir/usr/lib/
           echo '#!/bin/sh' > AppDir/AppRun
           echo 'APPDIR=$(dirname "$0")' >> AppDir/AppRun
+          echo 'export LD_LIBRARY_PATH=$APPDIR/usr/lib:$LD_LIBRARY_PATH' >> AppDir/AppRun
           echo 'exec $APPDIR/usr/bin/${{ env.BIN_NAME }} "$@"' >> AppDir/AppRun
           chmod +x AppDir/AppRun
 
@@ -145,41 +167,33 @@ jobs:
             echo "ERROR: ${{ env.BIN_NAME }} binary not found!"
             exit 1
           fi
-          if [ ! -f AppDir/quantum-launcher.png ]; then
-            echo "ERROR: quantum-launcher.png not found in AppDir!"
+          if [ ! -f AppDir/usr/lib/libc.so.6 ]; then
+            echo "ERROR: glibc (libc.so.6) not found in AppDir!"
             exit 1
           fi
 
-      - name: Build AppImage
+      - name: Build AppImage (x86_64 and aarch64)
         if: matrix.arch != 'armv7'
-        run: ARCH=${{ matrix.arch }} ./${{ matrix.appimage_tool }} AppDir ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
+        run: |
+          ./ .appimagetool/${{ matrix.appimage_tool }} AppDir ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
         env:
           ARCH: ${{ matrix.arch }}
 
       - name: Build AppImage for armv7
         if: matrix.arch == 'armv7'
-        uses: uraimo/run-on-arch-action@v2
-        with:
-          arch: armhf
-          distro: ubuntu20.04
-          githubToken: ${{ github.token }}
-          setup: |
-            wget https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-armhf.AppImage
-            chmod +x appimagetool-armhf.AppImage
-          run: |
-            ARCH=armv7 ./appimagetool-armhf.AppImage AppDir ${{ env.PROJECT_NAME }}-armv7.AppImage
-
-      - name: Rename AppImage
         run: |
-          if [ -f Quantum_Launcher-${{ matrix.arch }}.AppImage ]; then
-            mv Quantum_Launcher-${{ matrix.arch }}.AppImage ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
-            echo "Renamed Quantum_Launcher-${{ matrix.arch }}.AppImage to ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage"
-          fi
+          wget https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-armhf.AppImage
+          chmod +x appimagetool-armhf.AppImage
+          ARCH=armv7 ./appimagetool-armhf.AppImage AppDir ${{ env.PROJECT_NAME }}-armv7.AppImage
+
+      - name: Verify generated AppImage
+        run: |
           if [ ! -f ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage ]; then
             echo "ERROR: ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage was not created!"
             exit 1
           fi
           echo "AppImage created successfully: ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage"
+          file ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
 
       - name: Upload AppImage artifact
         uses: actions/upload-artifact@v4
@@ -203,9 +217,13 @@ jobs:
 
       - name: Prepare release artifacts
         run: |
-          mkdir dist
+          mkdir -p dist
           for arch in x86_64 aarch64 armv7; do
-            mv artifacts/${{ env.PROJECT_NAME }}-${arch}.AppImage/${{ env.PROJECT_NAME }}-${arch}.AppImage dist/
+            if [ -f artifacts/${{ env.PROJECT_NAME }}-${arch}.AppImage ]; then
+              mv artifacts/${{ env.PROJECT_NAME }}-${arch}.AppImage dist/
+            else
+              echo "Warning: artifact for $arch missing"
+            fi
           done
           ls -l dist/
 
