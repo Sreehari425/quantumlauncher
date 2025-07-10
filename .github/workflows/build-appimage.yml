@@ -22,21 +22,21 @@ jobs:
       matrix:
         include:
           - arch: x86_64
-            runner: ubuntu-20.04
+            runner: ubuntu-22.04  # Updated from ubuntu-20.04
             rust_target: x86_64-unknown-linux-gnu
             appimage_tool: appimagetool-x86_64.AppImage
             lib_path: /lib/x86_64-linux-gnu
             ld_path: /lib64/ld-linux-x86-64.so.2
             cross: false
           - arch: aarch64
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-24.04-arm  # Arm64 runner
             rust_target: aarch64-unknown-linux-gnu
             appimage_tool: appimagetool-aarch64.AppImage
             lib_path: /lib/aarch64-linux-gnu
             ld_path: /lib/ld-linux-aarch64.so.1
             cross: false
           - arch: armv7
-            runner: ubuntu-20.04
+            runner: ubuntu-22.04  # Using ubuntu-22.04 with emulation
             rust_target: armv7-unknown-linux-gnueabihf
             appimage_tool: appimagetool-armhf.AppImage
             lib_path: /usr/arm-linux-gnueabihf/lib
