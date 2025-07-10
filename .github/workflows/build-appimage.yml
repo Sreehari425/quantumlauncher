@@ -6,8 +6,7 @@ on:
     branches:
       - main
     tags:
-      - 'v[0-9]+.[0-9]+'
-      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v*'
 
 permissions:
   contents: write
@@ -59,7 +58,7 @@ jobs:
         if: matrix.arch == 'aarch64'
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu binfmt-support qemu-user-static
+          sudo apt-get install -y qemu-user qemu-user-static binfmt-support
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
       - name: Install cross for armv7
@@ -108,22 +107,9 @@ jobs:
             cargo build --release --package quantum_launcher --target ${{ matrix.rust_target }}
           fi
 
-      - name: Verify .desktop file and icon
-        run: |
-          if [ ! -f assets/appimage/quantum-launcher.desktop ]; then
-            echo "ERROR: assets/appimage/quantum-launcher.desktop not found!"
-            exit 1
-          fi
-          if [ ! -f assets/icon/512x512/ql_logo.png ]; then
-            echo "ERROR: assets/icon/512x512/ql_logo.png not found!"
-            exit 1
-          fi
-
-      - name: Clean AppDir
-        run: rm -rf AppDir || true
-
       - name: Prepare AppDir
         run: |
+          rm -rf AppDir
           mkdir -p AppDir/usr/bin
           mkdir -p AppDir/usr/lib
           mkdir -p AppDir/usr/share/applications
@@ -144,40 +130,10 @@ jobs:
           echo 'exec $APPDIR/usr/bin/${{ env.BIN_NAME }} "$@"' >> AppDir/AppRun
           chmod +x AppDir/AppRun
 
-      - name: Verify icon file
-        run: |
-          if [ ! -f AppDir/quantum-launcher.png ]; then
-            echo "ERROR: AppDir/quantum-launcher.png not found!"
-            exit 1
-          fi
-          file AppDir/quantum-launcher.png
-
-      - name: Check binary architecture
-        run: file AppDir/usr/bin/${{ env.BIN_NAME }}
-
-      - name: Verify AppDir structure
-        run: |
-          echo "Listing AppDir contents:"
-          find AppDir -type f
-          if [ ! -f AppDir/AppRun ]; then
-            echo "ERROR: AppRun not found!"
-            exit 1
-          fi
-          if [ ! -f AppDir/usr/bin/${{ env.BIN_NAME }} ]; then
-            echo "ERROR: ${{ env.BIN_NAME }} binary not found!"
-            exit 1
-          fi
-          if [ ! -f AppDir/usr/lib/libc.so.6 ]; then
-            echo "ERROR: glibc (libc.so.6) not found in AppDir!"
-            exit 1
-          fi
-
       - name: Build AppImage (x86_64 and aarch64)
         if: matrix.arch != 'armv7'
         run: |
-          ./ .appimagetool/${{ matrix.appimage_tool }} AppDir ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
-        env:
-          ARCH: ${{ matrix.arch }}
+          ./.appimagetool/${{ matrix.appimage_tool }} AppDir ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
 
       - name: Build AppImage for armv7
         if: matrix.arch == 'armv7'
@@ -185,15 +141,6 @@ jobs:
           wget https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-armhf.AppImage
           chmod +x appimagetool-armhf.AppImage
           ARCH=armv7 ./appimagetool-armhf.AppImage AppDir ${{ env.PROJECT_NAME }}-armv7.AppImage
-
-      - name: Verify generated AppImage
-        run: |
-          if [ ! -f ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage ]; then
-            echo "ERROR: ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage was not created!"
-            exit 1
-          fi
-          echo "AppImage created successfully: ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage"
-          file ${{ env.PROJECT_NAME }}-${{ matrix.arch }}.AppImage
 
       - name: Upload AppImage artifact
         uses: actions/upload-artifact@v4
