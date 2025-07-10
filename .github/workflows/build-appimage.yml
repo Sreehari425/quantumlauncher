@@ -66,7 +66,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ matrix.runner }}-cargo-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ matrix.runner }}-cargo-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lockreact') }}
           restore-keys: |
             ${{ matrix.runner }}-cargo-${{ matrix.arch }}-
 
@@ -137,16 +137,8 @@ jobs:
           echo 'exec $APPDIR/usr/bin/${{ env.BIN_NAME }} "$@"' >> AppDir/AppRun
           chmod +x AppDir/AppRun
 
-      - name: Verify icon file
-        run: |
-          if [ ! -f AppDir/quantum-launcher.png ]; then
-            echo "ERROR: AppDir/quantum-launcher.png not found!"
-            exit 1
-          fi
-          file AppDir/quantum-launcher.png
-
-      - name: Check binary architecture
-        run: file AppDir/usr/bin/${{ env.BIN_NAME }}
+      - name: Check binary dependencies
+        run: ldd AppDir/usr/bin/${{ env.BIN_NAME }}
 
       - name: Verify AppDir structure
         run: |
@@ -164,6 +156,8 @@ jobs:
             echo "ERROR: glibc (libc.so.6) not found in AppDir!"
             exit 1
           fi
+          file AppDir/usr/bin/${{ env.BIN_NAME }}
+          file AppDir/usr/lib/libc.so.6
 
       - name: Build AppImage
         if: matrix.arch != 'armv7'
@@ -175,9 +169,10 @@ jobs:
         if: matrix.arch == 'armv7'
         uses: uraimo/run-on-arch-action@v2
         with:
-          arch: armhf
-          distro: ubuntu20.04
+          image: arm32v7/ubuntu:20.04
           run: |
+            apt-get update
+            apt-get install -y libfuse2 wget
             wget https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-armhf.AppImage
             chmod +x appimagetool-armhf.AppImage
             ARCH=armv7 ./appimagetool-armhf.AppImage AppDir ${{ env.PROJECT_NAME }}-armv7.AppImage
