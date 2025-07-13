@@ -3,14 +3,12 @@
 - Inter font (default) taken from [Inter](https://rsms.me/inter/)
 - Both of these above two are under SIL Open Font License 1.1 (see `OFL.txt`)
 
-- Launcher icons 1 taken from [fontello](https://fontello.com/)
+- Launcher icons taken from [fontello](https://fontello.com/)
   (you can see the raw zip file for yourself at `fontello-*.zip`)
-- Launcher icons 2 designed by Aurlt. Until it's finished, currently
-  applied as "override" on top of icons 1.
 - Password Censored font from [Password Asterisks](https://fontstruct.com/fontstructions/show/2362923/password-asterisks)
 
 # Icon
-- QuantumLauncher logo made by Aurlt
+- QuantumLauncher logo made by Aurlt (@exsclt_35289 on Discord)
 
 # Installers
 - `ForgeInstaller.java` taken from

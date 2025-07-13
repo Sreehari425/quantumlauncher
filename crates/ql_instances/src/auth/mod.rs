@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use crate::auth;
-
+pub mod littleskin;
 pub mod elyby;
 pub mod ms;
 
@@ -18,12 +18,13 @@ pub struct AccountData {
     pub account_type: AccountType,
 }
 
+
 impl AccountData {
-    #[must_use]
     pub fn get_username_modified(&self) -> String {
         let suffix = match self.account_type {
             auth::AccountType::Microsoft => "",
             auth::AccountType::ElyBy => " (elyby)",
+            auth::AccountType::LittleSkin => " (littleskin)"
         };
         format!("{}{suffix}", self.username)
     }
@@ -33,6 +34,7 @@ impl AccountData {
 pub enum AccountType {
     Microsoft,
     ElyBy,
+    LittleSkin
 }
 
 impl std::fmt::Display for AccountType {
@@ -43,6 +45,7 @@ impl std::fmt::Display for AccountType {
             match self {
                 AccountType::Microsoft => "Microsoft",
                 AccountType::ElyBy => "ElyBy",
+                AccountType::LittleSkin => "LittleSkin"
             }
         )
     }
@@ -54,6 +57,11 @@ impl AccountData {
         let account_type = self.account_type;
         matches!(account_type, AccountType::ElyBy)
     }
+    pub fn is_littleskin(&self) -> bool {
+        let account_type = self.account_type;
+        matches!(account_type, AccountType::LittleSkin)
+    }
+    
 }
 
 #[derive(Debug, thiserror::Error)]

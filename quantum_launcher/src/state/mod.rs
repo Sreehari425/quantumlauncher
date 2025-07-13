@@ -259,20 +259,34 @@ fn load_account(
     username: &str,
     account: &mut crate::config::ConfigAccount,
 ) {
-    let username_stripped = username.strip_suffix(" (elyby)").unwrap_or(username);
-
     let (account_type, refresh_token) =
         if account.account_type.as_deref() == Some("ElyBy") || username.ends_with(" (elyby)") {
+            let username_stripped = username.strip_suffix(" (elyby)").unwrap_or(username);
             (
                 AccountType::ElyBy,
                 ql_instances::auth::elyby::read_refresh_token(username_stripped).strerr(),
             )
-        } else {
+        }
+        else if account.account_type.as_deref() == Some("LittleSkin") || username.ends_with(" (littleskin)") {
+            let username_stripped = username.strip_suffix(" (littleskin)").unwrap_or(username);
+            (
+                AccountType::LittleSkin,
+                ql_instances::auth::littleskin::read_refresh_token(username_stripped).strerr(),
+            )
+        }
+         else {
+            let username_stripped = username;
             (
                 AccountType::Microsoft,
                 ql_instances::auth::ms::read_refresh_token(username_stripped).strerr(),
             )
         };
+
+    let username_stripped = match account_type {
+        AccountType::ElyBy => username.strip_suffix(" (elyby)").unwrap_or(username),
+        AccountType::LittleSkin => username.strip_suffix(" (littleskin)").unwrap_or(username),
+        AccountType::Microsoft => username,
+    };
 
     match refresh_token {
         Ok(refresh_token) => {

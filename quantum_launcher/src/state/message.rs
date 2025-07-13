@@ -22,7 +22,7 @@ use ql_mod_manager::{
 };
 use tokio::process::Child;
 
-use super::{LaunchTabId, LauncherSettingsTab, LicenseTab, Res};
+use super::{LaunchTabId, Res};
 
 #[derive(Debug, Clone)]
 pub enum InstallFabricMessage {
@@ -172,6 +172,9 @@ pub enum AccountMessage {
     OpenElyBy {
         is_from_welcome_screen: bool,
     },
+    OpenLittleSkin {
+        is_from_welcome_screen: bool,
+    },
 
     ElyByUsernameInput(String),
     ElyByPasswordInput(String),
@@ -179,6 +182,13 @@ pub enum AccountMessage {
     ElyByShowPassword(bool),
     ElyByLogin,
     ElyByLoginResponse(Res<ql_instances::auth::elyby::Account>),
+    LittleSkinUsernameInput(String),
+    LittleSkinPasswordInput(String),
+    LittleSkinOtpInput(String),
+    LittleSkinShowPassword(bool),
+    LittleSkinLogin,
+    LittleSkinLoginResponse(Res<ql_instances::auth::littleskin::Account>),
+
 }
 
 #[derive(Debug, Clone)]
@@ -189,8 +199,6 @@ pub enum LauncherSettingsMessage {
     UiScale(f64),
     UiScaleApply,
     ClearJavaInstalls,
-    ClearJavaInstallsConfirm,
-    ChangeTab(LauncherSettingsTab),
 }
 
 #[derive(Debug, Clone)]
@@ -296,8 +304,4 @@ pub enum Message {
     ServerCreateVersionSelected(ListEntry),
     ServerCreateStart,
     ServerCreateEnd(Res<String>),
-
-    LicenseOpen,
-    LicenseChangeTab(LicenseTab),
-    LicenseAction(iced::widget::text_editor::Action),
 }

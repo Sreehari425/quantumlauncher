@@ -1,12 +1,12 @@
 use std::{
     path::Path,
-    sync::{mpsc::Sender, Arc},
+    sync::{Arc, mpsc::Sender},
 };
 
-use crate::{import::pipe_progress, import::OUT_OF, InstancePackageError};
+use crate::{InstancePackageError, import::OUT_OF, import::pipe_progress};
 use ql_core::{
-    err, file_utils, info, json::InstanceConfigJson, GenericProgress, InstanceSelection,
-    IntoIoError, IntoJsonError, ListEntry,
+    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, ListEntry, err, file_utils,
+    info, json::InstanceConfigJson,
 };
 use serde::{Deserialize, Serialize};
 use tokio::fs;
@@ -34,7 +34,7 @@ pub async fn import(
 
     let ini_path = temp_dir.join("instance.cfg");
     let ini = fs::read_to_string(&ini_path).await.path(ini_path)?;
-    let ini = ini::Ini::load_from_str(&filter_bytearray(&ini))?;
+    let ini = ini::Ini::load_from_str(&filter_bytearray(ini))?;
 
     let instance_name = ini
         .get_from(Some("General"), "name")
@@ -156,7 +156,7 @@ async fn mmc_forge(
     Ok(())
 }
 
-fn filter_bytearray(input: &str) -> String {
+fn filter_bytearray(input: String) -> String {
     // PrismLauncher puts some weird ByteArray
     // field in the INI config file, that our pookie little ini parser
     // doesn't understand. So we gotta filter it out.

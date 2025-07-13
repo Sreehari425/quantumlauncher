@@ -78,18 +78,16 @@ pub async fn read_logs(
 
         tokio::select! {
             line = stdout_reader.next_line() => {
-                if let Some(mut line) = line? {
+                if let Some(line) = line? {
                     if uses_xml {
-                        xml_parse(&sender, &mut xml_cache, &line, &mut has_errored);
+                        xml_parse(&sender, &mut xml_cache, &line, &mut has_errored)?;
                     } else {
-                        line.push('\n');
                         _ = sender.send(LogLine::Message(line));
                     }
                 } // else EOF
             },
             line = stderr_reader.next_line() => {
-                if let Some(mut line) = line? {
-                    line.push('\n');
+                if let Some(line) = line? {
                     _ = sender.send(LogLine::Error(line));
                 }
             }
@@ -97,10 +95,15 @@ pub async fn read_logs(
     }
 }
 
-fn xml_parse(sender: &Sender<LogLine>, xml_cache: &mut String, line: &str, has_errored: &mut bool) {
+fn xml_parse(
+    sender: &Sender<LogLine>,
+    xml_cache: &mut String,
+    line: &str,
+    has_errored: &mut bool,
+) -> Result<(), ReadError> {
     if !line.starts_with("  </log4j:Event>") {
         xml_cache.push_str(line);
-        return;
+        return Ok(());
     }
 
     xml_cache.push_str(line);
@@ -139,6 +142,8 @@ fn xml_parse(sender: &Sender<LogLine>, xml_cache: &mut String, line: &str, has_e
             }
         }
     }
+
+    Ok(())
 }
 
 async fn is_xml(instance_name: &str) -> Result<bool, ReadError> {

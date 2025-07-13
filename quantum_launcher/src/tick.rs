@@ -137,12 +137,12 @@ impl Launcher {
             // These menus don't require background ticking
             State::Error { .. }
             | State::LoginElyBy(_)
+            | State::LoginLittleSkin(_)
             | State::AccountLogin
             | State::ExportInstance(_)
             | State::ConfirmAction { .. }
             | State::ChangeLog
             | State::Welcome(_)
-            | State::License(_)
             | State::LoginMS(MenuLoginMS { .. })
             | State::GenericMessage(_)
             | State::CurseforgeManualDownload(_)
@@ -216,7 +216,6 @@ impl Launcher {
         server_logs: &mut HashMap<String, InstanceLog>,
     ) {
         while let Some(message) = process.receiver.as_ref().and_then(|n| n.try_recv().ok()) {
-            let message = message.replace('\t', &" ".repeat(8));
             let mut log_start = vec![
                 format!(
                     "Starting Minecraft Server ({})",
@@ -254,7 +253,7 @@ impl Launcher {
             return;
         };
         while let Ok(message) = receiver.try_recv() {
-            let message = message.to_string().replace('\t', &" ".repeat(8));
+            let message = message.to_string();
 
             let mut log_start = vec![
                 format!(

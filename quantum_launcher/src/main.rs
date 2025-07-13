@@ -208,13 +208,7 @@ fn main() {
     info_no_log!("Starting up the launcher... (OS: {OS_NAME})");
 
     let icon =
-        match iced::window::icon::from_file_data(LAUNCHER_ICON, Some(image::ImageFormat::Ico)) {
-            Ok(n) => Some(n),
-            Err(err) => {
-                err_no_log!("Couldn't load launcher icon! (bug detected): {err}");
-                None
-            }
-        };
+        iced::window::icon::from_file_data(LAUNCHER_ICON, Some(image::ImageFormat::Ico)).ok();
 
     let scale = if let Some(cfg) = launcher_dir
         .as_ref()
@@ -234,16 +228,13 @@ fn main() {
                 include_bytes!("../../assets/fonts/Inter-Regular.ttf")
                     .as_slice()
                     .into(),
+                include_bytes!("../../assets/fonts/launcher-icons.ttf")
+                    .as_slice()
+                    .into(),
                 include_bytes!("../../assets/fonts/JetBrainsMono-Regular.ttf")
                     .as_slice()
                     .into(),
-                include_bytes!("../../assets/fonts/password_asterisks/password-asterisks.ttf")
-                    .as_slice()
-                    .into(),
-                include_bytes!("../../assets/fonts/icons/launcher-icons.ttf")
-                    .as_slice()
-                    .into(),
-                include_bytes!("../../assets/fonts/icons/launcher-icons-2.ttf")
+                include_bytes!("../../assets/fonts/password-asterisks.ttf")
                     .as_slice()
                     .into(),
             ],

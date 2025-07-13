@@ -172,6 +172,7 @@ pub struct ConfigAccount {
     ///
     /// - `"Microsoft"`
     /// - `"ElyBy"`
+    /// - `"LittleSkin"`
     pub account_type: Option<String>,
 
     /// A game-readable "nice" username.

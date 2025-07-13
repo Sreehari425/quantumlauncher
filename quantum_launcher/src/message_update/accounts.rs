@@ -6,8 +6,7 @@ use ql_instances::auth;
 use crate::{
     config::ConfigAccount,
     state::{
-        AccountMessage, Launcher, MenuLoginElyBy, MenuLoginMS, Message, ProgressBar, State,
-        NEW_ACCOUNT_NAME, OFFLINE_ACCOUNT_NAME,
+        AccountMessage, Launcher, MenuLoginElyBy, MenuLoginLittleSkin, MenuLoginMS, Message, ProgressBar, State, NEW_ACCOUNT_NAME, OFFLINE_ACCOUNT_NAME
     },
 };
 
@@ -18,6 +17,7 @@ impl Launcher {
             | AccountMessage::Response2(Err(err))
             | AccountMessage::Response3(Err(err))
             | AccountMessage::ElyByLoginResponse(Err(err))
+            | AccountMessage::LittleSkinLoginResponse(Err(err))
             | AccountMessage::RefreshComplete(Err(err)) => {
                 self.set_error(err);
             }
@@ -53,12 +53,16 @@ impl Launcher {
                 let account_type = self
                     .accounts
                     .get(&username)
-                    .map_or(auth::AccountType::Microsoft, |n| n.account_type);
+                    .map(|n| n.account_type)
+                    .unwrap_or(auth::AccountType::Microsoft);
 
                 if let Err(err) = match account_type {
                     auth::AccountType::Microsoft => auth::ms::logout(&username),
                     auth::AccountType::ElyBy => {
                         auth::elyby::logout(username.strip_suffix(" (elyby)").unwrap_or(&username))
+                    }
+                    auth::AccountType::LittleSkin => {
+                        auth::elyby::logout(username.strip_suffix(" (littleskin)").unwrap_or(&username))
                     }
                 } {
                     self.set_error(err);
@@ -175,6 +179,67 @@ impl Launcher {
                     }
                 }
             }
+            AccountMessage::OpenLittleSkin {
+                is_from_welcome_screen,
+            } => {
+                self.state = State::LoginLittleSkin(MenuLoginLittleSkin {
+                    username: String::new(),
+                    password: String::new(),
+                    is_loading: false,
+                    otp: None,
+                    show_password: false,
+                    is_from_welcome_screen,
+                });
+            }
+
+            AccountMessage::LittleSkinUsernameInput(username) => {
+                if let State::LoginLittleSkin(menu) = &mut self.state {
+                    menu.username = username;
+                }
+            }
+            AccountMessage::LittleSkinPasswordInput(password) => {
+                if let State::LoginLittleSkin(menu) = &mut self.state {
+                    menu.password = password;
+                }
+            }
+            AccountMessage::LittleSkinShowPassword(t) => {
+                if let State::LoginLittleSkin(menu) = &mut self.state {
+                    menu.show_password = t;
+                }
+            }
+            AccountMessage::LittleSkinOtpInput(otp) => {
+                if let State::LoginLittleSkin(menu) = &mut self.state {
+                    menu.otp = Some(otp);
+                }
+            }
+
+            AccountMessage::LittleSkinLogin => {
+                if let State::LoginLittleSkin(menu) = &mut self.state {
+                    let mut password = menu.password.clone();
+                    if let Some(otp) = &menu.otp {
+                        password.push(':');
+                        password.push_str(otp);
+                    }
+                    menu.is_loading = true;
+                    return Task::perform(
+                        auth::littleskin::login_new(menu.username.clone(), password),
+                        |n| Message::Account(AccountMessage::LittleSkinLoginResponse(n.strerr())),
+                    );
+                }
+            }
+            AccountMessage::LittleSkinLoginResponse(Ok(acc)) => {
+                if let State::LoginLittleSkin(menu) = &mut self.state {
+                    menu.is_loading = false;
+                    match acc {
+                        auth::littleskin::Account::Account(data) => {
+                            return self.account_response_3(data);
+                        }
+                        auth::littleskin::Account::NeedsOTP => {
+                            menu.otp = Some(String::new());
+                        }
+                    }
+                }
+            }
         }
         Task::none()
     }
@@ -205,6 +270,10 @@ impl Launcher {
             }
             auth::AccountType::ElyBy => Task::perform(
                 auth::elyby::login_refresh(account.username.clone(), account.refresh_token.clone()),
+                |n| Message::Account(AccountMessage::RefreshComplete(n.strerr())),
+            ),
+            auth::AccountType::LittleSkin => Task::perform(
+                auth::littleskin::login_refresh(account.username.clone(), account.refresh_token.clone()),
                 |n| Message::Account(AccountMessage::RefreshComplete(n.strerr())),
             ),
         }

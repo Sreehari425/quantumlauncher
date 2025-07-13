@@ -49,8 +49,8 @@ pub struct VersionDetails {
     /// Type of version, such as alpha, beta or release.
     pub r#type: String,
 
-    /// Quantum Launcher-specific field added here
-    /// to cache the [`VersionDetails::is_legacy_version`] calculation.
+    /// Not actually in the *real* Minecraft JSON, but this is a QuantumLauncher-specific field
+    /// added here to cache the [`VersionDetails::is_legacy_version`] calculation.
     pub ql_is_legacy_version: Option<bool>,
 }
 
@@ -62,7 +62,13 @@ impl VersionDetails {
     /// - `details.json` file couldn't be loaded
     /// - `details.json` couldn't be parsed into valid JSON
     pub async fn load(instance: &InstanceSelection) -> Result<Self, JsonFileError> {
-        Self::load_from_path(&instance.get_instance_path()).await
+        let path = instance.get_instance_path().join("details.json");
+
+        let file = tokio::fs::read_to_string(&path).await.path(path)?;
+
+        let details: VersionDetails = serde_json::from_str(&file).json(file)?;
+
+        Ok(details)
     }
 
     /// Loads a Minecraft instance JSON from disk,
@@ -76,10 +82,12 @@ impl VersionDetails {
     /// - `details.json` file couldn't be loaded
     /// - `details.json` couldn't be parsed into valid JSON
     pub async fn load_from_path(path: &Path) -> Result<Self, JsonFileError> {
-        let path = path.join("details.json");
-        let file = tokio::fs::read_to_string(&path).await.path(path)?;
-        let version_json: VersionDetails = serde_json::from_str(&file).json(file)?;
-
+        let version_json_path = path.join("details.json");
+        let version_json = tokio::fs::read_to_string(&version_json_path)
+            .await
+            .path(version_json_path)?;
+        let version_json: VersionDetails =
+            serde_json::from_str(&version_json).json(version_json)?;
         Ok(version_json)
     }
 
@@ -131,14 +139,6 @@ impl VersionDetails {
             self.ql_is_legacy_version = Some(res);
             res
         }
-    }
-
-    pub fn needs_launchwrapper_fix(&self) -> bool {
-        self.libraries
-            .iter()
-            .filter_map(|n| n.downloads.as_ref())
-            .filter_map(|n| n.artifact.as_ref())
-            .any(|n| n.path.contains("mcphackers/launchwrapper/1.1.2"))
     }
 }
 

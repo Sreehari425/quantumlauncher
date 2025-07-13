@@ -12,7 +12,7 @@ use ql_core::{
         version::{LibraryDownloadArtifact, LibraryDownloads},
         FabricJSON, InstanceConfigJson, JsonOptifine, VersionDetails,
     },
-    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError, JsonFileError,
+    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError, JsonFileError,
     CLASSPATH_SEPARATOR, LAUNCHER_DIR,
 };
 use ql_java_handler::{get_java_binary, JavaVersion};
@@ -103,20 +103,6 @@ impl GameLauncher {
                 game_arguments.push("--uuid".to_owned());
                 game_arguments.push("${uuid}".to_owned());
             }
-        }
-
-        // Only applies to experimental builds of QuantumLauncher
-        // made after v0.4.1 but before the next update
-        if self.version_json.needs_launchwrapper_fix() {
-            // Fixes a crash in modern Minecraft
-
-            // WTF: No one will need this except for dumbass
-            // me who play a lot of instances made in this version
-            // and daily-drives bleeding edge shitcode.
-
-            // Thanks to [@Lassebq](https://github.com/Lassebq)
-            // for pointing this out :)
-            game_arguments.push("--disableSkinFix".to_owned());
         }
 
         Ok(game_arguments)
@@ -270,6 +256,9 @@ impl GameLauncher {
             args.push("-Dminecraft.api.services.host=https://nope.invalid".to_owned());
         } else if auth.is_some_and(AccountData::is_elyby) {
             args.push(crate::auth::elyby::get_authlib_injector().await?);
+        }
+        else if auth.is_some_and(AccountData::is_littleskin) {
+            args.push(crate::auth::littleskin::get_authlib_injector().await?);
         }
 
         if cfg!(target_pointer_width = "32") {
@@ -494,8 +483,7 @@ impl GameLauncher {
         self.classpath_fabric_and_quilt(fabric_json, &mut class_path, &mut classpath_entries)?;
 
         // Vanilla libraries, have to load after everything else
-        self.classpath_vanilla(&mut class_path, &mut classpath_entries)
-            .await?;
+        self.add_libs_to_classpath(&mut class_path, &mut classpath_entries)?;
 
         // Sometimes mod loaders/core mods try to "override" their own
         // version of a library over the base game. This code is setup
@@ -623,13 +611,12 @@ impl GameLauncher {
         Ok(())
     }
 
-    async fn classpath_vanilla(
+    fn add_libs_to_classpath(
         &self,
         class_path: &mut String,
         classpath_entries: &mut HashSet<String>,
     ) -> Result<(), GameLaunchError> {
-        for (name, artifact) in self
-            .version_json
+        self.version_json
             .libraries
             .iter()
             .filter(|n| GameDownloader::download_libraries_library_is_allowed(n))
@@ -643,14 +630,15 @@ impl GameLauncher {
                 ) => Some((name, artifact)),
                 _ => None,
             })
-        {
-            self.add_entry_to_classpath(name, classpath_entries, artifact, class_path)
-                .await?;
-        }
+            .map(|(name, artifact)| {
+                self.add_entry_to_classpath(name, classpath_entries, artifact, class_path)
+            })
+            .find(std::result::Result::is_err)
+            .unwrap_or(Ok(()))?;
         Ok(())
     }
 
-    async fn add_entry_to_classpath(
+    fn add_entry_to_classpath(
         &self,
         name: &str,
         classpath_entries: &mut HashSet<String>,
@@ -665,26 +653,22 @@ impl GameLauncher {
         }
         let library_path = self.instance_dir.join("libraries").join(&artifact.path);
 
-        if !library_path.exists() {
-            pt!("library {library_path:?} not found! Downloading...");
-            if let Err(err) =
-                file_utils::download_file_to_path(&artifact.url, false, &library_path).await
-            {
-                err!("Couldn't download library! Skipping...\n{err}");
+        if library_path.exists() {
+            #[allow(unused_mut)]
+            let Some(mut library_path) = library_path.to_str() else {
+                return Err(GameLaunchError::PathBufToString(library_path));
+            };
+
+            #[cfg(target_os = "windows")]
+            if library_path.starts_with(r"\\?\") {
+                library_path = &library_path[4..];
             }
-        }
-        #[allow(unused_mut)]
-        let Some(mut library_path) = library_path.to_str() else {
-            return Err(GameLaunchError::PathBufToString(library_path));
-        };
 
-        #[cfg(target_os = "windows")]
-        if library_path.starts_with(r"\\?\") {
-            library_path = &library_path[4..];
+            class_path.push_str(library_path);
+            class_path.push(CLASSPATH_SEPARATOR);
+        } else {
+            err!("Warning: library {library_path:?} not found!");
         }
-
-        class_path.push_str(library_path);
-        class_path.push(CLASSPATH_SEPARATOR);
         Ok(())
     }
 

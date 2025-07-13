@@ -1,14 +1,14 @@
 use ql_core::{
+    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, ListEntry, Loader, Progress,
     file_utils, info,
     json::{InstanceConfigJson, VersionDetails},
-    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, ListEntry, Loader,
-    Progress,
+    pt,
 };
 use std::{
     path::{Path, PathBuf},
     sync::{
-        mpsc::{Receiver, Sender},
         Arc,
+        mpsc::{Receiver, Sender},
     },
 };
 use tokio::fs;
@@ -100,7 +100,11 @@ async fn import_quantumlauncher(
     info!("Importing QuantumLauncher instance...");
 
     let instance_info: InstanceInfo = serde_json::from_str(&instance_info).json(instance_info)?;
-    let version_json: VersionDetails = VersionDetails::load_from_path(temp_dir).await?;
+    let version_json: VersionDetails = {
+        let path = temp_dir.join("details.json");
+        let file = fs::read_to_string(&path).await.path(&path)?;
+        serde_json::from_str(&file).json(file)?
+    };
     let config_json: InstanceConfigJson = {
         let path = temp_dir.join("config.json");
         let file = fs::read_to_string(&path).await.path(&path)?;

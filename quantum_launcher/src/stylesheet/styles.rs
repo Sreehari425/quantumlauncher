@@ -388,7 +388,7 @@ impl LauncherTheme {
     }
 
     pub fn style_rule_default(&self) -> widget::rule::Style {
-        self.style_rule(Color::SecondDark, 2)
+        self.style_rule(Color::Mid, 2)
     }
 
     pub fn style_button(
@@ -453,85 +453,6 @@ impl LauncherTheme {
     pub fn style_text(&self, color: Color) -> widget::text::Style {
         widget::text::Style {
             color: Some(self.get(color, true)),
-        }
-    }
-
-    pub fn style_text_editor_box(
-        &self,
-        status: widget::text_editor::Status,
-    ) -> widget::text_editor::Style {
-        match status {
-            widget::text_editor::Status::Active => widget::text_editor::Style {
-                background: self.get_bg(Color::ExtraDark, true),
-                border: self.get_border(Color::Dark, true),
-                icon: self.get(Color::Light, true),
-                placeholder: self.get(Color::Light, true),
-                value: self.get(Color::White, true),
-                selection: self.get(Color::Dark, true),
-            },
-            widget::text_editor::Status::Hovered => widget::text_editor::Style {
-                background: self.get_bg(Color::ExtraDark, true),
-                border: self.get_border(Color::SecondDark, true),
-                icon: self.get(Color::Light, true),
-                placeholder: self.get(Color::Light, true),
-                value: self.get(Color::White, true),
-                selection: self.get(Color::Dark, true),
-            },
-            widget::text_editor::Status::Focused => widget::text_editor::Style {
-                background: self.get_bg(Color::Dark, true),
-                border: self.get_border(Color::SecondDark, true),
-                icon: self.get(Color::Light, true),
-                placeholder: self.get(Color::Light, true),
-                value: self.get(Color::White, true),
-                selection: self.get(Color::SecondDark, true),
-            },
-            widget::text_editor::Status::Disabled => widget::text_editor::Style {
-                background: self.get_bg(Color::SecondDark, true),
-                border: self.get_border(Color::Mid, true),
-                icon: self.get(Color::Light, true),
-                placeholder: self.get(Color::Light, true),
-                value: self.get(Color::White, true),
-                selection: self.get(Color::Dark, true),
-            },
-        }
-    }
-
-    pub fn style_text_editor_flat_extra_dark(
-        &self,
-        status: widget::text_editor::Status,
-    ) -> widget::text_editor::Style {
-        let border = iced::Border {
-            color: self.get(Color::ExtraDark, true),
-            width: 0.0,
-            radius: iced::border::Radius::new(0.0),
-        };
-        match status {
-            widget::text_editor::Status::Active | widget::text_editor::Status::Hovered => {
-                widget::text_editor::Style {
-                    background: self.get_bg(Color::ExtraDark, true),
-                    border,
-                    icon: self.get(Color::Light, true),
-                    placeholder: self.get(Color::Light, true),
-                    value: self.get(Color::White, true),
-                    selection: self.get(Color::Dark, true),
-                }
-            }
-            widget::text_editor::Status::Focused => widget::text_editor::Style {
-                background: self.get_bg(Color::ExtraDark, true),
-                border,
-                icon: self.get(Color::Light, true),
-                placeholder: self.get(Color::Light, true),
-                value: self.get(Color::White, true),
-                selection: self.get(Color::SecondDark, true),
-            },
-            widget::text_editor::Status::Disabled => widget::text_editor::Style {
-                background: self.get_bg(Color::ExtraDark, true),
-                border,
-                icon: self.get(Color::Light, true),
-                placeholder: self.get(Color::Light, true),
-                value: self.get(Color::SecondLight, true),
-                selection: self.get(Color::Dark, true),
-            },
         }
     }
 }

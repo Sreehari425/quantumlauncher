@@ -11,7 +11,6 @@
 
 - Overhauled portable dir system (see `docs/PORTABLE.md` for more info)
 - Added a new Teal color scheme!
-- Overhauled the Launcher Setings menu
 
 ## Elyby integration
 - All versions before 1.21.6 will now support skins from elyby by default (b)
@@ -22,25 +21,16 @@
 - Import/Export support for Prism Launcher/MultiMC instances
 - (TODO) Migration from other launchers
 
-# UI
-- overhauled launcher settings menu
-- added a licenses page
-
 ## Fixes
 - fixed Minecraft Indev and early Infdev being unplayable (b)
 - fixed many crashes on Linux ARM and macOS (b)
 - fixed broken colors in old versions on M-series Macs (b)
-- fixed getting stuck in an infinite loop when downloading some curseforge mods
-- fixed Fabric API being missing for some curseforge mods
-- fixed game crashes in portable mode
-- fixed java install progress bar being stuck at the end
-- fixed many formatting issues in game logs
-- fixed welcome screen not working
-
 - old Minecraft versions are now in the correct order in the download list (b)
 - snapshots of 1.0 to 1.5.2 are no longer missing for download (b)
 - performance of loading the version list
   (when clicking New button) is **way** better now (b)
+- fixed getting stuck in an infinite loop when downloading some curseforge mods
+- fixed Fabric API being missing for some curseforge mods
+- fixed game crashes in portable mode
 - made a few cryptic errors more understandable
 - improved support for weird character encodings in file paths
-- missing libraries are now auto-downloaded

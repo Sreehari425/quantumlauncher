@@ -9,7 +9,7 @@ use thiserror::Error;
 use java_files::{JavaFile, JavaFilesJson};
 use java_list::JavaListJson;
 use ql_core::{
-    do_jobs, err, file_utils, info, pt, GenericProgress, IntoIoError, IoError, JsonDownloadError,
+    do_jobs, err, file_utils, info, GenericProgress, IntoIoError, IoError, JsonDownloadError,
     JsonError, RequestError, LAUNCHER_DIR,
 };
 
@@ -256,12 +256,28 @@ async fn java_install_fn(
     install_dir: &Path,
     file: &JavaFile,
 ) -> Result<(), JavaInstallError> {
+    let file_num = {
+        let mut file_num = file_num.lock().unwrap();
+        send_progress(
+            java_install_progress_sender,
+            GenericProgress {
+                done: *file_num,
+                total: num_files,
+                message: Some(format!("Installing file: {file_name}")),
+                has_finished: false,
+            },
+        );
+        *file_num += 1;
+        *file_num
+    } - 1;
+
     let file_path = install_dir.join(file_name);
     match file {
         JavaFile::file {
             downloads,
             executable,
         } => {
+            info!("Installing file ({file_num}/{num_files}): {file_name}");
             let file_bytes = download_file(downloads).await?;
             tokio::fs::write(&file_path, &file_bytes)
                 .await
@@ -272,36 +288,17 @@ async fn java_install_fn(
             }
         }
         JavaFile::directory {} => {
+            info!("Installing dir  ({file_num}/{num_files}): {file_name}");
             tokio::fs::create_dir_all(&file_path)
                 .await
                 .path(file_path)?;
         }
-        JavaFile::link { .. } => {
+        JavaFile::link { target } => {
             // TODO: Deal with java install symlink.
             // file_utils::create_symlink(src, dest)
+            err!("FIXME: Deal with symlink {file_name} -> {target}");
         }
     }
-
-    let file_num = {
-        let mut file_num = file_num.lock().unwrap();
-        send_progress(
-            java_install_progress_sender,
-            GenericProgress {
-                done: *file_num,
-                total: num_files,
-                message: Some(format!("Installed file: {file_name}")),
-                has_finished: false,
-            },
-        );
-        *file_num += 1;
-        *file_num
-    } - 1;
-
-    pt!(
-        "{} ({file_num}/{num_files}): {file_name}",
-        file.get_kind_name()
-    );
-
     Ok(())
 }
 
@@ -360,13 +357,13 @@ pub enum JavaInstallError {
     UnknownExtension(String),
 }
 
-pub async fn delete_java_installs() {
+pub fn delete_java_installs() {
     info!("Clearing Java installs");
     let java_installs = LAUNCHER_DIR.join("java_installs");
     if !java_installs.exists() {
         return;
     }
-    if let Err(err) = tokio::fs::remove_dir_all(&java_installs).await {
+    if let Err(err) = std::fs::remove_dir_all(&java_installs) {
         err!("Could not delete `java_installs` dir: {err}");
     }
 }

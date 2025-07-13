@@ -1,15 +1,12 @@
 use std::ffi::OsStr;
 
 use iced::{
-    keyboard::{key::Named, Key},
-    Task,
+    keyboard::{key::Named, Key}, widget::pane_grid::state, Task
 };
 use ql_core::{err, info, info_no_log, jarmod::JarMod, InstanceSelection};
 
 use crate::state::{
-    Launcher, LauncherSettingsTab, MenuCreateInstance, MenuEditMods, MenuExportInstance,
-    MenuInstallFabric, MenuInstallOptifine, MenuLaunch, MenuLauncherSettings, MenuLauncherUpdate,
-    MenuLoginElyBy, MenuLoginMS, MenuServerCreate, Message, State,
+    Launcher, MenuCreateInstance, MenuEditMods, MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuLaunch, MenuLauncherUpdate, MenuLoginElyBy, MenuLoginLittleSkin, MenuLoginMS, MenuServerCreate, Message, State
 };
 
 use super::{SIDEBAR_DRAG_LEEWAY, SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT};
@@ -244,23 +241,14 @@ impl Launcher {
             | State::LoginMS(MenuLoginMS { .. })
             | State::AccountLogin
             | State::ExportInstance(MenuExportInstance { progress: None, .. })
+            | State::LoginLittleSkin(MenuLoginLittleSkin {
+                is_loading: false, ..
+            })
             | State::LoginElyBy(MenuLoginElyBy {
                 is_loading: false, ..
             })
             | State::Welcome(_) => {
                 should_return_to_main_screen = true;
-            }
-            State::License(_) => {
-                if affect {
-                    if let State::LauncherSettings(_) = &self.state {
-                    } else {
-                        self.state = State::LauncherSettings(MenuLauncherSettings {
-                            temp_scale: self.config.ui_scale.unwrap_or(1.0),
-                            selected_tab: LauncherSettingsTab::About,
-                        });
-                    }
-                }
-                return (true, Task::none());
             }
             State::ConfirmAction { no, .. } => {
                 if affect {
@@ -299,6 +287,7 @@ impl Launcher {
             | State::ImportModpack(_)
             | State::CurseforgeManualDownload(_)
             | State::LoginElyBy(_)
+            | State::LoginLittleSkin(_)
             | State::Launch(_) => {}
         }
 

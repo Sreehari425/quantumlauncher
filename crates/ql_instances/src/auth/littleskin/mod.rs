@@ -6,20 +6,32 @@ mod authlib;
 mod error;
 pub(crate) use authlib::get_authlib_injector;
 pub use error::{AccountResponseError, Error};
+use serde::Serialize;
 
 // Well, no one's gonna be stealing this one :)
 pub const CLIENT_ID: &str = "quantumlauncher1";
 
 
+#[derive(Serialize)]
+struct Agent<'a> {
+    name: &'a str,
+    version: u8,
+}
 
-
+fn strip_littleskin_suffix(username: &str) -> &str {
+    username.strip_suffix(" (littleskin)").unwrap_or(username)
+}
 
 pub async fn login_new(email: String, password: String) -> Result<Account, Error> {
     // NOTE: It says email, but both username and email are accepted
-    info!("Logging into elyby... ({email})");
+    info!("Logging into littleskin... ({email})");
     let response = CLIENT
-        .post("https://authserver.ely.by/auth/authenticate")
+        .post("https://littleskin.cn/api/yggdrasil/authserver/authenticate")
         .json(&serde_json::json!({
+            "agent" : Agent{
+                name: "Minecraft",
+                version: 1
+            },
             "username": &email,
             "password": &password,
             "clientToken": CLIENT_ID
@@ -51,7 +63,7 @@ pub async fn login_new(email: String, password: String) -> Result<Account, Error
         }
     };
 
-    let entry = get_keyring_entry(&email)?;
+    let entry = get_keyring_entry(strip_littleskin_suffix(&email))?;
     entry.set_password(&account_response.accessToken)?;
 
     Ok(Account::Account(AccountData {
@@ -63,24 +75,28 @@ pub async fn login_new(email: String, password: String) -> Result<Account, Error
 
         refresh_token: account_response.accessToken,
         needs_refresh: false,
-        account_type: super::AccountType::ElyBy,
+        account_type: super::AccountType::LittleSkin,
     }))
 }
 
 pub fn read_refresh_token(username: &str) -> Result<String, Error> {
-    let entry = get_keyring_entry(username)?;
+    let entry = get_keyring_entry(strip_littleskin_suffix(username))?;
     Ok(entry.get_password()?)
 }
 
 pub async fn login_refresh(email: String, refresh_token: String) -> Result<AccountData, Error> {
     // NOTE: It says email, but both username and email are accepted
 
-    pt!("Refreshing ely.by account...");
-    let entry = get_keyring_entry(&email)?;
+    pt!("Refreshing littleskin.cn account...");
+    let entry = get_keyring_entry(strip_littleskin_suffix(&email))?;
 
     let response = CLIENT
-        .post("https://authserver.ely.by/auth/refresh")
+        .post("https://littleskin.cn/api/yggdrasil/authserver/refresh")
         .json(&serde_json::json!({
+            "agent" : Agent{
+                name: "Minecraft",
+                version: 1
+            },
             "accessToken": refresh_token,
             "clientToken": CLIENT_ID
         }))
@@ -109,21 +125,21 @@ pub async fn login_refresh(email: String, refresh_token: String) -> Result<Accou
 
         refresh_token: account_response.accessToken,
         needs_refresh: false,
-        account_type: super::AccountType::ElyBy,
+        account_type: super::AccountType::LittleSkin,
     })
 }
 
 fn get_keyring_entry(username: &str) -> Result<keyring::Entry, Error> {
     Ok(keyring::Entry::new(
         "QuantumLauncher",
-        &format!("{username}#elyby"),
+        &format!("{username}#littleskin"),
     )?)
 }
 
 pub fn logout(username: &str) -> Result<(), String> {
-    let entry = get_keyring_entry(username).strerr()?;
+    let entry = get_keyring_entry(strip_littleskin_suffix(username)).strerr()?;
     if let Err(err) = entry.delete_credential() {
-        err!("Couldn't remove elyby account credential (Username: {username}):\n{err}");
+        err!("Couldn't remove littleskin account credential (Username: {username}):\n{err}");
     }
     Ok(())
 }
