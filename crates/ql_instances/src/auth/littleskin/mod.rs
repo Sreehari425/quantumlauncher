@@ -7,7 +7,7 @@ mod error;
 pub(crate) use authlib::get_authlib_injector;
 pub use error::{AccountResponseError, Error};
 use serde::Serialize;
-
+pub mod oauth;
 // Well, no one's gonna be stealing this one :)
 pub const CLIENT_ID: &str = "quantumlauncher1";
 

@@ -157,6 +157,7 @@ fn main() {
     #[cfg(target_os = "windows")]
     attach_to_console();
 
+    
     let is_new_user = file_utils::is_new_user();
     // let is_new_user = true; // Uncomment to test the intro screen.
 
