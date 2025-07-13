@@ -240,6 +240,9 @@ impl Launcher {
                     }
                 }
             }
+            AccountMessage::OauthTestButtonClicked => {
+                println!("[TEST] OAuth button clicked!");
+            }
         }
         Task::none()
     }

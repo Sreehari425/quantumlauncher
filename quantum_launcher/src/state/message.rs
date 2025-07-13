@@ -188,7 +188,7 @@ pub enum AccountMessage {
     LittleSkinShowPassword(bool),
     LittleSkinLogin,
     LittleSkinLoginResponse(Res<ql_instances::auth::littleskin::Account>),
-
+    OauthTestButtonClicked,
 }
 
 #[derive(Debug, Clone)]

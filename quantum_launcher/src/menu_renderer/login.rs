@@ -113,6 +113,9 @@ impl MenuLoginLittleSkin {
             password_input.font(iced::Font::with_name("Password Asterisks"))
         };
 
+        let oauth_test_button = widget::button("Login with OAuth")
+            .on_press(Message::Account(AccountMessage::OauthTestButtonClicked));
+
         widget::column![
             back_button().on_press(if self.is_from_welcome_screen {
                 Message::WelcomeContinueToAuth
@@ -143,6 +146,7 @@ impl MenuLoginLittleSkin {
                         .spacing(5)
                     })),
                     status,
+                    oauth_test_button,
                     widget::Space::with_height(5),
                     widget::row![
                         widget::text("Or").size(14),
