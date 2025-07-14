@@ -189,6 +189,16 @@ pub enum AccountMessage {
     LittleSkinLogin,
     LittleSkinLoginResponse(Res<ql_instances::auth::littleskin::Account>),
     OauthTestButtonClicked,
+    // LittleSkin Device Code Flow
+    LittleSkinDeviceCodeRequested,
+    LittleSkinDeviceCodeReady {
+        user_code: String,
+        verification_uri: String,
+        expires_in: u64,
+        device_code: String,
+    },
+    LittleSkinDeviceCodeError(String),
+    LittleSkinDeviceCodePollResult(Res<ql_instances::auth::littleskin::Account>),
 }
 
 #[derive(Debug, Clone)]

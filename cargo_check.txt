@@ -1,0 +1,19 @@
+    Checking quantum_launcher v0.4.1 (/home/sreehari/Projects/bug-fix/quantumlauncher/quantum_launcher)
+quantum_launcher/src/message_update/accounts.rs:5:25: error[E0433]: failed to resolve: could not find `littleskin` in `auth`: could not find `littleskin` in `auth`
+quantum_launcher/src/state/message.rs:190:53: error[E0433]: failed to resolve: could not find `littleskin` in `auth`: could not find `littleskin` in `auth`
+quantum_launcher/src/state/message.rs:201:60: error[E0433]: failed to resolve: could not find `littleskin` in `auth`: could not find `littleskin` in `auth`
+quantum_launcher/src/state/mod.rs:274:37: error[E0433]: failed to resolve: could not find `littleskin` in `auth`: could not find `littleskin` in `auth`
+quantum_launcher/src/message_update/accounts.rs:69:41: error[E0433]: failed to resolve: could not find `littleskin` in `auth`: could not find `littleskin` in `auth`
+quantum_launcher/src/message_update/accounts.rs:265:31: error[E0433]: failed to resolve: could not find `littleskin` in `auth`: could not find `littleskin` in `auth`
+quantum_launcher/src/message_update/accounts.rs:334:23: error[E0433]: failed to resolve: could not find `littleskin` in `auth`: could not find `littleskin` in `auth`
+quantum_launcher/src/menu_renderer/login.rs:114:24: error[E0425]: cannot find value `theme` in this scope: not found in this scope
+quantum_launcher/src/message_update/accounts.rs:274:31: error[E0433]: failed to resolve: could not find `littleskin` in `auth`: could not find `littleskin` in `auth`
+quantum_launcher/src/message_update/accounts.rs:277:31: error[E0433]: failed to resolve: could not find `littleskin` in `auth`: could not find `littleskin` in `auth`
+quantum_launcher/src/message_handler/iced_event.rs:4:34: warning: unused import: `widget::pane_grid::state`
+quantum_launcher/src/state/mod.rs:273:30: error[E0599]: no variant or associated item named `LittleSkin` found for enum `AccountType` in the current scope: variant or associated item not found in `AccountType`
+quantum_launcher/src/state/mod.rs:287:22: error[E0599]: no variant or associated item named `LittleSkin` found for enum `AccountType` in the current scope: variant or associated item not found in `AccountType`
+quantum_launcher/src/view.rs:226:50: error[E0061]: this method takes 1 argument but 2 arguments were supplied
+quantum_launcher/src/message_update/accounts.rs:98:40: error[E0599]: no variant or associated item named `LittleSkin` found for enum `AccountType` in the current scope: variant or associated item not found in `AccountType`
+quantum_launcher/src/message_update/accounts.rs:333:32: error[E0599]: no variant or associated item named `LittleSkin` found for enum `AccountType` in the current scope: variant or associated item not found in `AccountType`
+warning: `quantum_launcher` (bin "quantum_launcher") generated 1 warning
+error: could not compile `quantum_launcher` (bin "quantum_launcher") due to 15 previous errors; 1 warning emitted

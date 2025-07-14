@@ -1,0 +1,138 @@
+   Compiling quantum_launcher v0.4.1 (/home/sreehari/Projects/bug-fix/quantumlauncher/quantum_launcher)
+error[E0433]: failed to resolve: could not find `littleskin` in `auth`
+ --> quantum_launcher/src/message_update/accounts.rs:5:25
+  |
+5 | use ql_instances::auth::littleskin::oauth::request_device_code_default;
+  |                         ^^^^^^^^^^ could not find `littleskin` in `auth`
+
+error[E0433]: failed to resolve: could not find `littleskin` in `auth`
+   --> quantum_launcher/src/state/message.rs:190:53
+    |
+190 |     LittleSkinLoginResponse(Res<ql_instances::auth::littleskin::Account>),
+    |                                                     ^^^^^^^^^^ could not find `littleskin` in `auth`
+
+error[E0433]: failed to resolve: could not find `littleskin` in `auth`
+   --> quantum_launcher/src/state/message.rs:201:60
+    |
+201 |     LittleSkinDeviceCodePollResult(Res<ql_instances::auth::littleskin::Account>),
+    |                                                            ^^^^^^^^^^ could not find `littleskin` in `auth`
+
+error[E0433]: failed to resolve: could not find `littleskin` in `auth`
+   --> quantum_launcher/src/state/mod.rs:274:37
+    |
+274 |                 ql_instances::auth::littleskin::read_refresh_token(username_stripped).strerr(),
+    |                                     ^^^^^^^^^^ could not find `littleskin` in `auth`
+
+error[E0433]: failed to resolve: could not find `littleskin` in `auth`
+  --> quantum_launcher/src/message_update/accounts.rs:69:41
+   |
+69 |                     ql_instances::auth::littleskin::oauth::poll_device_token_default(device_code_clone, expires_in),
+   |                                         ^^^^^^^^^^ could not find `littleskin` in `auth`
+
+error[E0433]: failed to resolve: could not find `littleskin` in `auth`
+   --> quantum_launcher/src/message_update/accounts.rs:265:31
+    |
+265 |                         auth::littleskin::login_new(menu.username.clone(), password),
+    |                               ^^^^^^^^^^ could not find `littleskin` in `auth`
+
+error[E0433]: failed to resolve: could not find `littleskin` in `auth`
+   --> quantum_launcher/src/message_update/accounts.rs:334:23
+    |
+334 |                 auth::littleskin::login_refresh(account.username.clone(), account.refresh_token.clone()),
+    |                       ^^^^^^^^^^ could not find `littleskin` in `auth`
+
+error[E0425]: cannot find value `theme` in this scope
+   --> quantum_launcher/src/menu_renderer/login.rs:114:24
+    |
+114 |                 .style(theme.style_text(Color::Dark))
+    |                        ^^^^^ not found in this scope
+
+error[E0433]: failed to resolve: could not find `littleskin` in `auth`
+   --> quantum_launcher/src/message_update/accounts.rs:274:31
+    |
+274 |                         auth::littleskin::Account::Account(data) => {
+    |                               ^^^^^^^^^^ could not find `littleskin` in `auth`
+    |
+help: consider importing one of these enums
+    |
+1   + use crate::message_update::accounts::auth::elyby::Account;
+    |
+1   + use ql_instances::auth::elyby::Account;
+    |
+help: if you import `Account`, refer to it directly
+    |
+274 -                         auth::littleskin::Account::Account(data) => {
+274 +                         Account::Account(data) => {
+    |
+
+error[E0433]: failed to resolve: could not find `littleskin` in `auth`
+   --> quantum_launcher/src/message_update/accounts.rs:277:31
+    |
+277 |                         auth::littleskin::Account::NeedsOTP => {
+    |                               ^^^^^^^^^^ could not find `littleskin` in `auth`
+    |
+help: consider importing one of these enums
+    |
+1   + use crate::message_update::accounts::auth::elyby::Account;
+    |
+1   + use ql_instances::auth::elyby::Account;
+    |
+help: if you import `Account`, refer to it directly
+    |
+277 -                         auth::littleskin::Account::NeedsOTP => {
+277 +                         Account::NeedsOTP => {
+    |
+
+warning: unused import: `widget::pane_grid::state`
+ --> quantum_launcher/src/message_handler/iced_event.rs:4:34
+  |
+4 |     keyboard::{key::Named, Key}, widget::pane_grid::state, Task
+  |                                  ^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+error[E0599]: no variant or associated item named `LittleSkin` found for enum `AccountType` in the current scope
+   --> quantum_launcher/src/state/mod.rs:273:30
+    |
+273 |                 AccountType::LittleSkin,
+    |                              ^^^^^^^^^^ variant or associated item not found in `AccountType`
+
+error[E0599]: no variant or associated item named `LittleSkin` found for enum `AccountType` in the current scope
+   --> quantum_launcher/src/state/mod.rs:287:22
+    |
+287 |         AccountType::LittleSkin => username.strip_suffix(" (littleskin)").unwrap_or(username),
+    |                      ^^^^^^^^^^ variant or associated item not found in `AccountType`
+
+error[E0061]: this method takes 1 argument but 2 arguments were supplied
+   --> quantum_launcher/src/view.rs:226:50
+    |
+226 |             State::LoginLittleSkin(menu) => menu.view(self.tick_timer, &self.config.theme),
+    |                                                  ^^^^                  ------------------ unexpected argument #2 of type `&std::option::Option<std::string::String>`
+    |
+note: method defined here
+   --> quantum_launcher/src/menu_renderer/login.rs:90:12
+    |
+90  |     pub fn view(&self, tick_timer: usize) -> Element {
+    |            ^^^^        -----------------
+help: remove the extra argument
+    |
+226 -             State::LoginLittleSkin(menu) => menu.view(self.tick_timer, &self.config.theme),
+226 +             State::LoginLittleSkin(menu) => menu.view(self.tick_timer),
+    |
+
+error[E0599]: no variant or associated item named `LittleSkin` found for enum `AccountType` in the current scope
+  --> quantum_launcher/src/message_update/accounts.rs:98:40
+   |
+98 |                     auth::AccountType::LittleSkin => {
+   |                                        ^^^^^^^^^^ variant or associated item not found in `AccountType`
+
+error[E0599]: no variant or associated item named `LittleSkin` found for enum `AccountType` in the current scope
+   --> quantum_launcher/src/message_update/accounts.rs:333:32
+    |
+333 |             auth::AccountType::LittleSkin => Task::perform(
+    |                                ^^^^^^^^^^ variant or associated item not found in `AccountType`
+
+Some errors have detailed explanations: E0061, E0425, E0433, E0599.
+For more information about an error, try `rustc --explain E0061`.
+warning: `quantum_launcher` (bin "quantum_launcher") generated 1 warning
+error: could not compile `quantum_launcher` (bin "quantum_launcher") due to 15 previous errors; 1 warning emitted

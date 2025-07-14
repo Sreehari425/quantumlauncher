@@ -2,6 +2,7 @@ use auth::AccountData;
 use iced::Task;
 use ql_core::IntoStringError;
 use ql_instances::auth;
+use ql_instances::auth::littleskin::oauth::request_device_code_default;
 
 use crate::{
     config::ConfigAccount,
@@ -47,6 +48,39 @@ impl Launcher {
                         clear_selection: false,
                     },
                 }
+            }
+            AccountMessage::LittleSkinDeviceCodeRequested => {
+                todo!("Handle LittleSkinDeviceCodeRequested");
+            }
+            AccountMessage::LittleSkinDeviceCodeReady { user_code, verification_uri, expires_in, device_code } => {
+                use std::time::{Duration, Instant};
+                if let State::LoginLittleSkin(menu) = &mut self.state {
+                    menu.device_code = Some(device_code.clone());
+                    menu.user_code = Some(user_code.clone());
+                    menu.verification_uri = Some(verification_uri.clone());
+                    menu.device_code_expires_at = Some(Instant::now() + Duration::from_secs(expires_in));
+                    menu.device_code_polling = true;
+                    menu.device_code_error = None;
+                    menu.is_loading = false;
+                }
+                // Start polling for token
+                let device_code_clone = device_code.clone();
+                return Task::perform(
+                    ql_instances::auth::littleskin::oauth::poll_device_token_default(device_code_clone, expires_in),
+                    |resp| match resp {
+                        Ok(account) => Message::Account(AccountMessage::LittleSkinLoginResponse(Ok(account))),
+                        Err(e) => Message::Account(AccountMessage::LittleSkinDeviceCodeError(e.to_string())),
+                    },
+                );
+            }
+            AccountMessage::LittleSkinDeviceCodeError(err_msg) => {
+                if let State::LoginLittleSkin(menu) = &mut self.state {
+                    menu.is_loading = false;
+                    menu.device_code_error = Some(err_msg);
+                }
+            }
+            AccountMessage::LittleSkinDeviceCodePollResult(_) => {
+                todo!("Handle LittleSkinDeviceCodePollResult");
             }
             AccountMessage::LogoutConfirm => {
                 let username = self.accounts_selected.clone().unwrap();
@@ -189,6 +223,12 @@ impl Launcher {
                     otp: None,
                     show_password: false,
                     is_from_welcome_screen,
+                    device_code: None,
+                    user_code: None,
+                    verification_uri: None,
+                    device_code_expires_at: None,
+                    device_code_polling: false,
+                    device_code_error: None,
                 });
             }
 
@@ -241,7 +281,22 @@ impl Launcher {
                 }
             }
             AccountMessage::OauthTestButtonClicked => {
-                println!("[TEST] OAuth button clicked!");
+                if let State::LoginLittleSkin(menu) = &mut self.state {
+                    menu.is_loading = true;
+                }
+                // Start async device code request
+                return Task::perform(
+                    request_device_code_default("user"),
+                    |resp| match resp {
+                        Ok(code) => Message::Account(AccountMessage::LittleSkinDeviceCodeReady {
+                            user_code: code.user_code,
+                            verification_uri: code.verification_uri,
+                            expires_in: code.expires_in,
+                            device_code: code.device_code,
+                        }),
+                        Err(e) => Message::Account(AccountMessage::LittleSkinDeviceCodeError(e.to_string())),
+                    },
+                );
             }
         }
         Task::none()

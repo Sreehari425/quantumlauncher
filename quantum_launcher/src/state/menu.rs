@@ -348,6 +348,14 @@ pub struct MenuLoginLittleSkin {
     pub otp: Option<String>,
 
     pub is_from_welcome_screen: bool,
+
+    // Device OAuth flow state
+    pub device_code: Option<String>,
+    pub user_code: Option<String>,
+    pub verification_uri: Option<String>,
+    pub device_code_expires_at: Option<Instant>,
+    pub device_code_polling: bool,
+    pub device_code_error: Option<String>,
 }
 
 pub struct MenuLoginMS {

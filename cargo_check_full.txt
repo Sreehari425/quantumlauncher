@@ -1,0 +1,18 @@
+    Checking iced_runtime v0.13.2
+    Checking ql_instances v0.0.0 (/home/sreehari/Projects/bug-fix/quantumlauncher/crates/ql_instances)
+   Compiling quantum_launcher v0.4.1 (/home/sreehari/Projects/bug-fix/quantumlauncher/quantum_launcher)
+    Checking iced_winit v0.13.0
+    Checking iced_widget v0.13.4
+crates/ql_instances/src/auth/littleskin/oauth.rs:230:21: warning: unused variable: `access_token`: help: if this is intentional, prefix it with an underscore: `_access_token`
+warning: `ql_instances` (lib test) generated 1 warning (1 duplicate)
+warning: `ql_instances` (lib) generated 1 warning
+    Checking ql_packager v0.1.0 (/home/sreehari/Projects/bug-fix/quantumlauncher/crates/ql_packager)
+    Checking iced v0.13.1
+quantum_launcher/src/menu_renderer/login.rs:114:24: error[E0425]: cannot find value `theme` in this scope: not found in this scope
+quantum_launcher/src/message_handler/iced_event.rs:4:34: warning: unused import: `widget::pane_grid::state`
+quantum_launcher/src/view.rs:226:50: error[E0061]: this method takes 1 argument but 2 arguments were supplied
+warning: `quantum_launcher` (bin "quantum_launcher") generated 1 warning
+error: could not compile `quantum_launcher` (bin "quantum_launcher") due to 2 previous errors; 1 warning emitted
+warning: build failed, waiting for other jobs to finish...
+warning: `quantum_launcher` (bin "quantum_launcher" test) generated 1 warning (1 duplicate)
+error: could not compile `quantum_launcher` (bin "quantum_launcher" test) due to 2 previous errors; 1 warning emitted
