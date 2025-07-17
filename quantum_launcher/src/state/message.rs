@@ -195,6 +195,7 @@ pub enum AccountMessage {
         user_code: String,
         verification_uri: String,
         expires_in: u64,
+        interval: u64,
         device_code: String,
     },
     LittleSkinDeviceCodeError(String),

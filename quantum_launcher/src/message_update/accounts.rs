@@ -52,7 +52,7 @@ impl Launcher {
             AccountMessage::LittleSkinDeviceCodeRequested => {
                 todo!("Handle LittleSkinDeviceCodeRequested");
             }
-            AccountMessage::LittleSkinDeviceCodeReady { user_code, verification_uri, expires_in, device_code } => {
+            AccountMessage::LittleSkinDeviceCodeReady { user_code, verification_uri, expires_in, interval, device_code } => {
                 use std::time::{Duration, Instant};
                 if let State::LoginLittleSkin(menu) = &mut self.state {
                     menu.device_code = Some(device_code.clone());
@@ -66,7 +66,7 @@ impl Launcher {
                 // Start polling for token
                 let device_code_clone = device_code.clone();
                 return Task::perform(
-                    ql_instances::auth::littleskin::oauth::poll_device_token_default(device_code_clone, expires_in),
+                    ql_instances::auth::littleskin::oauth::poll_device_token_default(device_code_clone, interval, expires_in),
                     |resp| match resp {
                         Ok(account) => Message::Account(AccountMessage::LittleSkinLoginResponse(Ok(account))),
                         Err(e) => Message::Account(AccountMessage::LittleSkinDeviceCodeError(e.to_string())),
@@ -292,6 +292,7 @@ impl Launcher {
                             user_code: code.user_code,
                             verification_uri: code.verification_uri,
                             expires_in: code.expires_in,
+                            interval: code.interval,
                             device_code: code.device_code,
                         }),
                         Err(e) => Message::Account(AccountMessage::LittleSkinDeviceCodeError(e.to_string())),

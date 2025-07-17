@@ -1,4 +1,5 @@
 use ql_reqwest::Client;
+use keyring;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -25,7 +26,9 @@ pub struct TokenResponse {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct UserInfo {
+    #[serde(rename = "uid")]
     pub id: u64,
+    #[serde(rename = "nickname")]
     pub username: String,
     pub email: Option<String>,
 }
@@ -162,25 +165,76 @@ pub async fn request_device_code_default(scope: &str) -> Result<DeviceCodeRespon
 }
 
 /// Helper: Poll for device token, then fetch user info and build Account
+/// Helper: Poll for device token, then fetch user info, create Minecraft token and build Account
 pub async fn poll_device_token_default(
     device_code: String,
+    interval: u64,
     expires_in: u64,
 ) -> Result<crate::auth::littleskin::Account, OAuthError> {
     let client = Client::new();
-    let token_resp = poll_device_token(&client, CLIENT_ID, &device_code, 5, expires_in).await?;
-    let access_token = token_resp
+    // Step A: exchange device_code for OAuth access_token
+    let token_resp = poll_device_token(&client, CLIENT_ID, &device_code, interval, expires_in).await?;
+    let oauth_access_token = token_resp
         .access_token
         .ok_or_else(|| OAuthError::LittleSkin("No access_token in response".to_string()))?;
-    let user_info = get_user_info(&client, &access_token).await?;
+    // Step B: fetch user info (we need uuid & username)
+    let user_info = get_user_info(&client, &oauth_access_token).await?;
+
+    // Step C: exchange OAuth token for a Yggdrasil/Minecraft token (needed for actual game login)
+    let mc_token_resp = create_minecraft_token(&client, &oauth_access_token, user_info.id).await?;
+
+    // Store Minecraft token in keyring (same convention as password flow)
+    if let Err(e) = keyring::Entry::new("QuantumLauncher", &format!("{}#littleskin", user_info.username))
+        .and_then(|e| e.set_password(&mc_token_resp.accessToken))
+    {
+        eprintln!("[LS OAuth] failed to save token in keyring: {:?}", e);
+    }
+
+    // Build account data compatible with existing flows
     Ok(crate::auth::littleskin::Account::Account(crate::auth::littleskin::AccountData {
-        access_token: Some(access_token.clone()),
-        uuid: user_info.id.to_string(),
+        access_token: Some(mc_token_resp.accessToken.clone()),
+        uuid: mc_token_resp.selectedProfile.id,
         username: user_info.username.clone(),
-        nice_username: user_info.username,
-        refresh_token: token_resp.refresh_token.unwrap_or_default(),
+        nice_username: format!("{} (littleskin)", mc_token_resp.selectedProfile.name),
+        refresh_token: mc_token_resp.accessToken,
         needs_refresh: false,
         account_type: crate::auth::AccountType::LittleSkin,
     }))
+}
+
+#[derive(Debug, Deserialize)]
+struct MinecraftTokenResponse {
+    #[serde(rename = "accessToken")]
+    accessToken: String,
+    #[serde(rename = "selectedProfile")]
+    selectedProfile: MinecraftProfile,
+}
+
+#[derive(Debug, Deserialize)]
+struct MinecraftProfile {
+    id: String,
+    name: String,
+}
+
+async fn create_minecraft_token(
+    client: &Client,
+    oauth_access_token: &str,
+    uuid: u64,
+) -> Result<MinecraftTokenResponse, OAuthError> {
+    let resp = client
+        .post("https://littleskin.cn/api/yggdrasil/authserver/oauth")
+        .bearer_auth(oauth_access_token)
+        .header("Accept", "application/json")
+        .json(&serde_json::json!({ "uuid": uuid.to_string() }))
+        .send()
+        .await?;
+
+    if !resp.status().is_success() {
+        let err_text = resp.text().await.unwrap_or_default();
+        return Err(OAuthError::LittleSkin(err_text));
+    }
+    let token: MinecraftTokenResponse = resp.json().await?;
+    Ok(token)
 }
 
 
@@ -209,7 +263,22 @@ pub async fn poll_device_token(
             .header("Accept", "application/json")
             .send()
             .await?;
-        let token_resp: DeviceTokenResponse = resp.json().await?;
+        let status = resp.status();
+        if status.as_u16() >= 500 {
+            sleep(Duration::from_secs(interval)).await;
+            continue;
+        }
+        let text_body = resp.text().await?;
+        // LittleSkin sometimes returns error JSON with 4xx codes. We'll still try to parse.
+        let token_resp: DeviceTokenResponse = match serde_json::from_str(&text_body) {
+            Ok(v) => v,
+            Err(_) => {
+                return Err(OAuthError::LittleSkin(format!(
+                    "Unexpected response from LittleSkin: {}",
+                    text_body
+                )));
+            }
+        };
         if let Some(ref err) = token_resp.error {
             match err.as_str() {
                 "authorization_pending" => {
@@ -228,7 +297,7 @@ pub async fn poll_device_token(
                 }
             }
         }
-        if let Some(access_token) = &token_resp.access_token {
+        if let Some(_access_token) = &token_resp.access_token {
             return Ok(token_resp);
         }
         // If no error and no token, wait and retry
