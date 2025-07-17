@@ -286,7 +286,7 @@ impl Launcher {
                 }
                 // Start async device code request
                 return Task::perform(
-                    request_device_code_default("user"),
+                    request_device_code_default("Yggdrasil.PlayerProfiles.Select Yggdrasil.Server.Join Yggdrasil.MinecraftToken.Create offline_access User.Read"),
                     |resp| match resp {
                         Ok(code) => Message::Account(AccountMessage::LittleSkinDeviceCodeReady {
                             user_code: code.user_code,
