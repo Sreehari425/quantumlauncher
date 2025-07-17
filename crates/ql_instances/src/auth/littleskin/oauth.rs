@@ -2,7 +2,7 @@ use ql_reqwest::Client;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-pub const CLIENT_ID: &str = "1150";
+pub const CLIENT_ID: &str = "1151";
 
 
 #[derive(Debug, Error)]
@@ -115,6 +115,7 @@ pub struct DeviceCodeResponse {
     pub device_code: String,
     pub user_code: String,
     pub verification_uri: String,
+    pub verification_uri_complete: Option<String>,
     pub expires_in: u64,
     pub interval: u64,
     pub message: Option<String>,
@@ -141,7 +142,7 @@ pub async fn request_device_code(
         ("scope", scope),
     ];
     let resp = client
-        .post("https://littleskin.cn/oauth/device/code")
+        .post("https://open.littleskin.cn/oauth/device_code")
         .form(&params)
         .header("Accept", "application/json")
         .send()
@@ -203,7 +204,7 @@ pub async fn poll_device_token(
             ("client_id", client_id),
         ];
         let resp = client
-            .post("https://littleskin.cn/oauth/token")
+            .post("https://open.littleskin.cn/oauth/token")
             .form(&params)
             .header("Accept", "application/json")
             .send()
