@@ -137,14 +137,14 @@ pub async fn request_device_code(
     client_id: &str,
     scope: &str,
 ) -> Result<DeviceCodeResponse, OAuthError> {
-    let params = [
-        ("client_id", client_id),
-        ("scope", scope),
-    ];
+    // Build body exactly as LittleSkin expects: "client_id={client_id}&\nscope={scope}"
+    let encoded_scope = urlencoding::encode(scope);
+    let body = format!("client_id={}&scope={}", client_id, encoded_scope);
     let resp = client
         .post("https://open.littleskin.cn/oauth/device_code")
-        .form(&params)
         .header("Accept", "application/json")
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .body(body)
         .send()
         .await?;
     if !resp.status().is_success() {
