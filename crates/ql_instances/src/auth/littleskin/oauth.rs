@@ -179,9 +179,17 @@ pub async fn poll_device_token_default(
         .ok_or_else(|| OAuthError::LittleSkin("No access_token in response".to_string()))?;
     // Step B: fetch user info (we need uuid & username)
     let user_info = get_user_info(&client, &oauth_access_token).await?;
-
     // Step C: exchange OAuth token for a Yggdrasil/Minecraft token (needed for actual game login)
-    let mc_token_resp = create_minecraft_token(&client, &oauth_access_token, user_info.id).await?;
+    // Sub step get UUID 
+    let profile = get_minecraft_profile(&client, &oauth_access_token).await?;
+    let uuid = profile.id;
+    let mut mc_token_resp = create_minecraft_token(&client, &oauth_access_token, &uuid).await?;
+    // If server didn't include selectedProfile, fetch via sessionserver
+    if mc_token_resp.selectedProfile.is_none() {
+        if let Ok(profile) = get_minecraft_profile(&client, &oauth_access_token).await {
+            mc_token_resp.selectedProfile = Some(profile);
+        }
+    }
 
     // Store Minecraft token in keyring (same convention as password flow)
     if let Err(e) = keyring::Entry::new("QuantumLauncher", &format!("{}#littleskin", user_info.username))
@@ -193,9 +201,9 @@ pub async fn poll_device_token_default(
     // Build account data compatible with existing flows
     Ok(crate::auth::littleskin::Account::Account(crate::auth::littleskin::AccountData {
         access_token: Some(mc_token_resp.accessToken.clone()),
-        uuid: mc_token_resp.selectedProfile.id,
+        uuid: mc_token_resp.selectedProfile.as_ref().map(|p| p.id.clone()).unwrap_or_default(),
         username: user_info.username.clone(),
-        nice_username: format!("{} (littleskin)", mc_token_resp.selectedProfile.name),
+        nice_username: mc_token_resp.selectedProfile.as_ref().map(|p| p.name.clone()).unwrap_or_else(|| user_info.username.clone()),
         refresh_token: mc_token_resp.accessToken,
         needs_refresh: false,
         account_type: crate::auth::AccountType::LittleSkin,
@@ -207,19 +215,42 @@ struct MinecraftTokenResponse {
     #[serde(rename = "accessToken")]
     accessToken: String,
     #[serde(rename = "selectedProfile")]
-    selectedProfile: MinecraftProfile,
+    selectedProfile: Option<MinecraftProfile>,
 }
 
 #[derive(Debug, Deserialize)]
 struct MinecraftProfile {
     id: String,
     name: String,
+    #[serde(default)]
+    properties: Option<Vec<serde_json::Value>>, // ignore details
+}
+
+async fn get_minecraft_profile(
+    client: &Client,
+    oauth_access_token: &str,
+) -> Result<MinecraftProfile, OAuthError> {
+    let resp = client
+        .get("https://littleskin.cn/api/yggdrasil/sessionserver/session/minecraft/profile")
+        .header("Accept", "application/json")
+        .bearer_auth(oauth_access_token)
+        .send()
+        .await?;
+
+    if !resp.status().is_success() {
+        let err_text = resp.text().await.unwrap_or_default();
+        return Err(OAuthError::LittleSkin(err_text));
+    }
+
+    // API returns an array of profiles; take the first one
+    let mut list: Vec<MinecraftProfile> = resp.json().await?;
+    list.pop().ok_or_else(|| OAuthError::LittleSkin("No Minecraft profile returned".to_string()))
 }
 
 async fn create_minecraft_token(
     client: &Client,
     oauth_access_token: &str,
-    uuid: u64,
+    uuid: &str,
 ) -> Result<MinecraftTokenResponse, OAuthError> {
     let resp = client
         .post("https://littleskin.cn/api/yggdrasil/authserver/oauth")
