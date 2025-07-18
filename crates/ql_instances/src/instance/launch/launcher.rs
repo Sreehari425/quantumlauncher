@@ -104,7 +104,14 @@ impl GameLauncher {
                 game_arguments.push("${uuid}".to_owned());
             }
         }
-
+        if let Some(AccountType::LittleSkin) = account_details.map(|n| n.account_type) {
+            if !self.version_json.is_legacy_version()
+                && !game_arguments.iter().any(|n| n.contains("uuid"))
+            {
+                game_arguments.push("--uuid".to_owned());
+                game_arguments.push("${uuid}".to_owned());
+            }
+        }
         Ok(game_arguments)
     }
 
@@ -126,12 +133,13 @@ impl GameLauncher {
 
             let uuid = if let Some(account_details) = account_details {
                 &account_details.uuid
+                
             } else {
                 "00000000-0000-0000-0000-000000000000"
             };
+            println!("UUID: {}",uuid);
             replace_var(argument, "auth_uuid", uuid);
             replace_var(argument, "uuid", uuid);
-
             let access_token = if let Some(account_details) = account_details {
                 account_details
                     .access_token
