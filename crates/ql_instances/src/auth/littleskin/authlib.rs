@@ -24,5 +24,5 @@ pub async fn get_authlib_injector() -> Result<String, DownloadFileError> {
         file_utils::download_file_to_path(URL, false, &path).await?;
     }
 
-    Ok(format!("-javaagent:{}=littleskin.cn", path.to_string_lossy()))
+    Ok(format!("-javaagent:{}=https://littleskin.cn/api/yggdrasil", path.to_string_lossy()))
 }
