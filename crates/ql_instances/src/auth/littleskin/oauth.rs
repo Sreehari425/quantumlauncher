@@ -2,18 +2,32 @@ use ql_reqwest::Client;
 use keyring;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use ql_core::{RequestError, JsonError};
 
 pub const CLIENT_ID: &str = "1151";
 
+const AUTH_ERR_PREFIX: &str = "while logging into littleskin account:\n";
 
 #[derive(Debug, Error)]
 pub enum OAuthError {
-    #[error("HTTP error: {0}")]
-    Http(#[from] ql_reqwest::Error),
-    #[error("JSON error: {0}")]
-    Json(#[from] serde_json::Error),
-    #[error("LittleSkin error: {0}")]
+    #[error("{AUTH_ERR_PREFIX}{0}")]
+    Request(#[from] RequestError),
+    #[error("{AUTH_ERR_PREFIX}{0}")]
+    Json(#[from] JsonError),
+    #[error("{AUTH_ERR_PREFIX}{0}")]
     LittleSkin(String),
+}
+
+impl From<ql_reqwest::Error> for OAuthError {
+    fn from(err: ql_reqwest::Error) -> Self {
+        Self::Request(RequestError::ReqwestError(err))
+    }
+}
+
+impl From<serde_json::Error> for OAuthError {
+    fn from(err: serde_json::Error) -> Self {
+        Self::Json(JsonError::To { error: err })
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
