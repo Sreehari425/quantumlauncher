@@ -154,6 +154,7 @@ pub enum EditPresetsMessage {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum AccountMessage {
     Selected(String),
     Response1 {

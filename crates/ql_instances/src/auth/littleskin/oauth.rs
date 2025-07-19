@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ql_core::{RequestError, JsonError};
 
-pub const CLIENT_ID: &str = "1151";
+pub const CLIENT_ID: &str = "1151"; // Set Client ID
 
 const AUTH_ERR_PREFIX: &str = "while logging into littleskin account:\n";
 
@@ -48,7 +48,6 @@ pub struct UserInfo {
 }
 
 /// Step 1: Generate the authorization URL for the user to visit
-// Authorization Code flow is deprecated for device flow use-case. If needed, reintroduce REDIRECT_URI.
 pub fn authorization_url(scope: &str) -> String {
     format!(
         "https://littleskin.cn/oauth/authorize?client_id={}&response_type=code&scope={}",
@@ -64,8 +63,7 @@ pub async fn exchange_code_for_token(
     let params = [
         ("grant_type", "authorization_code"),
         ("client_id", CLIENT_ID),
-        // ("client_secret", CLIENT_SECRET),
-        // ("redirect_uri", REDIRECT_URI),
+
         ("code", code),
     ];
     let resp = client
@@ -91,7 +89,6 @@ pub async fn refresh_token(
         ("grant_type", "refresh_token"),
         ("refresh_token", refresh_token),
         ("client_id", CLIENT_ID),
-        // ("client_secret", CLIENT_SECRET),
     ];
     let resp = client
         .post("https://littleskin.cn/oauth/token")
@@ -154,7 +151,7 @@ pub async fn request_device_code(
     client_id: &str,
     scope: &str,
 ) -> Result<DeviceCodeResponse, OAuthError> {
-    // Build body exactly as LittleSkin expects: "client_id={client_id}&\nscope={scope}"
+    // Build body as LittleSkin expects: "client_id={client_id}&\nscope={scope}"
     let encoded_scope = urlencoding::encode(scope);
     let body = format!("client_id={}&scope={}", client_id, encoded_scope);
     let resp = client
@@ -199,26 +196,26 @@ pub async fn poll_device_token_default(
     let uuid = profile.id;
     let mut mc_token_resp = create_minecraft_token(&client, &oauth_access_token, &uuid).await?;
     // If server didn't include selectedProfile, fetch via sessionserver
-    if mc_token_resp.selectedProfile.is_none() {
+    if mc_token_resp.selected_profile.is_none() {
         if let Ok(profile) = get_minecraft_profile(&client, &oauth_access_token).await {
-            mc_token_resp.selectedProfile = Some(profile);
+            mc_token_resp.selected_profile = Some(profile);
         }
     }
 
     // Store Minecraft token in keyring (same convention as password flow)
     if let Err(e) = keyring::Entry::new("QuantumLauncher", &format!("{}#littleskin", user_info.username))
-        .and_then(|e| e.set_password(&mc_token_resp.accessToken))
+        .and_then(|e| e.set_password(&mc_token_resp.access_token))
     {
         eprintln!("[LS OAuth] failed to save token in keyring: {:?}", e);
     }
 
     // Build account data compatible with existing flows
     Ok(crate::auth::littleskin::Account::Account(crate::auth::littleskin::AccountData {
-        access_token: Some(mc_token_resp.accessToken.clone()),
-        uuid: mc_token_resp.selectedProfile.as_ref().map(|p| p.id.clone()).unwrap_or_default(),
+        access_token: Some(mc_token_resp.access_token.clone()),
+        uuid: mc_token_resp.selected_profile.as_ref().map(|p| p.id.clone()).unwrap_or_default(),
         username: user_info.username.clone(),
-        nice_username: mc_token_resp.selectedProfile.as_ref().map(|p| p.name.clone()).unwrap_or_else(|| user_info.username.clone()),
-        refresh_token: mc_token_resp.accessToken,
+        nice_username: mc_token_resp.selected_profile.as_ref().map(|p| p.name.clone()).unwrap_or_else(|| user_info.username.clone()),
+        refresh_token: mc_token_resp.access_token,
         needs_refresh: false,
         account_type: crate::auth::AccountType::LittleSkin,
     }))
@@ -227,9 +224,9 @@ pub async fn poll_device_token_default(
 #[derive(Debug, Deserialize)]
 struct MinecraftTokenResponse {
     #[serde(rename = "accessToken")]
-    accessToken: String,
+    access_token: String,
     #[serde(rename = "selectedProfile")]
-    selectedProfile: Option<MinecraftProfile>,
+    selected_profile: Option<MinecraftProfile>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -237,7 +234,7 @@ struct MinecraftProfile {
     id: String,
     name: String,
     #[serde(default)]
-    properties: Option<Vec<serde_json::Value>>, // ignore details
+    _properties: Option<Vec<serde_json::Value>>, // ignored
 }
 
 async fn get_minecraft_profile(
@@ -256,7 +253,7 @@ async fn get_minecraft_profile(
         return Err(OAuthError::LittleSkin(err_text));
     }
 
-    // API returns an array of profiles; take the first one
+    // API returns an array of profiles;
     let mut list: Vec<MinecraftProfile> = resp.json().await?;
     list.pop().ok_or_else(|| OAuthError::LittleSkin("No Minecraft profile returned".to_string()))
 }

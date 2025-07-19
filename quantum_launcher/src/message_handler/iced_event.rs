@@ -1,7 +1,7 @@
 use std::ffi::OsStr;
 
 use iced::{
-    keyboard::{key::Named, Key}, widget::pane_grid::state, Task
+    keyboard::{key::Named, Key}, Task
 };
 use ql_core::{err, info, info_no_log, jarmod::JarMod, InstanceSelection};
 

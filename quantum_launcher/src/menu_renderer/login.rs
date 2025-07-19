@@ -109,7 +109,6 @@ impl MenuLoginLittleSkin {
 
         // Show error if present
         let error_msg = self.device_code_error.as_ref().map(|err| {
-            use crate::stylesheet::color::Color;
             widget::text(err)
                 .size(14)
         });
