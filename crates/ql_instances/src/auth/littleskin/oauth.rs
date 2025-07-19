@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ql_core::{RequestError, JsonError};
 
-pub const CLIENT_ID: &str = "1151"; // Set Client ID
+pub const CLIENT_ID: &str = ""; // Set Client ID
 
 const AUTH_ERR_PREFIX: &str = "while logging into littleskin account:\n";
 
