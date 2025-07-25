@@ -1,9 +1,13 @@
 use std::fmt::Display;
 
 use crate::auth;
-pub mod littleskin;
+mod alt;
+pub mod authlib;
 pub mod elyby;
+pub mod littleskin;
 pub mod ms;
+
+pub(crate) use authlib::get_authlib_injector;
 
 #[derive(Debug, Clone)]
 pub struct AccountData {
@@ -18,15 +22,22 @@ pub struct AccountData {
     pub account_type: AccountType,
 }
 
-
 impl AccountData {
     pub fn get_username_modified(&self) -> String {
         let suffix = match self.account_type {
             auth::AccountType::Microsoft => "",
             auth::AccountType::ElyBy => " (elyby)",
-            auth::AccountType::LittleSkin => " (littleskin)"
+            auth::AccountType::LittleSkin => " (littleskin)",
         };
         format!("{}{suffix}", self.username)
+    }
+
+    pub fn get_authlib_url(&self) -> Option<&'static str> {
+        match self.account_type {
+            AccountType::Microsoft => None,
+            AccountType::ElyBy => Some("ely.by"),
+            AccountType::LittleSkin => Some("https://littleskin.cn/api/yggdrasil"),
+        }
     }
 }
 
@@ -34,7 +45,7 @@ impl AccountData {
 pub enum AccountType {
     Microsoft,
     ElyBy,
-    LittleSkin
+    LittleSkin,
 }
 
 impl std::fmt::Display for AccountType {
@@ -45,7 +56,7 @@ impl std::fmt::Display for AccountType {
             match self {
                 AccountType::Microsoft => "Microsoft",
                 AccountType::ElyBy => "ElyBy",
-                AccountType::LittleSkin => "LittleSkin"
+                AccountType::LittleSkin => "LittleSkin",
             }
         )
     }
@@ -61,7 +72,6 @@ impl AccountData {
         let account_type = self.account_type;
         matches!(account_type, AccountType::LittleSkin)
     }
-    
 }
 
 #[derive(Debug, thiserror::Error)]

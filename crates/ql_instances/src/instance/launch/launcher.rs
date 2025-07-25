@@ -126,7 +126,6 @@ impl GameLauncher {
 
             let uuid = if let Some(account_details) = account_details {
                 &account_details.uuid
-                
             } else {
                 "00000000-0000-0000-0000-000000000000"
             };
@@ -248,19 +247,16 @@ impl GameLauncher {
             args.push("-XX:G1HeapRegionSize=32M".to_owned());
         }
 
-        if auth.is_none_or(|a| AccountData::is_elyby(a) | AccountData::is_littleskin(a)) && self.version_json.id.starts_with("1.16") {
+        if auth.is_none_or(|a| AccountData::is_elyby(a) | AccountData::is_littleskin(a))
+            && self.version_json.id.starts_with("1.16")
+        {
             // Fixes "Multiplayer is disabled" issue on 1.16.x
             args.push("-Dminecraft.api.auth.host=https://nope.invalid".to_owned());
             args.push("-Dminecraft.api.account.host=https://nope.invalid".to_owned());
             args.push("-Dminecraft.api.session.host=https://nope.invalid".to_owned());
             args.push("-Dminecraft.api.services.host=https://nope.invalid".to_owned());
-
-        } else if auth.is_some_and(AccountData::is_elyby) {
-            args.push(crate::auth::elyby::get_authlib_injector().await?);
-        }
-
-        else if auth.is_some_and(AccountData::is_littleskin) {
-            args.push(crate::auth::littleskin::get_authlib_injector().await?);
+        } else if let Some(authlib) = auth.and_then(|n| n.get_authlib_url()) {
+            args.push(crate::auth::get_authlib_injector(authlib).await?);
         }
 
         if cfg!(target_pointer_width = "32") {

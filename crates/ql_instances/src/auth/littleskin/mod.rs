@@ -1,16 +1,14 @@
+use crate::auth::alt::AccountResponse;
+
 use super::AccountData;
 use ql_core::{err, info, pt, IntoJsonError, IntoStringError, RequestError, CLIENT};
-use serde::Deserialize;
 
-mod authlib;
-mod error;
-pub(crate) use authlib::get_authlib_injector;
-pub use error::{AccountResponseError, Error};
+pub use super::alt::{Account, AccountResponseError, Error};
 use serde::Serialize;
 pub mod oauth;
-// Well, no one's gonna be stealing this one :)
-pub const CLIENT_ID: &str = "quantumlauncher1";
 
+// Well, no one's gonna be stealing this one :)
+const CLIENT_ID: &str = "1160";
 
 #[derive(Serialize)]
 struct Agent<'a> {
@@ -142,23 +140,4 @@ pub fn logout(username: &str) -> Result<(), String> {
         err!("Couldn't remove littleskin account credential (Username: {username}):\n{err}");
     }
     Ok(())
-}
-
-#[derive(Deserialize, Clone, Debug)]
-#[allow(non_snake_case)]
-struct AccountResponse {
-    pub accessToken: String,
-    pub selectedProfile: AccountResponseProfile,
-}
-
-#[derive(Deserialize, Clone, Debug)]
-struct AccountResponseProfile {
-    pub id: String,
-    pub name: String,
-}
-
-#[derive(Debug, Clone)]
-pub enum Account {
-    Account(AccountData),
-    NeedsOTP,
 }

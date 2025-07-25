@@ -7,7 +7,8 @@ use ql_instances::auth::littleskin::oauth::request_device_code_default;
 use crate::{
     config::ConfigAccount,
     state::{
-        AccountMessage, Launcher, MenuLoginElyBy, MenuLoginLittleSkin, MenuLoginMS, Message, ProgressBar, State, NEW_ACCOUNT_NAME, OFFLINE_ACCOUNT_NAME
+        AccountMessage, Launcher, MenuLoginElyBy, MenuLoginLittleSkin, MenuLoginMS, Message,
+        ProgressBar, State, NEW_ACCOUNT_NAME, OFFLINE_ACCOUNT_NAME,
     },
 };
 
@@ -52,13 +53,20 @@ impl Launcher {
             AccountMessage::LittleSkinDeviceCodeRequested => {
                 todo!("Handle LittleSkinDeviceCodeRequested");
             }
-            AccountMessage::LittleSkinDeviceCodeReady { user_code, verification_uri, expires_in, interval, device_code } => {
+            AccountMessage::LittleSkinDeviceCodeReady {
+                user_code,
+                verification_uri,
+                expires_in,
+                interval,
+                device_code,
+            } => {
                 use std::time::{Duration, Instant};
                 if let State::LoginLittleSkin(menu) = &mut self.state {
                     menu.device_code = Some(device_code.clone());
                     menu.user_code = Some(user_code.clone());
                     menu.verification_uri = Some(verification_uri.clone());
-                    menu.device_code_expires_at = Some(Instant::now() + Duration::from_secs(expires_in));
+                    menu.device_code_expires_at =
+                        Some(Instant::now() + Duration::from_secs(expires_in));
                     menu.device_code_polling = true;
                     menu.device_code_error = None;
                     menu.is_loading = false;
@@ -66,10 +74,18 @@ impl Launcher {
                 // Start polling for token
                 let device_code_clone = device_code.clone();
                 return Task::perform(
-                    ql_instances::auth::littleskin::oauth::poll_device_token_default(device_code_clone, interval, expires_in),
+                    ql_instances::auth::littleskin::oauth::poll_device_token_default(
+                        device_code_clone,
+                        interval,
+                        expires_in,
+                    ),
                     |resp| match resp {
-                        Ok(account) => Message::Account(AccountMessage::LittleSkinLoginResponse(Ok(account))),
-                        Err(e) => Message::Account(AccountMessage::LittleSkinDeviceCodeError(e.to_string())),
+                        Ok(account) => {
+                            Message::Account(AccountMessage::LittleSkinLoginResponse(Ok(account)))
+                        }
+                        Err(e) => Message::Account(AccountMessage::LittleSkinDeviceCodeError(
+                            e.to_string(),
+                        )),
                     },
                 );
             }
@@ -95,9 +111,7 @@ impl Launcher {
                     auth::AccountType::ElyBy => {
                         auth::elyby::logout(username.strip_suffix(" (elyby)").unwrap_or(&username))
                     }
-                    auth::AccountType::LittleSkin => {
-                        auth::elyby::logout(username.strip_suffix(" (littleskin)").unwrap_or(&username))
-                    }
+                    auth::AccountType::LittleSkin => auth::littleskin::logout(&username),
                 } {
                     self.set_error(err);
                 }
@@ -332,7 +346,10 @@ impl Launcher {
                 |n| Message::Account(AccountMessage::RefreshComplete(n.strerr())),
             ),
             auth::AccountType::LittleSkin => Task::perform(
-                auth::littleskin::login_refresh(account.username.clone(), account.refresh_token.clone()),
+                auth::littleskin::login_refresh(
+                    account.username.clone(),
+                    account.refresh_token.clone(),
+                ),
                 |n| Message::Account(AccountMessage::RefreshComplete(n.strerr())),
             ),
         }
