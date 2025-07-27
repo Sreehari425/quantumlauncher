@@ -7,7 +7,6 @@ pub use super::alt::{Account, AccountResponseError, Error};
 use serde::Serialize;
 pub mod oauth;
 
-// Well, no one's gonna be stealing this one :)
 const CLIENT_ID: &str = "1160";
 
 #[derive(Serialize)]

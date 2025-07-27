@@ -183,13 +183,14 @@ pub enum AccountMessage {
     ElyByShowPassword(bool),
     ElyByLogin,
     ElyByLoginResponse(Res<ql_instances::auth::elyby::Account>),
+
     LittleSkinUsernameInput(String),
     LittleSkinPasswordInput(String),
     LittleSkinOtpInput(String),
     LittleSkinShowPassword(bool),
     LittleSkinLogin,
     LittleSkinLoginResponse(Res<ql_instances::auth::littleskin::Account>),
-    OauthTestButtonClicked,
+    LittleSkinOauthButtonClicked,
     // LittleSkin Device Code Flow
     LittleSkinDeviceCodeRequested,
     LittleSkinDeviceCodeReady {

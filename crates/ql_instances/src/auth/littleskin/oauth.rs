@@ -1,36 +1,40 @@
 use keyring;
-use ql_core::IntoJsonError;
-use ql_reqwest::Client;
+use ql_core::{IntoJsonError, RequestError, CLIENT};
 use serde::{Deserialize, Serialize};
+
+use crate::auth::alt::OauthError;
 
 use super::{Error, CLIENT_ID};
 
+pub const SCOPE: &str =
+    "Yggdrasil.PlayerProfiles.Read Yggdrasil.Server.Join Yggdrasil.MinecraftToken.Create User.Read";
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct TokenResponse {
-    pub token_type: String,
-    pub expires_in: u64,
-    pub access_token: String,
-    pub refresh_token: String,
+struct TokenResponse {
+    token_type: String,
+    expires_in: u64,
+    access_token: String,
+    refresh_token: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct UserInfo {
+struct UserInfo {
     #[serde(rename = "uid")]
-    pub id: u64,
+    id: u64,
     #[serde(rename = "nickname")]
-    pub username: String,
-    pub email: Option<String>,
+    username: String,
+    email: Option<String>,
 }
 
-/// Step 1: Generate the authorization URL for the user to visit
-pub fn authorization_url(scope: &str) -> String {
+/* /// Step 1: Generate the authorization URL for the user to visit
+fn authorization_url(scope: &str) -> String {
     format!(
         "https://littleskin.cn/oauth/authorize?client_id={CLIENT_ID}&response_type=code&scope={scope}"
     )
 }
 
 /// Step 2: Exchange the authorization code for tokens
-pub async fn exchange_code_for_token(client: &Client, code: &str) -> Result<TokenResponse, Error> {
+async fn exchange_code_for_token(client: &Client, code: &str) -> Result<TokenResponse, Error> {
     let params = [
         ("grant_type", "authorization_code"),
         ("client_id", CLIENT_ID),
@@ -43,8 +47,11 @@ pub async fn exchange_code_for_token(client: &Client, code: &str) -> Result<Toke
         .send()
         .await?;
     if !resp.status().is_success() {
-        let err_text = resp.text().await.unwrap_or_default();
-        return Err(Error::LittleSkin(err_text));
+        return Err(RequestError::DownloadError {
+            code: resp.status(),
+            url: resp.url().clone(),
+        }
+        .into());
     }
     let token = resp.text().await?;
     let token: TokenResponse = serde_json::from_str(&token).json(token)?;
@@ -52,7 +59,7 @@ pub async fn exchange_code_for_token(client: &Client, code: &str) -> Result<Toke
 }
 
 /// Step 3: Refresh the access token using the refresh token
-pub async fn refresh_token(client: &Client, refresh_token: &str) -> Result<TokenResponse, Error> {
+async fn refresh_token(client: &Client, refresh_token: &str) -> Result<TokenResponse, Error> {
     let params = [
         ("grant_type", "refresh_token"),
         ("refresh_token", refresh_token),
@@ -65,25 +72,31 @@ pub async fn refresh_token(client: &Client, refresh_token: &str) -> Result<Token
         .send()
         .await?;
     if !resp.status().is_success() {
-        let err_text = resp.text().await.unwrap_or_default();
-        return Err(Error::LittleSkin(err_text));
+        return Err(RequestError::DownloadError {
+            code: resp.status(),
+            url: resp.url().clone(),
+        }
+        .into());
     }
     let token = resp.text().await?;
     let token: TokenResponse = serde_json::from_str(&token).json(token)?;
     Ok(token)
-}
+}*/
 
 /// Step 4: Get user info using the access token
-pub async fn get_user_info(client: &Client, access_token: &str) -> Result<UserInfo, Error> {
-    let resp = client
+async fn get_user_info(access_token: &str) -> Result<UserInfo, Error> {
+    let resp = CLIENT
         .get("https://littleskin.cn/api/user")
         .header("Accept", "application/json")
         .bearer_auth(access_token)
         .send()
         .await?;
     if !resp.status().is_success() {
-        let err_text = resp.text().await.unwrap_or_default();
-        return Err(Error::LittleSkin(err_text));
+        return Err(RequestError::DownloadError {
+            code: resp.status(),
+            url: resp.url().clone(),
+        }
+        .into());
     }
     let user = resp.text().await?;
     let user: UserInfo = serde_json::from_str(&user).json(user)?;
@@ -103,25 +116,20 @@ pub struct DeviceCodeResponse {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct DeviceTokenResponse {
-    pub access_token: Option<String>,
-    pub refresh_token: Option<String>,
-    pub token_type: Option<String>,
-    pub expires_in: Option<u64>,
-    pub error: Option<String>,
-    pub error_description: Option<String>,
+struct DeviceTokenResponse {
+    access_token: Option<String>,
+    refresh_token: Option<String>,
+    token_type: Option<String>,
+    expires_in: Option<u64>,
+    error: Option<String>,
+    error_description: Option<String>,
 }
 
 /// Step 1: Request device code
-pub async fn request_device_code(
-    client: &Client,
-    client_id: &str,
-    scope: &str,
-) -> Result<DeviceCodeResponse, Error> {
-    // Build body as LittleSkin expects: "client_id={client_id}&\nscope={scope}"
-    let encoded_scope = urlencoding::encode(scope);
-    let body = format!("client_id={client_id}&scope={encoded_scope}");
-    let resp = client
+pub async fn request_device_code() -> Result<DeviceCodeResponse, Error> {
+    let encoded_scope = urlencoding::encode(SCOPE);
+    let body = format!("client_id={CLIENT_ID}&scope={encoded_scope}");
+    let resp = CLIENT
         .post("https://open.littleskin.cn/oauth/device_code")
         .header("Accept", "application/json")
         .header("Content-Type", "application/x-www-form-urlencoded")
@@ -130,8 +138,11 @@ pub async fn request_device_code(
         .await?;
 
     if !resp.status().is_success() {
-        let err_text = resp.text().await.unwrap_or_default();
-        return Err(Error::LittleSkin(err_text));
+        return Err(RequestError::DownloadError {
+            code: resp.status(),
+            url: resp.url().clone(),
+        }
+        .into());
     }
 
     let code_resp = resp.text().await?;
@@ -139,36 +150,27 @@ pub async fn request_device_code(
     Ok(code_resp)
 }
 
-/// Helper: Use default client and CLIENT_ID for device code flow
-pub async fn request_device_code_default(scope: &str) -> Result<DeviceCodeResponse, Error> {
-    let client = Client::new();
-    request_device_code(&client, CLIENT_ID, scope).await
-}
-
-/// Helper: Poll for device token, then fetch user info and build Account
 /// Helper: Poll for device token, then fetch user info, create Minecraft token and build Account
-pub async fn poll_device_token_default(
+pub async fn poll_device_token(
     device_code: String,
     interval: u64,
     expires_in: u64,
 ) -> Result<crate::auth::littleskin::Account, Error> {
-    let client = Client::new();
     // Step A: exchange device_code for OAuth access_token
-    let token_resp =
-        poll_device_token(&client, CLIENT_ID, &device_code, interval, expires_in).await?;
-    let oauth_access_token = token_resp
-        .access_token
-        .ok_or_else(|| Error::LittleSkin("No access_token in response".to_string()))?;
+    let token_resp = get_device_token(&device_code, interval, expires_in).await?;
+    let oauth_access_token = token_resp.access_token.ok_or(OauthError::NoAccessToken)?;
+
     // Step B: fetch user info (we need uuid & username)
-    let user_info = get_user_info(&client, &oauth_access_token).await?;
+    let user_info = get_user_info(&oauth_access_token).await?;
+
     // Step C: exchange OAuth token for a Yggdrasil/Minecraft token (needed for actual game login)
     // Sub step get UUID
-    let profile = get_minecraft_profile(&client, &oauth_access_token).await?;
+    let profile = get_minecraft_profile(&oauth_access_token).await?;
     let uuid = profile.id;
-    let mut mc_token_resp = create_minecraft_token(&client, &oauth_access_token, &uuid).await?;
+    let mut mc_token_resp = create_minecraft_token(&oauth_access_token, &uuid).await?;
     // If server didn't include selectedProfile, fetch via sessionserver
     if mc_token_resp.selected_profile.is_none() {
-        if let Ok(profile) = get_minecraft_profile(&client, &oauth_access_token).await {
+        if let Ok(profile) = get_minecraft_profile(&oauth_access_token).await {
             mc_token_resp.selected_profile = Some(profile);
         }
     }
@@ -218,11 +220,8 @@ struct MinecraftProfile {
     _properties: Option<Vec<serde_json::Value>>, // ignored
 }
 
-async fn get_minecraft_profile(
-    client: &Client,
-    oauth_access_token: &str,
-) -> Result<MinecraftProfile, Error> {
-    let resp = client
+async fn get_minecraft_profile(oauth_access_token: &str) -> Result<MinecraftProfile, Error> {
+    let resp = CLIENT
         .get("https://littleskin.cn/api/yggdrasil/sessionserver/session/minecraft/profile")
         .header("Accept", "application/json")
         .bearer_auth(oauth_access_token)
@@ -230,23 +229,24 @@ async fn get_minecraft_profile(
         .await?;
 
     if !resp.status().is_success() {
-        let err_text = resp.text().await.unwrap_or_default();
-        return Err(Error::LittleSkin(err_text));
+        return Err(RequestError::DownloadError {
+            code: resp.status(),
+            url: resp.url().clone(),
+        }
+        .into());
     }
 
     // API returns an array of profiles;
     let list = resp.text().await?;
     let mut list: Vec<MinecraftProfile> = serde_json::from_str(&list).json(list)?;
-    list.pop()
-        .ok_or_else(|| Error::LittleSkin("No Minecraft profile returned".to_string()))
+    list.pop().ok_or(OauthError::NoMinecraftProfile.into())
 }
 
 async fn create_minecraft_token(
-    client: &Client,
     oauth_access_token: &str,
     uuid: &str,
 ) -> Result<MinecraftTokenResponse, Error> {
-    let resp = client
+    let resp = CLIENT
         .post("https://littleskin.cn/api/yggdrasil/authserver/oauth")
         .bearer_auth(oauth_access_token)
         .header("Accept", "application/json")
@@ -255,18 +255,18 @@ async fn create_minecraft_token(
         .await?;
 
     if !resp.status().is_success() {
-        let err_text = resp.text().await.unwrap_or_default();
-        return Err(Error::LittleSkin(err_text));
+        return Err(RequestError::DownloadError {
+            code: resp.status(),
+            url: resp.url().clone(),
+        }
+        .into());
     }
     let token = resp.text().await?;
     let token: MinecraftTokenResponse = serde_json::from_str(&token).json(token)?;
     Ok(token)
 }
 
-/// Step 2: Poll for token
-pub async fn poll_device_token(
-    client: &Client,
-    client_id: &str,
+async fn get_device_token(
     device_code: &str,
     interval: u64,
     expires_in: u64,
@@ -275,14 +275,14 @@ pub async fn poll_device_token(
     let start = Instant::now();
     loop {
         if start.elapsed().as_secs() > expires_in {
-            return Err(Error::LittleSkin("Device code expired".to_string()));
+            return Err(OauthError::DeviceCodeExpired.into());
         }
         let params = [
             ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
             ("device_code", device_code),
-            ("client_id", client_id),
+            ("client_id", CLIENT_ID),
         ];
-        let resp = client
+        let resp = CLIENT
             .post("https://open.littleskin.cn/oauth/token")
             .form(&params)
             .header("Accept", "application/json")
@@ -294,15 +294,11 @@ pub async fn poll_device_token(
             continue;
         }
         let text_body = resp.text().await?;
+
         // LittleSkin sometimes returns error JSON with 4xx codes. We'll still try to parse.
-        let token_resp: DeviceTokenResponse = match serde_json::from_str(&text_body) {
-            Ok(v) => v,
-            Err(_) => {
-                return Err(Error::LittleSkin(format!(
-                    "Unexpected response from LittleSkin: {text_body}"
-                )));
-            }
-        };
+        let token_resp: DeviceTokenResponse = serde_json::from_str(&text_body)
+            .map_err(|_| OauthError::UnexpectedResponse(text_body))?;
+
         if let Some(ref err) = token_resp.error {
             match err.as_str() {
                 "authorization_pending" => {

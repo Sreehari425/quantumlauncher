@@ -1,8 +1,9 @@
+use std::time::{Duration, Instant};
+
 use auth::AccountData;
 use iced::Task;
 use ql_core::IntoStringError;
 use ql_instances::auth;
-use ql_instances::auth::littleskin::oauth::request_device_code_default;
 
 use crate::{
     config::ConfigAccount,
@@ -60,7 +61,6 @@ impl Launcher {
                 interval,
                 device_code,
             } => {
-                use std::time::{Duration, Instant};
                 if let State::LoginLittleSkin(menu) = &mut self.state {
                     menu.device_code = Some(device_code.clone());
                     menu.user_code = Some(user_code.clone());
@@ -71,10 +71,11 @@ impl Launcher {
                     menu.device_code_error = None;
                     menu.is_loading = false;
                 }
+
                 // Start polling for token
                 let device_code_clone = device_code.clone();
                 return Task::perform(
-                    ql_instances::auth::littleskin::oauth::poll_device_token_default(
+                    ql_instances::auth::littleskin::oauth::poll_device_token(
                         device_code_clone,
                         interval,
                         expires_in,
@@ -294,24 +295,23 @@ impl Launcher {
                     }
                 }
             }
-            AccountMessage::OauthTestButtonClicked => {
+            AccountMessage::LittleSkinOauthButtonClicked => {
                 if let State::LoginLittleSkin(menu) = &mut self.state {
                     menu.is_loading = true;
                 }
-                // Start async device code request
-                return Task::perform(
-                    request_device_code_default("Yggdrasil.PlayerProfiles.Read Yggdrasil.Server.Join Yggdrasil.MinecraftToken.Create User.Read"),
-                    |resp| match resp {
-                        Ok(code) => Message::Account(AccountMessage::LittleSkinDeviceCodeReady {
+
+                return Task::perform(auth::littleskin::oauth::request_device_code(), |resp| {
+                    Message::Account(match resp {
+                        Ok(code) => AccountMessage::LittleSkinDeviceCodeReady {
                             user_code: code.user_code,
                             verification_uri: code.verification_uri,
                             expires_in: code.expires_in,
                             interval: code.interval,
                             device_code: code.device_code,
-                        }),
-                        Err(e) => Message::Account(AccountMessage::LittleSkinDeviceCodeError(e.to_string())),
-                    },
-                );
+                        },
+                        Err(e) => AccountMessage::LittleSkinDeviceCodeError(e.to_string()),
+                    })
+                });
             }
         }
         Task::none()

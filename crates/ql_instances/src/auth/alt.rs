@@ -32,6 +32,21 @@ pub enum Error {
     KeyringError(#[from] KeyringError),
     #[error("{AUTH_ERR_PREFIX}Littleskin response:\n{0}")]
     LittleSkin(String),
+
+    #[error("{AUTH_ERR_PREFIX}while logging in through oauth:\n{0}")]
+    Oauth(#[from] OauthError),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum OauthError {
+    #[error("device code expired")]
+    DeviceCodeExpired,
+    #[error("unexpected response from littleskin:\n\n{0}")]
+    UnexpectedResponse(String),
+    #[error("no access token in response")]
+    NoAccessToken,
+    #[error("no minecraft profile found for account")]
+    NoMinecraftProfile,
 }
 
 impl From<ql_reqwest::Error> for Error {
