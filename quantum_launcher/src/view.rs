@@ -117,7 +117,6 @@ impl Launcher {
                                 is_from_welcome_screen: false
                             }
                         )),
-                        
                     ]
                     .align_x(iced::Alignment::Center)
                     .spacing(5),
@@ -222,8 +221,7 @@ impl Launcher {
                     .spacing(10)
                     .into()
             }
-            State::LoginElyBy(menu) => menu.view(self.tick_timer),
-            State::LoginLittleSkin(menu) => menu.view(self.tick_timer),
+            State::LoginAlternate(menu) => menu.view(self.tick_timer),
 
             State::CurseforgeManualDownload(menu) => menu.view(),
             State::ExportInstance(menu) => menu.view(self.tick_timer),

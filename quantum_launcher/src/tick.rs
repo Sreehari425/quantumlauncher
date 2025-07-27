@@ -136,8 +136,7 @@ impl Launcher {
 
             // These menus don't require background ticking
             State::Error { .. }
-            | State::LoginElyBy(_)
-            | State::LoginLittleSkin(_)
+            | State::LoginAlternate(_)
             | State::AccountLogin
             | State::ExportInstance(_)
             | State::ConfirmAction { .. }

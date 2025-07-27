@@ -1,12 +1,15 @@
 use std::ffi::OsStr;
 
 use iced::{
-    keyboard::{key::Named, Key}, Task
+    keyboard::{key::Named, Key},
+    Task,
 };
 use ql_core::{err, info, info_no_log, jarmod::JarMod, InstanceSelection};
 
 use crate::state::{
-    Launcher, MenuCreateInstance, MenuEditMods, MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuLaunch, MenuLauncherUpdate, MenuLoginElyBy, MenuLoginLittleSkin, MenuLoginMS, MenuServerCreate, Message, State
+    Launcher, MenuCreateInstance, MenuEditMods, MenuExportInstance, MenuInstallFabric,
+    MenuInstallOptifine, MenuLaunch, MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS,
+    MenuServerCreate, Message, State,
 };
 
 use super::{SIDEBAR_DRAG_LEEWAY, SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT};
@@ -241,10 +244,7 @@ impl Launcher {
             | State::LoginMS(MenuLoginMS { .. })
             | State::AccountLogin
             | State::ExportInstance(MenuExportInstance { progress: None, .. })
-            | State::LoginLittleSkin(MenuLoginLittleSkin {
-                is_loading: false, ..
-            })
-            | State::LoginElyBy(MenuLoginElyBy {
+            | State::LoginAlternate(MenuLoginAlternate {
                 is_loading: false, ..
             })
             | State::Welcome(_) => {
@@ -286,8 +286,7 @@ impl Launcher {
             | State::AccountLoginProgress(_)
             | State::ImportModpack(_)
             | State::CurseforgeManualDownload(_)
-            | State::LoginElyBy(_)
-            | State::LoginLittleSkin(_)
+            | State::LoginAlternate(_)
             | State::Launch(_) => {}
         }
 

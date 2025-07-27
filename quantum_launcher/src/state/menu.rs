@@ -329,17 +329,7 @@ pub struct MenuExportInstance {
     pub progress: Option<ProgressBar<GenericProgress>>,
 }
 
-pub struct MenuLoginElyBy {
-    pub username: String,
-    pub password: String,
-    pub show_password: bool,
-
-    pub is_loading: bool,
-    pub otp: Option<String>,
-
-    pub is_from_welcome_screen: bool,
-}
-pub struct MenuLoginLittleSkin {
+pub struct MenuLoginAlternate {
     pub username: String,
     pub password: String,
     pub show_password: bool,
@@ -349,13 +339,16 @@ pub struct MenuLoginLittleSkin {
 
     pub is_from_welcome_screen: bool,
 
-    // Device OAuth flow state
-    pub device_code: Option<String>,
-    pub user_code: Option<String>,
-    pub verification_uri: Option<String>,
-    pub device_code_expires_at: Option<Instant>,
-    pub device_code_polling: bool,
+    pub is_littleskin: bool,
+    pub oauth: Option<LittleSkinOauth>,
     pub device_code_error: Option<String>,
+}
+
+pub struct LittleSkinOauth {
+    // pub device_code: String,
+    pub user_code: String,
+    pub verification_uri: String,
+    pub device_code_expires_at: Instant,
 }
 
 pub struct MenuLoginMS {
@@ -394,9 +387,8 @@ pub enum State {
 
     AccountLoginProgress(ProgressBar<GenericProgress>),
     LoginMS(MenuLoginMS),
-    LoginElyBy(MenuLoginElyBy),
-    LoginLittleSkin(MenuLoginLittleSkin),
-    
+    LoginAlternate(MenuLoginAlternate),
+
     AccountLogin,
 
     InstallPaper,
