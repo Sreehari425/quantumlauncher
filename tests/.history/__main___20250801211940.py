@@ -15,11 +15,11 @@ For more info see tests/README.md
 """)
     sys.exit(1)
 
-def rmdir(directory_path: str) -> None:
+def rmdir(directory_path: str):
     if os.path.exists(directory_path) and os.path.isdir(directory_path):
         shutil.rmtree(directory_path)
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--timeout", type=int, default=60, help="Timeout in seconds (default: 60)")
     parser.add_argument("--existing", action="store_true", help="Use existing instances from previous test, instead of redownloading")

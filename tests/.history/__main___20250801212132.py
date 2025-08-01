@@ -15,7 +15,7 @@ For more info see tests/README.md
 """)
     sys.exit(1)
 
-def rmdir(directory_path: str) -> None:
+def rmdir(directory_path: str):
     if os.path.exists(directory_path) and os.path.isdir(directory_path):
         shutil.rmtree(directory_path)
 

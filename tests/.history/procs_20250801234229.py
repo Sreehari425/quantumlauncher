@@ -37,7 +37,7 @@ def run_parallel(commands: list[list[str]], max_workers: int | None = None):
         try:
             for future in as_completed(futures):
                 future.result()  # Will raise if the subprocess failed
-        except Exception as _e:
+        except Exception as e:
             print(f"Early exit: A subprocess failed. Cancelling remaining...")
             for f in futures:
                 f.cancel()

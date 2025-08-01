@@ -30,14 +30,14 @@ def run(args: list[str]):
             print(f"Stderr:\n{sout}")
         sys.exit(1)
 
-def run_parallel(commands: list[list[str]], max_workers: int | None = None):
+def run_parallel(commands: List[List[str]], max_workers: int | None = None):
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(run, cmd): cmd for cmd in commands}
 
         try:
             for future in as_completed(futures):
                 future.result()  # Will raise if the subprocess failed
-        except Exception as _e:
+        except Exception as e:
             print(f"Early exit: A subprocess failed. Cancelling remaining...")
             for f in futures:
                 f.cancel()

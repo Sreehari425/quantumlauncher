@@ -1,9 +1,7 @@
 from . import procs
 
-type Versions = list[str]
-
 # LWJGL 2 tests
-VERSIONS_L2: Versions = [
+VERSIONS_L2 = [
     "c0.30-c-1900", # last version of classic, should represent most early versions
 
     "a1.1.2_01", # one of the most popular alpha versions
@@ -16,7 +14,7 @@ VERSIONS_L2: Versions = [
 ]
 
 # LWJGL 3 tests
-VERSIONS_L3: Versions = [
+VERSIONS_L3 = [
     "inf-20100415-lwjgl3", # test of lwjgl3 backport
 
     "1.14.4", # after migration to lwjgl3, engine rewrites
@@ -26,7 +24,7 @@ VERSIONS_L3: Versions = [
     "1.21.8", # latest
 ]
 
-def create(versions: Versions =VERSIONS_L2 + VERSIONS_L3) -> None:
+def create(versions=VERSIONS_L2 + VERSIONS_L3) -> None:
     procs.run_parallel([
         [procs.QL_BIN, "create", version, version, "-s"]
         for version in versions

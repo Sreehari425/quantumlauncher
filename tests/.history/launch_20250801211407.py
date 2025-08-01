@@ -3,11 +3,11 @@ import re
 import subprocess
 import sys
 import time
-
+from typing
 from . import procs
 
-_ANSI_ESCAPE: re.Pattern[str] = re.compile(r'\x1b\[[0-9;]*[mK]')
-def _remove_ansi_colors(text: str) -> str:
+_ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[mK]')
+def _remove_ansi_colors(text) -> None:
     return _ANSI_ESCAPE.sub('', text)
 
 def _launch(instance: str) -> str | None:
