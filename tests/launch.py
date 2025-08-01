@@ -3,15 +3,15 @@ import re
 import subprocess
 import sys
 import time
-
+from type import PID , InstanceName
 from . import procs
 
 _ANSI_ESCAPE: re.Pattern[str] = re.compile(r'\x1b\[[0-9;]*[mK]')
 def _remove_ansi_colors(text: str) -> str:
     return _ANSI_ESCAPE.sub('', text)
 
-def _launch(instance: str) -> str | None:
-    process = subprocess.Popen(
+def _launch(instance: str) -> PID | None:
+    process:subprocess.Popen[str] = subprocess.Popen(
         [procs.QL_BIN, "launch", instance, "test`"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -22,11 +22,12 @@ def _launch(instance: str) -> str | None:
         print("Error: Launcher has no stdout!")
         sys.exit(1)
 
-    pid = None
-    pattern = r'\[info\] Launched! PID: (\d+)'
-
+    pid= None
+    pattern: str = r'\[info\] Launched! PID: (\d+)'
+    
+    line: str
     for line in process.stdout:
-        clean_line = _remove_ansi_colors(line)
+        clean_line: str = _remove_ansi_colors(line)
         if "No ID found!" in clean_line:
             print("Error: Game crashed instantly!")
             process.kill()
@@ -41,9 +42,9 @@ def _launch(instance: str) -> str | None:
         process.kill()
         return None
 
-    return pid
+    return int(pid)
 
-def _is_process_alive(pid: int) -> bool:
+def _is_process_alive(pid: PID) -> bool:
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
@@ -53,15 +54,15 @@ def _is_process_alive(pid: int) -> bool:
     else:
         return True   # Process is alive
 
-def _close_window(result: bytes, pid: int):
-    window_ids = result.decode().strip().splitlines()
+def _close_window(result: bytes, pid: PID) -> None:
+    window_ids: list[str] = result.decode().strip().splitlines()
     print(f"✅ Window found: {window_ids} for pid {pid}, killing")
     procs.kill_process(pid)
 
 
-def _wait_for_window(pid: int, timeout: int, name: str) -> bool:
-    start_time = time.time()
-    check_interval = max(1, timeout // 30)
+def _wait_for_window(pid: PID, timeout: int, name: InstanceName) -> bool:
+    start_time: float = time.time()
+    check_interval: int = max(1, timeout // 30)
     print(f"\n\nChecking {name} ({pid}) with interval {check_interval} seconds")
 
     while time.time() - start_time < timeout:
@@ -70,12 +71,12 @@ def _wait_for_window(pid: int, timeout: int, name: str) -> bool:
             return False
 
         try:
-            result = subprocess.check_output(["xdotool", "search", "--pid", str(pid)])
+            result: bytes = subprocess.check_output(["xdotool", "search", "--pid", str(pid)])
             _close_window(result, pid)
             return True
         except subprocess.CalledProcessError:
             try:
-                result = subprocess.check_output(["xdotool", "search", "--classname", "Minecraft*", "windowclose"])
+                result: bytes = subprocess.check_output(["xdotool", "search", "--classname", "Minecraft*", "windowclose"])
                 print("    (found some \"Minecraft\" window, not sure)")
                 _close_window(result, pid)
                 return True
@@ -88,7 +89,7 @@ def _wait_for_window(pid: int, timeout: int, name: str) -> bool:
         return False
 
 def test(name: str, timeout: int) -> bool:
-    pid = _launch(name)
+    pid: PID | None = _launch(name)
     if pid:
         if not _wait_for_window(int(pid), timeout, name):
             print("Test failed (window)!")

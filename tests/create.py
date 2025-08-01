@@ -1,6 +1,5 @@
 from . import procs
-
-type Versions = list[str]
+from type import Versions
 
 # LWJGL 2 tests
 VERSIONS_L2: Versions = [

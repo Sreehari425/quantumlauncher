@@ -13,12 +13,12 @@ OLD_QL_BIN: str = (
     else "target/debug/quantum_launcher"
 )
 
-def prepare_ql_bin():
+def prepare_ql_bin() -> None:
     shutil.copy(OLD_QL_BIN, QL_BIN)
     with open('tests/qldir.txt', 'w') as f:
         f.write('')
 
-def run(args: list[str]):
+def run(args: list[str]) -> None:
     try: subprocess.run(args)
     except subprocess.CalledProcessError as e:
         print(f"Error: Process failed with exit code {e.returncode}")
@@ -30,7 +30,7 @@ def run(args: list[str]):
             print(f"Stderr:\n{sout}")
         sys.exit(1)
 
-def run_parallel(commands: list[list[str]], max_workers: int | None = None):
+def run_parallel(commands: list[list[str]], max_workers: int | None = None) -> None:
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(run, cmd): cmd for cmd in commands}
 
@@ -43,7 +43,7 @@ def run_parallel(commands: list[list[str]], max_workers: int | None = None):
                 f.cancel()
             sys.exit(1)
 
-def kill_process(pid: int):
+def kill_process(pid: int) -> None:
     try:
         os.kill(pid, signal.SIGTERM)  # SIGTERM is a termination signal
         print(f"    Process {pid} has been terminated.")
