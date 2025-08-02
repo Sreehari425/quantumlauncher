@@ -329,6 +329,7 @@ pub async fn login_3_xbox(
 
         username: final_details.name.clone(),
         nice_username: final_details.name,
+        custom_auth_url: None,
     };
 
     info!("Finished Microsoft Account login!");

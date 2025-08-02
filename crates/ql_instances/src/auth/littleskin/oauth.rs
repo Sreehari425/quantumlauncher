@@ -198,6 +198,7 @@ pub async fn poll_device_token(
             refresh_token: mc_token_resp.access_token,
             needs_refresh: false,
             account_type: crate::auth::AccountType::LittleSkin,
+            custom_auth_url: None,
         },
     ))
 }

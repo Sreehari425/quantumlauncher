@@ -3,6 +3,7 @@ use std::fmt::Display;
 use crate::auth;
 mod alt;
 pub mod authlib;
+pub mod blessing_skin;
 pub mod elyby;
 pub mod littleskin;
 pub mod ms;
@@ -19,6 +20,7 @@ pub struct AccountData {
     pub nice_username: String,
 
     pub account_type: AccountType,
+    pub custom_auth_url: Option<String>, // For blessing skin servers
 }
 
 impl AccountData {
@@ -27,6 +29,7 @@ impl AccountData {
             auth::AccountType::Microsoft => "",
             auth::AccountType::ElyBy => " (elyby)",
             auth::AccountType::LittleSkin => " (littleskin)",
+            auth::AccountType::BlessingSkin => " (blessing)",
         };
         format!("{}{suffix}", self.username)
     }
@@ -36,15 +39,17 @@ impl AccountData {
             AccountType::Microsoft => None,
             AccountType::ElyBy => Some("ely.by"),
             AccountType::LittleSkin => Some("https://littleskin.cn/api/yggdrasil"),
+            AccountType::BlessingSkin => None, // Custom URL will be handled separately
         }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum AccountType {
     Microsoft,
     ElyBy,
     LittleSkin,
+    BlessingSkin,
 }
 
 impl std::fmt::Display for AccountType {
@@ -56,6 +61,7 @@ impl std::fmt::Display for AccountType {
                 AccountType::Microsoft => "Microsoft",
                 AccountType::ElyBy => "ElyBy",
                 AccountType::LittleSkin => "LittleSkin",
+                AccountType::BlessingSkin => "BlessingSkin",
             }
         )
     }
@@ -73,6 +79,10 @@ impl AccountData {
     #[must_use]
     pub fn is_microsoft(&self) -> bool {
         matches!(self.account_type, AccountType::Microsoft)
+    }
+    #[must_use]
+    pub fn is_blessing_skin(&self) -> bool {
+        matches!(self.account_type, AccountType::BlessingSkin)
     }
 }
 

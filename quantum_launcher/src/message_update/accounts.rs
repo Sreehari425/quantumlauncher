@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use auth::AccountData;
 use iced::Task;
-use ql_core::IntoStringError;
+use ql_core::{err, IntoStringError};
 use ql_instances::auth;
 
 use crate::{
@@ -20,6 +20,7 @@ impl Launcher {
             | AccountMessage::Response2(Err(err))
             | AccountMessage::Response3(Err(err))
             | AccountMessage::AltLoginResponse(Err(err))
+            | AccountMessage::BlessingSkinLoginResponse(Err(err))
             | AccountMessage::RefreshComplete(Err(err)) => {
                 self.set_error(err);
             }
@@ -111,6 +112,33 @@ impl Launcher {
                         auth::elyby::logout(username.strip_suffix(" (elyby)").unwrap_or(&username))
                     }
                     auth::AccountType::LittleSkin => auth::littleskin::logout(&username),
+                    auth::AccountType::BlessingSkin => {
+                        let account_data = self.accounts.get(&username);
+                        if let Some(data) = account_data {
+                            if let Some(url) = &data.custom_auth_url {
+                                // For async logout, we need to spawn a task and handle it async
+                                let username_clone = username.clone();
+                                let url_clone = url.clone();
+                                return Task::perform(
+                                    async move { auth::blessing_skin::logout(&username_clone, &url_clone).await },
+                                    |result| {
+                                        if let Err(err) = result {
+                                            // Just log the error, don't show it to user since account will be removed anyway
+                                            err!("Error during blessing skin logout: {}", err);
+                                        }
+                                        Message::LaunchScreenOpen {
+                                            message: None,
+                                            clear_selection: false,
+                                        }
+                                    }
+                                );
+                            } else {
+                                Ok(())
+                            }
+                        } else {
+                            Ok(())
+                        }
+                    }
                 } {
                     self.set_error(err);
                 }
@@ -179,6 +207,8 @@ impl Launcher {
                     is_littleskin: false,
                     device_code_error: None,
                     oauth: None,
+                    is_blessing_skin: false,
+                    blessing_skin_url: String::new(),
                 });
             }
 
@@ -198,6 +228,27 @@ impl Launcher {
                 }
             }
             AccountMessage::AltShowPassword(t) => {
+                if let State::LoginAlternate(menu) = &mut self.state {
+                    menu.show_password = t;
+                }
+            }
+
+            AccountMessage::BlessingSkinUrlInput(url) => {
+                if let State::LoginAlternate(menu) = &mut self.state {
+                    menu.blessing_skin_url = url;
+                }
+            }
+            AccountMessage::BlessingSkinUsernameInput(username) => {
+                if let State::LoginAlternate(menu) = &mut self.state {
+                    menu.username = username;
+                }
+            }
+            AccountMessage::BlessingSkinPasswordInput(password) => {
+                if let State::LoginAlternate(menu) = &mut self.state {
+                    menu.password = password;
+                }
+            }
+            AccountMessage::BlessingSkinShowPassword(t) => {
                 if let State::LoginAlternate(menu) = &mut self.state {
                     menu.show_password = t;
                 }
@@ -225,6 +276,26 @@ impl Launcher {
                     }
                 }
             }
+
+            AccountMessage::BlessingSkinLogin => {
+                if let State::LoginAlternate(menu) = &mut self.state {
+                    if menu.blessing_skin_url.is_empty() {
+                        return Task::none();
+                    }
+                    
+                    let mut password = menu.password.clone();
+                    if let Some(otp) = &menu.otp {
+                        password.push(':');
+                        password.push_str(otp);
+                    }
+                    menu.is_loading = true;
+
+                    return Task::perform(
+                        auth::blessing_skin::login_new(menu.username.clone(), password, menu.blessing_skin_url.clone()),
+                        |n| Message::Account(AccountMessage::BlessingSkinLoginResponse(n.strerr())),
+                    );
+                }
+            }
             AccountMessage::AltLoginResponse(Ok(acc)) => {
                 if let State::LoginAlternate(menu) = &mut self.state {
                     menu.is_loading = false;
@@ -233,6 +304,20 @@ impl Launcher {
                             return self.account_response_3(data);
                         }
                         auth::elyby::Account::NeedsOTP => {
+                            menu.otp = Some(String::new());
+                        }
+                    }
+                }
+            }
+
+            AccountMessage::BlessingSkinLoginResponse(Ok(acc)) => {
+                if let State::LoginAlternate(menu) = &mut self.state {
+                    menu.is_loading = false;
+                    match acc {
+                        auth::blessing_skin::Account::Account(data) => {
+                            return self.account_response_3(data);
+                        }
+                        auth::blessing_skin::Account::NeedsOTP => {
                             menu.otp = Some(String::new());
                         }
                     }
@@ -251,6 +336,26 @@ impl Launcher {
                     oauth: None,
                     device_code_error: None,
                     is_littleskin: true,
+                    is_blessing_skin: false,
+                    blessing_skin_url: String::new(),
+                });
+            }
+
+            AccountMessage::OpenBlessingSkin {
+                is_from_welcome_screen,
+            } => {
+                self.state = State::LoginAlternate(MenuLoginAlternate {
+                    username: String::new(),
+                    password: String::new(),
+                    is_loading: false,
+                    otp: None,
+                    show_password: false,
+                    is_from_welcome_screen,
+                    oauth: None,
+                    device_code_error: None,
+                    is_littleskin: false,
+                    is_blessing_skin: true,
+                    blessing_skin_url: String::new(),
                 });
             }
 
@@ -311,6 +416,21 @@ impl Launcher {
                 ),
                 |n| Message::Account(AccountMessage::RefreshComplete(n.strerr())),
             ),
+            auth::AccountType::BlessingSkin => {
+                if let Some(url) = &account.custom_auth_url {
+                    Task::perform(
+                        auth::blessing_skin::login_refresh(
+                            account.username.clone(),
+                            account.refresh_token.clone(),
+                            url.clone(),
+                        ),
+                        |n| Message::Account(AccountMessage::RefreshComplete(n.strerr())),
+                    )
+                } else {
+                    // No custom URL stored, can't refresh
+                    Task::none()
+                }
+            }
         }
     }
 
@@ -326,6 +446,7 @@ impl Launcher {
                 skin: None,
                 account_type: Some(data.account_type.to_string()),
                 username_nice: Some(data.nice_username.clone()),
+                custom_auth_url: data.custom_auth_url.clone(),
             },
         );
 

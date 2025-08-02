@@ -430,6 +430,11 @@ pub fn view_account_login<'a>() -> Element<'a> {
                         is_from_welcome_screen: false
                     }
                 )),
+                widget::button("Login with blessing skin server").on_press(Message::Account(
+                    AccountMessage::OpenBlessingSkin {
+                        is_from_welcome_screen: false
+                    }
+                )),
             ]
             .align_x(iced::Alignment::Center)
             .spacing(5),

@@ -185,4 +185,8 @@ pub struct ConfigAccount {
     /// username while the regular "username"
     /// would be an email.
     pub username_nice: Option<String>,
+
+    /// Custom authentication URL for BlessingSkin servers.
+    /// Only used for BlessingSkin account type.
+    pub custom_auth_url: Option<String>,
 }

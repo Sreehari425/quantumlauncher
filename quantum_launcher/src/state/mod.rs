@@ -284,6 +284,20 @@ fn load_account(
                 AccountType::LittleSkin,
                 ql_instances::auth::littleskin::read_refresh_token(username_stripped).strerr(),
             )
+        } else if account.account_type.as_deref() == Some("BlessingSkin")
+            || username.ends_with(" (blessing)")
+        {
+            let username_stripped = username.strip_suffix(" (blessing)").unwrap_or(username);
+            // For blessing skin, we need the custom auth URL to read the refresh token
+            if let Some(base_url) = &account.custom_auth_url {
+                (
+                    AccountType::BlessingSkin,
+                    ql_instances::auth::blessing_skin::read_refresh_token(username_stripped, base_url).strerr(),
+                )
+            } else {
+                // No auth URL stored, can't load this account
+                return;
+            }
         } else {
             let username_stripped = username;
             (
@@ -295,6 +309,7 @@ fn load_account(
     let username_stripped = match account_type {
         AccountType::ElyBy => username.strip_suffix(" (elyby)").unwrap_or(username),
         AccountType::LittleSkin => username.strip_suffix(" (littleskin)").unwrap_or(username),
+        AccountType::BlessingSkin => username.strip_suffix(" (blessing)").unwrap_or(username),
         AccountType::Microsoft => username,
     };
 
@@ -315,6 +330,11 @@ fn load_account(
                         .username_nice
                         .clone()
                         .unwrap_or(username_stripped.to_owned()),
+                    custom_auth_url: if account_type == AccountType::BlessingSkin {
+                        account.custom_auth_url.clone()
+                    } else {
+                        None
+                    },
                 },
             );
         }

@@ -13,6 +13,10 @@ impl MenuLoginAlternate {
             if self.is_loading {
                 let dots = ".".repeat((tick_timer % 3) + 1);
                 widget::text!("Loading{dots}").into()
+            } else if self.is_blessing_skin {
+                widget::column![button_with_icon(icon_manager::tick(), "Login", 16)
+                    .on_press(Message::Account(AccountMessage::BlessingSkinLogin))]
+                .into()
             } else {
                 widget::column![button_with_icon(icon_manager::tick(), "Login", 16)
                     .on_press(Message::Account(AccountMessage::AltLogin))]
@@ -32,8 +36,12 @@ impl MenuLoginAlternate {
         };
 
         let password_input = widget::text_input("Enter Password...", &self.password)
-            .padding(padding)
-            .on_input(|n| Message::Account(AccountMessage::AltPasswordInput(n)));
+            .padding(padding);
+        let password_input = if self.is_blessing_skin {
+            password_input.on_input(|n| Message::Account(AccountMessage::BlessingSkinPasswordInput(n)))
+        } else {
+            password_input.on_input(|n| Message::Account(AccountMessage::AltPasswordInput(n)))
+        };
         let password_input = if self.password.is_empty() || self.show_password {
             password_input
         } else {
@@ -92,16 +100,33 @@ impl MenuLoginAlternate {
                     widget::horizontal_space(),
                     widget::column![
                         widget::vertical_space(),
+                        widget::Column::new().push_maybe(self.is_blessing_skin.then_some(
+                            widget::column![
+                                widget::text("Blessing Skin Server URL:").size(12),
+                                widget::text_input("https://your-blessing-skin-server.com", &self.blessing_skin_url)
+                                    .padding(padding)
+                                    .on_input(|n| Message::Account(AccountMessage::BlessingSkinUrlInput(n))),
+                            ]
+                            .spacing(5)
+                        )),
                         widget::text("Username/Email:").size(12),
                         widget::text_input("Enter Username/Email...", &self.username)
                             .padding(padding)
-                            .on_input(|n| Message::Account(AccountMessage::AltUsernameInput(n))),
+                            .on_input(|n| if self.is_blessing_skin {
+                                Message::Account(AccountMessage::BlessingSkinUsernameInput(n))
+                            } else {
+                                Message::Account(AccountMessage::AltUsernameInput(n))
+                            }),
                         widget::text("Password:").size(12),
                         password_input,
                         widget::checkbox("Show Password", self.show_password)
                             .size(14)
                             .text_size(14)
-                            .on_toggle(|t| Message::Account(AccountMessage::AltShowPassword(t))),
+                            .on_toggle(|t| if self.is_blessing_skin {
+                                Message::Account(AccountMessage::BlessingSkinShowPassword(t))
+                            } else {
+                                Message::Account(AccountMessage::AltShowPassword(t))
+                            }),
                         widget::Column::new().push_maybe(self.otp.as_deref().map(|otp| {
                             widget::column![
                                 widget::text("OTP:").size(12),
@@ -113,22 +138,24 @@ impl MenuLoginAlternate {
                         })),
                         status,
                         widget::Space::with_height(5),
-                        widget::row![
-                            widget::text("Or").size(14),
-                            widget::button(widget::text("Create an account").size(14)).on_press(
-                                Message::CoreOpenLink(
-                                    if self.is_littleskin {
-                                        "https://littleskin.cn/auth/register"
-                                    } else {
-                                        "https://account.ely.by/register"
-                                    }
-                                    .to_owned()
+                        widget::Column::new().push_maybe((!self.is_blessing_skin).then_some(
+                            widget::row![
+                                widget::text("Or").size(14),
+                                widget::button(widget::text("Create an account").size(14)).on_press(
+                                    Message::CoreOpenLink(
+                                        if self.is_littleskin {
+                                            "https://littleskin.cn/auth/register"
+                                        } else {
+                                            "https://account.ely.by/register"
+                                        }
+                                        .to_owned()
+                                    )
                                 )
-                            )
-                        ]
-                        .align_y(iced::Alignment::Center)
-                        .spacing(5)
-                        .wrap(),
+                            ]
+                            .align_y(iced::Alignment::Center)
+                            .spacing(5)
+                            .wrap()
+                        )),
                         widget::vertical_space(),
                     ]
                     .align_x(iced::Alignment::Center)

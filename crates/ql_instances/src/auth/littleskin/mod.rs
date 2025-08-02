@@ -73,6 +73,7 @@ pub async fn login_new(email: String, password: String) -> Result<Account, Error
         refresh_token: account_response.accessToken,
         needs_refresh: false,
         account_type: super::AccountType::LittleSkin,
+        custom_auth_url: None,
     }))
 }
 
@@ -123,6 +124,7 @@ pub async fn login_refresh(email: String, refresh_token: String) -> Result<Accou
         refresh_token: account_response.accessToken,
         needs_refresh: false,
         account_type: super::AccountType::LittleSkin,
+        custom_auth_url: None,
     })
 }
 

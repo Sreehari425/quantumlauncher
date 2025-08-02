@@ -368,6 +368,10 @@ pub struct MenuLoginAlternate {
     pub is_littleskin: bool,
     pub oauth: Option<LittleSkinOauth>,
     pub device_code_error: Option<String>,
+
+    // Blessing Skin fields
+    pub is_blessing_skin: bool,
+    pub blessing_skin_url: String,
 }
 
 pub struct LittleSkinOauth {

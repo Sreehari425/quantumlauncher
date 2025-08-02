@@ -180,12 +180,23 @@ pub enum AccountMessage {
         is_from_welcome_screen: bool,
     },
 
+    OpenBlessingSkin {
+        is_from_welcome_screen: bool,
+    },
+
     AltUsernameInput(String),
     AltPasswordInput(String),
     AltOtpInput(String),
     AltShowPassword(bool),
     AltLogin,
     AltLoginResponse(Res<ql_instances::auth::elyby::Account>),
+
+    BlessingSkinUrlInput(String),
+    BlessingSkinUsernameInput(String),
+    BlessingSkinPasswordInput(String),
+    BlessingSkinShowPassword(bool),
+    BlessingSkinLogin,
+    BlessingSkinLoginResponse(Res<ql_instances::auth::blessing_skin::Account>),
 
     LittleSkinOauthButtonClicked,
     // LittleSkin Device Code Flow
