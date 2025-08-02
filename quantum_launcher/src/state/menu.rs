@@ -416,6 +416,9 @@ pub enum State {
         yes: Message,
         no: Message,
     },
+    BlessingSkinWarning {
+        is_from_welcome_screen: bool,
+    },
     GenericMessage(String),
 
     /// Progress bar when logging into accounts

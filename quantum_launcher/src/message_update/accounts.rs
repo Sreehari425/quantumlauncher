@@ -344,6 +344,18 @@ impl Launcher {
             AccountMessage::OpenBlessingSkin {
                 is_from_welcome_screen,
             } => {
+                self.state = State::BlessingSkinWarning {
+                    is_from_welcome_screen,
+                };
+            }
+
+            AccountMessage::BlessingSkinWarningGoBack => {
+                self.state = State::AccountLogin;
+            }
+
+            AccountMessage::BlessingSkinWarningProceed {
+                is_from_welcome_screen,
+            } => {
                 self.state = State::LoginAlternate(MenuLoginAlternate {
                     username: String::new(),
                     password: String::new(),

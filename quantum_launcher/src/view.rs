@@ -6,7 +6,7 @@ use crate::{
     menu_renderer::{
         button_with_icon, changelog::changelog_0_4_1, view_account_login, Element, DISCORD,
     },
-    state::{Launcher, Message, State},
+    state::{Launcher, Message, State, AccountMessage},
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
     DEBUG_LOG_BUTTON_HEIGHT,
 };
@@ -91,6 +91,26 @@ impl Launcher {
             ]
             .padding(10)
             .spacing(10)
+            .into(),
+            State::BlessingSkinWarning {
+                is_from_welcome_screen,
+            } => widget::column![
+                widget::text("⚠️ WARNING").size(24).color(iced::Color::from_rgb(1.0, 0.4, 0.0)),
+                widget::text("This feature is for advanced users only!").size(18),
+                widget::text("Blessing Skin authentication requires technical knowledge and proper server configuration.").size(14),
+                widget::text("Only proceed if you understand how to configure custom authentication servers.").size(14),
+                widget::row![
+                    widget::button("Go Back").on_press(Message::Account(AccountMessage::BlessingSkinWarningGoBack)),
+                    widget::horizontal_space(),
+                    widget::button("Proceed").on_press(Message::Account(AccountMessage::BlessingSkinWarningProceed {
+                        is_from_welcome_screen: *is_from_welcome_screen,
+                    })),
+                ]
+                .spacing(20)
+            ]
+            .padding(20)
+            .spacing(15)
+            .align_x(iced::Alignment::Center)
             .into(),
             State::Error { error } => widget::scrollable(
                 widget::column!(

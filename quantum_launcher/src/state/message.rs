@@ -184,6 +184,11 @@ pub enum AccountMessage {
         is_from_welcome_screen: bool,
     },
 
+    BlessingSkinWarningGoBack,
+    BlessingSkinWarningProceed {
+        is_from_welcome_screen: bool,
+    },
+
     AltUsernameInput(String),
     AltPasswordInput(String),
     AltOtpInput(String),

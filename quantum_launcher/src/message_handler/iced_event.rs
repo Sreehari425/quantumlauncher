@@ -298,6 +298,7 @@ impl Launcher {
             | State::ImportModpack(_)
             | State::CurseforgeManualDownload(_)
             | State::LoginAlternate(_)
+            | State::BlessingSkinWarning { .. }
             | State::Launch(_) => {}
         }
 
