@@ -99,13 +99,62 @@ pub static CLIENT: LazyLock<ql_reqwest::Client> = LazyLock::new(ql_reqwest::Clie
 pub async fn do_jobs<T, E>(
     results: impl Iterator<Item = impl std::future::Future<Output = Result<T, E>>>,
 ) -> Result<Vec<T>, E> {
+    #[cfg(target_os = "macos")]
+    const JOBS: usize = 32;
+    #[cfg(not(target_os = "macos"))]
     const JOBS: usize = 64;
+    do_jobs_with_limit(results, JOBS).await
+}
+
+/// Perform multiple async tasks concurrently,
+/// with an explicit limit on concurrent processes.
+///
+/// Useful for things like downloading lots of
+/// files at the same time.
+///
+/// This function allows you to set an explicit
+/// limit on how many jobs can run at the same time,
+/// so you can stay under any `ulimit -n` file descriptor
+/// limits.
+///
+/// # Calling
+///
+/// This takes in an `Iterator` of the `Future` of `async fn -> Result<T, E>`
+/// and returns `Result<Vec<T>, E>`, where if any one of the
+/// input functions failed the whole thing will fail.
+///
+/// Only if all the input functions succeed, it will return a `Vec`
+/// of the output data.
+///
+/// # Example
+/// ```no_run
+/// # use ql_core::do_jobs_with_limit;
+/// # async fn download_file(url: &str) -> Result<String, String> {
+/// #     Ok("Hello".to_owned())
+/// # }
+/// # async fn trying() -> Result<(), String> {
+/// #   let files: [&str; 1] = ["test"];
+/// do_jobs(files.iter().map(|url| {
+///     // Async function that returns Result<T, E>
+///     // No need to await
+///     download_file(url)
+/// }), 64).await?; // up to 64 jobs at the same time
+/// #   Ok(())
+/// # }
+/// ```
+///
+/// # Errors
+/// Returns whatever error the input function returns.
+pub async fn do_jobs_with_limit<T, E>(
+    results: impl Iterator<Item = impl std::future::Future<Output = Result<T, E>>>,
+    limit: usize,
+) -> Result<Vec<T>, E> {
     let mut tasks = futures::stream::FuturesUnordered::new();
     let mut outputs = Vec::new();
 
     for result in results {
         tasks.push(result);
-        if tasks.len() > JOBS {
+        if tasks.len() > limit {
             if let Some(task) = tasks.next().await {
                 outputs.push(task?);
             }

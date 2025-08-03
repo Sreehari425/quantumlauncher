@@ -1,6 +1,6 @@
 # Unreleased
 
-## Switch to BetterJSONs and LaunchWrapper
+# Switch to BetterJSONs and LaunchWrapper
 - the launcher now uses [BetterJSONs](https://github.com/MCPHackers/BetterJSONs/)
   for downloading instances, and [LaunchWrapper](https://github.com/MCPHackers/LaunchWrapper)
   for running old Minecraft versions
@@ -13,13 +13,13 @@
 - Added a new Teal color scheme!
 - Overhauled the Launcher Setings menu
 
-## Elyby integration
-- Minecraft 1.21.5 and below will now support skins from elyby by default (b)
-- You can also login with elyby accounts now!
+# Elyby/littleskin integration
+- You can now login with elyby and littleskin accounts!
+- Minecraft 1.21.5 and below support elyby and littleskin skins (b)
 
-## Instance Packaging
+# (Scrapped) Instance Packaging
 - You can now package entire QuantumLauncher instances into a single file
-- Import/Export support for Prism Launcher/MultiMC instances
+- (TODO) Import/Export support for Prism Launcher/MultiMC instances
 - (TODO) Migration from other launchers
 
 # UI
@@ -28,10 +28,21 @@
 - Cleaned instance edit menu
 - Made massive improvements to the log renderer
 - Added a licenses page
-- Added a `quantum_launcher launch <INSTANCE> <USERNAME>`
-  command-line feature to launch instances.
 
-## Fixes
+# CLI
+The following commands have been added:
+
+- `quantum_launcher create <NAME> <VERSION>`
+- `quantum_launcher launch <INSTANCE> <USERNAME>` (optionally add `-s` for account auth)
+- `quantum_launcher delete <INSTANCE>`
+
+# Platform
+Added (incomplete) support for:
+- FreeBSD
+- Windows 7
+- Linux ARM 32-bit
+
+# Fixes
 - Fixed Minecraft Indev and early Infdev being unplayable (b)
 - Fixed many crashes on Linux ARM and macOS (b)
 - Fixed broken colors in old versions on M-series Macs (b)

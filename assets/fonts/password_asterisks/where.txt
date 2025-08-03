@@ -3,3 +3,5 @@ The FontStruction “Password Asterisks”
 licensed under a Creative Commons Attribution Share Alike license
 (http://creativecommons.org/licenses/by-sa/3.0/).
 [ancestry]
+
+Can be found in `assets/licenses/CC_BY_SA_3_0.txt`

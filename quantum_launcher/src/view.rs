@@ -128,7 +128,7 @@ impl Launcher {
             // TODO: maybe remove window_size argument?
             // It's not needed right now, but could be in the future.
             State::ModsDownload(menu) => menu.view(&self.images, self.window_size, self.tick_timer),
-            State::LauncherSettings(menu) => menu.view(&self.config),
+            State::LauncherSettings(menu) => menu.view(&self.config, self.window_size),
             State::InstallOptifine(menu) => menu.view(),
             State::ServerCreate(menu) => menu.view(),
             State::InstallPaper => {

@@ -17,19 +17,6 @@ fn command() -> Command {
     .author("Mrmayman")
     .version(LAUNCHER_VERSION_NAME)
     .long_about(long_about())
-    .subcommand(
-        get_list_instance_subcommands("list-instances")
-            .short_flag('l')
-            .about("Lists all installed Minecraft instances")
-            .long_about("Lists all installed Minecraft instances. Can be paired with hyphen-separated-flags like name-loader, name-version, loader-name-version"),
-    )
-    .subcommand(
-        get_list_instance_subcommands("list-servers")
-            .about("Lists all installed Minecraft servers")
-            .long_about("Lists all installed Minecraft servers. Can be paired with hyphen-separated-flags like name-loader, name-version, loader-name-version")
-            .hide(true),
-    )
-    .subcommand(get_launch_subcommand())
     .subcommand(Command::new("create")
         .args([
             Arg::new("instance_name").help("The name of the instance to create").required(true),
@@ -42,6 +29,19 @@ fn command() -> Command {
                 .action(ArgAction::SetTrue),
         ])
         .about("Creates a new installation (instance) of Minecraft")
+    )
+    .subcommand(get_launch_subcommand())
+    .subcommand(
+        get_list_instance_subcommands("list-instances")
+            .short_flag('l')
+            .about("Lists all installed Minecraft instances")
+            .long_about("Lists all installed Minecraft instances. Can be paired with hyphen-separated-flags like name-loader, name-version, loader-name-version"),
+    )
+    .subcommand(
+        get_list_instance_subcommands("list-servers")
+            .about("Lists all installed Minecraft servers")
+            .long_about("Lists all installed Minecraft servers. Can be paired with hyphen-separated-flags like name-loader, name-version, loader-name-version")
+            .hide(true),
     )
     .subcommand(Command::new("delete")
         .args([
@@ -102,12 +102,11 @@ fn get_list_instance_subcommands(name: &'static str) -> Command {
 fn long_about() -> String {
     format!(
         r"
-QuantumLauncher: A simple, powerful Minecraft launcher by Mrmayman
+QuantumLauncher: A simple, powerful Minecraft launcher
 
 Website: https://mrmayman.github.io/quantumlauncher
 Github : {GITHUB}
-Discord: {DISCORD}
-"
+Discord: {DISCORD}"
     )
 }
 

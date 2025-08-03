@@ -448,6 +448,7 @@ pub enum LicenseTab {
     OpenFontLicense,
     PasswordAsterisks,
     ForgeInstallerApache,
+    Lwjgl,
 }
 
 impl LicenseTab {
@@ -456,6 +457,7 @@ impl LicenseTab {
         Self::ForgeInstallerApache,
         Self::OpenFontLicense,
         Self::PasswordAsterisks,
+        Self::Lwjgl,
     ];
 
     pub fn get_text(self) -> &'static str {
@@ -464,22 +466,23 @@ impl LicenseTab {
             LicenseTab::OpenFontLicense => {
                 concat!(
                     "For the Inter and JetBrains fonts used in QuantumLauncher:\n--------\n\n",
-                    include_str!("../../../assets/fonts/OFL.txt"),
+                    include_str!("../../../assets/licenses/OFL.txt"),
                 )
             }
             LicenseTab::PasswordAsterisks => {
                 concat!(
                     include_str!("../../../assets/fonts/password_asterisks/where.txt"),
                     "\n--------\n",
-                    include_str!("../../../assets/fonts/password_asterisks/CC_BY_SA_3_0.txt")
+                    include_str!("../../../assets/licenses/CC_BY_SA_3_0.txt")
                 )
             }
             LicenseTab::ForgeInstallerApache => {
                 concat!(
                     "For the Forge Installer script used in QuantumLauncher:\n--------\n\n",
-                    include_str!("../../../assets/installers/APACHE_2_LICENSE")
+                    include_str!("../../../assets/licenses/APACHE_2.txt")
                 )
             }
+            LicenseTab::Lwjgl => include_str!("../../../assets/licenses/LWJGL.txt"),
         }
     }
 }
@@ -491,6 +494,7 @@ impl std::fmt::Display for LicenseTab {
             LicenseTab::OpenFontLicense => "Fonts (Inter/Jetbrains Mono)",
             LicenseTab::PasswordAsterisks => "Password Asterisks Font",
             LicenseTab::ForgeInstallerApache => "Forge Installer",
+            LicenseTab::Lwjgl => "LWJGL",
         };
         write!(f, "{name}")
     }

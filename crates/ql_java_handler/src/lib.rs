@@ -3,24 +3,24 @@ use std::{
     sync::{mpsc::Sender, Mutex},
 };
 
-use third_party::install_third_party_java;
+use json::{
+    files::{JavaFile, JavaFileDownload, JavaFilesJson},
+    list::JavaListJson,
+};
 use thiserror::Error;
 
-use java_files::{JavaFile, JavaFilesJson};
-use java_list::JavaListJson;
 use ql_core::{
-    do_jobs, err, file_utils, info, pt, GenericProgress, IntoIoError, IoError, JsonDownloadError,
-    JsonError, RequestError, LAUNCHER_DIR,
+    do_jobs_with_limit, err, file_utils, info, pt, GenericProgress, IntoIoError, IoError,
+    JsonDownloadError, JsonError, RequestError, LAUNCHER_DIR,
 };
 
 mod compression;
-mod third_party;
 pub use compression::extract_tar_gz;
 
-mod java_files;
-mod java_list;
+mod alternate_java;
+mod json;
 
-pub use java_list::JavaVersion;
+pub use json::list::JavaVersion;
 use zip_extract::ZipExtractError;
 
 #[cfg(target_os = "windows")]
@@ -131,78 +131,22 @@ async fn install_java(
     version: JavaVersion,
     java_install_progress_sender: Option<&Sender<GenericProgress>>,
 ) -> Result<(), JavaInstallError> {
-    let install_dir = get_install_dir(version).await?;
+    #[cfg(target_os = "macos")]
+    const LIMIT: usize = 16;
+    #[cfg(not(target_os = "macos"))]
+    const LIMIT: usize = 64;
 
-    let lock_file = install_dir.join("install.lock");
-    tokio::fs::write(
-        &lock_file,
-        "If you see this, java hasn't finished installing.",
-    )
-    .await
-    .path(lock_file.clone())?;
+    let install_dir = get_install_dir(version).await?;
+    let lock_file = lock_init(&install_dir).await?;
 
     info!("Started installing {}", version.to_string());
     send_progress(java_install_progress_sender, GenericProgress::default());
 
-    // This is the main logic
-    install_java_files(version, java_install_progress_sender, install_dir).await?;
-
-    tokio::fs::remove_file(&lock_file)
-        .await
-        .path(lock_file.clone())?;
-    send_progress(java_install_progress_sender, GenericProgress::finished());
-    info!("Finished installing {}", version.to_string());
-
-    Ok(())
-}
-
-async fn install_java_files(
-    version: JavaVersion,
-    java_install_progress_sender: Option<&Sender<GenericProgress>>,
-    install_dir: PathBuf,
-) -> Result<(), JavaInstallError> {
     let java_list_json = JavaListJson::download().await?;
-
     let Some(java_files_url) = java_list_json.get_url(version) else {
-        // # Here is a table representing java platform support.
-        //
-        // In this, any entry with numbers filled in represents "official"
-        // mojang support, ie. they provide the java install files
-        // for these platforms.
-        //
-        // Any entry with __ represents a version not supported by
-        // mojang, but supported through *Amazon Corretto Java*
-        // which we provide an alternate installer for.
-        //
-        // Any entry with -- represents a version not supported by
-        // mojang, but installed from
-        // <https://github.com/hmsjy2017/get-jdk>
-        //
-        // Any entry with !! represents a version not supported at all.
-        //
-        // linux x64 :  8 16 17 21
-        // linux x32 :  8 !! !! !!  <- only java 8; MC 1.16.5 and below
-        // linux a64 : __ __ __ __  <- corretto
-        // linux a32 : -- !! !! !!  <- github
-        //
-        // macos x64 :  8 16 17 21
-        // macos a64 : __ __ 17 21  <- corretto
-        //
-        // windw x64 :  8 16 17 21
-        // windw x32 :  8 16 17 __  <- corretto
-        // windw a64 : !! !! 17 21  <- only java 17+; mostly fine,
-        //                             but some things like ModLoader might break
-        //
-        // -------------------
-        // windw means Windows
-        // x64   means x86_64 (64 bit)
-        // x32   means x86    (32 bit)
-        // a64   means aarch64 or ARM (64 bit)
-        // -------------------
-        //
-        // So... yeah, enjoy this mess (WTF: )
-
-        return install_third_party_java(version, java_install_progress_sender, &install_dir).await;
+        // Mojang doesn't officially provide java for som platforms.
+        // In that case, fetch from alternate sources.
+        return alternate_java::install(version, java_install_progress_sender, &install_dir).await;
     };
 
     let json: JavaFilesJson = file_utils::download_file_to_json(&java_files_url, false).await?;
@@ -210,19 +154,42 @@ async fn install_java_files(
     let num_files = json.files.len();
     let file_num = Mutex::new(0);
 
-    let results = json.files.iter().map(|(file_name, file)| {
-        java_install_fn(
-            java_install_progress_sender,
-            &file_num,
-            num_files,
-            file_name,
-            &install_dir,
-            file,
-        )
-    });
-    _ = do_jobs(results).await?;
+    _ = do_jobs_with_limit(
+        json.files.iter().map(|(file_name, file)| {
+            java_install_fn(
+                java_install_progress_sender,
+                &file_num,
+                num_files,
+                file_name,
+                &install_dir,
+                file,
+            )
+        }),
+        LIMIT,
+    )
+    .await?;
+
+    lock_finish(&lock_file).await?;
+    send_progress(java_install_progress_sender, GenericProgress::finished());
+    info!("Finished installing {}", version.to_string());
 
     Ok(())
+}
+
+async fn lock_finish(lock_file: &Path) -> Result<(), IoError> {
+    tokio::fs::remove_file(lock_file).await.path(lock_file)?;
+    Ok(())
+}
+
+async fn lock_init(install_dir: &Path) -> Result<PathBuf, IoError> {
+    let lock_file = install_dir.join("install.lock");
+    tokio::fs::write(
+        &lock_file,
+        "If you see this, java hasn't finished installing.",
+    )
+    .await
+    .path(lock_file.clone())?;
+    Ok(lock_file)
 }
 
 async fn get_install_dir(version: JavaVersion) -> Result<PathBuf, JavaInstallError> {
@@ -262,6 +229,9 @@ async fn java_install_fn(
             downloads,
             executable,
         } => {
+            if let Some(parent) = file_path.parent() {
+                tokio::fs::create_dir_all(parent).await.path(parent)?;
+            }
             let file_bytes = download_file(downloads).await?;
             tokio::fs::write(&file_path, &file_bytes)
                 .await
@@ -305,12 +275,8 @@ async fn java_install_fn(
     Ok(())
 }
 
-async fn download_file(
-    downloads: &java_files::JavaFileDownload,
-) -> Result<Vec<u8>, JavaInstallError> {
-    async fn normal_download(
-        downloads: &java_files::JavaFileDownload,
-    ) -> Result<Vec<u8>, JavaInstallError> {
+async fn download_file(downloads: &JavaFileDownload) -> Result<Vec<u8>, JavaInstallError> {
+    async fn normal_download(downloads: &JavaFileDownload) -> Result<Vec<u8>, JavaInstallError> {
         Ok(file_utils::download_file_to_bytes(&downloads.raw.url, false).await?)
     }
 

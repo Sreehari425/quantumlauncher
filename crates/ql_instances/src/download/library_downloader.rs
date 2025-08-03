@@ -253,7 +253,7 @@ impl GameDownloader {
                 continue;
             }
 
-            let url = if download.url == MACOS_ARM_LWJGL_294_1 {
+            let url = if cfg!(target_arch = "aarch64") && download.url == MACOS_ARM_LWJGL_294_1 {
                 info!("Patching LWJGL 2.9.4 20150209 natives for OSX ARM64 (classifiers)");
                 MACOS_ARM_LWJGL_294_2
             } else {

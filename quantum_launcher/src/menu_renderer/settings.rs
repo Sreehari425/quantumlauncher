@@ -29,7 +29,7 @@ const PADDING_LEFT: iced::Padding = iced::Padding {
 };
 
 impl MenuLauncherSettings {
-    pub fn view<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {
+    pub fn view<'a>(&'a self, config: &'a LauncherConfig, window_size: (f32, f32)) -> Element<'a> {
         widget::row![
             widget::container(
                 widget::column![
@@ -75,7 +75,7 @@ impl MenuLauncherSettings {
             .height(Length::Fill)
             .width(180)
             .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),
-            widget::scrollable(self.selected_tab.view(config, self))
+            widget::scrollable(self.selected_tab.view(config, self, window_size))
                 .width(Length::Fill)
                 .style(LauncherTheme::style_scrollable_flat_dark)
         ]
@@ -155,6 +155,7 @@ impl LauncherSettingsTab {
         &'a self,
         config: &'a crate::config::LauncherConfig,
         menu: &'a MenuLauncherSettings,
+        window_size: (f32, f32),
     ) -> Element<'a> {
         match self {
             LauncherSettingsTab::UserInterface => menu.view_options(config),
@@ -224,10 +225,17 @@ impl LauncherSettingsTab {
                 .wrap();
 
                 widget::column![
-                    widget::column![widget::text("About QuantumLauncher").size(20)]
-                        .padding(PADDING_NOT_BOTTOM),
+                    widget::column![
+                        widget::text("About QuantumLauncher").size(20),
+                        "Copyright 2025 Mrmayman & Contributors"
+                    ]
+                    .spacing(5)
+                    .padding(PADDING_NOT_BOTTOM),
                     menus,
                     links,
+                    widget::column!["Made with:", widget::iced(window_size.1 / 12.0),]
+                        .padding(10)
+                        .spacing(5),
                     widget::horizontal_rule(1),
                     widget::column![
                         widget::row![
