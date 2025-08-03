@@ -8,6 +8,4 @@ type InstanceName = str
 
 type InstanceVersion = str
 
-class InstanceInfo():
-    name: InstanceName
-    version: InstanceVersion
+
