@@ -4,7 +4,7 @@ import sys
 import shutil
 import signal
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
+from type import PID
 
 QL_BIN: str = "tests/qlbin.exe" if sys.platform == "Windows" else "tests/qlbin"
 OLD_QL_BIN: str = (
@@ -43,7 +43,7 @@ def run_parallel(commands: list[list[str]], max_workers: int | None = None) -> N
                 f.cancel()
             sys.exit(1)
 
-def kill_process(pid: int) -> None:
+def kill_process(pid: PID) -> None:
     try:
         os.kill(pid, signal.SIGTERM)  # SIGTERM is a termination signal
         print(f"    Process {pid} has been terminated.")
