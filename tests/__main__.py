@@ -4,10 +4,11 @@ import shutil
 import sys
 import time
 
+from tests.launch import IS_XWAYLAND, IS_X11
 from . import launch, procs, create
 
-IS_COMPATIBLE: bool = (os.getenv("XDG_SESSION_TYPE") != "x11"
-    or sys.platform.startswith("win"))
+IS_COMPATIBLE: bool = (IS_X11 or IS_XWAYLAND
+                       or sys.platform.startswith("win"))
 
 if not IS_COMPATIBLE:
     print("""Unsupported platform!
