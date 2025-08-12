@@ -161,6 +161,9 @@ impl Launcher {
                 .unwrap_or_else(|| OFFLINE_ACCOUNT_NAME.to_owned()),
         );
 
+        let window_width = config.window_width.unwrap_or(WINDOW_WIDTH);
+        let window_height = config.window_height.unwrap_or(WINDOW_HEIGHT);
+
         Ok(Self {
             client_list: None,
             server_list: None,
@@ -180,7 +183,7 @@ impl Launcher {
             server_processes: HashMap::new(),
             server_logs: HashMap::new(),
             mouse_pos: (0.0, 0.0),
-            window_size: (WINDOW_WIDTH, WINDOW_HEIGHT),
+            window_size: (window_width, window_height),
             accounts,
             accounts_dropdown,
             accounts_selected: Some(selected_account),
@@ -213,6 +216,9 @@ impl Launcher {
             })
             .unwrap_or((LauncherConfig::default(), LauncherTheme::default()));
 
+        let window_width = config.window_width.unwrap_or(WINDOW_WIDTH);
+        let window_height = config.window_height.unwrap_or(WINDOW_HEIGHT);
+
         Self {
             state: State::Error { error },
             is_log_open: false,
@@ -232,7 +238,7 @@ impl Launcher {
             server_logs: HashMap::new(),
             server_version_list_cache: None,
             mouse_pos: (0.0, 0.0),
-            window_size: (WINDOW_WIDTH, WINDOW_HEIGHT),
+            window_size: (window_width, window_height),
             accounts: HashMap::new(),
             accounts_dropdown: vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()],
             accounts_selected: Some(OFFLINE_ACCOUNT_NAME.to_owned()),

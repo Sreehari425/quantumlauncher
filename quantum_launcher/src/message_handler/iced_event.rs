@@ -42,6 +42,9 @@ impl Launcher {
                 }
                 iced::window::Event::Resized(size) => {
                     self.window_size = (size.width, size.height);
+                    // Save window size to config for persistence
+                    self.config.window_width = Some(size.width);
+                    self.config.window_height = Some(size.height);
                 }
                 iced::window::Event::FileHovered(_) => {
                     self.set_drag_and_drop_hover(true);

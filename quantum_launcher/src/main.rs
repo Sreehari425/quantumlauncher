@@ -190,8 +190,16 @@ fn main() {
             icon,
             exit_on_close_request: false,
             size: iced::Size {
-                width: WINDOW_WIDTH * scale,
-                height: WINDOW_HEIGHT * scale,
+                width: config
+                    .as_ref()
+                    .ok()
+                    .and_then(|c| c.window_width)
+                    .unwrap_or(WINDOW_WIDTH * scale),
+                height: config
+                    .as_ref()
+                    .ok()
+                    .and_then(|c| c.window_height)
+                    .unwrap_or(WINDOW_HEIGHT * scale),
             },
             min_size: Some(iced::Size {
                 width: 420.0,

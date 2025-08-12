@@ -90,6 +90,16 @@ pub struct LauncherConfig {
     /// Default: `true`
     // Since: v0.4.2
     pub antialiasing: Option<bool>,
+
+    /// The width of the window when the launcher was last closed.
+    /// Used to restore the window size between launches.
+    // Since: v0.4.3
+    pub window_width: Option<f32>,
+
+    /// The height of the window when the launcher was last closed.
+    /// Used to restore the window size between launches.
+    // Since: v0.4.3
+    pub window_height: Option<f32>,
 }
 
 impl Default for LauncherConfig {
@@ -106,6 +116,8 @@ impl Default for LauncherConfig {
             java_installs: Some(Vec::new()),
             antialiasing: Some(true),
             account_selected: None,
+            window_width: None,
+            window_height: None,
         }
     }
 }
