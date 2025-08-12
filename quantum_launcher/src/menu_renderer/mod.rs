@@ -47,12 +47,12 @@ pub fn back_button<'a>() -> widget::Button<'a, Message, LauncherTheme, iced::Ren
 }
 
 pub fn button_with_icon<'element>(
-    icon: Element<'element>,
+    icon: impl Into<Element<'element>>,
     text: &'element str,
     size: u16,
 ) -> widget::Button<'element, Message, LauncherTheme, iced::Renderer> {
     widget::button(
-        widget::row![icon, widget::text(text).size(size)]
+        widget::row![icon.into(), widget::text(text).size(size)]
             .align_y(iced::alignment::Vertical::Center)
             .spacing(10)
             .padding(3),
@@ -140,20 +140,21 @@ impl MenuCreateInstance {
                         {
                             let real_platform = if cfg!(target_arch = "x86") { "x86_64" } else { "aarch64" };
                             (cfg!(target_os = "linux") && (cfg!(target_arch = "x86") || cfg!(target_arch = "arm")))
-                            .then_some(
-                                widget::column![
+                                .then_some(
+                                    widget::column![
                                     // WARN: Linux i686 and arm32
                                     widget::text("Warning: On your platform (Linux 32 bit) only Minecraft 1.16.5 and below are supported.").size(20),
                                     widget::text!("If your computer isn't outdated, you might have wanted to download QuantumLauncher 64 bit ({real_platform})"),
                                 ]
-                            )})
-                    .spacing(10)
-                    .padding(10),
+                                )
+                        })
+                        .spacing(10)
+                        .padding(10),
                 )
-                .style(LauncherTheme::style_scrollable_flat_dark)
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .into()
+                    .style(LauncherTheme::style_scrollable_flat_dark)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .into()
             }
             MenuCreateInstance::DownloadingInstance(progress) => widget::column![
                 widget::text("Downloading Instance..").size(20),
@@ -204,9 +205,9 @@ impl MenuLauncherUpdate {
                 .spacing(5),
             )
         }
-        .padding(10)
-        .spacing(10)
-        .into()
+            .padding(10)
+            .spacing(10)
+            .into()
     }
 }
 
@@ -330,9 +331,9 @@ impl MenuCurseforgeManualDownload {
                 }),
             ].spacing(5)
         ]
-        .padding(10)
-        .spacing(10)
-        .into()
+            .padding(10)
+            .spacing(10)
+            .into()
     }
 }
 
@@ -530,13 +531,41 @@ pub fn view_confirm<'a>(
     yes: &'a Message,
     no: &'a Message,
 ) -> Element<'a> {
+    let t_white = |_: &LauncherTheme| widget::text::Style {
+        color: Some(iced::Color::WHITE),
+    };
+
     widget::column![
         widget::vertical_space(),
         widget::text!("Are you sure you want to {msg1}?").size(20),
         msg2,
         widget::row![
-            button_with_icon(icon_manager::tick(), "Yes", 16).on_press(yes.clone()),
-            button_with_icon(icon_manager::cross(), "No", 16).on_press(no.clone()),
+            widget::button(
+                widget::row![
+                    icon_manager::cross().style(t_white),
+                    widget::text("No").style(t_white)
+                ]
+                .align_y(iced::alignment::Vertical::Center)
+                .spacing(10)
+                .padding(3),
+            )
+            .on_press(no.clone())
+            .style(|_, status| {
+                style_button_color(status, (0x72, 0x22, 0x24), (0x9f, 0x2c, 0x2f))
+            }),
+            widget::button(
+                widget::row![
+                    icon_manager::tick().style(t_white),
+                    widget::text("Yes").style(t_white)
+                ]
+                .align_y(iced::alignment::Vertical::Center)
+                .spacing(10)
+                .padding(3),
+            )
+            .on_press(yes.clone())
+            .style(|_, status| {
+                style_button_color(status, (0x3f, 0x6a, 0x31), (0x46, 0x7e, 0x35))
+            }),
         ]
         .spacing(5)
         .wrap(),
@@ -547,4 +576,29 @@ pub fn view_confirm<'a>(
     .padding(10)
     .spacing(10)
     .into()
+}
+
+fn style_button_color(
+    status: widget::button::Status,
+    a: (u8, u8, u8),
+    h: (u8, u8, u8),
+) -> widget::button::Style {
+    let color = if let widget::button::Status::Hovered = status {
+        iced::Color::from_rgb8(h.0, h.1, h.2)
+    } else {
+        iced::Color::from_rgb8(a.0, a.1, a.2)
+    };
+
+    let border = iced::Border {
+        color,
+        width: 2.0,
+        radius: 8.0.into(),
+    };
+
+    widget::button::Style {
+        background: Some(iced::Background::Color(color)),
+        text_color: iced::Color::WHITE,
+        border,
+        shadow: Default::default(),
+    }
 }

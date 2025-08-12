@@ -1,10 +1,11 @@
+use std::path::Path;
 use std::str::FromStr;
 
+use iced::futures::executor::block_on;
 use iced::{
     widget::{image::Handle, scrollable::AbsoluteOffset},
     Task,
 };
-use iced::futures::executor::block_on;
 use ql_core::{err, info, InstanceSelection, IntoStringError, ModId, OptifineUniqueVersion};
 use ql_mod_manager::{
     loaders,
@@ -328,16 +329,16 @@ impl Launcher {
     pub fn update_install_optifine(&mut self, message: InstallOptifineMessage) -> Task<Message> {
         match message {
             InstallOptifineMessage::ScreenOpen => {
-                let optifine_unique_version =
-                    block_on(OptifineUniqueVersion::get(self.selected_instance.as_ref().unwrap()));
+                let optifine_unique_version = block_on(OptifineUniqueVersion::get(
+                    self.selected_instance.as_ref().unwrap(),
+                ));
 
                 if let Some(version @ OptifineUniqueVersion::B1_7_3) = optifine_unique_version {
-                    self.state = State::InstallOptifine(MenuInstallOptifine {
+                    self.state = State::InstallOptifine(MenuInstallOptifine::Installing {
                         optifine_install_progress: None,
                         java_install_progress: None,
                         is_java_being_installed: false,
                         is_b173_being_installed: true,
-                        optifine_unique_version: Some(version),
                     });
 
                     let selected_instance = self.selected_instance.clone().unwrap();
@@ -348,13 +349,20 @@ impl Launcher {
                     );
                 }
 
-                self.state = State::InstallOptifine(MenuInstallOptifine {
-                    optifine_install_progress: None,
-                    java_install_progress: None,
-                    is_java_being_installed: false,
-                    is_b173_being_installed: false,
+                self.state = State::InstallOptifine(MenuInstallOptifine::Choosing {
                     optifine_unique_version,
+                    delete_installer: true,
+                    drag_and_drop_hovered: false,
                 });
+            }
+            InstallOptifineMessage::DeleteInstallerToggle(t) => {
+                if let State::InstallOptifine(MenuInstallOptifine::Choosing {
+                    delete_installer,
+                    ..
+                }) = &mut self.state
+                {
+                    *delete_installer = t;
+                }
             }
             InstallOptifineMessage::SelectInstallerStart => {
                 if let Some(path) = rfd::FileDialog::new()
@@ -362,40 +370,7 @@ impl Launcher {
                     .set_title("Select OptiFine Installer")
                     .pick_file()
                 {
-                    let (p_sender, p_recv) = std::sync::mpsc::channel();
-                    let (j_sender, j_recv) = std::sync::mpsc::channel();
-
-                    let instance = self.selected_instance.as_ref().unwrap();
-                    let optifine_unique_version = block_on(OptifineUniqueVersion::get(instance));
-
-                    if let Some(OptifineUniqueVersion::B1_7_3) = optifine_unique_version {}
-
-                    self.state = State::InstallOptifine(MenuInstallOptifine {
-                        optifine_install_progress: Some(ProgressBar::with_recv(p_recv)),
-                        java_install_progress: Some(ProgressBar::with_recv(j_recv)),
-                        is_java_being_installed: false,
-                        is_b173_being_installed: false,
-                        optifine_unique_version,
-                    });
-
-                    let get_name = self
-                        .selected_instance
-                        .as_ref()
-                        .unwrap()
-                        .get_name()
-                        .to_owned();
-                    return Task::perform(
-                        // Note: OptiFine does not support servers
-                        // so it's safe to assume we've selected an instance.
-                        loaders::optifine::install(
-                            get_name,
-                            path,
-                            Some(p_sender),
-                            Some(j_sender),
-                            optifine_unique_version.is_some(),
-                        ),
-                        |n| Message::InstallOptifine(InstallOptifineMessage::End(n.strerr())),
-                    );
+                    return self.install_optifine_confirm(&path);
                 }
             }
             InstallOptifineMessage::End(result) => {
@@ -407,6 +382,66 @@ impl Launcher {
             }
         }
         Task::none()
+    }
+
+    pub fn install_optifine_confirm(&mut self, installer_path: &Path) -> Task<Message> {
+        let (p_sender, p_recv) = std::sync::mpsc::channel();
+        let (j_sender, j_recv) = std::sync::mpsc::channel();
+
+        let instance = self.selected_instance.as_ref().unwrap();
+        let optifine_unique_version = block_on(OptifineUniqueVersion::get(instance));
+
+        let delete_installer = if let State::InstallOptifine(MenuInstallOptifine::Choosing {
+            delete_installer,
+            ..
+        }) = &self.state
+        {
+            *delete_installer
+        } else {
+            false
+        };
+
+        self.state = State::InstallOptifine(MenuInstallOptifine::Installing {
+            optifine_install_progress: Some(ProgressBar::with_recv(p_recv)),
+            java_install_progress: Some(ProgressBar::with_recv(j_recv)),
+            is_java_being_installed: false,
+            is_b173_being_installed: false,
+        });
+
+        let get_name = self
+            .selected_instance
+            .as_ref()
+            .unwrap()
+            .get_name()
+            .to_owned();
+
+        let installer_path = installer_path.to_owned();
+
+        Task::perform(
+            // Note: OptiFine does not support servers
+            // so it's safe to assume we've selected an instance.
+            loaders::optifine::install(
+                get_name,
+                installer_path.clone(),
+                Some(p_sender),
+                Some(j_sender),
+                optifine_unique_version.is_some(),
+            ),
+            |n| Message::InstallOptifine(InstallOptifineMessage::End(n.strerr())),
+        )
+        .chain(Task::perform(
+            async move {
+                if delete_installer
+                    && installer_path.extension().is_some_and(|n| {
+                        let n = n.to_ascii_lowercase();
+                        n == "jar" || n == "zip"
+                    })
+                {
+                    _ = tokio::fs::remove_file(installer_path).await;
+                }
+            },
+            |_| Message::Nothing,
+        ))
     }
 
     pub fn update_launcher_settings(&mut self, msg: LauncherSettingsMessage) -> Task<Message> {

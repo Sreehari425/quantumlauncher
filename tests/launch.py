@@ -141,7 +141,7 @@ if sys.platform.startswith("win"):
 
 def _close_window_unix(result: bytes, pid: int) -> None:
     window_ids: list[str] = result.decode().strip().splitlines()
-    print(f"✅ Window found: {window_ids} for pid {pid}, killing")
+    print(f"✅ Window found! {"(by name)," if len(window_ids) == 0 else ""} killing")
     procs.kill_process(pid)
 
 
@@ -167,7 +167,6 @@ def _wait_for_window(pid: PID, timeout: int, name: str) -> bool:
             except subprocess.CalledProcessError:
                 try:
                     result = subprocess.check_output(["xdotool", "search", "--classname", "Minecraft*", "windowclose"])
-                    print("    (found some \"Minecraft\" window, not sure)")
                     _close_window_unix(result, pid)
                     return True
                 except subprocess.CalledProcessError:

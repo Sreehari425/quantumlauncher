@@ -1,4 +1,4 @@
-use iced::{widget, Alignment};
+use iced::{widget, Alignment, Length};
 use ql_core::InstanceSelection;
 
 use crate::{
@@ -13,31 +13,57 @@ use crate::{
 
 impl MenuInstallOptifine {
     pub fn view(&self) -> Element {
-        if let Some(optifine) = &self.optifine_install_progress {
-            widget::column!(
-                optifine.view(),
-                if self.is_java_being_installed {
-                    if let Some(java) = &self.java_install_progress {
-                        widget::column!(widget::container(java.view()))
-                    } else {
-                        widget::column!()
-                    }
-                } else {
-                    widget::column!()
-                },
+        match self {
+            MenuInstallOptifine::Installing {
+                is_b173_being_installed: true,
+                ..
+            } => widget::column![widget::text("Installing OptiFine for Beta 1.7.3...").size(20)]
+                .padding(10),
+            MenuInstallOptifine::Installing {
+                optifine_install_progress: Some(optifine),
+                java_install_progress,
+                is_java_being_installed,
+                ..
+            } => widget::column!(
+                widget::text("Installing OptiFine").size(20),
+                optifine.view()
             )
-        } else if self.is_b173_being_installed {
-            widget::column![widget::text("Installing OptiFine for Beta 1.7.3...").size(20)]
-        } else {
-            self.install_optifine_screen()
+            .push_maybe(
+                java_install_progress
+                    .as_ref()
+                    .filter(|_| *is_java_being_installed)
+                    .map(|java| java.view()),
+            )
+            .padding(10)
+            .spacing(10),
+            MenuInstallOptifine::Choosing {
+                delete_installer,
+                drag_and_drop_hovered,
+                ..
+            } => {
+                let menu = self
+                    .install_optifine_screen(*delete_installer)
+                    .padding(10)
+                    .spacing(10);
+                if *drag_and_drop_hovered {
+                    widget::column![widget::stack!(
+                        menu,
+                        widget::center(widget::button(
+                            widget::text("Drag and drop the OptiFine installer").size(20)
+                        ))
+                    )]
+                } else {
+                    menu
+                }
+            }
+            _ => self.install_optifine_screen(false).padding(10).spacing(10),
         }
-        .padding(10)
-        .spacing(10)
         .into()
     }
 
     pub fn install_optifine_screen<'a>(
         &self,
+        delete_installer: bool,
     ) -> widget::Column<'a, Message, LauncherTheme, iced::Renderer> {
         widget::column!(
             back_button().on_press(Message::ManageMods(
@@ -57,6 +83,11 @@ impl MenuInstallOptifine {
             widget::container(
                 widget::column!(
                     "Step 2: Select the installer file",
+                    widget::checkbox("Delete installer after use", delete_installer).on_toggle(
+                        |t| Message::InstallOptifine(
+                            InstallOptifineMessage::DeleteInstallerToggle(t)
+                        )
+                    ),
                     widget::button("Select File").on_press(Message::InstallOptifine(
                         InstallOptifineMessage::SelectInstallerStart
                     ))
@@ -65,6 +96,8 @@ impl MenuInstallOptifine {
                 .spacing(10)
             )
         )
+        .width(Length::Fill)
+        .height(Length::Fill)
     }
 }
 

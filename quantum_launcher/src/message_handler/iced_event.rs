@@ -1,18 +1,17 @@
-use std::ffi::OsStr;
-
-use iced::{
-    keyboard::{key::Named, Key},
-    Task,
-};
-use ql_core::{err, info, info_no_log, jarmod::JarMod, InstanceSelection};
-
+use super::{SIDEBAR_DRAG_LEEWAY, SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT};
 use crate::state::{
     Launcher, LauncherSettingsTab, MenuCreateInstance, MenuEditJarMods, MenuEditMods,
     MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuLaunch, MenuLauncherSettings,
     MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuServerCreate, Message, State,
 };
-
-use super::{SIDEBAR_DRAG_LEEWAY, SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT};
+use iced::{
+    keyboard::{key::Named, Key},
+    Task,
+};
+use ql_core::jarmod::JarMods;
+use ql_core::{err, info, info_no_log, jarmod::JarMod, InstanceSelection};
+use std::ffi::OsStr;
+use std::path::Path;
 
 impl Launcher {
     pub fn iced_event(&mut self, event: iced::Event, status: iced::event::Status) -> Task<Message> {
@@ -79,21 +78,19 @@ impl Launcher {
                         }) = &mut self.state
                         {
                             if extension == "jar" || extension == "zip" {
-                                let selected_instance = self.selected_instance.as_ref().unwrap();
-                                let new_path = selected_instance
-                                    .get_instance_path()
-                                    .join("jarmods")
-                                    .join(filename);
-                                if path != new_path {
-                                    if let Err(err) = std::fs::copy(&path, &new_path) {
-                                        err!("Couldn't drag and drop mod file in: {err}");
-                                    } else if !jarmods.mods.iter().any(|n| n.filename == filename) {
-                                        jarmods.mods.push(JarMod {
-                                            filename: filename.to_owned(),
-                                            enabled: true,
-                                        });
-                                    }
-                                }
+                                Self::load_jarmods_from_path(
+                                    self.selected_instance.as_ref().unwrap(),
+                                    &path,
+                                    filename,
+                                    jarmods,
+                                );
+                            }
+                        } else if let State::InstallOptifine(MenuInstallOptifine::Choosing {
+                            ..
+                        }) = &mut self.state
+                        {
+                            if extension == "jar" || extension == "zip" {
+                                return self.install_optifine_confirm(&path);
                             }
                         }
                     }
@@ -220,6 +217,28 @@ impl Launcher {
         Task::none()
     }
 
+    fn load_jarmods_from_path(
+        selected_instance: &InstanceSelection,
+        path: &Path,
+        filename: &str,
+        jarmods: &mut JarMods,
+    ) {
+        let new_path = selected_instance
+            .get_instance_path()
+            .join("jarmods")
+            .join(filename);
+        if path != new_path {
+            if let Err(err) = std::fs::copy(path, &new_path) {
+                err!("Couldn't drag and drop mod file in: {err}");
+            } else if !jarmods.mods.iter().any(|n| n.filename == filename) {
+                jarmods.mods.push(JarMod {
+                    filename: filename.to_owned(),
+                    enabled: true,
+                });
+            }
+        }
+    }
+
     fn key_escape_back(&mut self, affect: bool) -> (bool, Task<Message>) {
         let mut should_return_to_main_screen = false;
         let mut should_return_to_mods_screen = false;
@@ -266,11 +285,7 @@ impl Launcher {
                     return (true, self.update(no.clone()));
                 }
             }
-            State::InstallOptifine(MenuInstallOptifine {
-                optifine_install_progress: None,
-                java_install_progress: None,
-                ..
-            })
+            State::InstallOptifine(MenuInstallOptifine::Choosing { .. })
             | State::InstallFabric(MenuInstallFabric::Loaded { progress: None, .. })
             | State::EditJarMods(_) => {
                 should_return_to_mods_screen = true;

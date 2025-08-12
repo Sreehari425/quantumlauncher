@@ -9,32 +9,29 @@
 //! icon, a `widget::text` object is made with the icon font
 //! and the special character that corresponds to the icon.
 
-use crate::menu_renderer::Element;
+use crate::stylesheet::styles::LauncherTheme;
 use paste::paste;
 
 const ICON_FONT: iced::Font = iced::Font::with_name("QL_Icons_V1-2");
 
-pub fn icon<'a>(codepoint: char) -> Element<'a> {
-    iced::widget::text(codepoint).font(ICON_FONT).into()
+pub fn icon<'a>(codepoint: char) -> iced::widget::Text<'a, LauncherTheme> {
+    iced::widget::text(codepoint).font(ICON_FONT)
 }
 
-pub fn icon_with_size<'a>(codepoint: char, size: u16) -> Element<'a> {
-    iced::widget::text(codepoint)
-        .font(ICON_FONT)
-        .size(size)
-        .into()
+pub fn icon_with_size<'a>(codepoint: char, size: u16) -> iced::widget::Text<'a, LauncherTheme> {
+    iced::widget::text(codepoint).font(ICON_FONT).size(size)
 }
 
 macro_rules! icon_define {
     ($name:ident, $unicode:expr) => {
         paste! {
             #[allow(dead_code)]
-            pub fn $name<'a>() -> Element<'a> {
+            pub fn $name<'a>() -> iced::widget::Text<'a, LauncherTheme> {
                 icon($unicode)
             }
 
             #[allow(dead_code)]
-            pub fn [<$name _with_size>]<'a>(size: u16) -> Element<'a> {
+            pub fn [<$name _with_size>]<'a>(size: u16) -> iced::widget::Text<'a, LauncherTheme> {
                 icon_with_size($unicode, size)
             }
         }

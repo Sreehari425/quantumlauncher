@@ -49,10 +49,9 @@ def run_parallel(commands: List[List[str]], max_workers: int | None = None) -> N
             sys.exit(1)
 
 
-def kill_process(pid: int)-> None:
+def kill_process(pid: int) -> None:
     try:
         os.kill(pid, signal.SIGTERM)  # SIGTERM is a termination signal
-        print(f"    Process {pid} has been terminated.")
     except ProcessLookupError:
         print(f"    Process {pid} not found.")
     except PermissionError:

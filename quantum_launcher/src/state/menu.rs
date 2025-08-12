@@ -517,20 +517,32 @@ pub enum MenuServerCreate {
     },
 }
 
-pub struct MenuInstallOptifine {
-    pub optifine_install_progress: Option<ProgressBar<OptifineInstallProgress>>,
-    pub java_install_progress: Option<ProgressBar<GenericProgress>>,
-    pub is_java_being_installed: bool,
-    pub is_b173_being_installed: bool,
-    pub optifine_unique_version: Option<OptifineUniqueVersion>,
+pub enum MenuInstallOptifine {
+    Choosing {
+        optifine_unique_version: Option<OptifineUniqueVersion>,
+        delete_installer: bool,
+        drag_and_drop_hovered: bool,
+    },
+    Installing {
+        optifine_install_progress: Option<ProgressBar<OptifineInstallProgress>>,
+        java_install_progress: Option<ProgressBar<GenericProgress>>,
+        is_java_being_installed: bool,
+        is_b173_being_installed: bool,
+    },
 }
 
 impl MenuInstallOptifine {
     pub fn get_url(&self) -> &'static str {
         const OPTIFINE_DOWNLOADS: &str = "https://optifine.net/downloads";
 
-        self.optifine_unique_version
-            .as_ref()
-            .map_or(OPTIFINE_DOWNLOADS, |n| n.get_url().0)
+        if let Self::Choosing {
+            optifine_unique_version: Some(o),
+            ..
+        } = self
+        {
+            o.get_url().0
+        } else {
+            OPTIFINE_DOWNLOADS
+        }
     }
 }

@@ -135,6 +135,7 @@ pub enum InstallModsMessage {
 pub enum InstallOptifineMessage {
     ScreenOpen,
     SelectInstallerStart,
+    DeleteInstallerToggle(bool),
     End(Res),
 }
 

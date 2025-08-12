@@ -14,8 +14,8 @@ use ql_mod_manager::store::{ModConfig, ModIndex};
 use crate::state::{
     EditInstanceMessage, ImageState, InstallModsMessage, InstanceLog, LaunchTabId, Launcher,
     ManageJarModsMessage, MenuCreateInstance, MenuEditMods, MenuEditPresetsInner,
-    MenuExportInstance, MenuInstallFabric, MenuLaunch, MenuLoginMS, MenuModsDownload,
-    MenuServerCreate, Message, ModListEntry, ServerProcess, State,
+    MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuLaunch, MenuLoginMS,
+    MenuModsDownload, MenuServerCreate, Message, ModListEntry, ServerProcess, State,
 };
 
 impl Launcher {
@@ -109,16 +109,24 @@ impl Launcher {
                     }
                 }
             }
-            State::InstallOptifine(menu) => {
-                if let Some(optifine_progress) = &mut menu.optifine_install_progress {
-                    optifine_progress.tick();
-                }
-                if let Some(java_progress) = &mut menu.java_install_progress {
-                    if java_progress.tick() {
-                        menu.is_java_being_installed = true;
+            State::InstallOptifine(menu) => match menu {
+                MenuInstallOptifine::Choosing { .. } => {}
+                MenuInstallOptifine::Installing {
+                    optifine_install_progress,
+                    java_install_progress,
+                    is_java_being_installed,
+                    ..
+                } => {
+                    if let Some(optifine_progress) = optifine_install_progress {
+                        optifine_progress.tick();
+                    }
+                    if let Some(java_progress) = java_install_progress {
+                        if java_progress.tick() {
+                            *is_java_being_installed = true;
+                        }
                     }
                 }
-            }
+            },
             State::ServerCreate(menu) => menu.tick(),
             State::ManagePresets(menu) => {
                 if let Some(progress) = &mut menu.progress {

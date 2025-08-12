@@ -1,3 +1,4 @@
+use crate::state::MenuInstallOptifine;
 use crate::{
     get_entries,
     state::{
@@ -472,6 +473,12 @@ impl Launcher {
             menu.drag_and_drop_hovered = is_hovered;
         } else if let State::EditJarMods(menu) = &mut self.state {
             menu.drag_and_drop_hovered = is_hovered;
+        } else if let State::InstallOptifine(MenuInstallOptifine::Choosing {
+            drag_and_drop_hovered,
+            ..
+        }) = &mut self.state
+        {
+            *drag_and_drop_hovered = is_hovered;
         }
     }
 

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{file_utils, JsonDownloadError};
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct JsonVersions {
     promos: HashMap<String, String>,
 }
@@ -33,14 +33,14 @@ impl JsonVersions {
 }
 
 #[allow(non_snake_case)]
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct JsonInstallProfile {
     pub install: serde_json::Value,
     pub versionInfo: JsonDetails,
 }
 
 #[allow(non_snake_case)]
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct JsonDetails {
     pub id: String,
     pub time: String,
@@ -54,13 +54,13 @@ pub struct JsonDetails {
     pub minecraftArguments: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct JsonDetailsArguments {
     pub game: Vec<String>,
     pub jvm: Option<Vec<String>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct JsonDetailsLibrary {
     pub name: String,
     pub url: Option<String>,
@@ -68,12 +68,12 @@ pub struct JsonDetailsLibrary {
     pub clientreq: Option<bool>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct JsonDetailsDownloads {
     pub artifact: JsonDetailsArtifact,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct JsonDetailsArtifact {
     pub path: String,
     pub url: String,
