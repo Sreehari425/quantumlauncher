@@ -117,6 +117,13 @@ pub struct InstanceConfigJson {
     ///
     /// Ultimately if you want one less icon in your taskbar then go ahead.
     pub close_on_start: Option<bool>,
+    /// **Default: `false`**
+    ///
+    /// Whether this instance is pinned to the top of the instance list.
+    /// Pinned instances will appear above unpinned instances in the sidebar.
+    ///
+    /// Added in v0.4.3
+    pub pinned: Option<bool>,
 }
 
 impl InstanceConfigJson {

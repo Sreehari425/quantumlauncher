@@ -120,6 +120,7 @@ async fn write_config(
         // This won't do anything on servers. Who wants to lose their *only way*
         // to control the server instantly after starting it?
         close_on_start: None,
+        pinned: None,
     };
     let server_config_path = server_dir.join("config.json");
     tokio::fs::write(

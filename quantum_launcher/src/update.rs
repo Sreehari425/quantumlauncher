@@ -1,7 +1,7 @@
 use iced::{futures::executor::block_on, Task};
 use ql_core::{
     err, err_no_log, file_utils::DirItem, info, info_no_log, open_file_explorer, InstanceSelection,
-    IntoIoError, IntoStringError, LOGGER,
+    IntoIoError, IntoStringError, LOGGER, json::InstanceConfigJson,
 };
 use ql_instances::UpdateCheckInfo;
 use ql_mod_manager::loaders;
@@ -11,6 +11,32 @@ use crate::state::{
     LaunchTabId, Launcher, ManageModsMessage, MenuExportInstance, MenuLaunch, MenuLauncherUpdate,
     MenuLicense, MenuServerCreate, MenuWelcome, Message, ProgressBar, ServerProcess, State,
 };
+
+/// Helper function to sort instances by pinned status.
+/// Pinned instances appear first, then unpinned instances.
+fn sort_instances_by_pinned_status(instances: Vec<String>, is_server: bool) -> Vec<String> {
+    let mut instance_data: Vec<(String, bool)> = instances.into_iter().map(|name| {
+        let instance = InstanceSelection::new(&name, is_server);
+        let is_pinned = if let Ok(config) = block_on(InstanceConfigJson::read(&instance)) {
+            config.pinned.unwrap_or(false)
+        } else {
+            false
+        };
+        (name, is_pinned)
+    }).collect();
+    
+    // Sort by pinned status (true first), then by name
+    instance_data.sort_by(|(name_a, pinned_a), (name_b, pinned_b)| {
+        match (pinned_a, pinned_b) {
+            (true, false) => std::cmp::Ordering::Less,    // pinned comes first
+            (false, true) => std::cmp::Ordering::Greater, // unpinned comes after
+            _ => name_a.cmp(name_b),                       // same pinned status, sort by name
+        }
+    });
+    
+    // Return just the names (without stars, but in the correct order)
+    instance_data.into_iter().map(|(name, _)| name).collect()
+}
 
 impl Launcher {
     pub fn update(&mut self, message: Message) -> Task<Message> {
@@ -392,10 +418,11 @@ impl Launcher {
                 );
             }
             Message::CoreListLoaded(Ok((list, is_server))) => {
+                let sorted_list = sort_instances_by_pinned_status(list, is_server);
                 if is_server {
-                    self.server_list = Some(list);
+                    self.server_list = Some(sorted_list);
                 } else {
-                    self.client_list = Some(list);
+                    self.client_list = Some(sorted_list);
                 }
             }
             Message::CoreCopyText(txt) => {
@@ -449,6 +476,11 @@ impl Launcher {
             Message::LaunchScrollSidebar(total) => {
                 if let State::Launch(MenuLaunch { sidebar_height, .. }) = &mut self.state {
                     *sidebar_height = total;
+                }
+            }
+            Message::LaunchSearchInput(query) => {
+                if let State::Launch(MenuLaunch { search_query, .. }) = &mut self.state {
+                    *search_query = query;
                 }
             }
 

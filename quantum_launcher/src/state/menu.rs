@@ -55,6 +55,9 @@ pub struct MenuLaunch {
 
     pub is_viewing_server: bool,
     pub log_scroll: isize,
+    
+    /// Search query for filtering instances
+    pub search_query: String,
 }
 
 impl Default for MenuLaunch {
@@ -75,6 +78,7 @@ impl MenuLaunch {
             sidebar_dragging: false,
             is_viewing_server: false,
             log_scroll: 0,
+            search_query: String::new(),
         }
     }
 }

@@ -90,6 +90,27 @@ impl Launcher {
                 }
             }
             EditInstanceMessage::RenameApply => return self.rename_instance(),
+            EditInstanceMessage::PinToggle(pinned) => {
+                if let State::Launch(MenuLaunch {
+                    edit_instance: Some(menu),
+                    ..
+                }) = &mut self.state
+                {
+                    menu.config.pinned = Some(pinned);
+                    
+                    // Save the configuration to disk
+                    if let Some(instance) = &self.selected_instance {
+                        return Ok(Task::perform(
+                            {
+                                let config = menu.config.clone();
+                                let instance = instance.clone();
+                                async move { config.save(&instance).await.strerr() }
+                            }, 
+                            |n| Message::EditInstance(EditInstanceMessage::ConfigSaved(n))
+                        ));
+                    }
+                }
+            }
             EditInstanceMessage::ConfigSaved(res) => res?,
         }
         Ok(Task::none())

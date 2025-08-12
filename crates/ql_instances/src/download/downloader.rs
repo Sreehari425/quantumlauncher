@@ -321,6 +321,7 @@ impl GameDownloader {
             close_on_start: None,
             is_server: Some(false),
             omniarchive: None,
+            pinned: None,
         };
         let config_json = serde_json::to_string(&config_json).json_to()?;
 

@@ -70,6 +70,7 @@ pub enum EditInstanceMessage {
     GameArgShiftDown(usize),
     RenameEdit(String),
     RenameApply,
+    PinToggle(bool),
 }
 
 #[derive(Debug, Clone)]
@@ -251,6 +252,7 @@ pub enum Message {
     LaunchChangeTab(LaunchTabId),
 
     LaunchScrollSidebar(f32),
+    LaunchSearchInput(String),
 
     DeleteInstanceMenu,
     DeleteInstance,

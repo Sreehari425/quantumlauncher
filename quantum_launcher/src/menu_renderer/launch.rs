@@ -245,9 +245,32 @@ impl Launcher {
             && (!self.is_log_open || (self.mouse_pos.1 < self.window_size.1 / 2.0));
 
         let list = widget::row!(if let Some(instances) = list {
+            // Filter instances based on search query
+            let filtered_instances: Vec<&String> = if menu.search_query.is_empty() {
+                instances.iter().collect()
+            } else {
+                instances.iter()
+                    .filter(|name| {
+                        // Remove star prefix for search comparison
+                        let clean_name = name.strip_prefix("★ ").unwrap_or(name);
+                        clean_name.to_lowercase().contains(&menu.search_query.to_lowercase())
+                    })
+                    .collect()
+            };
+
             widget::column![
                 get_sidebar_new_button(menu),
-                widget::scrollable(widget::column(instances.iter().map(|name| {
+                // Add search bar
+                widget::container(
+                    widget::text_input("Search instances...", &menu.search_query)
+                        .on_input(Message::LaunchSearchInput)
+                        .size(14)
+                        .padding(8)
+                        .width(Length::Fill)
+                )
+                .padding(5)
+                .width(menu.sidebar_width),
+                widget::scrollable(widget::column(filtered_instances.iter().map(|&name| {
                     let playing_icon = if self.is_process_running(menu, name) {
                         Some(widget::row![
                             widget::horizontal_space(),
@@ -258,6 +281,7 @@ impl Launcher {
                         None
                     };
 
+                    // For now, display the name as-is. The pin logic will be handled in the sorting
                     let text = widget::text(name).size(16);
 
                     if selected_instance_s == Some(name) {
