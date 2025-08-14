@@ -15,7 +15,7 @@
 # This file is modified by Mrmayman, ApicalShark on 2024
 # This file is modified by Sreehari425 on 2025
 
-name: Release AppImages
+name: Build AppImages
 
 permissions:
   contents: write
