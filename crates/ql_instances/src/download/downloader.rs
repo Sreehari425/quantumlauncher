@@ -323,6 +323,9 @@ impl GameDownloader {
             omniarchive: None,
             global_settings: None,
             java_args_mode: None,
+            ssl_trust_store_type: None,
+            ssl_trust_store_path: None,
+            ssl_trust_store_password: None,
         };
         let config_json = serde_json::to_string(&config_json).json_to()?;
 

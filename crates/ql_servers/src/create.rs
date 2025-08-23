@@ -122,6 +122,9 @@ async fn write_config(
         close_on_start: None,
         global_settings: None,
         java_args_mode: None,
+        ssl_trust_store_type: None,
+        ssl_trust_store_path: None,
+        ssl_trust_store_password: None,
     };
     let server_config_path = server_dir.join("config.json");
     tokio::fs::write(

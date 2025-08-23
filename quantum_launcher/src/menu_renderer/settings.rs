@@ -205,6 +205,12 @@ impl LauncherSettingsTab {
                 .padding(10)
                 .spacing(10),
                 widget::horizontal_rule(1),
+                widget::column![Self::global_ssl_settings_dialog(
+                    config.global_settings.as_ref()
+                )]
+                .padding(10)
+                .spacing(10),
+                widget::horizontal_rule(1),
                 widget::column![
                     button_with_icon(icon_manager::delete(), "Clear Java installs", 16).on_press(
                         Message::LauncherSettings(LauncherSettingsMessage::ClearJavaInstalls)
@@ -313,5 +319,82 @@ Every new user motivates me to keep working on this :)"
                 .into()
             }
         }
+    }
+
+    fn global_ssl_settings_dialog(
+        global_settings: Option<&ql_core::json::GlobalSettings>,
+    ) -> iced::widget::Column<'static, Message, crate::stylesheet::styles::LauncherTheme> {
+        use ql_core::json::instance_config::SslTrustStoreType;
+
+        let current_ssl_type = global_settings
+            .and_then(|gs| gs.ssl_trust_store_type.as_ref())
+            .unwrap_or(&SslTrustStoreType::Default);
+
+        let ssl_type_buttons = SslTrustStoreType::ALL
+            .iter()
+            .filter(|ssl_type| ssl_type.is_supported())
+            .map(|ssl_type| {
+                if *ssl_type == *current_ssl_type {
+                    // Selected option - use container
+                    widget::container(
+                        widget::text(ssl_type.to_string()).size(14)
+                    )
+                    .padding(iced::Padding {
+                        top: 5.0,
+                        bottom: 5.0,
+                        right: 10.0,
+                        left: 10.0,
+                    })
+                    .into()
+                } else {
+                    // Unselected option - use button
+                    widget::button(
+                        widget::text(ssl_type.to_string()).size(14)
+                    )
+                    .on_press(Message::LauncherSettings(
+                        LauncherSettingsMessage::GlobalSslTrustStoreTypeChanged(*ssl_type),
+                    ))
+                    .into()
+                }
+            });
+
+        let mut column = widget::column![
+            widget::text("Global SSL Certificate Configuration").size(16),
+            widget::text("Configure certificate trust store for all instances").size(12),
+            widget::row(ssl_type_buttons).spacing(5).wrap(),
+        ]
+        .spacing(10);
+
+        // Show custom trust store inputs only if Custom is selected
+        if *current_ssl_type == SslTrustStoreType::Custom {
+            column = column.push(
+                widget::column![
+                    widget::text("Trust Store Path:").size(14),
+                    widget::text_input(
+                        "Path to trust store file (.jks, .p12, etc.)",
+                        global_settings
+                            .and_then(|gs| gs.ssl_trust_store_path.as_deref())
+                            .unwrap_or(""),
+                    )
+                    .on_input(|path| Message::LauncherSettings(
+                        LauncherSettingsMessage::GlobalSslTrustStorePathChanged(path)
+                    )),
+                    widget::text("Trust Store Password:").size(14),
+                    widget::text_input(
+                        "Password for trust store (optional)",
+                        global_settings
+                            .and_then(|gs| gs.ssl_trust_store_password.as_deref())
+                            .unwrap_or(""),
+                    )
+                    .on_input(|password| Message::LauncherSettings(
+                        LauncherSettingsMessage::GlobalSslTrustStorePasswordChanged(password)
+                    ))
+                    .secure(true),
+                ]
+                .spacing(5)
+            );
+        }
+
+        column
     }
 }

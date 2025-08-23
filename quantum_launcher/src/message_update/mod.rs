@@ -561,6 +561,43 @@ impl Launcher {
                     }
                 }
             }
+            LauncherSettingsMessage::GlobalSslTrustStoreTypeChanged(ssl_type) => {
+                if self.config.global_settings.is_none() {
+                    self.config.global_settings = Some(ql_core::json::GlobalSettings::default());
+                }
+                if let Some(global_settings) = &mut self.config.global_settings {
+                    global_settings.ssl_trust_store_type = Some(ssl_type);
+                    // Clear path and password if switching away from Custom
+                    if ssl_type != ql_core::json::instance_config::SslTrustStoreType::Custom {
+                        global_settings.ssl_trust_store_path = None;
+                        global_settings.ssl_trust_store_password = None;
+                    }
+                }
+            }
+            LauncherSettingsMessage::GlobalSslTrustStorePathChanged(path) => {
+                if self.config.global_settings.is_none() {
+                    self.config.global_settings = Some(ql_core::json::GlobalSettings::default());
+                }
+                if let Some(global_settings) = &mut self.config.global_settings {
+                    global_settings.ssl_trust_store_path = if path.trim().is_empty() {
+                        None
+                    } else {
+                        Some(path)
+                    };
+                }
+            }
+            LauncherSettingsMessage::GlobalSslTrustStorePasswordChanged(password) => {
+                if self.config.global_settings.is_none() {
+                    self.config.global_settings = Some(ql_core::json::GlobalSettings::default());
+                }
+                if let Some(global_settings) = &mut self.config.global_settings {
+                    global_settings.ssl_trust_store_password = if password.trim().is_empty() {
+                        None
+                    } else {
+                        Some(password)
+                    };
+                }
+            }
         }
         Task::none()
     }

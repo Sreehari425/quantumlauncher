@@ -265,6 +265,7 @@ impl GameLauncher {
                 format!("-Dio.netty.native.workdir={natives_path}"),
                 self.config_json.get_ram_argument(),
             ])
+            .chain(self.config_json.get_ssl_java_args(self.global_settings.as_ref())) // Add SSL certificate configuration
             .collect();
 
         // I've disabled these for now because they make the

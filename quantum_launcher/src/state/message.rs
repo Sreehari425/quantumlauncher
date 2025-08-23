@@ -73,6 +73,9 @@ pub enum EditInstanceMessage {
     RenameApply,
     WindowWidthChanged(String),
     WindowHeightChanged(String),
+    SslTrustStoreTypeChanged(ql_core::json::instance_config::SslTrustStoreType),
+    SslTrustStorePathChanged(String),
+    SslTrustStorePasswordChanged(String),
 }
 
 #[derive(Debug, Clone)]
@@ -228,6 +231,11 @@ pub enum LauncherSettingsMessage {
     GlobalJavaArgDelete(usize),
     GlobalJavaArgShiftUp(usize),
     GlobalJavaArgShiftDown(usize),
+    
+    // Global SSL settings
+    GlobalSslTrustStoreTypeChanged(ql_core::json::instance_config::SslTrustStoreType),
+    GlobalSslTrustStorePathChanged(String),
+    GlobalSslTrustStorePasswordChanged(String),
 }
 
 #[derive(Debug, Clone)]

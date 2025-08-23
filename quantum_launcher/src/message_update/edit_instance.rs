@@ -136,6 +136,41 @@ impl Launcher {
                     }
                 }
             }
+            EditInstanceMessage::SslTrustStoreTypeChanged(ssl_type) => {
+                if let State::Launch(MenuLaunch {
+                    edit_instance: Some(menu),
+                    ..
+                }) = &mut self.state
+                {
+                    menu.config.ssl_trust_store_type = Some(ssl_type);
+                }
+            }
+            EditInstanceMessage::SslTrustStorePathChanged(path) => {
+                if let State::Launch(MenuLaunch {
+                    edit_instance: Some(menu),
+                    ..
+                }) = &mut self.state
+                {
+                    menu.config.ssl_trust_store_path = if path.trim().is_empty() {
+                        None
+                    } else {
+                        Some(path)
+                    };
+                }
+            }
+            EditInstanceMessage::SslTrustStorePasswordChanged(password) => {
+                if let State::Launch(MenuLaunch {
+                    edit_instance: Some(menu),
+                    ..
+                }) = &mut self.state
+                {
+                    menu.config.ssl_trust_store_password = if password.trim().is_empty() {
+                        None
+                    } else {
+                        Some(password)
+                    };
+                }
+            }
         }
         Ok(Task::none())
     }

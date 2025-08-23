@@ -65,6 +65,10 @@ pub async fn run(
         Vec::new()
     };
     java_args.push(config_json.get_ram_argument());
+    
+    // Add SSL certificate configuration for servers
+    java_args.extend(config_json.get_ssl_java_args(None));
+    
     if config_json.mod_type == "Forge" {
         java_args.push("-Djava.net.preferIPv6Addresses=system".to_owned());
     }

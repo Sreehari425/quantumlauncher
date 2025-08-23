@@ -22,6 +22,24 @@ pub enum JavaArgsMode {
     Combine,
 }
 
+/// SSL Certificate trust store configuration
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum SslTrustStoreType {
+    /// Use default Java trust store
+    #[serde(rename = "default")]
+    #[default]
+    Default,
+    /// Use Windows Certificate Store (Windows only)
+    #[serde(rename = "windows-root")]
+    WindowsRoot,
+    /// Use system keychain (macOS only)  
+    #[serde(rename = "keychain")]
+    Keychain,
+    /// Use custom trust store file
+    #[serde(rename = "custom")]
+    Custom,
+}
+
 impl JavaArgsMode {
     pub const ALL: &[Self] = &[Self::Combine, Self::Disable, Self::Fallback];
 
@@ -36,12 +54,55 @@ impl JavaArgsMode {
     }
 }
 
+impl SslTrustStoreType {
+    pub const ALL: &[Self] = &[Self::Default, Self::WindowsRoot, Self::Keychain, Self::Custom];
+
+    pub fn get_description(self) -> &'static str {
+        match self {
+            SslTrustStoreType::Default => "Use default Java trust store",
+            SslTrustStoreType::WindowsRoot => "Use Windows Certificate Store (Windows only)",
+            SslTrustStoreType::Keychain => "Use system keychain (macOS only)",
+            SslTrustStoreType::Custom => "Use custom trust store file",
+        }
+    }
+
+    /// Returns true if this trust store type is supported on the current platform
+    pub fn is_supported(self) -> bool {
+        match self {
+            SslTrustStoreType::Default | SslTrustStoreType::Custom => true,
+            SslTrustStoreType::WindowsRoot => cfg!(target_os = "windows"),
+            SslTrustStoreType::Keychain => cfg!(target_os = "macos"),
+        }
+    }
+
+    /// Returns the Java system property value for this trust store type
+    pub fn get_java_property(self) -> Option<String> {
+        match self {
+            SslTrustStoreType::Default => None,
+            SslTrustStoreType::WindowsRoot => Some("Windows-ROOT".to_string()),
+            SslTrustStoreType::Keychain => Some("KeychainStore".to_string()),
+            SslTrustStoreType::Custom => None, // Requires custom path
+        }
+    }
+}
+
 impl std::fmt::Display for JavaArgsMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             JavaArgsMode::Fallback => write!(f, "Fallback"),
             JavaArgsMode::Disable => write!(f, "Disable"),
             JavaArgsMode::Combine => write!(f, "Combine (default)"),
+        }
+    }
+}
+
+impl std::fmt::Display for SslTrustStoreType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SslTrustStoreType::Default => write!(f, "Default"),
+            SslTrustStoreType::WindowsRoot => write!(f, "Windows Certificate Store"),
+            SslTrustStoreType::Keychain => write!(f, "macOS Keychain"),
+            SslTrustStoreType::Custom => write!(f, "Custom Trust Store"),
         }
     }
 }
@@ -170,6 +231,33 @@ pub struct InstanceConfigJson {
     /// - `Override`: Instance args completely replace global args (ignore global when instance has args)
     /// - `Combine`: Global args are prepended to instance args (both are used together)
     pub java_args_mode: Option<JavaArgsMode>,
+
+    /// **SSL Certificate Configuration**
+    ///
+    /// Configures which certificate trust store Java should use for SSL/TLS connections.
+    /// This helps fix SSL connection issues with Minecraft servers and mod downloads.
+    ///
+    /// **Default: `SslTrustStoreType::Default`**
+    ///
+    /// - `Default`: Use Java's default trust store
+    /// - `WindowsRoot`: Use Windows Certificate Store (fixes SSL issues on Windows)
+    /// - `Keychain`: Use macOS Keychain (for macOS users)
+    /// - `Custom`: Use a custom trust store file (requires `ssl_trust_store_path`)
+    pub ssl_trust_store_type: Option<SslTrustStoreType>,
+
+    /// **Custom SSL Trust Store Path**
+    ///
+    /// Path to a custom trust store file (JKS, PKCS12, etc.) when using
+    /// `ssl_trust_store_type = Custom`.
+    ///
+    /// Example: `/path/to/custom-truststore.jks`
+    pub ssl_trust_store_path: Option<String>,
+
+    /// **Custom SSL Trust Store Password**
+    ///
+    /// Password for the custom trust store file. Only used when
+    /// `ssl_trust_store_type = Custom`.
+    pub ssl_trust_store_password: Option<String>,
 }
 
 impl InstanceConfigJson {
@@ -290,6 +378,70 @@ impl InstanceConfigJson {
             }
         }
     }
+
+    /// Gets SSL-related Java arguments based on the configured trust store type.
+    ///
+    /// Returns a vector of Java system property arguments for SSL configuration.
+    /// These arguments help fix SSL connection issues with Minecraft servers and mod downloads.
+    /// Uses instance settings first, then falls back to global settings.
+    #[must_use]
+    pub fn get_ssl_java_args(&self, global_settings: Option<&GlobalSettings>) -> Vec<String> {
+        // Use instance settings first, then fall back to global settings
+        let trust_store_type = self
+            .ssl_trust_store_type
+            .or(global_settings.and_then(|g| g.ssl_trust_store_type))
+            .unwrap_or(SslTrustStoreType::Default);
+
+        let trust_store_path = self
+            .ssl_trust_store_path
+            .as_ref()
+            .or(global_settings.and_then(|g| g.ssl_trust_store_path.as_ref()));
+
+        let trust_store_password = self
+            .ssl_trust_store_password
+            .as_ref()
+            .or(global_settings.and_then(|g| g.ssl_trust_store_password.as_ref()));
+
+        let mut ssl_args = Vec::new();
+
+        match trust_store_type {
+            SslTrustStoreType::Default => {
+                // No additional arguments needed for default trust store
+            }
+            SslTrustStoreType::WindowsRoot => {
+                if cfg!(target_os = "windows") {
+                    ssl_args.push("-Djavax.net.ssl.trustStoreType=Windows-ROOT".to_string());
+                }
+            }
+            SslTrustStoreType::Keychain => {
+                if cfg!(target_os = "macos") {
+                    ssl_args.push("-Djavax.net.ssl.trustStoreType=KeychainStore".to_string());
+                }
+            }
+            SslTrustStoreType::Custom => {
+                if let Some(store_path) = trust_store_path {
+                    if !store_path.trim().is_empty() {
+                        ssl_args.push(format!("-Djavax.net.ssl.trustStore={}", store_path));
+                        
+                        if let Some(password) = trust_store_password {
+                            if !password.trim().is_empty() {
+                                ssl_args.push(format!("-Djavax.net.ssl.trustStorePassword={}", password));
+                            }
+                        }
+                        
+                        // Try to detect trust store type from file extension
+                        if store_path.to_lowercase().ends_with(".p12") || store_path.to_lowercase().ends_with(".pfx") {
+                            ssl_args.push("-Djavax.net.ssl.trustStoreType=PKCS12".to_string());
+                        } else if store_path.to_lowercase().ends_with(".jks") {
+                            ssl_args.push("-Djavax.net.ssl.trustStoreType=JKS".to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        ssl_args
+    }
 }
 
 /// Settings that can both be set on a per-instance basis
@@ -310,4 +462,20 @@ pub struct GlobalSettings {
     /// When set, this will launch Minecraft with a specific window height
     /// using the `--height` command line argument.
     pub window_height: Option<u32>,
+    
+    /// **SSL Certificate Configuration (Global Default)**
+    ///
+    /// Global default for SSL trust store type. Can be overridden per-instance.
+    /// This helps fix SSL connection issues with Minecraft servers and mod downloads.
+    pub ssl_trust_store_type: Option<SslTrustStoreType>,
+
+    /// **Global SSL Trust Store Path**
+    ///
+    /// Global default path to custom trust store file. Can be overridden per-instance.
+    pub ssl_trust_store_path: Option<String>,
+
+    /// **Global SSL Trust Store Password**
+    ///
+    /// Global default password for custom trust store. Can be overridden per-instance.
+    pub ssl_trust_store_password: Option<String>,
 }

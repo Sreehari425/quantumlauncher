@@ -5,7 +5,7 @@ use crate::{
     stylesheet::{color::Color, styles::LauncherTheme},
 };
 use iced::{widget, Length};
-use ql_core::json::{instance_config::JavaArgsMode, GlobalSettings};
+use ql_core::json::{instance_config::{JavaArgsMode, SslTrustStoreType}, GlobalSettings};
 use ql_core::InstanceSelection;
 
 use super::Element;
@@ -80,6 +80,12 @@ impl MenuEditInstance {
                         )))
                 )
                 .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::Dark))
+                .padding(10)
+                .width(Length::Fill),
+                widget::container(
+                    self.ssl_dialog()
+                )
+                .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark))
                 .padding(10)
                 .width(Length::Fill),
                 widget::container(
@@ -195,6 +201,76 @@ impl MenuEditInstance {
         ]
         .padding(10)
         .spacing(10)
+    }
+
+    fn ssl_dialog(&self) -> widget::Column<'_, Message, LauncherTheme> {
+        let current_ssl_type = self
+            .config
+            .ssl_trust_store_type
+            .unwrap_or(SslTrustStoreType::Default);
+
+        let ssl_type_buttons = SslTrustStoreType::ALL
+            .iter()
+            .filter(|ssl_type| ssl_type.is_supported())
+            .map(|ssl_type| {
+                if *ssl_type == current_ssl_type {
+                    // Selected option - use container
+                    widget::container(
+                        widget::text(ssl_type.to_string()).size(14)
+                    )
+                    .padding(iced::Padding {
+                        top: 5.0,
+                        bottom: 5.0,
+                        right: 10.0,
+                        left: 10.0,
+                    })
+                    .into()
+                } else {
+                    // Unselected option - use button
+                    widget::button(
+                        widget::text(ssl_type.to_string()).size(14)
+                    )
+                    .on_press(Message::EditInstance(
+                        EditInstanceMessage::SslTrustStoreTypeChanged(*ssl_type),
+                    ))
+                    .into()
+                }
+            });
+
+        let mut column = widget::column![
+            widget::text("SSL Certificate Configuration").size(16),
+            widget::text("Configure certificate trust store to fix SSL connection issues").size(12),
+            widget::row(ssl_type_buttons).spacing(5).wrap(),
+        ]
+        .spacing(10);
+
+        // Show custom trust store inputs only if Custom is selected
+        if current_ssl_type == SslTrustStoreType::Custom {
+            column = column.push(
+                widget::column![
+                    widget::text("Trust Store Path:").size(14),
+                    widget::text_input(
+                        "Path to trust store file (.jks, .p12, etc.)",
+                        &self.config.ssl_trust_store_path.as_deref().unwrap_or(""),
+                    )
+                    .on_input(|path| Message::EditInstance(
+                        EditInstanceMessage::SslTrustStorePathChanged(path)
+                    )),
+                    widget::text("Trust Store Password:").size(14),
+                    widget::text_input(
+                        "Password for trust store (optional)",
+                        &self.config.ssl_trust_store_password.as_deref().unwrap_or(""),
+                    )
+                    .on_input(|password| Message::EditInstance(
+                        EditInstanceMessage::SslTrustStorePasswordChanged(password)
+                    ))
+                    .secure(true),
+                ]
+                .spacing(5)
+            );
+        }
+
+        column
     }
 
     fn get_java_args_list<'a>(
