@@ -106,8 +106,10 @@ pub enum ManageModsMessage {
 pub enum ExportModsMessage {
     ExportAsPlainText,
     ExportAsMarkdown,
+    ExportAsHtml,
     CopyMarkdownToClipboard,
     CopyPlainTextToClipboard,
+    CopyHtmlToClipboard,
 }
 
 #[derive(Debug, Clone)]

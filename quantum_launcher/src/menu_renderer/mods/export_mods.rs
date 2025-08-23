@@ -107,6 +107,41 @@ impl MenuExportMods {
             ]
             .spacing(20)
             .align_y(iced::Alignment::Center)
+            .padding([10, 20]),
+            widget::row![
+                icon_manager::text_file_with_size(28),
+                widget::column![
+                    widget::text("Export as HTML")
+                        .size(17)
+                        .style(|theme: &LauncherTheme| { theme.style_text(Color::Light) }),
+                    widget::text("HTML file with styled layout and clickable links")
+                        .size(13)
+                        .style(|theme: &LauncherTheme| { theme.style_text(Color::SecondLight) }),
+                ]
+                .spacing(4),
+                widget::horizontal_space(),
+                widget::row![
+                    widget::button(widget::text("Copy").size(14))
+                        .padding([8, 16])
+                        .style(|theme: &LauncherTheme, status| {
+                            use crate::stylesheet::widgets::StyleButton;
+                            theme.style_button(status, StyleButton::Round)
+                        })
+                        .on_press(Message::ExportMods(
+                            ExportModsMessage::CopyHtmlToClipboard,
+                        )),
+                    widget::button(widget::text("Save").size(14))
+                        .padding([8, 16])
+                        .style(|theme: &LauncherTheme, status| {
+                            use crate::stylesheet::widgets::StyleButton;
+                            theme.style_button(status, StyleButton::FlatDark)
+                        })
+                        .on_press(Message::ExportMods(ExportModsMessage::ExportAsHtml))
+                ]
+                .spacing(12)
+            ]
+            .spacing(20)
+            .align_y(iced::Alignment::Center)
             .padding([10, 20])
         ]
         .spacing(5)
