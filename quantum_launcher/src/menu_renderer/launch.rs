@@ -11,7 +11,7 @@ use crate::{
     message_handler::SIDEBAR_DRAG_LEEWAY,
     state::{
         AccountMessage, CreateInstanceMessage, InstanceLog, LaunchTabId, Launcher,
-        LauncherSettingsMessage, ManageModsMessage, MenuLaunch, Message, State, NEW_ACCOUNT_NAME,
+        LauncherSettingsMessage, ManageModsMessage, MenuLaunch, MenuModsDownload, Message, State, NEW_ACCOUNT_NAME,
         OFFLINE_ACCOUNT_NAME,
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
@@ -645,17 +645,15 @@ impl Launcher {
             .width(Length::Fill)
             .height(Length::Fill)
         } else {
-            // Full-width scrollable markdown content
+            // Render markdown content without scrollbar
             widget::container(
-                widget::scrollable(
-                    widget::text(notes_text)
-                        .size(14)
-                        .width(Length::Fill)
+                MenuModsDownload::render_markdown(
+                    notes_text, 
+                    &self.images, 
+                    self.window_size
                 )
-                .width(Length::Fill)
-                .height(Length::Fill)
             )
-            .padding(15)
+            .padding(20)
             .width(Length::Fill)
             .height(Length::Fill)
         };
