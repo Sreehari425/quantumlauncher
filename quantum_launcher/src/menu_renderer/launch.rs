@@ -105,9 +105,19 @@ impl Launcher {
                         }
                     }
 
-                    // Add notes section
+                    // Add rendered markdown notes directly
                     if let Some(instance_name) = selected_instance_s {
-                        column = column.push(self.get_notes_section(instance_name));
+                        if let Some(notes_content) = self.instance_notes.get(instance_name) {
+                            if !notes_content.trim().is_empty() {
+                                column = column.push(
+                                    MenuModsDownload::render_markdown(
+                                        notes_content,
+                                        &self.images,
+                                        self.window_size
+                                    )
+                                );
+                            }
+                        }
                     }
 
                     column
@@ -579,96 +589,4 @@ fn get_footer_text(menu: &'_ MenuLaunch) -> Element<'_> {
 }
 
 impl Launcher {
-    fn get_notes_section(&'_ self, instance_name: &str) -> Element<'_> {
-        let notes_content = self.instance_notes.get(instance_name);
-        
-        let (notes_text, is_empty) = match notes_content {
-            Some(content) => (content.as_str(), content.trim().is_empty()),
-            None => ("", true),
-        };
-
-        if notes_content.is_none() {
-            // Load notes if not loaded yet
-            return widget::column![
-                widget::text("Instance Notes").size(16),
-                widget::button("Load Notes").on_press(Message::NotesLoad)
-            ]
-            .spacing(5)
-            .into();
-        }
-
-        let header = widget::row![
-            widget::text("Instance Notes").size(16),
-            widget::horizontal_space(),
-            widget::row![
-                widget::button("Reload").on_press(Message::NotesLoad),
-                widget::button("Open File").on_press(Message::CoreOpenPath(
-                    InstanceSelection::new(instance_name, false).get_instance_path().join("notes.md")
-                )),
-            ]
-            .spacing(5)
-        ]
-        .align_y(iced::Alignment::Center)
-        .spacing(10);
-
-        let text_style_mid = |theme: &LauncherTheme| theme.style_text(Color::Mid);
-
-        let content_widget = if is_empty {
-            widget::container(
-                widget::column![
-                    widget::text("No notes yet. Click 'Open File' to create notes.md")
-                        .size(16)
-                        .style(text_style_mid),
-                    widget::vertical_space(),
-                    widget::text("Use this space to track:")
-                        .size(14)
-                        .style(text_style_mid),
-                    widget::text("• Mod configurations and compatibility")
-                        .size(13)
-                        .style(text_style_mid),
-                    widget::text("• Performance notes and optimizations")
-                        .size(13)
-                        .style(text_style_mid),
-                    widget::text("• Server lists and connection details")
-                        .size(13)
-                        .style(text_style_mid),
-                    widget::text("• Todo items and future plans")
-                        .size(13)
-                        .style(text_style_mid),
-                    widget::text("• Installation history and backups")
-                        .size(13)
-                        .style(text_style_mid),
-                ]
-                .spacing(8)
-            )
-            .padding(20)
-            .width(Length::Fill)
-            .height(Length::Fill)
-        } else {
-            // Render markdown content without scrollbar
-            widget::container(
-                MenuModsDownload::render_markdown(
-                    notes_text, 
-                    &self.images, 
-                    self.window_size
-                )
-            )
-            .padding(20)
-            .width(Length::Fill)
-            .height(Length::Fill)
-        };
-
-        widget::column![
-            header,
-            widget::container(content_widget)
-                .style(|theme: &LauncherTheme| {
-                    theme.style_container_round_box(0.0, Color::ExtraDark, 8.0)
-                })
-                .width(Length::Fill)
-                .height(Length::Fill)  // Take up all remaining vertical space
-        ]
-        .spacing(10)
-        .width(Length::Fill)  // Take up all horizontal space
-        .into()
-    }
 }
