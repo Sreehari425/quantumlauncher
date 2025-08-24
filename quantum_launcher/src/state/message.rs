@@ -352,6 +352,7 @@ pub enum Message {
     NotesLoad,
     NotesLoaded(Res<String>),
     NotesEdit(String),
+    NotesEditorAction(iced::widget::text_editor::Action),
     NotesSave,
     NotesSaved(Res),
     NotesToggleEdit(bool),

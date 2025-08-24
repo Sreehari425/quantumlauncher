@@ -105,18 +105,57 @@ impl Launcher {
                         }
                     }
 
-                    // Add rendered markdown notes directly
+                    // Add live markdown editor
                     if let Some(instance_name) = selected_instance_s {
                         if let Some(notes_content) = self.instance_notes.get(instance_name) {
-                            if !notes_content.trim().is_empty() {
-                                column = column.push(
-                                    MenuModsDownload::render_markdown(
+                            let is_editing = self.instance_notes_editing.get(instance_name).copied().unwrap_or(false);
+                            
+                            if !notes_content.trim().is_empty() || is_editing {
+                                // Create header with edit toggle
+                                let header = widget::row![
+                                    widget::text("Instance Notes").size(16),
+                                    widget::horizontal_space(),
+                                    widget::button(if is_editing { "Preview" } else { "Edit" })
+                                        .on_press(Message::NotesToggleEdit(!is_editing)),
+                                    widget::button("Save").on_press(Message::NotesSave),
+                                ]
+                                .spacing(5)
+                                .align_y(iced::Alignment::Center);
+
+                                if is_editing {
+                                    // Use proper text_editor widget for multiline editing
+                                    if let Some(editor_content) = self.instance_notes_editor.get(instance_name) {
+                                        let editor = widget::text_editor(editor_content)
+                                            .on_action(Message::NotesEditorAction)
+                                            .font(iced::Font::MONOSPACE)
+                                            .size(14)
+                                            .height(Length::Fixed(300.0));
+
+                                        let editor_container = widget::container(editor)
+                                            .style(|theme: &LauncherTheme| {
+                                                theme.style_container_round_box(0.0, Color::Dark, 4.0)
+                                            })
+                                            .padding(10)
+                                            .width(Length::Fill);
+
+                                        column = column.push(header).push(editor_container);
+                                    }
+                                } else {
+                                    // Preview mode: just show rendered markdown
+                                    let rendered = MenuModsDownload::render_markdown(
                                         notes_content,
                                         &self.images,
                                         self.window_size
-                                    )
-                                );
+                                    );
+                                    
+                                    column = column.push(header).push(rendered);
+                                }
                             }
+                        } else {
+                            // No notes yet, show create button
+                            let create_button = widget::button("Create Notes")
+                                .on_press(Message::NotesToggleEdit(true));
+                            column = column.push(create_button);
                         }
                     }
 

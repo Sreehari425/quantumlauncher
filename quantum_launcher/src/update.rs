@@ -577,6 +577,18 @@ impl Launcher {
                     self.instance_notes.insert(instance.get_name().to_string(), content);
                 }
             }
+            Message::NotesEditorAction(action) => {
+                if let Some(instance) = &self.selected_instance {
+                    let instance_name = instance.get_name().to_string();
+                    
+                    if let Some(editor) = self.instance_notes_editor.get_mut(&instance_name) {
+                        editor.perform(action);
+                        // Update our notes content from the editor
+                        let content = editor.text();
+                        self.instance_notes.insert(instance_name, content);
+                    }
+                }
+            }
             Message::NotesSave => {
                 if let Some(instance) = &self.selected_instance {
                     if let Some(content) = self.instance_notes.get(instance.get_name()) {
@@ -592,11 +604,28 @@ impl Launcher {
             Message::NotesSaved(result) => {
                 if let Err(err) = result {
                     err_no_log!("Failed to save notes: {err}");
+                } else {
+                    // Auto-exit edit mode after successful save
+                    if let Some(instance) = &self.selected_instance {
+                        self.instance_notes_editing.insert(instance.get_name().to_string(), false);
+                    }
                 }
             }
             Message::NotesToggleEdit(editing) => {
                 if let Some(instance) = &self.selected_instance {
-                    self.instance_notes_editing.insert(instance.get_name().to_string(), editing);
+                    let instance_name = instance.get_name().to_string();
+                    self.instance_notes_editing.insert(instance_name.clone(), editing);
+                    
+                    // Initialize text_editor content when entering edit mode
+                    if editing {
+                        let content = self.instance_notes
+                            .get(&instance_name)
+                            .cloned()
+                            .unwrap_or_else(|| "# Instance Notes\n\nWrite your markdown notes here...".to_string());
+                        
+                        let editor_content = iced::widget::text_editor::Content::with_text(&content);
+                        self.instance_notes_editor.insert(instance_name, editor_content);
+                    }
                 }
             }
         }

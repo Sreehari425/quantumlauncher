@@ -67,6 +67,7 @@ pub struct Launcher {
     // Instance notes functionality
     pub instance_notes: HashMap<String, String>,
     pub instance_notes_editing: HashMap<String, bool>,
+    pub instance_notes_editor: HashMap<String, iced::widget::text_editor::Content>,
 
     pub window_size: (f32, f32),
     pub mouse_pos: (f32, f32),
@@ -193,6 +194,7 @@ impl Launcher {
             tick_timer: 0,
             instance_notes: HashMap::new(),
             instance_notes_editing: HashMap::new(),
+            instance_notes_editor: HashMap::new(),
         })
     }
 
@@ -249,6 +251,7 @@ impl Launcher {
             tick_timer: 0,
             instance_notes: HashMap::new(),
             instance_notes_editing: HashMap::new(),
+            instance_notes_editor: HashMap::new(),
         }
     }
 
