@@ -64,7 +64,7 @@ impl Launcher {
                 // Load notes for the selected instance
                 return Task::perform(
                     load_instance_notes(InstanceSelection::new(&name, is_server)),
-                    move |result| Message::NotesLoaded(result),
+                    Message::NotesLoaded,
                 );
             }
             Message::LaunchUsernameSet(username) => {
@@ -554,14 +554,6 @@ impl Launcher {
             }
 
             // Instance Notes
-            Message::NotesLoad => {
-                if let Some(instance) = &self.selected_instance {
-                    return Task::perform(
-                        load_instance_notes(instance.clone()),
-                        move |result| Message::NotesLoaded(result),
-                    );
-                }
-            }
             Message::NotesLoaded(result) => {
                 match result {
                     Ok(content) => {
@@ -570,11 +562,6 @@ impl Launcher {
                         }
                     }
                     Err(err) => err_no_log!("Failed to load notes: {err}"),
-                }
-            }
-            Message::NotesEdit(content) => {
-                if let Some(instance) = &self.selected_instance {
-                    self.instance_notes.insert(instance.get_name().to_string(), content);
                 }
             }
             Message::NotesEditorAction(action) => {

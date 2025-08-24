@@ -349,9 +349,7 @@ pub enum Message {
     LicenseAction(widget::text_editor::Action),
 
     // Instance Notes
-    NotesLoad,
     NotesLoaded(Res<String>),
-    NotesEdit(String),
     NotesEditorAction(iced::widget::text_editor::Action),
     NotesSave,
     NotesSaved(Res),
