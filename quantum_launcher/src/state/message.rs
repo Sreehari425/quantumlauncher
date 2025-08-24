@@ -347,4 +347,12 @@ pub enum Message {
     LicenseOpen,
     LicenseChangeTab(LicenseTab),
     LicenseAction(widget::text_editor::Action),
+
+    // Instance Notes
+    NotesLoad,
+    NotesLoaded(Res<String>),
+    NotesEdit(String),
+    NotesSave,
+    NotesSaved(Res),
+    NotesToggleEdit(bool),
 }

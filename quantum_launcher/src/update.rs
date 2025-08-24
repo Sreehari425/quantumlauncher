@@ -61,6 +61,11 @@ impl Launcher {
             Message::LaunchInstanceSelected { name, is_server } => {
                 self.selected_instance = Some(InstanceSelection::new(&name, is_server));
                 self.load_edit_instance(None);
+                // Load notes for the selected instance
+                return Task::perform(
+                    load_instance_notes(InstanceSelection::new(&name, is_server)),
+                    move |result| Message::NotesLoaded(result),
+                );
             }
             Message::LaunchUsernameSet(username) => {
                 self.config.username = username;
@@ -547,6 +552,53 @@ impl Launcher {
                     }
                 }
             }
+
+            // Instance Notes
+            Message::NotesLoad => {
+                if let Some(instance) = &self.selected_instance {
+                    return Task::perform(
+                        load_instance_notes(instance.clone()),
+                        move |result| Message::NotesLoaded(result),
+                    );
+                }
+            }
+            Message::NotesLoaded(result) => {
+                match result {
+                    Ok(content) => {
+                        if let Some(instance) = &self.selected_instance {
+                            self.instance_notes.insert(instance.get_name().to_string(), content);
+                        }
+                    }
+                    Err(err) => err_no_log!("Failed to load notes: {err}"),
+                }
+            }
+            Message::NotesEdit(content) => {
+                if let Some(instance) = &self.selected_instance {
+                    self.instance_notes.insert(instance.get_name().to_string(), content);
+                }
+            }
+            Message::NotesSave => {
+                if let Some(instance) = &self.selected_instance {
+                    if let Some(content) = self.instance_notes.get(instance.get_name()) {
+                        let instance_clone = instance.clone();
+                        let content_clone = content.clone();
+                        return Task::perform(
+                            save_instance_notes(instance_clone, content_clone),
+                            Message::NotesSaved,
+                        );
+                    }
+                }
+            }
+            Message::NotesSaved(result) => {
+                if let Err(err) = result {
+                    err_no_log!("Failed to save notes: {err}");
+                }
+            }
+            Message::NotesToggleEdit(editing) => {
+                if let Some(instance) = &self.selected_instance {
+                    self.instance_notes_editing.insert(instance.get_name().to_string(), editing);
+                }
+            }
         }
         Task::none()
     }
@@ -590,4 +642,30 @@ impl Launcher {
             &self.client_logs
         }
     }
+}
+
+async fn load_instance_notes(instance: InstanceSelection) -> Result<String, String> {
+    let notes_path = instance.get_instance_path().join("notes.md");
+    
+    if notes_path.exists() {
+        tokio::fs::read_to_string(&notes_path)
+            .await
+            .path(notes_path)
+            .strerr()
+    } else {
+        // Return default content for new notes
+        Ok(format!(
+            "# {} Notes\n\nAdd your notes here! This supports markdown formatting.\n\n## TODO\n- [ ] Task 1\n- [ ] Task 2\n\n## Notes\n- Note 1\n- Note 2\n",
+            instance.get_name()
+        ))
+    }
+}
+
+async fn save_instance_notes(instance: InstanceSelection, content: String) -> Result<(), String> {
+    let notes_path = instance.get_instance_path().join("notes.md");
+    
+    tokio::fs::write(&notes_path, content)
+        .await
+        .path(notes_path)
+        .strerr()
 }

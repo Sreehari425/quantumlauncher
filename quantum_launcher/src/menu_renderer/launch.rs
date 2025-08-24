@@ -91,27 +91,30 @@ impl Launcher {
                     .spacing(5)
                     .wrap();
 
-                    widget::column!(
+                    let mut column = widget::column!(
                         main_buttons,
                         widget::horizontal_rule(10)
                             .style(|n: &LauncherTheme| n.style_rule(Color::SecondDark, 2)),
                         // widget::button("Export Instance").on_press(Message::ExportInstanceOpen),
-                    )
-                    .push_maybe({
-                        if let Some(selected_instance) = selected_instance_s {
-                            if self.is_process_running(menu, selected_instance) {
-                                Some(widget::text("Running...").size(20))
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
+                    );
+
+                    // Add running status if applicable
+                    if let Some(selected_instance) = selected_instance_s {
+                        if self.is_process_running(menu, selected_instance) {
+                            column = column.push(widget::text("Running...").size(20));
                         }
-                    })
-                    .push(last_parts)
-                    .padding(10)
-                    .spacing(5)
-                    .into()
+                    }
+
+                    // Add notes section
+                    if let Some(instance_name) = selected_instance_s {
+                        column = column.push(self.get_notes_section(instance_name));
+                    }
+
+                    column
+                        .push(last_parts)
+                        .padding(10)
+                        .spacing(5)
+                        .into()
                 }
                 LaunchTabId::Log => self
                     .get_log_pane(
@@ -573,4 +576,101 @@ fn get_footer_text(menu: &'_ MenuLaunch) -> Element<'_> {
     }
     .spacing(10)
     .into()
+}
+
+impl Launcher {
+    fn get_notes_section(&'_ self, instance_name: &str) -> Element<'_> {
+        let notes_content = self.instance_notes.get(instance_name);
+        
+        let (notes_text, is_empty) = match notes_content {
+            Some(content) => (content.as_str(), content.trim().is_empty()),
+            None => ("", true),
+        };
+
+        if notes_content.is_none() {
+            // Load notes if not loaded yet
+            return widget::column![
+                widget::text("Instance Notes").size(16),
+                widget::button("Load Notes").on_press(Message::NotesLoad)
+            ]
+            .spacing(5)
+            .into();
+        }
+
+        let header = widget::row![
+            widget::text("Instance Notes").size(16),
+            widget::horizontal_space(),
+            widget::row![
+                widget::button("Reload").on_press(Message::NotesLoad),
+                widget::button("Open File").on_press(Message::CoreOpenPath(
+                    InstanceSelection::new(instance_name, false).get_instance_path().join("notes.md")
+                )),
+            ]
+            .spacing(5)
+        ]
+        .align_y(iced::Alignment::Center)
+        .spacing(10);
+
+        let text_style_mid = |theme: &LauncherTheme| theme.style_text(Color::Mid);
+
+        let content_widget = if is_empty {
+            widget::container(
+                widget::column![
+                    widget::text("No notes yet. Click 'Open File' to create notes.md")
+                        .size(16)
+                        .style(text_style_mid),
+                    widget::vertical_space(),
+                    widget::text("Use this space to track:")
+                        .size(14)
+                        .style(text_style_mid),
+                    widget::text("• Mod configurations and compatibility")
+                        .size(13)
+                        .style(text_style_mid),
+                    widget::text("• Performance notes and optimizations")
+                        .size(13)
+                        .style(text_style_mid),
+                    widget::text("• Server lists and connection details")
+                        .size(13)
+                        .style(text_style_mid),
+                    widget::text("• Todo items and future plans")
+                        .size(13)
+                        .style(text_style_mid),
+                    widget::text("• Installation history and backups")
+                        .size(13)
+                        .style(text_style_mid),
+                ]
+                .spacing(8)
+            )
+            .padding(20)
+            .width(Length::Fill)
+            .height(Length::Fill)
+        } else {
+            // Full-width scrollable markdown content
+            widget::container(
+                widget::scrollable(
+                    widget::text(notes_text)
+                        .size(14)
+                        .width(Length::Fill)
+                )
+                .width(Length::Fill)
+                .height(Length::Fill)
+            )
+            .padding(15)
+            .width(Length::Fill)
+            .height(Length::Fill)
+        };
+
+        widget::column![
+            header,
+            widget::container(content_widget)
+                .style(|theme: &LauncherTheme| {
+                    theme.style_container_round_box(0.0, Color::ExtraDark, 8.0)
+                })
+                .width(Length::Fill)
+                .height(Length::Fill)  // Take up all remaining vertical space
+        ]
+        .spacing(10)
+        .width(Length::Fill)  // Take up all horizontal space
+        .into()
+    }
 }

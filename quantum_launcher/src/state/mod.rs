@@ -64,6 +64,10 @@ pub struct Launcher {
     pub client_logs: HashMap<String, InstanceLog>,
     pub server_logs: HashMap<String, InstanceLog>,
 
+    // Instance notes functionality
+    pub instance_notes: HashMap<String, String>,
+    pub instance_notes_editing: HashMap<String, bool>,
+
     pub window_size: (f32, f32),
     pub mouse_pos: (f32, f32),
     pub keys_pressed: HashSet<iced::keyboard::Key>,
@@ -187,6 +191,8 @@ impl Launcher {
             accounts_selected: Some(selected_account),
             keys_pressed: HashSet::new(),
             tick_timer: 0,
+            instance_notes: HashMap::new(),
+            instance_notes_editing: HashMap::new(),
         })
     }
 
@@ -241,6 +247,8 @@ impl Launcher {
             accounts_selected: Some(OFFLINE_ACCOUNT_NAME.to_owned()),
             keys_pressed: HashSet::new(),
             tick_timer: 0,
+            instance_notes: HashMap::new(),
+            instance_notes_editing: HashMap::new(),
         }
     }
 
