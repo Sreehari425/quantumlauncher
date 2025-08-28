@@ -4,7 +4,6 @@ use std::{error::Error, fmt, sync::{Arc, Mutex}};
 use ql_core::ListEntry;
 use crate::config::{LauncherConfig, ConfigAccount};
 use tokio::sync::mpsc;
-use chrono;
 
 pub type AppResult<T> = Result<T, Box<dyn Error>>;
 
@@ -15,15 +14,18 @@ pub enum AccountType {
     LittleSkin,
 }
 
-impl AccountType {
-    pub fn to_string(&self) -> String {
-        match self {
-            AccountType::Microsoft => "Microsoft".to_string(),
-            AccountType::ElyBy => "ElyBy".to_string(),
-            AccountType::LittleSkin => "LittleSkin".to_string(),
-        }
+impl fmt::Display for AccountType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = match self {
+            AccountType::Microsoft => "Microsoft",
+            AccountType::ElyBy => "ElyBy",
+            AccountType::LittleSkin => "LittleSkin",
+        };
+        write!(f, "{}", name)
     }
+}
 
+impl AccountType {
     pub fn all() -> Vec<AccountType> {
         vec![AccountType::Microsoft, AccountType::ElyBy, AccountType::LittleSkin]
     }
@@ -42,6 +44,7 @@ pub enum TabId {
 pub struct Account {
     pub username: String,
     pub account_type: String,
+    #[allow(dead_code)] // May be used in future for account management
     pub uuid: String,
     pub is_logged_in: bool,
 }
@@ -152,6 +155,7 @@ impl App {
         self.should_quit
     }
 
+    #[allow(dead_code)] // May be used for graceful shutdown
     pub fn quit(&mut self) {
         self.should_quit = true;
     }
@@ -323,6 +327,7 @@ impl App {
         self.is_loading = false;
     }
 
+    #[allow(dead_code)] // May be used for automated instance creation
     pub fn set_instance_name(&mut self, name: String) {
         self.new_instance_name = name;
     }
@@ -465,7 +470,7 @@ impl App {
                 
                 self.accounts.push(new_account);
                 self.status_message = format!("Added new {} account: {}", 
-                    self.new_account_type.to_string(), self.new_account_username);
+                    self.new_account_type, self.new_account_username);
                 
                 // Reset and exit add account mode
                 self.toggle_add_account_mode();
@@ -497,7 +502,7 @@ impl App {
                 
                 self.accounts.push(new_account);
                 self.status_message = format!("Added new {} account: {}", 
-                    self.new_account_type.to_string(), self.new_account_username);
+                    self.new_account_type, self.new_account_username);
                 
                 self.toggle_add_account_mode();
             }
