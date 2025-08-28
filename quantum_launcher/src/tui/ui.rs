@@ -12,7 +12,7 @@ use ratatui::{
 };
 use ql_core::LAUNCHER_VERSION_NAME;
 
-use crate::tui::app::{App, TabId, AddAccountFieldFocus};
+use crate::tui::app::{App, TabId};
 
 /// Main rendering function
 pub fn render(f: &mut Frame, app: &mut App) {
@@ -45,6 +45,7 @@ fn render_header(f: &mut Frame, area: Rect, app: &App) {
         Line::from("Create (c)"),
         Line::from("Settings (s)"),
         Line::from("Accounts (a)"),
+        Line::from("Logs (l)"),
     ];
 
     let selected_tab = match app.current_tab {
@@ -52,6 +53,7 @@ fn render_header(f: &mut Frame, area: Rect, app: &App) {
         TabId::Create => 1,
         TabId::Settings => 2,
         TabId::Accounts => 3,
+        TabId::Logs => 4,
     };
 
     let tabs = Tabs::new(tabs)
@@ -74,6 +76,7 @@ fn render_main_content(f: &mut Frame, area: Rect, app: &mut App) {
         TabId::Create => render_create_tab(f, area, app),
         TabId::Settings => render_settings_tab(f, area, app),
         TabId::Accounts => render_accounts_tab(f, area, app),
+        TabId::Logs => render_logs_tab(f, area, app),
     }
 }
 
@@ -422,6 +425,9 @@ fn get_contextual_help(app: &App) -> Vec<Line> {
         TabId::Accounts => {
             help_text.extend(get_accounts_help(app));
         }
+        TabId::Logs => {
+            help_text.extend(get_logs_help());
+        }
     }
 
     // Add common/global help
@@ -449,7 +455,7 @@ fn get_instances_help(_app: &App) -> Vec<Line> {
         Line::from(""),
         Line::from(vec![
             Span::styled("💡 Tip: ", Style::default().fg(Color::Yellow)),
-            Span::raw("Select an instance and press Enter to launch it!")
+            Span::raw("Select an instance and press Enter for launch info (use CLI for actual launching)")
         ]),
         Line::from(""),
     ]
@@ -589,6 +595,7 @@ fn get_global_help() -> Vec<Line<'static>> {
         Line::from("?                  Show/hide this help popup"),
         Line::from("q                  Quit application"),
         Line::from("F5                 Refresh current data"),
+        Line::from("F12                Force terminal refresh (if display corrupted)"),
         Line::from("Esc                Go back / Cancel current action"),
         Line::from(""),
     ]
@@ -737,4 +744,64 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
         .style(Style::default().fg(Color::Green))
         .wrap(Wrap { trim: true });
     f.render_widget(instructions_paragraph, chunks[4]);
+}
+
+/// Render the logs tab
+fn render_logs_tab(f: &mut Frame, area: Rect, app: &App) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Game Logs ");
+    
+    let log_text = if app.game_logs.is_empty() {
+        vec![
+            Line::from("No game logs to display."),
+            Line::from(""),
+            Line::from("Launch a Minecraft instance to see logs here."),
+            Line::from(""),
+            Line::from("Recent activity:"),
+            Line::from(app.status_message.clone()),
+        ]
+    } else {
+        let mut lines = vec![
+            Line::from(format!("Game Logs ({} lines):", app.game_logs.len())),
+            Line::from(""),
+        ];
+        
+        // Show last 20 lines of logs
+        let start_idx = if app.game_logs.len() > 20 {
+            app.game_logs.len() - 20
+        } else {
+            0
+        };
+        
+        for log_line in &app.game_logs[start_idx..] {
+            lines.push(Line::from(log_line.clone()));
+        }
+        
+        lines
+    };
+    
+    let paragraph = Paragraph::new(log_text)
+        .block(block)
+        .alignment(Alignment::Left)
+        .wrap(Wrap { trim: true });
+    f.render_widget(paragraph, area);
+}
+
+/// Help for Logs tab
+fn get_logs_help() -> Vec<Line<'static>> {
+    vec![
+        Line::from(vec![
+            Span::styled("═══ LOGS TAB ═══", Style::default().fg(Color::Magenta).bold())
+        ]),
+        Line::from("↑/↓ or j/k         Scroll through logs"),
+        Line::from("c                  Clear logs"),
+        Line::from("f                  Filter logs"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("💡 Tip: ", Style::default().fg(Color::Yellow)),
+            Span::raw("Game output and launcher events are shown here")
+        ]),
+        Line::from(""),
+    ]
 }

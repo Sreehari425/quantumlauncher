@@ -23,6 +23,9 @@ pub enum AuthEvent {
     LoginSuccess { account_data: ql_instances::auth::AccountData },
     LoginNeedsOtp,
     LoginError { error: String },
+    LaunchStarted(String),
+    LaunchSuccess(String, std::sync::Arc<std::sync::Mutex<tokio::process::Child>>),
+    LaunchError(String, String),
 }
 
 /// Entry point for the TUI mode
@@ -67,6 +70,13 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
         // Check for auth events first
         if let Ok(auth_event) = auth_rx.try_recv() {
             app.handle_auth_event(auth_event);
+        }
+
+        // Check if we need a forced refresh (e.g., after launch events that might spam stdout)
+        if app.check_and_reset_forced_refresh() {
+            // Clear terminal and force a complete redraw to overwrite any stdout spam
+            terminal.clear()?;
+            terminal.draw(|f| ui::render(f, &mut app))?;
         }
 
         // Handle keyboard input with timeout to allow auth events to be processed
@@ -135,12 +145,23 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                         KeyCode::Left | KeyCode::Char('h') => app.previous_tab(),
                         KeyCode::Right if app.current_tab != app::TabId::Accounts => app.next_tab(),
                         KeyCode::Enter => app.select_item(),
+                        // Logs tab specific keys - must come before general 'c' key
+                        KeyCode::Char('c') if app.current_tab == app::TabId::Logs => {
+                            app.clear_logs();
+                            app.status_message = "✅ Logs cleared".to_string();
+                        }
                         KeyCode::Char('c') => app.set_tab(app::TabId::Create),
                         KeyCode::Char('i') => app.set_tab(app::TabId::Instances),
                         KeyCode::Char('s') => app.set_tab(app::TabId::Settings),
                         KeyCode::Char('a') => app.set_tab(app::TabId::Accounts),
+                        KeyCode::Char('l') if app.current_tab != app::TabId::Accounts => app.set_tab(app::TabId::Logs),
                         KeyCode::Char('?') => app.toggle_help_popup(),
                         KeyCode::F(5) => app.refresh(),
+                        KeyCode::F(12) => {
+                            // Force terminal clear and redraw (useful if debug output disrupted display)
+                            terminal.clear()?;
+                            app.status_message = "🔄 Terminal refreshed".to_string();
+                        }
                         KeyCode::Char('n') if app.current_tab == app::TabId::Create => {
                             app.is_editing_name = !app.is_editing_name;
                             if app.is_editing_name {

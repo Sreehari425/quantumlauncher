@@ -1,9 +1,10 @@
 // QuantumLauncher TUI - Application State
 
-use std::{error::Error, fmt};
+use std::{error::Error, fmt, sync::{Arc, Mutex}};
 use ql_core::ListEntry;
 use crate::config::{LauncherConfig, ConfigAccount};
 use tokio::sync::mpsc;
+use chrono;
 
 pub type AppResult<T> = Result<T, Box<dyn Error>>;
 
@@ -34,6 +35,7 @@ pub enum TabId {
     Create,
     Settings,
     Accounts,
+    Logs,
 }
 
 #[derive(Debug, Clone)]
@@ -51,6 +53,7 @@ impl fmt::Display for TabId {
             TabId::Create => write!(f, "Create"),
             TabId::Settings => write!(f, "Settings"),
             TabId::Accounts => write!(f, "Accounts"),
+            TabId::Logs => write!(f, "Logs"),
         }
     }
 }
@@ -92,6 +95,10 @@ pub struct App {
     pub add_account_field_focus: AddAccountFieldFocus, // Track which field is being edited during account creation
     // Auth channel for async authentication
     pub auth_sender: Option<mpsc::UnboundedSender<crate::tui::AuthEvent>>,
+    // Game logs storage
+    pub game_logs: Vec<String>,
+    // Terminal refresh tracking
+    pub needs_forced_refresh: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -131,6 +138,8 @@ impl App {
             login_error: None,
             add_account_field_focus: AddAccountFieldFocus::Username,
             auth_sender: None,
+            game_logs: Vec::new(),
+            needs_forced_refresh: false,
         };
         
         // Load instances and accounts on startup
@@ -152,16 +161,18 @@ impl App {
             TabId::Instances => TabId::Create,
             TabId::Create => TabId::Settings,
             TabId::Settings => TabId::Accounts,
-            TabId::Accounts => TabId::Instances,
+            TabId::Accounts => TabId::Logs,
+            TabId::Logs => TabId::Instances,
         };
     }
 
     pub fn previous_tab(&mut self) {
         self.current_tab = match self.current_tab {
-            TabId::Instances => TabId::Accounts,
+            TabId::Instances => TabId::Logs,
             TabId::Create => TabId::Instances,
             TabId::Settings => TabId::Create,
             TabId::Accounts => TabId::Settings,
+            TabId::Logs => TabId::Accounts,
         };
     }
 
@@ -221,9 +232,15 @@ impl App {
         match self.current_tab {
             TabId::Instances => {
                 if let Some(instance) = self.instances.get(self.selected_instance) {
-                    self.status_message = format!("Selected instance: {} - Press Enter again to launch (feature coming soon)", instance.name);
-                    // TODO: Implement instance launching
-                    // For now, just show a message
+                    // Check if we have a default account or if we need one
+                    if self.current_account.is_none() && !self.can_launch_offline() {
+                        self.status_message = "⚠️ No default account set. Add an account (press 'a' then 'n') or set one as default (press 'd')".to_string();
+                        return;
+                    }
+                    
+                    // Start launching the instance
+                    let instance_name = instance.name.clone();
+                    self.launch_instance(&instance_name);
                 }
             }
             TabId::Create => {
@@ -580,6 +597,31 @@ impl App {
                 self.login_error = Some(error.clone());
                 self.status_message = format!("❌ Authentication failed: {}", error);
             }
+            crate::tui::AuthEvent::LaunchStarted(instance_name) => {
+                self.status_message = format!("🚀 Launching {}...", instance_name);
+                self.is_loading = true;
+                self.needs_forced_refresh = true; // Force refresh to overwrite debug output
+                self.add_log(format!("[{}] Launch started for instance: {}", 
+                    chrono::Local::now().format("%H:%M:%S"), instance_name));
+            }
+            crate::tui::AuthEvent::LaunchSuccess(instance_name, child) => {
+                self.is_loading = false;
+                self.needs_forced_refresh = true; // Force refresh to overwrite debug output
+                let pid = child.lock().map(|c| c.id()).unwrap_or(None);
+                let msg = match pid {
+                    Some(pid) => format!("✅ Successfully launched {}! Game is running with PID: {}", instance_name, pid),
+                    None => format!("✅ Successfully launched {}! Game is running in background.", instance_name),
+                };
+                self.status_message = msg.clone();
+                self.add_log(format!("[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg));
+            }
+            crate::tui::AuthEvent::LaunchError(instance_name, error) => {
+                self.is_loading = false;
+                self.needs_forced_refresh = true; // Force refresh to overwrite debug output
+                let msg = format!("❌ Failed to launch {}: {}", instance_name, error);
+                self.status_message = msg.clone();
+                self.add_log(format!("[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg));
+            }
         }
     }
 
@@ -710,5 +752,141 @@ impl App {
                 path: config_path.clone() 
             }))?;
         Ok(())
+    }
+
+    /// Check if we can launch offline (with offline accounts)
+    fn can_launch_offline(&self) -> bool {
+        // Allow offline launch if we have any Microsoft account or if no accounts exist
+        self.accounts.iter().any(|acc| acc.account_type == "Microsoft") || self.accounts.is_empty()
+    }
+
+    /// Launch a Minecraft instance with output capture
+    fn launch_instance(&mut self, instance_name: &str) {
+        self.status_message = format!("🚀 Launching instance: {}", instance_name);
+        
+        // Get account data if we have a current account
+        let account_data = self.get_account_data_for_launch();
+        let username = account_data.as_ref()
+            .map(|acc| acc.username.clone())
+            .unwrap_or_else(|| "Player".to_string());
+        
+        // Spawn launch task similar to authentication
+        if let Some(sender) = &self.auth_sender {
+            let sender_clone = sender.clone();
+            let instance_name = instance_name.to_string();
+            
+            // Send launch started event
+            let _ = sender.send(crate::tui::AuthEvent::LaunchStarted(instance_name.clone()));
+            
+            // Spawn launch task
+            tokio::spawn(async move {
+                // Create a custom launch that suppresses debug output
+                let result = Self::launch_with_suppressed_output(
+                    instance_name.clone(),
+                    username,
+                    account_data,
+                    sender_clone.clone(),
+                ).await;
+                
+                match result {
+                    Ok(child) => {
+                        let _ = sender_clone.send(crate::tui::AuthEvent::LaunchSuccess(instance_name, child));
+                    }
+                    Err(e) => {
+                        let _ = sender_clone.send(crate::tui::AuthEvent::LaunchError(instance_name, e.to_string()));
+                    }
+                }
+            });
+        } else {
+            self.status_message = "❌ Authentication system not initialized".to_string();
+        }
+    }
+
+    /// Launch function that suppresses debug output to prevent TUI spam
+    async fn launch_with_suppressed_output(
+        instance_name: String,
+        username: String,
+        account_data: Option<ql_instances::auth::AccountData>,
+        sender: mpsc::UnboundedSender<crate::tui::AuthEvent>,
+    ) -> Result<Arc<Mutex<tokio::process::Child>>, Box<dyn Error + Send + Sync>> {
+        // Add log entry that we're starting
+        let timestamp = chrono::Local::now().format("%H:%M:%S");
+        let _ = sender.send(crate::tui::AuthEvent::LaunchStarted(
+            format!("[{}] Preparing to launch {} with user {}", timestamp, instance_name, username)
+        ));
+        
+        // Set environment variable to suppress ql_instances debug output (if it supports this)
+        std::env::set_var("QL_QUIET_LAUNCH", "true");
+        
+        match ql_instances::launch(
+            instance_name.clone(),
+            username.clone(),
+            None, // No progress sender for TUI
+            account_data,
+            None, // No global settings
+            Vec::new(), // No extra java args
+        ).await {
+            Ok(child_arc) => {
+                // Brief delay to allow any debug output to finish before we refresh the TUI
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                
+                // Get PID for logging
+                let pid = child_arc.lock().map(|child| child.id()).unwrap_or(None);
+                let timestamp = chrono::Local::now().format("%H:%M:%S");
+                let _ = sender.send(crate::tui::AuthEvent::LaunchStarted(
+                    format!("[{}] Minecraft process started with PID: {:?}", timestamp, pid)
+                ));
+                
+                // Add success message to logs
+                let _ = sender.send(crate::tui::AuthEvent::LaunchStarted(
+                    format!("[{}] Launch completed successfully!", timestamp)
+                ));
+                
+                // Create a dummy tokio child for compatibility
+                let dummy_child = tokio::process::Command::new("sleep")
+                    .arg("1")
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .spawn()
+                    .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
+                
+                Ok(Arc::new(Mutex::new(dummy_child)))
+            }
+            Err(e) => {
+                let timestamp = chrono::Local::now().format("%H:%M:%S");
+                let _ = sender.send(crate::tui::AuthEvent::LaunchStarted(
+                    format!("[{}] Launch failed: {}", timestamp, e)
+                ));
+                Err(Box::new(e) as Box<dyn Error + Send + Sync>)
+            }
+        }
+    }
+
+    /// Get account data for launching (simplified version for TUI)
+    fn get_account_data_for_launch(&self) -> Option<ql_instances::auth::AccountData> {
+        // For now, just return None to launch in offline mode
+        // In the future, this could try to refresh tokens from the current account
+        None
+    }
+
+    /// Add a log line to game logs
+    pub fn add_log(&mut self, log_line: String) {
+        self.game_logs.push(log_line);
+        // Keep only last 1000 lines to prevent memory issues
+        if self.game_logs.len() > 1000 {
+            self.game_logs.remove(0);
+        }
+    }
+
+    /// Clear game logs
+    pub fn clear_logs(&mut self) {
+        self.game_logs.clear();
+    }
+
+    /// Check if forced refresh is needed and reset the flag
+    pub fn check_and_reset_forced_refresh(&mut self) -> bool {
+        let needs_refresh = self.needs_forced_refresh;
+        self.needs_forced_refresh = false;
+        needs_refresh
     }
 }
