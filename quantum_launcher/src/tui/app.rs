@@ -543,7 +543,14 @@ impl App {
             crate::tui::AuthEvent::LoginSuccess { account_data } => {
                 self.is_loading = false;
                 
-                // Create account from the authenticated data
+                // Save account to config and keyring (like iced implementation)
+                if let Err(err) = self.save_authenticated_account(&account_data) {
+                    self.login_error = Some(format!("Failed to save account: {}", err));
+                    self.status_message = format!("❌ Authentication succeeded but failed to save: {}", err);
+                    return;
+                }
+                
+                // Create account for TUI display
                 let account = Account {
                     username: account_data.nice_username.clone(),
                     account_type: account_data.account_type.to_string(),
@@ -552,7 +559,7 @@ impl App {
                 };
                 
                 self.accounts.push(account);
-                self.status_message = format!("✅ Successfully authenticated as {}", account_data.nice_username);
+                self.status_message = format!("✅ Successfully authenticated and saved as {}", account_data.nice_username);
                 
                 // Reset and exit add account mode
                 self.toggle_add_account_mode();
@@ -614,5 +621,54 @@ impl App {
                 }
             });
         }
+    }
+
+    /// Save authenticated account to config and keyring (like iced implementation)
+    fn save_authenticated_account(&mut self, account_data: &ql_instances::auth::AccountData) -> Result<(), String> {
+        // Load current config
+        let mut config = LauncherConfig::load_s().unwrap_or_default();
+        
+        // Get or create accounts section
+        let accounts = config.accounts.get_or_insert_with(Default::default);
+        
+        // Create username with type modifier (like iced does)
+        let username_modified = account_data.get_username_modified();
+        
+        // Add account to config
+        accounts.insert(
+            username_modified.clone(),
+            ConfigAccount {
+                uuid: account_data.uuid.clone(),
+                skin: None,
+                account_type: Some(account_data.account_type.to_string()),
+                keyring_identifier: Some(account_data.username.clone()),
+                username_nice: Some(account_data.nice_username.clone()),
+            },
+        );
+        
+        // Set as selected account
+        config.account_selected = Some(username_modified);
+        
+        // Save config
+        self.save_config_sync(&config).map_err(|e| format!("Failed to save config: {}", e))?;
+        
+        // Note: The keyring token is already saved by the yggdrasil::login_new function
+        // in ql_instances/src/auth/yggdrasil/mod.rs line 59:
+        // entry.set_password(&account_response.accessToken)?;
+        
+        Ok(())
+    }
+
+    /// Save config synchronously (helper for TUI)
+    fn save_config_sync(&self, config: &LauncherConfig) -> Result<(), ql_core::JsonFileError> {
+        let config_path = ql_core::file_utils::get_launcher_dir()?.join("config.json");
+        let config_json = serde_json::to_string(config)
+            .map_err(|error| ql_core::JsonFileError::SerdeError(ql_core::JsonError::To { error }))?;
+        std::fs::write(&config_path, config_json.as_bytes())
+            .map_err(|error| ql_core::JsonFileError::Io(ql_core::IoError::Io { 
+                error: error.to_string(), 
+                path: config_path.clone() 
+            }))?;
+        Ok(())
     }
 }
