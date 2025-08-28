@@ -34,7 +34,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
     }
 
     if app.show_help_popup {
-        render_help_popup(f);
+        render_help_popup(f, app);
     }
 }
 
@@ -388,52 +388,12 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         .split(popup_layout[1])[1]
 }
 
-/// Render help popup with all controls
-fn render_help_popup(f: &mut Frame) {
+/// Render help popup with contextual controls based on current tab and state
+fn render_help_popup(f: &mut Frame, app: &App) {
     let area = centered_rect(70, 80, f.area());
     f.render_widget(Clear, area);
 
-    let help_text = vec![
-        Line::from(vec![
-            Span::styled("QuantumLauncher TUI Controls", Style::default().fg(Color::Yellow).bold())
-        ]),
-        Line::from(""),
-        Line::from("═══ NAVIGATION ═══"),
-        Line::from("↑/↓ or j/k         Navigate up/down in lists"),
-        Line::from("←/→ or h/l         Switch between tabs"),
-        Line::from("Enter              Select/activate current item"),
-        Line::from(""),
-        Line::from("═══ TAB SHORTCUTS ═══"),
-        Line::from("i                  Go to Instances tab"),
-        Line::from("c                  Go to Create tab"),
-        Line::from("s                  Go to Settings tab"),
-        Line::from("a                  Go to Accounts tab"),
-        Line::from(""),
-        Line::from("═══ INSTANCE TAB ═══"),
-        Line::from("Enter              Launch selected instance (coming soon)"),
-        Line::from("F5                 Refresh instance list"),
-        Line::from(""),
-        Line::from("═══ CREATE TAB ═══"),
-        Line::from("n                  Toggle instance name editing"),
-        Line::from("↑/↓                Navigate version list"),
-        Line::from("Enter              Create instance (coming soon)"),
-        Line::from("Backspace          Delete character (when editing name)"),
-        Line::from(""),
-        Line::from("═══ ACCOUNTS TAB ═══"),
-        Line::from("l                  Login/logout selected account"),
-        Line::from("n                  Add new account (coming soon)"),
-        Line::from("↑/↓                Navigate account list"),
-        Line::from("Esc                Cancel login mode"),
-        Line::from(""),
-        Line::from("═══ GENERAL ═══"),
-        Line::from("?                  Show/hide this help popup"),
-        Line::from("q or Esc           Quit application"),
-        Line::from("F5                 Refresh data"),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("Press '?' or Esc to close this help", Style::default().fg(Color::Green).italic())
-        ]),
-    ];
+    let help_text = get_contextual_help(app);
 
     let block = Block::default()
         .title("❓ Help & Controls")
@@ -447,6 +407,203 @@ fn render_help_popup(f: &mut Frame) {
         .alignment(Alignment::Left);
 
     f.render_widget(help_paragraph, area);
+}
+
+/// Generate contextual help content based on current tab and state
+fn get_contextual_help(app: &App) -> Vec<Line> {
+    let mut help_text = vec![
+        Line::from(vec![
+            Span::styled("QuantumLauncher TUI Controls", Style::default().fg(Color::Yellow).bold())
+        ]),
+        Line::from(""),
+    ];
+
+    // Add tab-specific help based on current tab
+    match app.current_tab {
+        TabId::Instances => {
+            help_text.extend(get_instances_help(app));
+        }
+        TabId::Create => {
+            help_text.extend(get_create_help(app));
+        }
+        TabId::Settings => {
+            help_text.extend(get_settings_help());
+        }
+        TabId::Accounts => {
+            help_text.extend(get_accounts_help(app));
+        }
+    }
+
+    // Add common/global help
+    help_text.extend(get_global_help());
+
+    help_text.push(Line::from(""));
+    help_text.push(Line::from(vec![
+        Span::styled("Press '?' or Esc to close this help", Style::default().fg(Color::Green).italic())
+    ]));
+
+    help_text
+}
+
+/// Help for Instances tab
+fn get_instances_help(_app: &App) -> Vec<Line> {
+    vec![
+        Line::from(vec![
+            Span::styled("═══ INSTANCES TAB ═══", Style::default().fg(Color::Cyan).bold())
+        ]),
+        Line::from("↑/↓ or j/k         Navigate instance list"),
+        Line::from("Enter              Launch selected instance"),
+        Line::from("e                  Edit selected instance (coming soon)"),
+        Line::from("d                  Delete selected instance (coming soon)"),
+        Line::from("F5                 Refresh instance list"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("💡 Tip: ", Style::default().fg(Color::Yellow)),
+            Span::raw("Select an instance and press Enter to launch it!")
+        ]),
+        Line::from(""),
+    ]
+}
+
+/// Help for Create tab
+fn get_create_help(app: &App) -> Vec<Line> {
+    let mut help = vec![
+        Line::from(vec![
+            Span::styled("═══ CREATE INSTANCE TAB ═══", Style::default().fg(Color::Green).bold())
+        ]),
+    ];
+
+    if app.is_editing_name {
+        help.extend(vec![
+            Line::from(vec![
+                Span::styled("🎯 Currently editing instance name", Style::default().fg(Color::Yellow).italic())
+            ]),
+            Line::from("Type               Enter instance name"),
+            Line::from("Backspace          Delete character"),
+            Line::from("Enter              Finish editing name"),
+            Line::from("Esc                Cancel editing"),
+            Line::from(""),
+        ]);
+    } else {
+        help.extend(vec![
+            Line::from("↑/↓ or j/k         Navigate version list"),
+            Line::from("n                  Edit instance name"),
+            Line::from("Enter              Create instance"),
+            Line::from(""),
+        ]);
+    }
+
+    help.extend(vec![
+        Line::from(vec![
+            Span::styled("💡 Tips:", Style::default().fg(Color::Yellow)),
+        ]),
+        Line::from("• Choose a descriptive name for your instance"),
+        Line::from("• Select the Minecraft version you want to play"),
+        Line::from("• Press Enter when ready to create the instance"),
+        Line::from(""),
+    ]);
+
+    help
+}
+
+/// Help for Settings tab
+fn get_settings_help() -> Vec<Line<'static>> {
+    vec![
+        Line::from(vec![
+            Span::styled("═══ SETTINGS TAB ═══", Style::default().fg(Color::Magenta).bold())
+        ]),
+        Line::from("↑/↓ or j/k         Navigate settings"),
+        Line::from("Enter/Space        Toggle setting values"),
+        Line::from("←/→ or h/l         Adjust numeric values"),
+        Line::from("r                  Reset to defaults"),
+        Line::from("s                  Save settings"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("💡 Tip: ", Style::default().fg(Color::Yellow)),
+            Span::raw("Configure launcher behavior and performance here")
+        ]),
+        Line::from(""),
+    ]
+}
+
+/// Help for Accounts tab
+fn get_accounts_help(app: &App) -> Vec<Line> {
+    let mut help = vec![
+        Line::from(vec![
+            Span::styled("═══ ACCOUNTS TAB ═══", Style::default().fg(Color::Blue).bold())
+        ]),
+    ];
+
+    if app.is_add_account_mode {
+        help.extend(vec![
+            Line::from(vec![
+                Span::styled("🎯 Currently adding new account", Style::default().fg(Color::Yellow).italic())
+            ]),
+            Line::from("↑/↓ or j/k         Select account type"),
+            Line::from("Tab                Switch between fields"),
+            Line::from("Type               Enter credentials"),
+            Line::from("Enter              Create account"),
+            Line::from("Esc                Cancel adding account"),
+            Line::from(""),
+            Line::from("Account Types:"),
+            Line::from("• Microsoft        - Official Minecraft account"),
+            Line::from("• ElyBy           - Alternative auth service"),
+            Line::from("• LittleSkin      - Alternative auth service"),
+            Line::from("• Offline         - Play without authentication"),
+            Line::from(""),
+        ]);
+    } else if app.is_login_mode {
+        help.extend(vec![
+            Line::from(vec![
+                Span::styled("🎯 Currently logging in", Style::default().fg(Color::Yellow).italic())
+            ]),
+            Line::from("Type               Enter credentials"),
+            Line::from("Tab                Switch between username/password"),
+            Line::from("Enter              Login"),
+            Line::from("Esc                Cancel login"),
+            Line::from(""),
+        ]);
+    } else {
+        help.extend(vec![
+            Line::from("↑/↓ or j/k         Navigate account list"),
+            Line::from("Enter              Login/logout selected account"),
+            Line::from("n                  Add new account"),
+            Line::from("d                  Delete selected account (coming soon)"),
+            Line::from("r                  Refresh account status"),
+            Line::from(""),
+        ]);
+    }
+
+    help.extend(vec![
+        Line::from(vec![
+            Span::styled("💡 Account Status:", Style::default().fg(Color::Yellow)),
+        ]),
+        Line::from("🟢 Green          - Currently logged in"),
+        Line::from("🔴 Red            - Not logged in"),
+        Line::from("🟡 Yellow         - Login in progress"),
+        Line::from(""),
+    ]);
+
+    help
+}
+
+/// Global help that applies to all tabs
+fn get_global_help() -> Vec<Line<'static>> {
+    vec![
+        Line::from(vec![
+            Span::styled("═══ GLOBAL CONTROLS ═══", Style::default().fg(Color::White).bold())
+        ]),
+        Line::from("←/→ or h/l         Switch between tabs"),
+        Line::from("i                  Go to Instances tab"),
+        Line::from("c                  Go to Create tab"),
+        Line::from("s                  Go to Settings tab"),
+        Line::from("a                  Go to Accounts tab"),
+        Line::from("?                  Show/hide this help popup"),
+        Line::from("q                  Quit application"),
+        Line::from("F5                 Refresh current data"),
+        Line::from("Esc                Go back / Cancel current action"),
+        Line::from(""),
+    ]
 }
 
 fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
