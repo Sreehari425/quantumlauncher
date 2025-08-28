@@ -228,6 +228,14 @@ fn render_settings_tab(f: &mut Frame, area: Rect, _app: &App) {
 
 /// Render the accounts tab
 fn render_accounts_tab(f: &mut Frame, area: Rect, app: &App) {
+    if app.is_add_account_mode {
+        render_add_account_form(f, area, app);
+    } else {
+        render_account_list(f, area, app);
+    }
+}
+
+fn render_account_list(f: &mut Frame, area: Rect, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -293,7 +301,8 @@ fn render_accounts_tab(f: &mut Frame, area: Rect, app: &App) {
                 format!("Selected: {} (not logged in)\nPress 'l' to login, 'n' to add new account", account.username)
             }
         } else {
-            "No accounts available\nPress 'n' to add new account".to_string()
+            format!("Debug: {} accounts, selected index: {}\nPress 'n' to add new account", 
+                app.accounts.len(), app.selected_account)
         };
 
         let account_info = Paragraph::new(selected_account_info)
@@ -438,4 +447,71 @@ fn render_help_popup(f: &mut Frame) {
         .alignment(Alignment::Left);
 
     f.render_widget(help_paragraph, area);
+}
+
+fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(5), // Account type selection
+            Constraint::Length(3), // Username input
+            Constraint::Length(3), // Password input (for ElyBy/LittleSkin)
+            Constraint::Min(1),    // Instructions
+        ])
+        .split(area);
+
+    // Account type selection
+    let account_types = crate::tui::app::AccountType::all();
+    let type_items: Vec<ListItem> = account_types
+        .iter()
+        .enumerate()
+        .map(|(i, account_type)| {
+            let content = account_type.to_string();
+            let mut item = ListItem::new(content);
+            if i == app.selected_account_type {
+                item = item.style(Style::default().bg(Color::Yellow).fg(Color::Black));
+            }
+            item
+        })
+        .collect();
+
+    let type_list = List::new(type_items)
+        .block(Block::default().borders(Borders::ALL).title("Account Type"))
+        .style(Style::default().fg(Color::White));
+    f.render_widget(type_list, chunks[0]);
+
+    // Username input
+    let username_input = Paragraph::new(app.new_account_username.as_str())
+        .block(Block::default().borders(Borders::ALL).title("Username/Email"))
+        .style(Style::default().fg(Color::White));
+    f.render_widget(username_input, chunks[1]);
+
+    // Password input (only for non-Microsoft accounts)
+    if app.new_account_type != crate::tui::app::AccountType::Microsoft {
+        let password_display = "*".repeat(app.new_account_password.len());
+        let password_input = Paragraph::new(password_display.as_str())
+            .block(Block::default().borders(Borders::ALL).title("Password"))
+            .style(Style::default().fg(Color::White));
+        f.render_widget(password_input, chunks[2]);
+    } else {
+        let info_text = "Microsoft accounts use OAuth2 authentication";
+        let info_paragraph = Paragraph::new(info_text)
+            .block(Block::default().borders(Borders::ALL).title("Info"))
+            .style(Style::default().fg(Color::Gray))
+            .alignment(Alignment::Center);
+        f.render_widget(info_paragraph, chunks[2]);
+    }
+
+    // Instructions
+    let instructions = if app.new_account_type == crate::tui::app::AccountType::Microsoft {
+        "↑/↓: Select account type | Enter: Add account | Esc: Cancel\nMicrosoft accounts will open OAuth2 flow"
+    } else {
+        "↑/↓: Select account type | Tab: Next field | Enter: Add account | Esc: Cancel"
+    };
+    
+    let instructions_paragraph = Paragraph::new(instructions)
+        .block(Block::default().borders(Borders::ALL).title("Instructions"))
+        .style(Style::default().fg(Color::Green))
+        .wrap(Wrap { trim: true });
+    f.render_widget(instructions_paragraph, chunks[3]);
 }

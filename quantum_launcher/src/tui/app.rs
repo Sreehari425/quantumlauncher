@@ -2,10 +2,30 @@
 
 use std::{error::Error, fmt};
 use ql_core::ListEntry;
-use serde_json::Value;
 use crate::config::{LauncherConfig, ConfigAccount};
 
 pub type AppResult<T> = Result<T, Box<dyn Error>>;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum AccountType {
+    Microsoft,
+    ElyBy,
+    LittleSkin,
+}
+
+impl AccountType {
+    pub fn to_string(&self) -> String {
+        match self {
+            AccountType::Microsoft => "Microsoft".to_string(),
+            AccountType::ElyBy => "ElyBy".to_string(),
+            AccountType::LittleSkin => "LittleSkin".to_string(),
+        }
+    }
+
+    pub fn all() -> Vec<AccountType> {
+        vec![AccountType::Microsoft, AccountType::ElyBy, AccountType::LittleSkin]
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TabId {
@@ -60,6 +80,12 @@ pub struct App {
     pub status_message: String,
     pub should_quit: bool,
     pub is_loading: bool,
+    // New account creation fields
+    pub is_add_account_mode: bool,
+    pub new_account_type: AccountType,
+    pub new_account_username: String,
+    pub new_account_password: String,
+    pub selected_account_type: usize,
 }
 
 impl App {
@@ -82,6 +108,12 @@ impl App {
             status_message: "Welcome to QuantumLauncher TUI! Press '?' for help, 'q' to quit.".to_string(),
             should_quit: false,
             is_loading: false,
+            // Initialize new account creation fields
+            is_add_account_mode: false,
+            new_account_type: AccountType::Microsoft,
+            new_account_username: String::new(),
+            new_account_password: String::new(),
+            selected_account_type: 0,
         };
         
         // Load instances and accounts on startup
@@ -290,6 +322,57 @@ impl App {
 
     pub fn toggle_help_popup(&mut self) {
         self.show_help_popup = !self.show_help_popup;
+    }
+
+    pub fn toggle_add_account_mode(&mut self) {
+        self.is_add_account_mode = !self.is_add_account_mode;
+        if !self.is_add_account_mode {
+            // Reset fields when exiting add account mode
+            self.new_account_username.clear();
+            self.new_account_password.clear();
+            self.selected_account_type = 0;
+            self.new_account_type = AccountType::Microsoft;
+        }
+    }
+
+    pub fn next_account_type(&mut self) {
+        let account_types = AccountType::all();
+        if !account_types.is_empty() {
+            self.selected_account_type = (self.selected_account_type + 1) % account_types.len();
+            self.new_account_type = account_types[self.selected_account_type].clone();
+        }
+    }
+
+    pub fn prev_account_type(&mut self) {
+        let account_types = AccountType::all();
+        if !account_types.is_empty() && self.selected_account_type > 0 {
+            self.selected_account_type -= 1;
+        } else if !account_types.is_empty() {
+            self.selected_account_type = account_types.len() - 1;
+        }
+        self.new_account_type = account_types[self.selected_account_type].clone();
+    }
+
+    pub fn add_new_account(&mut self) {
+        // For now, just add to the local accounts list
+        // In a real implementation, this would call the authentication system
+        if !self.new_account_username.is_empty() {
+            let new_account = Account {
+                username: self.new_account_username.clone(),
+                account_type: self.new_account_type.to_string(),
+                uuid: "00000000-0000-0000-0000-000000000000".to_string(), // Placeholder UUID
+                is_logged_in: false,
+            };
+            
+            self.accounts.push(new_account);
+            self.status_message = format!("Added new {} account: {}", 
+                self.new_account_type.to_string(), self.new_account_username);
+            
+            // Reset and exit add account mode
+            self.toggle_add_account_mode();
+        } else {
+            self.status_message = "Please enter a username".to_string();
+        }
     }
 
     fn load_accounts(&mut self) {

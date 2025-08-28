@@ -63,6 +63,32 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppResult<()
                 } else {
                     // Normal key handling when help popup is not shown
                     match key.code {
+                        // Account tab specific keys - must come first to override general patterns
+                        KeyCode::Esc if app.current_tab == app::TabId::Accounts && (app.is_add_account_mode || app.is_login_mode) => {
+                            if app.is_add_account_mode {
+                                app.toggle_add_account_mode();
+                                app.status_message = "Add account cancelled.".to_string();
+                            } else if app.is_login_mode {
+                                app.toggle_login_mode();
+                                app.status_message = "Login cancelled.".to_string();
+                            }
+                        }
+                        KeyCode::Enter if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
+                            app.add_new_account();
+                        }
+                        KeyCode::Up if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
+                            app.prev_account_type();
+                        }
+                        KeyCode::Down if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
+                            app.next_account_type();
+                        }
+                        KeyCode::Backspace if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
+                            app.new_account_username.pop();
+                        }
+                        KeyCode::Char(c) if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
+                            app.new_account_username.push(c);
+                        }
+                        // General key handling
                         KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
                         KeyCode::Up | KeyCode::Char('k') => app.prev_item(),
                         KeyCode::Down | KeyCode::Char('j') => app.next_item(),
@@ -84,7 +110,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppResult<()
                             }
                         }
                         // Account tab specific keys
-                        KeyCode::Char('l') if app.current_tab == app::TabId::Accounts => {
+                        KeyCode::Char('l') if app.current_tab == app::TabId::Accounts && !app.is_add_account_mode => {
                             if app.is_login_mode {
                                 app.toggle_login_mode();
                                 app.status_message = "Login cancelled.".to_string();
@@ -98,8 +124,13 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppResult<()
                                 }
                             }
                         }
-                        KeyCode::Char('n') if app.current_tab == app::TabId::Accounts => {
-                            app.status_message = "Adding new account (feature not yet implemented).".to_string();
+                        KeyCode::Char('n') if app.current_tab == app::TabId::Accounts && !app.is_login_mode => {
+                            app.toggle_add_account_mode();
+                            if app.is_add_account_mode {
+                                app.status_message = "Add account mode. Select type and enter credentials.".to_string();
+                            } else {
+                                app.status_message = "Add account cancelled.".to_string();
+                            }
                         }
                         KeyCode::Backspace if app.current_tab == app::TabId::Create && app.is_editing_name => {
                             app.new_instance_name.pop();
