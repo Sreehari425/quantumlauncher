@@ -48,6 +48,10 @@ pub fn render(f: &mut Frame, app: &mut App) {
     if app.is_loading {
         render_loading_popup(f);
     }
+
+    if app.show_help_popup {
+        render_help_popup(f);
+    }
 }
 
 /// Render the header with tabs
@@ -273,12 +277,7 @@ fn render_footer(f: &mut Frame, area: Rect, app: &App) {
     f.render_widget(status, chunks[0]);
 
     // Help/keybinds
-    let help_text = match app.current_tab {
-        TabId::Create => "q:Quit ↑↓:Navigate ←→:Tabs n:Edit Name",
-        _ => "q:Quit ↑↓:Navigate ←→:Tabs F5:Refresh",
-    };
-    
-    let help = Paragraph::new(help_text)
+    let help = Paragraph::new("Press '?' for help | 'q' to quit")
         .block(Block::default().borders(Borders::ALL).title(" Help "))
         .style(Style::default().fg(Color::Gray))
         .alignment(Alignment::Center);
@@ -336,4 +335,59 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
             Constraint::Percentage((100 - percent_x) / 2),
         ])
         .split(popup_layout[1])[1]
+}
+
+/// Render help popup with all controls
+fn render_help_popup(f: &mut Frame) {
+    let area = centered_rect(70, 80, f.area());
+    f.render_widget(Clear, area);
+
+    let help_text = vec![
+        Line::from(vec![
+            Span::styled("QuantumLauncher TUI Controls", Style::default().fg(Color::Yellow).bold())
+        ]),
+        Line::from(""),
+        Line::from("═══ NAVIGATION ═══"),
+        Line::from("↑/↓ or j/k         Navigate up/down in lists"),
+        Line::from("←/→ or h/l         Switch between tabs"),
+        Line::from("Enter              Select/activate current item"),
+        Line::from(""),
+        Line::from("═══ TAB SHORTCUTS ═══"),
+        Line::from("i                  Go to Instances tab"),
+        Line::from("c                  Go to Create tab"),
+        Line::from("s                  Go to Settings tab"),
+        Line::from("a                  Go to Accounts tab"),
+        Line::from(""),
+        Line::from("═══ INSTANCE TAB ═══"),
+        Line::from("Enter              Launch selected instance (coming soon)"),
+        Line::from("F5                 Refresh instance list"),
+        Line::from(""),
+        Line::from("═══ CREATE TAB ═══"),
+        Line::from("n                  Toggle instance name editing"),
+        Line::from("↑/↓                Navigate version list"),
+        Line::from("Enter              Create instance (coming soon)"),
+        Line::from("Backspace          Delete character (when editing name)"),
+        Line::from(""),
+        Line::from("═══ GENERAL ═══"),
+        Line::from("?                  Show/hide this help popup"),
+        Line::from("q or Esc           Quit application"),
+        Line::from("F5                 Refresh data"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Press '?' or Esc to close this help", Style::default().fg(Color::Green).italic())
+        ]),
+    ];
+
+    let block = Block::default()
+        .title("❓ Help & Controls")
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Yellow))
+        .style(Style::default().bg(Color::Black));
+
+    let help_paragraph = Paragraph::new(help_text)
+        .block(block)
+        .wrap(Wrap { trim: true })
+        .alignment(Alignment::Left);
+
+    f.render_widget(help_paragraph, area);
 }

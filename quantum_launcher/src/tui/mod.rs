@@ -68,33 +68,45 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppResult<()
 
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
-                match key.code {
-                    KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
-                    KeyCode::Up | KeyCode::Char('k') => app.previous_item(),
-                    KeyCode::Down | KeyCode::Char('j') => app.next_item(),
-                    KeyCode::Left | KeyCode::Char('h') => app.previous_tab(),
-                    KeyCode::Right | KeyCode::Char('l') => app.next_tab(),
-                    KeyCode::Enter => app.select_item(),
-                    KeyCode::Char('c') => app.set_tab(app::TabId::Create),
-                    KeyCode::Char('i') => app.set_tab(app::TabId::Instances),
-                    KeyCode::Char('s') => app.set_tab(app::TabId::Settings),
-                    KeyCode::Char('a') => app.set_tab(app::TabId::Accounts),
-                    KeyCode::F(5) => app.refresh(),
-                    KeyCode::Char('n') if app.current_tab == app::TabId::Create => {
-                        app.is_editing_name = !app.is_editing_name;
-                        if app.is_editing_name {
-                            app.status_message = "Editing instance name. Press 'n' again to finish editing.".to_string();
-                        } else {
-                            app.status_message = "Finished editing instance name.".to_string();
+                // Handle help popup separately
+                if app.show_help_popup {
+                    match key.code {
+                        KeyCode::Char('q') | KeyCode::Esc | KeyCode::Char('?') => {
+                            app.toggle_help_popup();
                         }
+                        _ => {}
                     }
-                    KeyCode::Backspace if app.current_tab == app::TabId::Create && app.is_editing_name => {
-                        app.new_instance_name.pop();
+                } else {
+                    // Normal key handling when help popup is not shown
+                    match key.code {
+                        KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
+                        KeyCode::Up | KeyCode::Char('k') => app.previous_item(),
+                        KeyCode::Down | KeyCode::Char('j') => app.next_item(),
+                        KeyCode::Left | KeyCode::Char('h') => app.previous_tab(),
+                        KeyCode::Right | KeyCode::Char('l') => app.next_tab(),
+                        KeyCode::Enter => app.select_item(),
+                        KeyCode::Char('c') => app.set_tab(app::TabId::Create),
+                        KeyCode::Char('i') => app.set_tab(app::TabId::Instances),
+                        KeyCode::Char('s') => app.set_tab(app::TabId::Settings),
+                        KeyCode::Char('a') => app.set_tab(app::TabId::Accounts),
+                        KeyCode::Char('?') => app.toggle_help_popup(),
+                        KeyCode::F(5) => app.refresh(),
+                        KeyCode::Char('n') if app.current_tab == app::TabId::Create => {
+                            app.is_editing_name = !app.is_editing_name;
+                            if app.is_editing_name {
+                                app.status_message = "Editing instance name. Press 'n' again to finish editing.".to_string();
+                            } else {
+                                app.status_message = "Finished editing instance name.".to_string();
+                            }
+                        }
+                        KeyCode::Backspace if app.current_tab == app::TabId::Create && app.is_editing_name => {
+                            app.new_instance_name.pop();
+                        }
+                        KeyCode::Char(c) if app.current_tab == app::TabId::Create && app.is_editing_name => {
+                            app.new_instance_name.push(c);
+                        }
+                        _ => {}
                     }
-                    KeyCode::Char(c) if app.current_tab == app::TabId::Create && app.is_editing_name => {
-                        app.new_instance_name.push(c);
-                    }
-                    _ => {}
                 }
             }
         }

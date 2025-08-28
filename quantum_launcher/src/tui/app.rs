@@ -57,6 +57,7 @@ pub struct App {
     pub selected_version: usize,
     pub new_instance_name: String,
     pub is_editing_name: bool,
+    pub show_help_popup: bool,
     pub status_message: String,
     pub should_quit: bool,
     pub is_loading: bool,
@@ -72,7 +73,8 @@ impl App {
             selected_version: 0,
             new_instance_name: String::new(),
             is_editing_name: false,
-            status_message: "Welcome to QuantumLauncher TUI! Press 'q' to quit, arrows to navigate.".to_string(),
+            show_help_popup: false,
+            status_message: "Welcome to QuantumLauncher TUI! Press '?' for help, 'q' to quit.".to_string(),
             should_quit: false,
             is_loading: false,
         };
@@ -225,5 +227,9 @@ impl App {
 
     pub fn set_instance_name(&mut self, name: String) {
         self.new_instance_name = name;
+    }
+
+    pub fn toggle_help_popup(&mut self) {
+        self.show_help_popup = !self.show_help_popup;
     }
 }
