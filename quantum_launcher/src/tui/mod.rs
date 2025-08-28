@@ -166,6 +166,9 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                 app.status_message = "Add account mode. Select type and enter credentials.".to_string();
                             }
                         }
+                        KeyCode::Char('d') if app.current_tab == app::TabId::Accounts && !app.is_add_account_mode => {
+                            app.set_default_account();
+                        }
                         KeyCode::Backspace if app.current_tab == app::TabId::Create && app.is_editing_name => {
                             app.new_instance_name.pop();
                         }

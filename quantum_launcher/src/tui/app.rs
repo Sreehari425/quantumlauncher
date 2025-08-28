@@ -559,7 +559,11 @@ impl App {
                 };
                 
                 self.accounts.push(account);
-                self.status_message = format!("✅ Successfully authenticated and saved as {}", account_data.nice_username);
+                
+                // Set as current/default account (like iced implementation)
+                self.current_account = Some(account_data.get_username_modified());
+                
+                self.status_message = format!("✅ Successfully authenticated and saved as {} (set as default)", account_data.nice_username);
                 
                 // Reset and exit add account mode
                 self.toggle_add_account_mode();
@@ -621,6 +625,42 @@ impl App {
                 }
             });
         }
+    }
+
+    /// Set the currently selected account as the default account
+    pub fn set_default_account(&mut self) {
+        if self.accounts.is_empty() {
+            self.status_message = "No accounts available to set as default.".to_string();
+            return;
+        }
+
+        let selected_account = &self.accounts[self.selected_account];
+        
+        // Create the username with type modifier (like iced does)
+        let username_modified = if selected_account.account_type == "ElyBy" {
+            format!("{} (elyby)", selected_account.username)
+        } else if selected_account.account_type == "LittleSkin" {
+            format!("{} (littleskin)", selected_account.username)
+        } else {
+            selected_account.username.clone()
+        };
+        
+        // Update current account
+        self.current_account = Some(username_modified.clone());
+        
+        // Save to config
+        if let Err(err) = self.save_default_account_to_config(&username_modified) {
+            self.status_message = format!("❌ Failed to save default account: {}", err);
+        } else {
+            self.status_message = format!("✅ Set {} as default account", selected_account.username);
+        }
+    }
+
+    /// Save the default account selection to config
+    fn save_default_account_to_config(&self, username_modified: &str) -> Result<(), String> {
+        let mut config = LauncherConfig::load_s().unwrap_or_default();
+        config.account_selected = Some(username_modified.to_string());
+        self.save_config_sync(&config).map_err(|e| format!("Failed to save config: {}", e))
     }
 
     /// Save authenticated account to config and keyring (like iced implementation)

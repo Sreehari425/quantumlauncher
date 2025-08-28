@@ -250,7 +250,25 @@ fn render_account_list(f: &mut Frame, area: Rect, app: &App) {
         .enumerate()
         .map(|(i, account)| {
             let status = if account.is_logged_in { " (logged in)" } else { "" };
-            let content = format!("{} [{}]{}", account.username, account.account_type, status);
+            
+            // Check if this account is the default
+            let is_default = if let Some(ref current_account) = app.current_account {
+                // Create the username with type modifier to match current_account format
+                let username_modified = if account.account_type == "ElyBy" {
+                    format!("{} (elyby)", account.username)
+                } else if account.account_type == "LittleSkin" {
+                    format!("{} (littleskin)", account.username)
+                } else {
+                    account.username.clone()
+                };
+                current_account == &username_modified
+            } else {
+                false
+            };
+            
+            let default_indicator = if is_default { " ★ (default)" } else { "" };
+            let content = format!("{} [{}]{}{}", account.username, account.account_type, status, default_indicator);
+            
             let mut item = ListItem::new(content);
             if i == app.selected_account {
                 item = item.style(Style::default().bg(Color::Yellow).fg(Color::Black));
@@ -529,7 +547,7 @@ fn get_accounts_help(app: &App) -> Vec<Line<'static>> {
             Line::from("↑/↓ or j/k         Navigate account list"),
             Line::from("l                  Logout selected account (if logged in)"),
             Line::from("n                  Add new account (with login for ElyBy/LittleSkin)"),
-            Line::from("d                  Delete selected account (coming soon)"),
+            Line::from("d                  Set selected account as default"),
             Line::from("r                  Refresh account status"),
             Line::from(""),
         ]);
@@ -542,6 +560,7 @@ fn get_accounts_help(app: &App) -> Vec<Line<'static>> {
         Line::from("🟢 Green          - Currently logged in"),
         Line::from("🔴 Red            - Not logged in"),
         Line::from("🟡 Yellow         - Login in progress"),
+        Line::from("★                 - Default account (used for launching)"),
         Line::from(""),
         Line::from(vec![
             Span::styled("🌐 ElyBy Support:", Style::default().fg(Color::Cyan)),
