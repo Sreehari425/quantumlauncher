@@ -10,11 +10,20 @@ use ratatui::{
     backend::{Backend, CrosstermBackend},
     Terminal,
 };
+use tokio::sync::mpsc;
 
 mod app;
 mod ui;
 
 pub use app::{App, AppResult};
+
+#[derive(Debug, Clone)]
+pub enum AuthEvent {
+    LoginStarted,
+    LoginSuccess { account_data: ql_instances::auth::AccountData },
+    LoginNeedsOtp,
+    LoginError { error: String },
+}
 
 /// Entry point for the TUI mode
 pub fn run_tui() -> AppResult<()> {
@@ -25,9 +34,10 @@ pub fn run_tui() -> AppResult<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    // Create app and run it
+    // Create async runtime and run the app
+    let rt = tokio::runtime::Runtime::new()?;
     let app = App::new();
-    let res = run_app(&mut terminal, app);
+    let res = rt.block_on(run_app(&mut terminal, app));
 
     // Restore terminal
     disable_raw_mode()?;
@@ -46,12 +56,24 @@ pub fn run_tui() -> AppResult<()> {
 }
 
 /// Main event loop for the TUI
-fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppResult<()> {
+async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppResult<()> {
+    // Create authentication channel
+    let (auth_tx, mut auth_rx) = mpsc::unbounded_channel::<AuthEvent>();
+    app.set_auth_channel(auth_tx);
+
     loop {
         terminal.draw(|f| ui::render(f, &mut app))?;
 
-        if let Event::Key(key) = event::read()? {
-            if key.kind == KeyEventKind::Press {
+        // Check for auth events first
+        if let Ok(auth_event) = auth_rx.try_recv() {
+            app.handle_auth_event(auth_event);
+        }
+
+        // Handle keyboard input with timeout to allow auth events to be processed
+        if let Ok(has_event) = crossterm::event::poll(std::time::Duration::from_millis(50)) {
+            if has_event {
+                if let Event::Key(key) = event::read()? {
+                    if key.kind == KeyEventKind::Press {
                 // Handle help popup separately
                 if app.show_help_popup {
                     match key.code {
@@ -151,6 +173,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppResult<()
                             app.new_instance_name.push(c);
                         }
                         _ => {}
+                    }
+                }
                     }
                 }
             }

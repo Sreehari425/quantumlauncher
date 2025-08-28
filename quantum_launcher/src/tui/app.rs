@@ -3,6 +3,7 @@
 use std::{error::Error, fmt};
 use ql_core::ListEntry;
 use crate::config::{LauncherConfig, ConfigAccount};
+use tokio::sync::mpsc;
 
 pub type AppResult<T> = Result<T, Box<dyn Error>>;
 
@@ -89,6 +90,8 @@ pub struct App {
     pub show_password: bool,
     pub login_error: Option<String>,
     pub add_account_field_focus: AddAccountFieldFocus, // Track which field is being edited during account creation
+    // Auth channel for async authentication
+    pub auth_sender: Option<mpsc::UnboundedSender<crate::tui::AuthEvent>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -127,6 +130,7 @@ impl App {
             show_password: false,
             login_error: None,
             add_account_field_focus: AddAccountFieldFocus::Username,
+            auth_sender: None,
         };
         
         // Load instances and accounts on startup
@@ -456,8 +460,8 @@ impl App {
                     return;
                 }
                 
-                // Simulate the authentication process
-                self.simulate_elyby_account_creation();
+                // Start real authentication process
+                self.start_elyby_authentication();
             }
             AccountType::LittleSkin => {
                 // Similar to ElyBy but for LittleSkin
@@ -481,39 +485,6 @@ impl App {
                 self.toggle_add_account_mode();
             }
         }
-    }
-
-    /// Simulate ElyBy account creation (since we can't use async in this context)
-    fn simulate_elyby_account_creation(&mut self) {
-        // Simulate checking for OTP requirement
-        if !self.needs_otp && self.new_account_username.contains("2fa") {
-            // If username contains "2fa", simulate needing OTP
-            self.needs_otp = true;
-            self.new_account_otp = Some(String::new());
-            self.add_account_field_focus = AddAccountFieldFocus::Otp;
-            self.status_message = "Two-factor authentication required. Enter your OTP code.".to_string();
-            return;
-        }
-
-        // If OTP is required but not provided
-        if self.needs_otp && (self.new_account_otp.is_none() || self.new_account_otp.as_ref().unwrap().is_empty()) {
-            self.login_error = Some("OTP code is required for 2FA".to_string());
-            return;
-        }
-
-        // Simulate successful account creation
-        let new_account = Account {
-            username: self.new_account_username.clone(),
-            account_type: self.new_account_type.to_string(),
-            uuid: format!("elyby-simulated-{}", self.new_account_username),
-            is_logged_in: true, // ElyBy accounts are logged in after creation
-        };
-        
-        self.accounts.push(new_account);
-        self.status_message = "Successfully created and logged into ElyBy account! (simulated)".to_string();
-        
-        // Reset and exit add account mode
-        self.toggle_add_account_mode();
     }
 
     fn load_accounts(&mut self) {
@@ -554,6 +525,94 @@ impl App {
             Err(err) => {
                 self.status_message = format!("Error loading config: {}", err);
             }
+        }
+    }
+
+    /// Set the authentication channel for async operations
+    pub fn set_auth_channel(&mut self, sender: mpsc::UnboundedSender<crate::tui::AuthEvent>) {
+        self.auth_sender = Some(sender);
+    }
+
+    /// Handle authentication events from async operations
+    pub fn handle_auth_event(&mut self, event: crate::tui::AuthEvent) {
+        match event {
+            crate::tui::AuthEvent::LoginStarted => {
+                self.status_message = "🔐 Authenticating with ElyBy...".to_string();
+                self.is_loading = true;
+            }
+            crate::tui::AuthEvent::LoginSuccess { account_data } => {
+                self.is_loading = false;
+                
+                // Create account from the authenticated data
+                let account = Account {
+                    username: account_data.nice_username.clone(),
+                    account_type: account_data.account_type.to_string(),
+                    uuid: account_data.uuid.clone(),
+                    is_logged_in: true,
+                };
+                
+                self.accounts.push(account);
+                self.status_message = format!("✅ Successfully authenticated as {}", account_data.nice_username);
+                
+                // Reset and exit add account mode
+                self.toggle_add_account_mode();
+            }
+            crate::tui::AuthEvent::LoginNeedsOtp => {
+                self.is_loading = false;
+                self.needs_otp = true;
+                self.new_account_otp = Some(String::new());
+                self.add_account_field_focus = AddAccountFieldFocus::Otp;
+                self.status_message = "📱 Two-factor authentication required. Enter your OTP code.".to_string();
+            }
+            crate::tui::AuthEvent::LoginError { error } => {
+                self.is_loading = false;
+                self.login_error = Some(error.clone());
+                self.status_message = format!("❌ Authentication failed: {}", error);
+            }
+        }
+    }
+
+    /// Start ElyBy authentication process
+    pub fn start_elyby_authentication(&mut self) {
+        if let Some(sender) = &self.auth_sender {
+            // Clear any previous errors
+            self.login_error = None;
+            
+            // Prepare password with OTP if needed
+            let mut password = self.new_account_password.clone();
+            if let Some(ref otp) = self.new_account_otp {
+                if !otp.is_empty() {
+                    password.push(':');
+                    password.push_str(otp);
+                }
+            }
+
+            let username = self.new_account_username.clone();
+            let sender_clone = sender.clone();
+            
+            // Send login started event
+            let _ = sender.send(crate::tui::AuthEvent::LoginStarted);
+            
+            // Spawn authentication task
+            tokio::spawn(async move {
+                match ql_instances::auth::yggdrasil::login_new(
+                    username,
+                    password,
+                    ql_instances::auth::AccountType::ElyBy,
+                ).await {
+                    Ok(ql_instances::auth::yggdrasil::Account::Account(account_data)) => {
+                        let _ = sender_clone.send(crate::tui::AuthEvent::LoginSuccess { account_data });
+                    }
+                    Ok(ql_instances::auth::yggdrasil::Account::NeedsOTP) => {
+                        let _ = sender_clone.send(crate::tui::AuthEvent::LoginNeedsOtp);
+                    }
+                    Err(err) => {
+                        let _ = sender_clone.send(crate::tui::AuthEvent::LoginError {
+                            error: err.to_string(),
+                        });
+                    }
+                }
+            });
         }
     }
 }
