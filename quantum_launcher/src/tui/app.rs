@@ -769,16 +769,52 @@ impl App {
     fn launch_instance(&mut self, instance_name: &str) {
         self.status_message = format!("🚀 Launching instance: {}", instance_name);
         
-        // Get account data if we have a current account
+        // Get account data if we have a current account or selected account
         let account_data = self.get_account_data_for_launch();
-        let username = account_data.as_ref()
-            .map(|acc| acc.username.clone())
-            .unwrap_or_else(|| "Player".to_string());
+        let (username, _display_name) = if let Some(acc) = &account_data {
+            // For authenticated accounts, use the username from account data (should be clean)
+            let clean_username = self.get_clean_username_for_launch(&acc.username, &acc.nice_username, &acc.account_type);
+            self.status_message = format!("🚀 Launching with authenticated account: {} ({})", 
+                acc.nice_username, acc.account_type);
+            (clean_username, acc.nice_username.clone())
+        } else {
+            // Try to use the currently selected account even if not set as default
+            if !self.accounts.is_empty() && self.selected_account < self.accounts.len() {
+                let selected_account = &self.accounts[self.selected_account];
+                // Try to get account data for this selected account again, but with fallback
+                let fallback_account_data = self.get_selected_account_data_fallback();
+                if let Some(acc) = fallback_account_data {
+                    let clean_username = self.get_clean_username_for_launch(&acc.username, &acc.nice_username, &acc.account_type);
+                    self.status_message = format!("🚀 Launching with selected account: {} ({})", 
+                        acc.nice_username, selected_account.account_type);
+                    (clean_username, acc.nice_username.clone())
+                } else {
+                    // No auth data available, generate clean username from account info
+                    let clean_username = self.get_clean_username_for_selected_account(&selected_account);
+                    self.status_message = format!("⚠️ Using selected account: {} ({}) in offline mode. Account may need re-authentication.", 
+                        clean_username, selected_account.account_type);
+                    (clean_username, selected_account.username.clone())
+                }
+            } else {
+                // No accounts available, launch in offline mode
+                self.status_message = "⚠️ No accounts available. Launching in offline mode as 'Player'. Add an account with 'a' then 'n'.".to_string();
+                ("Player".to_string(), "Player".to_string())
+            }
+        };
         
         // Spawn launch task similar to authentication
         if let Some(sender) = &self.auth_sender {
             let sender_clone = sender.clone();
             let instance_name = instance_name.to_string();
+            // Use the final account_data that we determined above (could be from default, selected, or None)
+            let final_account_data = if account_data.is_some() {
+                account_data
+            } else if !self.accounts.is_empty() && self.selected_account < self.accounts.len() {
+                // Try to get account data for selected account as last resort
+                self.get_selected_account_data_fallback()
+            } else {
+                None
+            };
             
             // Send launch started event
             let _ = sender.send(crate::tui::AuthEvent::LaunchStarted(instance_name.clone()));
@@ -789,7 +825,7 @@ impl App {
                 let result = Self::launch_with_suppressed_output(
                     instance_name.clone(),
                     username,
-                    account_data,
+                    final_account_data,
                     sender_clone.clone(),
                 ).await;
                 
@@ -816,8 +852,18 @@ impl App {
     ) -> Result<Arc<Mutex<tokio::process::Child>>, Box<dyn Error + Send + Sync>> {
         // Add log entry that we're starting
         let timestamp = chrono::Local::now().format("%H:%M:%S");
+        let launch_mode = if let Some(ref acc) = account_data {
+            // We have account data - check if we have a valid access token
+            if acc.access_token.is_some() {
+                format!("with {} account: {}", acc.account_type, acc.nice_username)
+            } else {
+                format!("in offline mode as: {}", acc.nice_username)
+            }
+        } else {
+            format!("in offline mode as: {}", username)
+        };
         let _ = sender.send(crate::tui::AuthEvent::LaunchStarted(
-            format!("[{}] Preparing to launch {} with user {}", timestamp, instance_name, username)
+            format!("[{}] Preparing to launch {} {}", timestamp, instance_name, launch_mode)
         ));
         
         // Set environment variable to suppress ql_instances debug output (if it supports this)
@@ -869,9 +915,261 @@ impl App {
 
     /// Get account data for launching (simplified version for TUI)
     fn get_account_data_for_launch(&self) -> Option<ql_instances::auth::AccountData> {
-        // For now, just return None to launch in offline mode
-        // In the future, this could try to refresh tokens from the current account
+        // First, try to get the current/default account
+        let target_account = if let Some(current_account) = &self.current_account {
+            // Find the account in our accounts list by matching the modified username format
+            self.accounts.iter().find(|acc| {
+                // Create the username with type modifier to match current_account format
+                let username_modified = if acc.account_type == "ElyBy" {
+                    format!("{} (elyby)", acc.username)
+                } else if acc.account_type == "LittleSkin" {
+                    format!("{} (littleskin)", acc.username)
+                } else {
+                    acc.username.clone()
+                };
+                current_account == &username_modified
+            })
+        } else {
+            // No default account, try to use the currently selected account
+            if !self.accounts.is_empty() && self.selected_account < self.accounts.len() {
+                Some(&self.accounts[self.selected_account])
+            } else {
+                None
+            }
+        };
+
+        if let Some(account) = target_account {
+            // Try to load the actual authenticated account data from keyring/config
+            if let Ok(config) = LauncherConfig::load_s() {
+                // Look for the account in the config
+                if let Some(config_accounts) = config.accounts {
+                    if let Some(config_account) = config_accounts.get(&account.username) {
+                        // Try to get the actual account data with tokens from keyring
+                        let account_type = match account.account_type.as_str() {
+                            "ElyBy" => ql_instances::auth::AccountType::ElyBy,
+                            "LittleSkin" => ql_instances::auth::AccountType::LittleSkin,
+                            _ => ql_instances::auth::AccountType::Microsoft,
+                        };
+                        
+                        // Try to read refresh token and refresh the account data
+                        if let Ok(refresh_token) = ql_instances::auth::read_refresh_token(&account.username, account_type) {
+                            // Create a basic runtime for async operations
+                            if let Ok(runtime) = tokio::runtime::Runtime::new() {
+                                let account_data_result = match account_type {
+                                    ql_instances::auth::AccountType::ElyBy | ql_instances::auth::AccountType::LittleSkin => {
+                                        runtime.block_on(ql_instances::auth::yggdrasil::login_refresh(
+                                            account.username.clone(),
+                                            refresh_token,
+                                            account_type,
+                                        )).map_err(|e| e.to_string())
+                                    }
+                                    ql_instances::auth::AccountType::Microsoft => {
+                                        runtime.block_on(ql_instances::auth::ms::login_refresh(
+                                            account.username.clone(),
+                                            refresh_token,
+                                            None,
+                                        )).map_err(|e| e.to_string())
+                                    }
+                                };
+                                
+                                if let Ok(account_data) = account_data_result {
+                                    return Some(account_data);
+                                }
+                            }
+                        }
+                        
+                        // If refresh fails, try to use stored refresh token directly as access token
+                        // This is a fallback for when tokens might be expired but we still want to try
+                        if let Ok(stored_token) = ql_instances::auth::read_refresh_token(&account.username, account_type) {
+                            if let Some(nice_username) = &config_account.username_nice {
+                                return Some(ql_instances::auth::AccountData {
+                                    access_token: Some(stored_token.clone()), // Use stored token as access token
+                                    uuid: account.uuid.clone(),
+                                    refresh_token: stored_token, // Also use as refresh token
+                                    needs_refresh: true, // Mark as needing refresh
+                                    username: account.username.clone(),
+                                    nice_username: nice_username.clone(), // Use the nice_username from config
+                                    account_type,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // If all token attempts fail, return None to fall back to offline mode
+            return None;
+        }
+        
+        // If no accounts available, return None (will fall back to offline mode)
         None
+    }
+
+    /// Get account data for the currently selected account (fallback when no default is set)
+    fn get_selected_account_data_fallback(&self) -> Option<ql_instances::auth::AccountData> {
+        if self.accounts.is_empty() || self.selected_account >= self.accounts.len() {
+            return None;
+        }
+
+        let account = &self.accounts[self.selected_account];
+        
+        // Try to load the actual authenticated account data from keyring/config
+        if let Ok(config) = LauncherConfig::load_s() {
+            // Look for the account in the config
+            if let Some(config_accounts) = config.accounts {
+                if let Some(config_account) = config_accounts.get(&account.username) {
+                    // Try to get the actual account data with tokens from keyring
+                    let account_type = match account.account_type.as_str() {
+                        "ElyBy" => ql_instances::auth::AccountType::ElyBy,
+                        "LittleSkin" => ql_instances::auth::AccountType::LittleSkin,
+                        _ => ql_instances::auth::AccountType::Microsoft,
+                    };
+                    
+                    // Try to read refresh token and refresh the account data
+                    if let Ok(refresh_token) = ql_instances::auth::read_refresh_token(&account.username, account_type) {
+                        // Create a basic runtime for async operations
+                        if let Ok(runtime) = tokio::runtime::Runtime::new() {
+                            let account_data_result = match account_type {
+                                ql_instances::auth::AccountType::ElyBy | ql_instances::auth::AccountType::LittleSkin => {
+                                    runtime.block_on(ql_instances::auth::yggdrasil::login_refresh(
+                                        account.username.clone(),
+                                        refresh_token,
+                                        account_type,
+                                    )).map_err(|e| e.to_string())
+                                }
+                                ql_instances::auth::AccountType::Microsoft => {
+                                    runtime.block_on(ql_instances::auth::ms::login_refresh(
+                                        account.username.clone(),
+                                        refresh_token,
+                                        None,
+                                    )).map_err(|e| e.to_string())
+                                }
+                            };
+                            
+                            if let Ok(account_data) = account_data_result {
+                                return Some(account_data);
+                            }
+                        }
+                    }
+                    
+                    // If refresh fails, try to use stored refresh token directly as access token
+                    // This is a fallback for when tokens might be expired but we still want to try
+                    if let Ok(stored_token) = ql_instances::auth::read_refresh_token(&account.username, account_type) {
+                        if let Some(nice_username) = &config_account.username_nice {
+                            return Some(ql_instances::auth::AccountData {
+                                access_token: Some(stored_token.clone()), // Use stored token as access token
+                                uuid: account.uuid.clone(),
+                                refresh_token: stored_token, // Also use as refresh token
+                                needs_refresh: true, // Mark as needing refresh
+                                username: account.username.clone(),
+                                nice_username: nice_username.clone(), // Use the nice_username from config
+                                account_type,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        
+        None
+    }
+
+    /// Generate a clean username for launching based on account type and available data
+    fn get_clean_username_for_launch(&self, username: &str, nice_username: &str, account_type: &ql_instances::auth::AccountType) -> String {
+        match account_type {
+            ql_instances::auth::AccountType::ElyBy | ql_instances::auth::AccountType::LittleSkin => {
+                // For ElyBy/LittleSkin, use the nice_username if it doesn't contain spaces or special chars
+                // Otherwise, try to extract a clean part from the username (email)
+                if nice_username.chars().all(|c| c.is_alphanumeric() || c == '_') && nice_username.len() <= 16 {
+                    nice_username.to_string()
+                } else {
+                    // Extract username part from email or use first part
+                    if let Some(at_pos) = username.find('@') {
+                        let local_part = &username[..at_pos];
+                        // Clean the local part to make it suitable for Minecraft
+                        let clean = local_part.chars()
+                            .filter(|c| c.is_alphanumeric() || *c == '_')
+                            .take(16)
+                            .collect::<String>();
+                        if clean.is_empty() {
+                            format!("User_{}", &username.chars().filter(|c| c.is_alphanumeric()).take(8).collect::<String>())
+                        } else {
+                            clean
+                        }
+                    } else {
+                        // Not an email, clean the username
+                        let clean = username.chars()
+                            .filter(|c| c.is_alphanumeric() || *c == '_')
+                            .take(16)
+                            .collect::<String>();
+                        if clean.is_empty() { "Player".to_string() } else { clean }
+                    }
+                }
+            }
+            ql_instances::auth::AccountType::Microsoft => {
+                // For Microsoft accounts, prefer nice_username (gamertag) if valid
+                if nice_username.chars().all(|c| c.is_alphanumeric() || c == '_') && nice_username.len() <= 16 {
+                    nice_username.to_string()
+                } else {
+                    // Fallback to cleaning the username
+                    let clean = username.chars()
+                        .filter(|c| c.is_alphanumeric() || *c == '_')
+                        .take(16)
+                        .collect::<String>();
+                    if clean.is_empty() { "Player".to_string() } else { clean }
+                }
+            }
+        }
+    }
+
+    /// Generate a clean username for a selected account without full auth data
+    fn get_clean_username_for_selected_account(&self, account: &Account) -> String {
+        // Try to get the nice_username from config if available
+        if let Ok(config) = LauncherConfig::load_s() {
+            if let Some(config_accounts) = config.accounts {
+                if let Some(config_account) = config_accounts.get(&account.username) {
+                    if let Some(nice_username) = &config_account.username_nice {
+                        // Use nice_username if it's clean
+                        if nice_username.chars().all(|c| c.is_alphanumeric() || c == '_') && nice_username.len() <= 16 {
+                            return nice_username.clone();
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback to cleaning the account username
+        match account.account_type.as_str() {
+            "ElyBy" | "LittleSkin" => {
+                // For ElyBy/LittleSkin, try to extract from email
+                if let Some(at_pos) = account.username.find('@') {
+                    let local_part = &account.username[..at_pos];
+                    let clean = local_part.chars()
+                        .filter(|c| c.is_alphanumeric() || *c == '_')
+                        .take(16)
+                        .collect::<String>();
+                    if clean.is_empty() {
+                        format!("User_{}", &account.username.chars().filter(|c| c.is_alphanumeric()).take(8).collect::<String>())
+                    } else {
+                        clean
+                    }
+                } else {
+                    let clean = account.username.chars()
+                        .filter(|c| c.is_alphanumeric() || *c == '_')
+                        .take(16)
+                        .collect::<String>();
+                    if clean.is_empty() { "Player".to_string() } else { clean }
+                }
+            }
+            _ => {
+                // For Microsoft and others, just clean the username
+                let clean = account.username.chars()
+                    .filter(|c| c.is_alphanumeric() || *c == '_')
+                    .take(16)
+                    .collect::<String>();
+                if clean.is_empty() { "Player".to_string() } else { clean }
+            }
+        }
     }
 
     /// Add a log line to game logs
