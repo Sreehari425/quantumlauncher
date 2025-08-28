@@ -69,6 +69,12 @@ pub enum EditInstanceMessage {
     GameArgDelete(usize),
     GameArgShiftUp(usize),
     GameArgShiftDown(usize),
+    PreLaunchPrefixAdd,
+    PreLaunchPrefixEdit(String, usize),
+    PreLaunchPrefixDelete(usize),
+    PreLaunchPrefixShiftUp(usize),
+    PreLaunchPrefixShiftDown(usize),
+    PreLaunchPrefixModeChanged(ql_core::json::instance_config::PreLaunchPrefixMode),
     RenameEdit(String),
     RenameApply,
     WindowWidthChanged(String),
@@ -234,6 +240,13 @@ pub enum LauncherSettingsMessage {
     GlobalJavaArgDelete(usize),
     GlobalJavaArgShiftUp(usize),
     GlobalJavaArgShiftDown(usize),
+
+    // Global pre-launch prefix
+    GlobalPreLaunchPrefixAdd,
+    GlobalPreLaunchPrefixEdit(String, usize),
+    GlobalPreLaunchPrefixDelete(usize),
+    GlobalPreLaunchPrefixShiftUp(usize),
+    GlobalPreLaunchPrefixShiftDown(usize),
 }
 
 #[derive(Debug, Clone)]
