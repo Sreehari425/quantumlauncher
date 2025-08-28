@@ -180,22 +180,40 @@ impl App {
     }
 
     pub fn refresh(&mut self) {
+        use std::path::PathBuf;
+        use crate::state::get_entries;
+        use ql_core::json::{InstanceConfigJson, VersionDetails};
+        use ql_core::file_utils;
+
         self.is_loading = true;
         self.status_message = "Refreshing...".to_string();
-        
-        // Load instances
+
         match tokio::runtime::Runtime::new() {
             Ok(rt) => {
                 match rt.block_on(get_entries("instances".to_owned(), false)) {
                     Ok((instance_names, _)) => {
                         self.instances.clear();
+                        let launcher_dir = match file_utils::get_launcher_dir() {
+                            Ok(dir) => dir,
+                            Err(_) => PathBuf::from(".config/QuantumLauncher"),
+                        };
+                        let instances_dir = launcher_dir.join("instances");
                         for name in instance_names {
-                            // For now, create dummy data - in a real implementation,
-                            // you'd read the actual instance details
+                            let instance_dir = instances_dir.join(&name);
+                            // Try to read config.json
+                            let loader = match rt.block_on(InstanceConfigJson::read_from_dir(&instance_dir)) {
+                                Ok(cfg) => cfg.mod_type,
+                                Err(_) => "Vanilla".to_string(),
+                            };
+                            // Try to read details.json
+                            let version = match rt.block_on(VersionDetails::load_from_path(&instance_dir)) {
+                                Ok(details) => details.id,
+                                Err(_) => "Unknown".to_string(),
+                            };
                             self.instances.push(Instance {
                                 name: name.clone(),
-                                version: "Unknown".to_string(),
-                                loader: "Vanilla".to_string(),
+                                version,
+                                loader,
                             });
                         }
                         self.status_message = format!("Loaded {} instances", self.instances.len());
