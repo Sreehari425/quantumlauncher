@@ -253,11 +253,11 @@ impl MenuEditInstance {
 
         let mut column = widget::column![
             widget::checkbox(
-                "Use custom Minecraft JAR",
+                "Use custom JAR",
                 is_enabled
             ).on_toggle(|t| Message::EditInstance(EditInstanceMessage::CustomJarToggle(t))),
             widget::text(
-                "Use a custom Minecraft client JAR instead of the official one.\nUseful for modified clients, archived versions, or custom modded JARs.\nAssets will be used from this instance's selected version."
+                "Use a custom JAR file instead of the official one.\nUseful for modified clients/servers, archived versions, or custom implementations.\nAssets will be used from this instance's selected version."
             )
             .size(12)
             .style(ts),

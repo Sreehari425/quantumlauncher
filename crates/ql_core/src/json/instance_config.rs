@@ -229,16 +229,17 @@ pub struct InstanceConfigJson {
     /// **Default: `JavaArgsMode::Combine`**
     pub java_args_mode: Option<JavaArgsMode>,
 
-    /// **Client Only**
+    /// **Client and Server**
     ///
-    /// Custom jar configuration for using alternative client jars.
+    /// Custom jar configuration for using alternative client/server jars.
     /// When set, the launcher will use the specified custom jar instead of the default
     /// Minecraft jar, but will use assets from the instance's configured version.
     ///
     /// This is useful for:
     /// - Modified client jars (e.g., Cypress, Omniarchive special versions)
     /// - Custom modded jars not available through official channels
-    /// - Client jars from external sources
+    /// - Client/server jars from external sources
+    /// - Custom server implementations
     ///
     /// **Default: `None`** (use official Minecraft jar)
     pub custom_jar: Option<CustomJarConfig>,
