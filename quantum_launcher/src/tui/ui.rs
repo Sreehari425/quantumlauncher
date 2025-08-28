@@ -227,23 +227,81 @@ fn render_settings_tab(f: &mut Frame, area: Rect, _app: &App) {
 }
 
 /// Render the accounts tab
-fn render_accounts_tab(f: &mut Frame, area: Rect, _app: &App) {
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(" Accounts ");
-    let paragraph = Paragraph::new(vec![
-        Line::from("Account management coming soon!"),
-        Line::from(""),
-        Line::from("This will include:"),
-        Line::from("• Microsoft account login"),
-        Line::from("• Offline account management"),
-        Line::from("• Account switching"),
-        Line::from("• Profile management"),
-    ])
-    .block(block)
-    .alignment(Alignment::Left)
-    .wrap(Wrap { trim: true });
-    f.render_widget(paragraph, area);
+fn render_accounts_tab(f: &mut Frame, area: Rect, app: &App) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Min(10),  // Account list
+            Constraint::Length(8), // Login form or account actions
+        ])
+        .split(area);
+
+    // Account List
+    let account_items: Vec<ListItem> = app.accounts
+        .iter()
+        .enumerate()
+        .map(|(i, account)| {
+            let status = if account.is_logged_in { " (logged in)" } else { "" };
+            let content = format!("{} [{}]{}", account.username, account.account_type, status);
+            let mut item = ListItem::new(content);
+            if i == app.selected_account {
+                item = item.style(Style::default().bg(Color::Yellow).fg(Color::Black));
+            }
+            item
+        })
+        .collect();
+
+    let accounts_list = List::new(account_items)
+        .block(Block::default().borders(Borders::ALL).title("Accounts"))
+        .style(Style::default().fg(Color::White));
+
+    f.render_widget(accounts_list, chunks[0]);
+
+    // Bottom panel for login form or account actions
+    if app.is_login_mode {
+        // Login form
+        let login_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(3), // Username input
+                Constraint::Length(3), // Password input
+                Constraint::Length(2), // Instructions
+            ])
+            .split(chunks[1]);
+
+        let username_input = Paragraph::new(app.login_username.as_str())
+            .block(Block::default().borders(Borders::ALL).title("Username"))
+            .style(Style::default().fg(Color::White));
+        f.render_widget(username_input, login_chunks[0]);
+
+        let password_display = "*".repeat(app.login_password.len());
+        let password_input = Paragraph::new(password_display.as_str())
+            .block(Block::default().borders(Borders::ALL).title("Password"))
+            .style(Style::default().fg(Color::White));
+        f.render_widget(password_input, login_chunks[1]);
+
+        let instructions = Paragraph::new("Press Enter to login, Esc to cancel")
+            .style(Style::default().fg(Color::Gray))
+            .alignment(Alignment::Center);
+        f.render_widget(instructions, login_chunks[2]);
+    } else {
+        // Account actions
+        let selected_account_info = if let Some(account) = app.get_selected_account() {
+            if account.is_logged_in {
+                format!("Selected: {} (logged in)\nPress 'l' to logout, 'n' to add new account", account.username)
+            } else {
+                format!("Selected: {} (not logged in)\nPress 'l' to login, 'n' to add new account", account.username)
+            }
+        } else {
+            "No accounts available\nPress 'n' to add new account".to_string()
+        };
+
+        let account_info = Paragraph::new(selected_account_info)
+            .block(Block::default().borders(Borders::ALL).title("Actions"))
+            .style(Style::default().fg(Color::White))
+            .wrap(Wrap { trim: true });
+        f.render_widget(account_info, chunks[1]);
+    }
 }
 
 /// Render the footer with status and help
@@ -351,6 +409,12 @@ fn render_help_popup(f: &mut Frame) {
         Line::from("↑/↓                Navigate version list"),
         Line::from("Enter              Create instance (coming soon)"),
         Line::from("Backspace          Delete character (when editing name)"),
+        Line::from(""),
+        Line::from("═══ ACCOUNTS TAB ═══"),
+        Line::from("l                  Login/logout selected account"),
+        Line::from("n                  Add new account (coming soon)"),
+        Line::from("↑/↓                Navigate account list"),
+        Line::from("Esc                Cancel login mode"),
         Line::from(""),
         Line::from("═══ GENERAL ═══"),
         Line::from("?                  Show/hide this help popup"),

@@ -64,10 +64,10 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppResult<()
                     // Normal key handling when help popup is not shown
                     match key.code {
                         KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
-                        KeyCode::Up | KeyCode::Char('k') => app.previous_item(),
+                        KeyCode::Up | KeyCode::Char('k') => app.prev_item(),
                         KeyCode::Down | KeyCode::Char('j') => app.next_item(),
                         KeyCode::Left | KeyCode::Char('h') => app.previous_tab(),
-                        KeyCode::Right | KeyCode::Char('l') => app.next_tab(),
+                        KeyCode::Right if app.current_tab != app::TabId::Accounts => app.next_tab(),
                         KeyCode::Enter => app.select_item(),
                         KeyCode::Char('c') => app.set_tab(app::TabId::Create),
                         KeyCode::Char('i') => app.set_tab(app::TabId::Instances),
@@ -82,6 +82,24 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppResult<()
                             } else {
                                 app.status_message = "Finished editing instance name.".to_string();
                             }
+                        }
+                        // Account tab specific keys
+                        KeyCode::Char('l') if app.current_tab == app::TabId::Accounts => {
+                            if app.is_login_mode {
+                                app.toggle_login_mode();
+                                app.status_message = "Login cancelled.".to_string();
+                            } else if let Some(account) = app.get_selected_account() {
+                                if account.is_logged_in {
+                                    app.logout_account();
+                                    app.status_message = "Account logged out.".to_string();
+                                } else {
+                                    app.toggle_login_mode();
+                                    app.status_message = "Login mode activated. Enter username and password.".to_string();
+                                }
+                            }
+                        }
+                        KeyCode::Char('n') if app.current_tab == app::TabId::Accounts => {
+                            app.status_message = "Adding new account (feature not yet implemented).".to_string();
                         }
                         KeyCode::Backspace if app.current_tab == app::TabId::Create && app.is_editing_name => {
                             app.new_instance_name.pop();
