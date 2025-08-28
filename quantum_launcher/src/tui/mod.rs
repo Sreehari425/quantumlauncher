@@ -64,29 +64,47 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppResult<()
                     // Normal key handling when help popup is not shown
                     match key.code {
                         // Account tab specific keys - must come first to override general patterns
-                        KeyCode::Esc if app.current_tab == app::TabId::Accounts && (app.is_add_account_mode || app.is_login_mode) => {
-                            if app.is_add_account_mode {
-                                app.toggle_add_account_mode();
-                                app.status_message = "Add account cancelled.".to_string();
-                            } else if app.is_login_mode {
-                                app.toggle_login_mode();
-                                app.status_message = "Login cancelled.".to_string();
-                            }
+                        KeyCode::Esc if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
+                            app.toggle_add_account_mode();
                         }
                         KeyCode::Enter if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
                             app.add_new_account();
                         }
                         KeyCode::Up if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
-                            app.prev_account_type();
+                            if app.new_account_type == app::AccountType::ElyBy {
+                                // For ElyBy accounts, don't change account type when in a field
+                                app.prev_account_type();
+                            } else {
+                                app.prev_account_type();
+                            }
                         }
                         KeyCode::Down if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
-                            app.next_account_type();
+                            if app.new_account_type == app::AccountType::ElyBy {
+                                // For ElyBy accounts, don't change account type when in a field
+                                app.next_account_type();
+                            } else {
+                                app.next_account_type();
+                            }
                         }
                         KeyCode::Backspace if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
-                            app.new_account_username.pop();
+                            app.remove_char_from_add_account_field();
+                        }
+                        KeyCode::Tab if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
+                            // Switch between username/password/OTP fields for ElyBy accounts
+                            if app.new_account_type == app::AccountType::ElyBy {
+                                app.next_add_account_field();
+                            }
+                        }
+                        KeyCode::Char('p') if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
+                            // Toggle password visibility for ElyBy accounts
+                            if app.new_account_type == app::AccountType::ElyBy {
+                                app.toggle_password_visibility();
+                            } else {
+                                app.add_char_to_add_account_field('p');
+                            }
                         }
                         KeyCode::Char(c) if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
-                            app.new_account_username.push(c);
+                            app.add_char_to_add_account_field(c);
                         }
                         // General key handling
                         KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
@@ -111,25 +129,19 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppResult<()
                         }
                         // Account tab specific keys
                         KeyCode::Char('l') if app.current_tab == app::TabId::Accounts && !app.is_add_account_mode => {
-                            if app.is_login_mode {
-                                app.toggle_login_mode();
-                                app.status_message = "Login cancelled.".to_string();
-                            } else if let Some(account) = app.get_selected_account() {
+                            if let Some(account) = app.get_selected_account() {
                                 if account.is_logged_in {
                                     app.logout_account();
                                     app.status_message = "Account logged out.".to_string();
                                 } else {
-                                    app.toggle_login_mode();
-                                    app.status_message = "Login mode activated. Enter username and password.".to_string();
+                                    app.status_message = "Use 'n' to add a new account and login during creation.".to_string();
                                 }
                             }
                         }
-                        KeyCode::Char('n') if app.current_tab == app::TabId::Accounts && !app.is_login_mode => {
-                            app.toggle_add_account_mode();
-                            if app.is_add_account_mode {
+                        KeyCode::Char('n') if app.current_tab == app::TabId::Accounts => {
+                            if !app.is_add_account_mode {
+                                app.toggle_add_account_mode();
                                 app.status_message = "Add account mode. Select type and enter credentials.".to_string();
-                            } else {
-                                app.status_message = "Add account cancelled.".to_string();
                             }
                         }
                         KeyCode::Backspace if app.current_tab == app::TabId::Create && app.is_editing_name => {

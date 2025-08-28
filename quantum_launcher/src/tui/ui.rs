@@ -12,7 +12,7 @@ use ratatui::{
 };
 use ql_core::LAUNCHER_VERSION_NAME;
 
-use crate::tui::app::{App, TabId};
+use crate::tui::app::{App, TabId, AddAccountFieldFocus};
 
 /// Main rendering function
 pub fn render(f: &mut Frame, app: &mut App) {
@@ -266,51 +266,23 @@ fn render_account_list(f: &mut Frame, area: Rect, app: &App) {
     f.render_widget(accounts_list, chunks[0]);
 
     // Bottom panel for login form or account actions
-    if app.is_login_mode {
-        // Login form
-        let login_chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(3), // Username input
-                Constraint::Length(3), // Password input
-                Constraint::Length(2), // Instructions
-            ])
-            .split(chunks[1]);
-
-        let username_input = Paragraph::new(app.login_username.as_str())
-            .block(Block::default().borders(Borders::ALL).title("Username"))
-            .style(Style::default().fg(Color::White));
-        f.render_widget(username_input, login_chunks[0]);
-
-        let password_display = "*".repeat(app.login_password.len());
-        let password_input = Paragraph::new(password_display.as_str())
-            .block(Block::default().borders(Borders::ALL).title("Password"))
-            .style(Style::default().fg(Color::White));
-        f.render_widget(password_input, login_chunks[1]);
-
-        let instructions = Paragraph::new("Press Enter to login, Esc to cancel")
-            .style(Style::default().fg(Color::Gray))
-            .alignment(Alignment::Center);
-        f.render_widget(instructions, login_chunks[2]);
-    } else {
-        // Account actions
-        let selected_account_info = if let Some(account) = app.get_selected_account() {
-            if account.is_logged_in {
-                format!("Selected: {} (logged in)\nPress 'l' to logout, 'n' to add new account", account.username)
-            } else {
-                format!("Selected: {} (not logged in)\nPress 'l' to login, 'n' to add new account", account.username)
-            }
+    // Account actions - no longer supporting separate login mode
+    let selected_account_info = if let Some(account) = app.get_selected_account() {
+        if account.is_logged_in {
+            format!("Selected: {} (logged in)\nPress 'l' to logout, 'n' to add new account", account.username)
         } else {
-            format!("Debug: {} accounts, selected index: {}\nPress 'n' to add new account", 
-                app.accounts.len(), app.selected_account)
-        };
+            format!("Selected: {} (not logged in)\nPress 'n' to add new account (login during creation)", account.username)
+        }
+    } else {
+        format!("Debug: {} accounts, selected index: {}\nPress 'n' to add new account", 
+            app.accounts.len(), app.selected_account)
+    };
 
-        let account_info = Paragraph::new(selected_account_info)
-            .block(Block::default().borders(Borders::ALL).title("Actions"))
-            .style(Style::default().fg(Color::White))
-            .wrap(Wrap { trim: true });
-        f.render_widget(account_info, chunks[1]);
-    }
+    let account_info = Paragraph::new(selected_account_info)
+        .block(Block::default().borders(Borders::ALL).title("Actions"))
+        .style(Style::default().fg(Color::White))
+        .wrap(Wrap { trim: true });
+    f.render_widget(account_info, chunks[1]);
 }
 
 /// Render the footer with status and help
@@ -527,7 +499,7 @@ fn get_settings_help() -> Vec<Line<'static>> {
 }
 
 /// Help for Accounts tab
-fn get_accounts_help(app: &App) -> Vec<Line> {
+fn get_accounts_help(app: &App) -> Vec<Line<'static>> {
     let mut help = vec![
         Line::from(vec![
             Span::styled("═══ ACCOUNTS TAB ═══", Style::default().fg(Color::Blue).bold())
@@ -552,22 +524,11 @@ fn get_accounts_help(app: &App) -> Vec<Line> {
             Line::from("• Offline         - Play without authentication"),
             Line::from(""),
         ]);
-    } else if app.is_login_mode {
-        help.extend(vec![
-            Line::from(vec![
-                Span::styled("🎯 Currently logging in", Style::default().fg(Color::Yellow).italic())
-            ]),
-            Line::from("Type               Enter credentials"),
-            Line::from("Tab                Switch between username/password"),
-            Line::from("Enter              Login"),
-            Line::from("Esc                Cancel login"),
-            Line::from(""),
-        ]);
     } else {
         help.extend(vec![
             Line::from("↑/↓ or j/k         Navigate account list"),
-            Line::from("Enter              Login/logout selected account"),
-            Line::from("n                  Add new account"),
+            Line::from("l                  Logout selected account (if logged in)"),
+            Line::from("n                  Add new account (with login for ElyBy/LittleSkin)"),
             Line::from("d                  Delete selected account (coming soon)"),
             Line::from("r                  Refresh account status"),
             Line::from(""),
@@ -581,6 +542,14 @@ fn get_accounts_help(app: &App) -> Vec<Line> {
         Line::from("🟢 Green          - Currently logged in"),
         Line::from("🔴 Red            - Not logged in"),
         Line::from("🟡 Yellow         - Login in progress"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("🌐 ElyBy Support:", Style::default().fg(Color::Cyan)),
+        ]),
+        Line::from("• Full username/password authentication"),
+        Line::from("• Two-factor authentication (OTP) support"),
+        Line::from("• Password visibility toggle"),
+        Line::from("• Real-time error feedback"),
         Line::from(""),
     ]);
 
@@ -612,8 +581,9 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
         .constraints([
             Constraint::Length(5), // Account type selection
             Constraint::Length(3), // Username input
-            Constraint::Length(3), // Password input (for ElyBy/LittleSkin)
-            Constraint::Min(1),    // Instructions
+            Constraint::Length(3), // Password input or info
+            Constraint::Length(3), // OTP input (if needed) or empty
+            Constraint::Min(1),    // Instructions/status
         ])
         .split(area);
 
@@ -637,18 +607,51 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
         .style(Style::default().fg(Color::White));
     f.render_widget(type_list, chunks[0]);
 
-    // Username input
+    // Username input with focus indication for ElyBy
+    let username_title = if app.new_account_type == crate::tui::app::AccountType::ElyBy && 
+                           app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Username {
+        "👤 Username/Email [CURRENTLY TYPING HERE]"
+    } else {
+        "Username/Email"
+    };
+    
+    let username_style = if app.new_account_type == crate::tui::app::AccountType::ElyBy && 
+                           app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Username {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::White)
+    };
+    
     let username_input = Paragraph::new(app.new_account_username.as_str())
-        .block(Block::default().borders(Borders::ALL).title("Username/Email"))
-        .style(Style::default().fg(Color::White));
+        .block(Block::default().borders(Borders::ALL).title(username_title))
+        .style(username_style);
     f.render_widget(username_input, chunks[1]);
 
     // Password input (only for non-Microsoft accounts)
     if app.new_account_type != crate::tui::app::AccountType::Microsoft {
-        let password_display = "*".repeat(app.new_account_password.len());
+        let password_title = if app.new_account_type == crate::tui::app::AccountType::ElyBy && 
+                               app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Password {
+            "🔑 Password [CURRENTLY TYPING HERE]"
+        } else {
+            "Password"
+        };
+        
+        let password_style = if app.new_account_type == crate::tui::app::AccountType::ElyBy && 
+                               app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Password {
+            Style::default().fg(Color::Yellow).bold()
+        } else {
+            Style::default().fg(Color::White)
+        };
+        
+        let password_display = if app.show_password {
+            app.new_account_password.clone()
+        } else {
+            "*".repeat(app.new_account_password.len())
+        };
+        
         let password_input = Paragraph::new(password_display.as_str())
-            .block(Block::default().borders(Borders::ALL).title("Password"))
-            .style(Style::default().fg(Color::White));
+            .block(Block::default().borders(Borders::ALL).title(password_title))
+            .style(password_style);
         f.render_widget(password_input, chunks[2]);
     } else {
         let info_text = "Microsoft accounts use OAuth2 authentication";
@@ -658,17 +661,61 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
             .alignment(Alignment::Center);
         f.render_widget(info_paragraph, chunks[2]);
     }
-
-    // Instructions
-    let instructions = if app.new_account_type == crate::tui::app::AccountType::Microsoft {
-        "↑/↓: Select account type | Enter: Add account | Esc: Cancel\nMicrosoft accounts will open OAuth2 flow"
-    } else {
-        "↑/↓: Select account type | Tab: Next field | Enter: Add account | Esc: Cancel"
-    };
     
-    let instructions_paragraph = Paragraph::new(instructions)
+    // OTP input (only if needed for ElyBy)
+    if app.needs_otp {
+        let otp_title = if app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Otp {
+            "🔐 OTP Code [CURRENTLY TYPING HERE]"
+        } else {
+            "🔐 OTP Code"
+        };
+        
+        let otp_style = if app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Otp {
+            Style::default().fg(Color::Yellow).bold()
+        } else {
+            Style::default().fg(Color::White)
+        };
+        
+        let empty_string = String::new();
+        let otp_display = app.new_account_otp.as_ref().unwrap_or(&empty_string);
+        let otp_input = Paragraph::new(otp_display.as_str())
+            .block(Block::default().borders(Borders::ALL).title(otp_title))
+            .style(otp_style);
+        f.render_widget(otp_input, chunks[3]);
+    } else {
+        // Empty placeholder
+        let empty_paragraph = Paragraph::new("")
+            .style(Style::default().fg(Color::Gray));
+        f.render_widget(empty_paragraph, chunks[3]);
+    }
+
+    // Instructions and error messages
+    let mut instruction_lines = vec![];
+    
+    if app.new_account_type == crate::tui::app::AccountType::Microsoft {
+        instruction_lines.push("↑/↓: Select account type | Enter: Add account | Esc: Cancel".to_string());
+        instruction_lines.push("Microsoft accounts will open OAuth2 flow".to_string());
+    } else if app.new_account_type == crate::tui::app::AccountType::ElyBy {
+        instruction_lines.push("↑/↓: Select account type | Tab: Next field | p: Toggle password visibility".to_string());
+        instruction_lines.push("Enter: Create account | Esc: Cancel".to_string());
+        
+        if app.needs_otp {
+            instruction_lines.push("📱 Two-factor authentication required - enter OTP code".to_string());
+        }
+    } else {
+        instruction_lines.push("↑/↓: Select account type | Tab: Next field | Enter: Add account | Esc: Cancel".to_string());
+    }
+    
+    // Add error message if present
+    if let Some(ref error) = app.login_error {
+        instruction_lines.push("".to_string());
+        instruction_lines.push(format!("❌ Error: {}", error));
+    }
+    
+    let instructions_text = instruction_lines.join("\n");
+    let instructions_paragraph = Paragraph::new(instructions_text)
         .block(Block::default().borders(Borders::ALL).title("Instructions"))
         .style(Style::default().fg(Color::Green))
         .wrap(Wrap { trim: true });
-    f.render_widget(instructions_paragraph, chunks[3]);
+    f.render_widget(instructions_paragraph, chunks[4]);
 }

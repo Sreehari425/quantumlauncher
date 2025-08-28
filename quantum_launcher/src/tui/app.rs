@@ -73,9 +73,6 @@ pub struct App {
     pub show_help_popup: bool,
     pub accounts: Vec<Account>,
     pub selected_account: usize,
-    pub login_username: String,
-    pub login_password: String,
-    pub is_login_mode: bool,
     pub current_account: Option<String>,
     pub status_message: String,
     pub should_quit: bool,
@@ -86,6 +83,19 @@ pub struct App {
     pub new_account_username: String,
     pub new_account_password: String,
     pub selected_account_type: usize,
+    // ElyBy specific fields for account creation
+    pub new_account_otp: Option<String>,
+    pub needs_otp: bool,
+    pub show_password: bool,
+    pub login_error: Option<String>,
+    pub add_account_field_focus: AddAccountFieldFocus, // Track which field is being edited during account creation
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum AddAccountFieldFocus {
+    Username,
+    Password,
+    Otp,
 }
 
 impl App {
@@ -101,9 +111,6 @@ impl App {
             show_help_popup: false,
             accounts: Vec::new(),
             selected_account: 0,
-            login_username: String::new(),
-            login_password: String::new(),
-            is_login_mode: false,
             current_account: None,
             status_message: "Welcome to QuantumLauncher TUI! Press '?' for help, 'q' to quit.".to_string(),
             should_quit: false,
@@ -114,6 +121,12 @@ impl App {
             new_account_username: String::new(),
             new_account_password: String::new(),
             selected_account_type: 0,
+            // Initialize ElyBy specific fields for account creation
+            new_account_otp: None,
+            needs_otp: false,
+            show_password: false,
+            login_error: None,
+            add_account_field_focus: AddAccountFieldFocus::Username,
         };
         
         // Load instances and accounts on startup
@@ -293,20 +306,74 @@ impl App {
         self.new_instance_name = name;
     }
 
-    pub fn toggle_login_mode(&mut self) {
-        self.is_login_mode = !self.is_login_mode;
-        if !self.is_login_mode {
-            self.login_username.clear();
-            self.login_password.clear();
+    /// Switch to next field during account creation (for ElyBy accounts)
+    pub fn next_add_account_field(&mut self) {
+        if self.new_account_type != AccountType::ElyBy {
+            return; // Only ElyBy accounts have field navigation
+        }
+        
+        self.add_account_field_focus = match self.add_account_field_focus {
+            AddAccountFieldFocus::Username => AddAccountFieldFocus::Password,
+            AddAccountFieldFocus::Password => {
+                if self.needs_otp {
+                    AddAccountFieldFocus::Otp
+                } else {
+                    AddAccountFieldFocus::Username
+                }
+            }
+            AddAccountFieldFocus::Otp => AddAccountFieldFocus::Username,
+        };
+        
+        // Update status message to show current field
+        let field_name = match self.add_account_field_focus {
+            AddAccountFieldFocus::Username => "username/email",
+            AddAccountFieldFocus::Password => "password",
+            AddAccountFieldFocus::Otp => "OTP code",
+        };
+        self.status_message = format!("Now editing: {}", field_name);
+    }
+
+    /// Add character to current add account field
+    pub fn add_char_to_add_account_field(&mut self, c: char) {
+        if self.new_account_type != AccountType::ElyBy {
+            // For non-ElyBy accounts, just add to username
+            self.new_account_username.push(c);
+            return;
+        }
+        
+        match self.add_account_field_focus {
+            AddAccountFieldFocus::Username => self.new_account_username.push(c),
+            AddAccountFieldFocus::Password => self.new_account_password.push(c),
+            AddAccountFieldFocus::Otp => {
+                if let Some(ref mut otp) = self.new_account_otp {
+                    otp.push(c);
+                }
+            }
         }
     }
 
-    pub fn set_login_username(&mut self, username: String) {
-        self.login_username = username;
+    /// Remove character from current add account field
+    pub fn remove_char_from_add_account_field(&mut self) {
+        if self.new_account_type != AccountType::ElyBy {
+            // For non-ElyBy accounts, just remove from username
+            self.new_account_username.pop();
+            return;
+        }
+        
+        match self.add_account_field_focus {
+            AddAccountFieldFocus::Username => { self.new_account_username.pop(); }
+            AddAccountFieldFocus::Password => { self.new_account_password.pop(); }
+            AddAccountFieldFocus::Otp => {
+                if let Some(ref mut otp) = self.new_account_otp {
+                    otp.pop();
+                }
+            }
+        }
     }
 
-    pub fn set_login_password(&mut self, password: String) {
-        self.login_password = password;
+    /// Toggle password visibility
+    pub fn toggle_password_visibility(&mut self) {
+        self.show_password = !self.show_password;
     }
 
     pub fn get_selected_account(&self) -> Option<&Account> {
@@ -327,11 +394,17 @@ impl App {
     pub fn toggle_add_account_mode(&mut self) {
         self.is_add_account_mode = !self.is_add_account_mode;
         if !self.is_add_account_mode {
-            // Reset fields when exiting add account mode
+            // Reset all fields when exiting add account mode
             self.new_account_username.clear();
             self.new_account_password.clear();
             self.selected_account_type = 0;
             self.new_account_type = AccountType::Microsoft;
+            // Reset ElyBy specific fields
+            self.new_account_otp = None;
+            self.needs_otp = false;
+            self.login_error = None;
+            self.show_password = false;
+            self.add_account_field_focus = AddAccountFieldFocus::Username;
         }
     }
 
@@ -354,25 +427,93 @@ impl App {
     }
 
     pub fn add_new_account(&mut self) {
-        // For now, just add to the local accounts list
-        // In a real implementation, this would call the authentication system
-        if !self.new_account_username.is_empty() {
-            let new_account = Account {
-                username: self.new_account_username.clone(),
-                account_type: self.new_account_type.to_string(),
-                uuid: "00000000-0000-0000-0000-000000000000".to_string(), // Placeholder UUID
-                is_logged_in: false,
-            };
-            
-            self.accounts.push(new_account);
-            self.status_message = format!("Added new {} account: {}", 
-                self.new_account_type.to_string(), self.new_account_username);
-            
-            // Reset and exit add account mode
-            self.toggle_add_account_mode();
-        } else {
+        if self.new_account_username.is_empty() {
             self.status_message = "Please enter a username".to_string();
+            return;
         }
+
+        match self.new_account_type {
+            AccountType::Microsoft => {
+                // For Microsoft accounts, just add with OAuth2 placeholder
+                let new_account = Account {
+                    username: self.new_account_username.clone(),
+                    account_type: self.new_account_type.to_string(),
+                    uuid: "00000000-0000-0000-0000-000000000000".to_string(), // Placeholder UUID
+                    is_logged_in: false,
+                };
+                
+                self.accounts.push(new_account);
+                self.status_message = format!("Added new {} account: {}", 
+                    self.new_account_type.to_string(), self.new_account_username);
+                
+                // Reset and exit add account mode
+                self.toggle_add_account_mode();
+            }
+            AccountType::ElyBy => {
+                // For ElyBy accounts, validate password and potentially handle OTP
+                if self.new_account_password.is_empty() {
+                    self.login_error = Some("Password is required for ElyBy accounts".to_string());
+                    return;
+                }
+                
+                // Simulate the authentication process
+                self.simulate_elyby_account_creation();
+            }
+            AccountType::LittleSkin => {
+                // Similar to ElyBy but for LittleSkin
+                if self.new_account_password.is_empty() {
+                    self.login_error = Some("Password is required for LittleSkin accounts".to_string());
+                    return;
+                }
+                
+                // For now, just add like Microsoft until we implement LittleSkin auth
+                let new_account = Account {
+                    username: self.new_account_username.clone(),
+                    account_type: self.new_account_type.to_string(),
+                    uuid: "00000000-0000-0000-0000-000000000000".to_string(),
+                    is_logged_in: false,
+                };
+                
+                self.accounts.push(new_account);
+                self.status_message = format!("Added new {} account: {}", 
+                    self.new_account_type.to_string(), self.new_account_username);
+                
+                self.toggle_add_account_mode();
+            }
+        }
+    }
+
+    /// Simulate ElyBy account creation (since we can't use async in this context)
+    fn simulate_elyby_account_creation(&mut self) {
+        // Simulate checking for OTP requirement
+        if !self.needs_otp && self.new_account_username.contains("2fa") {
+            // If username contains "2fa", simulate needing OTP
+            self.needs_otp = true;
+            self.new_account_otp = Some(String::new());
+            self.add_account_field_focus = AddAccountFieldFocus::Otp;
+            self.status_message = "Two-factor authentication required. Enter your OTP code.".to_string();
+            return;
+        }
+
+        // If OTP is required but not provided
+        if self.needs_otp && (self.new_account_otp.is_none() || self.new_account_otp.as_ref().unwrap().is_empty()) {
+            self.login_error = Some("OTP code is required for 2FA".to_string());
+            return;
+        }
+
+        // Simulate successful account creation
+        let new_account = Account {
+            username: self.new_account_username.clone(),
+            account_type: self.new_account_type.to_string(),
+            uuid: format!("elyby-simulated-{}", self.new_account_username),
+            is_logged_in: true, // ElyBy accounts are logged in after creation
+        };
+        
+        self.accounts.push(new_account);
+        self.status_message = "Successfully created and logged into ElyBy account! (simulated)".to_string();
+        
+        // Reset and exit add account mode
+        self.toggle_add_account_mode();
     }
 
     fn load_accounts(&mut self) {
