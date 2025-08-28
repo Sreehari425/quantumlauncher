@@ -1,0 +1,107 @@
+/*
+QuantumLauncher TUI Module
+Copyright (C) 2024  Mrmayman & Contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+use std::io;
+use crossterm::{
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use ratatui::{
+    backend::{Backend, CrosstermBackend},
+    Terminal,
+};
+
+mod app;
+mod ui;
+
+pub use app::{App, AppResult};
+
+/// Entry point for the TUI mode
+pub fn run_tui() -> AppResult<()> {
+    // Setup terminal
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
+    // Create app and run it
+    let app = App::new();
+    let res = run_app(&mut terminal, app);
+
+    // Restore terminal
+    disable_raw_mode()?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
+    terminal.show_cursor()?;
+
+    if let Err(err) = res {
+        println!("{err:?}");
+    }
+
+    Ok(())
+}
+
+/// Main event loop for the TUI
+fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppResult<()> {
+    loop {
+        terminal.draw(|f| ui::render(f, &mut app))?;
+
+        if let Event::Key(key) = event::read()? {
+            if key.kind == KeyEventKind::Press {
+                match key.code {
+                    KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
+                    KeyCode::Up | KeyCode::Char('k') => app.previous_item(),
+                    KeyCode::Down | KeyCode::Char('j') => app.next_item(),
+                    KeyCode::Left | KeyCode::Char('h') => app.previous_tab(),
+                    KeyCode::Right | KeyCode::Char('l') => app.next_tab(),
+                    KeyCode::Enter => app.select_item(),
+                    KeyCode::Char('c') => app.set_tab(app::TabId::Create),
+                    KeyCode::Char('i') => app.set_tab(app::TabId::Instances),
+                    KeyCode::Char('s') => app.set_tab(app::TabId::Settings),
+                    KeyCode::Char('a') => app.set_tab(app::TabId::Accounts),
+                    KeyCode::F(5) => app.refresh(),
+                    KeyCode::Char('n') if app.current_tab == app::TabId::Create => {
+                        app.is_editing_name = !app.is_editing_name;
+                        if app.is_editing_name {
+                            app.status_message = "Editing instance name. Press 'n' again to finish editing.".to_string();
+                        } else {
+                            app.status_message = "Finished editing instance name.".to_string();
+                        }
+                    }
+                    KeyCode::Backspace if app.current_tab == app::TabId::Create && app.is_editing_name => {
+                        app.new_instance_name.pop();
+                    }
+                    KeyCode::Char(c) if app.current_tab == app::TabId::Create && app.is_editing_name => {
+                        app.new_instance_name.push(c);
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        if app.should_quit() {
+            break;
+        }
+    }
+    Ok(())
+}
