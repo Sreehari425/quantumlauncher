@@ -252,7 +252,13 @@ fn render_account_list(f: &mut Frame, area: Rect, app: &App) {
         .iter()
         .enumerate()
         .map(|(i, account)| {
-            let status = if account.is_logged_in { " (logged in)" } else { "" };
+            let status = if account.account_type == "Offline" {
+                " (offline - ready to launch)"
+            } else if account.is_logged_in { 
+                " (logged in)" 
+            } else { 
+                "" 
+            };
             
             // Check if this account is the default
             let is_default = if let Some(ref current_account) = app.current_account {
@@ -566,7 +572,7 @@ fn get_accounts_help(app: &App) -> Vec<Line<'static>> {
             Line::from("• Microsoft        - Official Minecraft account"),
             Line::from("• ElyBy           - Alternative auth service"),
             Line::from("• LittleSkin      - Alternative auth service"),
-            Line::from("• Offline         - Play without authentication"),
+            Line::from("• Offline         - Play without authentication (specify username)"),
             Line::from(""),
         ]);
     } else {
@@ -588,6 +594,7 @@ fn get_accounts_help(app: &App) -> Vec<Line<'static>> {
         Line::from("🔴 Red            - Not logged in"),
         Line::from("🟡 Yellow         - Login in progress"),
         Line::from("★                 - Default account (used for launching)"),
+        Line::from("🔵 Blue           - Offline account (ready for launching)"),
         Line::from(""),
         Line::from(vec![
             Span::styled("🌐 ElyBy Support:", Style::default().fg(Color::Cyan)),
@@ -642,17 +649,26 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
         .map(|(i, account_type)| {
             let content = account_type.to_string();
             let mut item = ListItem::new(content);
-            if i == app.selected_account_type {
+            // Ensure selected_account_type is within bounds
+            if i == app.selected_account_type && app.selected_account_type < account_types.len() {
                 item = item.style(Style::default().bg(Color::Yellow).fg(Color::Black));
             }
             item
         })
         .collect();
+    
+    // Create a ListState to control scrolling
+    let mut list_state = ListState::default();
+    if app.selected_account_type < account_types.len() {
+        list_state.select(Some(app.selected_account_type));
+    }
 
     let type_list = List::new(type_items)
         .block(Block::default().borders(Borders::ALL).title("Account Type"))
-        .style(Style::default().fg(Color::White));
-    f.render_widget(type_list, chunks[0]);
+        .style(Style::default().fg(Color::White))
+        .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
+    
+    f.render_stateful_widget(type_list, chunks[0], &mut list_state);
 
     // Username input with focus indication for ElyBy
     let username_title = if app.new_account_type == crate::tui::app::AccountType::ElyBy && 
@@ -674,8 +690,9 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
         .style(username_style);
     f.render_widget(username_input, chunks[1]);
 
-    // Password input (only for non-Microsoft accounts)
-    if app.new_account_type != crate::tui::app::AccountType::Microsoft {
+    // Password input (only for non-Microsoft and non-Offline accounts)
+    if app.new_account_type != crate::tui::app::AccountType::Microsoft && 
+       app.new_account_type != crate::tui::app::AccountType::Offline {
         let password_title = if app.new_account_type == crate::tui::app::AccountType::ElyBy && 
                                app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Password {
             "🔑 Password [CURRENTLY TYPING HERE]"
@@ -700,6 +717,13 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
             .block(Block::default().borders(Borders::ALL).title(password_title))
             .style(password_style);
         f.render_widget(password_input, chunks[2]);
+    } else if app.new_account_type == crate::tui::app::AccountType::Offline {
+        let info_text = "Offline accounts use the specified username for playing";
+        let info_paragraph = Paragraph::new(info_text)
+            .block(Block::default().borders(Borders::ALL).title("Info"))
+            .style(Style::default().fg(Color::Gray))
+            .alignment(Alignment::Center);
+        f.render_widget(info_paragraph, chunks[2]);
     } else {
         let info_text = "Microsoft accounts use OAuth2 authentication";
         let info_paragraph = Paragraph::new(info_text)
@@ -742,6 +766,9 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
     if app.new_account_type == crate::tui::app::AccountType::Microsoft {
         instruction_lines.push("↑/↓: Select account type | Enter: Add account | Esc: Cancel".to_string());
         instruction_lines.push("Microsoft accounts will open OAuth2 flow".to_string());
+    } else if app.new_account_type == crate::tui::app::AccountType::Offline {
+        instruction_lines.push("↑/↓: Select account type | Enter: Add offline account | Esc: Cancel".to_string());
+        instruction_lines.push("Offline accounts use the specified username for playing".to_string());
     } else if app.new_account_type == crate::tui::app::AccountType::ElyBy {
         instruction_lines.push("↑/↓: Select account type | Tab: Next field | p: Toggle password visibility".to_string());
         instruction_lines.push("Enter: Create account | Esc: Cancel".to_string());

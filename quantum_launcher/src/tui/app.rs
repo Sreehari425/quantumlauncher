@@ -12,6 +12,7 @@ pub enum AccountType {
     Microsoft,
     ElyBy,
     LittleSkin,
+    Offline,
 }
 
 impl fmt::Display for AccountType {
@@ -20,6 +21,7 @@ impl fmt::Display for AccountType {
             AccountType::Microsoft => "Microsoft",
             AccountType::ElyBy => "ElyBy",
             AccountType::LittleSkin => "LittleSkin",
+            AccountType::Offline => "Offline",
         };
         write!(f, "{}", name)
     }
@@ -27,7 +29,7 @@ impl fmt::Display for AccountType {
 
 impl AccountType {
     pub fn all() -> Vec<AccountType> {
-        vec![AccountType::Microsoft, AccountType::ElyBy, AccountType::LittleSkin]
+        vec![AccountType::Microsoft, AccountType::ElyBy, AccountType::LittleSkin, AccountType::Offline]
     }
 }
 
@@ -438,7 +440,9 @@ impl App {
         let account_types = AccountType::all();
         if !account_types.is_empty() {
             self.selected_account_type = (self.selected_account_type + 1) % account_types.len();
-            self.new_account_type = account_types[self.selected_account_type].clone();
+            if self.selected_account_type < account_types.len() {
+                self.new_account_type = account_types[self.selected_account_type].clone();
+            }
         }
     }
 
@@ -449,7 +453,9 @@ impl App {
         } else if !account_types.is_empty() {
             self.selected_account_type = account_types.len() - 1;
         }
-        self.new_account_type = account_types[self.selected_account_type].clone();
+        if self.selected_account_type < account_types.len() {
+            self.new_account_type = account_types[self.selected_account_type].clone();
+        }
     }
 
     pub fn add_new_account(&mut self) {
@@ -471,6 +477,22 @@ impl App {
                 self.accounts.push(new_account);
                 self.status_message = format!("Added new {} account: {}", 
                     self.new_account_type, self.new_account_username);
+                
+                // Reset and exit add account mode
+                self.toggle_add_account_mode();
+            }
+            AccountType::Offline => {
+                // For offline accounts, just add with the specified username
+                let new_account = Account {
+                    username: self.new_account_username.clone(),
+                    account_type: self.new_account_type.to_string(),
+                    uuid: "00000000-0000-0000-0000-000000000000".to_string(), // Placeholder UUID for offline
+                    is_logged_in: true, // Offline accounts are always "logged in"
+                };
+                
+                self.accounts.push(new_account);
+                self.status_message = format!("Added offline account: {} (ready for launching)", 
+                    self.new_account_username);
                 
                 // Reset and exit add account mode
                 self.toggle_add_account_mode();
@@ -510,35 +532,27 @@ impl App {
     }
 
     fn load_accounts(&mut self) {
-        // Load accounts from launcher config
+        // Load accounts from launcher config (iced UI logic)
         match LauncherConfig::load_s() {
             Ok(config) => {
                 if let Some(config_accounts) = config.accounts {
-                    self.accounts = config_accounts.into_iter().map(|(username, config_account)| {
-                        let account_type = config_account.account_type
-                            .unwrap_or_else(|| "Microsoft".to_string());
-                        
-                        // For TUI, we'll assume accounts are not logged in initially
-                        // since we don't have access to the keyring tokens in this context
+                    self.accounts = config_accounts.iter().map(|(username_key, config_account)| {
+                        let account_type = config_account.account_type.clone().unwrap_or_else(|| "Microsoft".to_string());
                         Account {
-                            username,
+                            username: username_key.clone(), // Store full key (with suffix)
                             account_type,
-                            uuid: config_account.uuid,
+                            uuid: config_account.uuid.clone(),
                             is_logged_in: false,
                         }
                     }).collect();
-                    
                     // Set current account if one was selected
                     if let Some(selected_account) = config.account_selected {
                         self.current_account = Some(selected_account);
                     }
-                    
-                    // Don't override the instance loading message, just log account loading
                     if self.accounts.is_empty() {
                         self.status_message += " (No accounts configured)";
                     } else {
-                        self.status_message = format!("Loaded {} instances and {} accounts", 
-                            self.instances.len(), self.accounts.len());
+                        self.status_message = format!("Loaded {} instances and {} accounts", self.instances.len(), self.accounts.len());
                     }
                 } else {
                     self.status_message += " (No accounts configured)";
@@ -759,10 +773,10 @@ impl App {
         Ok(())
     }
 
-    /// Check if we can launch offline (with offline accounts)
+    /// Check if we can launch offline (with offline accounts or Microsoft accounts)
     fn can_launch_offline(&self) -> bool {
-        // Allow offline launch if we have any Microsoft account or if no accounts exist
-        self.accounts.iter().any(|acc| acc.account_type == "Microsoft") || self.accounts.is_empty()
+        // Allow offline launch if we have any Microsoft account or Offline account
+        self.accounts.iter().any(|acc| acc.account_type == "Microsoft" || acc.account_type == "Offline")
     }
 
     /// Launch a Minecraft instance with output capture
@@ -781,19 +795,27 @@ impl App {
             // Try to use the currently selected account even if not set as default
             if !self.accounts.is_empty() && self.selected_account < self.accounts.len() {
                 let selected_account = &self.accounts[self.selected_account];
-                // Try to get account data for this selected account again, but with fallback
-                let fallback_account_data = self.get_selected_account_data_fallback();
-                if let Some(acc) = fallback_account_data {
-                    let clean_username = self.get_clean_username_for_launch(&acc.username, &acc.nice_username, &acc.account_type);
-                    self.status_message = format!("🚀 Launching with selected account: {} ({})", 
-                        acc.nice_username, selected_account.account_type);
-                    (clean_username, acc.nice_username.clone())
-                } else {
-                    // No auth data available, generate clean username from account info
-                    let clean_username = self.get_clean_username_for_selected_account(&selected_account);
-                    self.status_message = format!("⚠️ Using selected account: {} ({}) in offline mode. Account may need re-authentication.", 
-                        clean_username, selected_account.account_type);
+                
+                // Special handling for offline accounts
+                if selected_account.account_type == "Offline" {
+                    let clean_username = self.get_clean_username_for_selected_account(selected_account);
+                    self.status_message = format!("🚀 Launching with offline account: {}", clean_username);
                     (clean_username, selected_account.username.clone())
+                } else {
+                    // Try to get account data for this selected account again, but with fallback
+                    let fallback_account_data = self.get_selected_account_data_fallback();
+                    if let Some(acc) = fallback_account_data {
+                        let clean_username = self.get_clean_username_for_launch(&acc.username, &acc.nice_username, &acc.account_type);
+                        self.status_message = format!("🚀 Launching with selected account: {} ({})", 
+                            acc.nice_username, selected_account.account_type);
+                        (clean_username, acc.nice_username.clone())
+                    } else {
+                        // No auth data available, generate clean username from account info
+                        let clean_username = self.get_clean_username_for_selected_account(&selected_account);
+                        self.status_message = format!("⚠️ Using selected account: {} ({}) in offline mode. Account may need re-authentication.", 
+                            clean_username, selected_account.account_type);
+                        (clean_username, selected_account.username.clone())
+                    }
                 }
             } else {
                 // No accounts available, launch in offline mode
@@ -810,8 +832,21 @@ impl App {
             let final_account_data = if account_data.is_some() {
                 account_data
             } else if !self.accounts.is_empty() && self.selected_account < self.accounts.len() {
-                // Try to get account data for selected account as last resort
-                self.get_selected_account_data_fallback()
+                let selected_account = &self.accounts[self.selected_account];
+                
+                // If this is an offline account, we don't need account data
+                if selected_account.account_type == "Offline" {
+                    None
+                } else {
+                    // Try to get account data for selected account as last resort
+                    let fallback_data = self.get_selected_account_data_fallback();
+                    if fallback_data.is_some() {
+                        fallback_data
+                    } else {
+                        // Create minimal account data for authlib-injector if this is ElyBy/LittleSkin
+                        self.create_minimal_account_data_for_authlib(selected_account)
+                    }
+                }
             } else {
                 None
             };
@@ -914,164 +949,181 @@ impl App {
     }
 
     /// Get account data for launching (simplified version for TUI)
+    // Use iced UI logic for account data retrieval
     fn get_account_data_for_launch(&self) -> Option<ql_instances::auth::AccountData> {
-        // First, try to get the current/default account
-        let target_account = if let Some(current_account) = &self.current_account {
-            // Find the account in our accounts list by matching the modified username format
-            self.accounts.iter().find(|acc| {
-                // Create the username with type modifier to match current_account format
-                let username_modified = if acc.account_type == "ElyBy" {
-                    format!("{} (elyby)", acc.username)
-                } else if acc.account_type == "LittleSkin" {
-                    format!("{} (littleskin)", acc.username)
-                } else {
-                    acc.username.clone()
-                };
-                current_account == &username_modified
-            })
-        } else {
-            // No default account, try to use the currently selected account
-            if !self.accounts.is_empty() && self.selected_account < self.accounts.len() {
-                Some(&self.accounts[self.selected_account])
-            } else {
-                None
-            }
-        };
-
-        if let Some(account) = target_account {
-            // Try to load the actual authenticated account data from keyring/config
-            if let Ok(config) = LauncherConfig::load_s() {
-                // Look for the account in the config
-                if let Some(config_accounts) = config.accounts {
-                    if let Some(config_account) = config_accounts.get(&account.username) {
-                        // Try to get the actual account data with tokens from keyring
-                        let account_type = match account.account_type.as_str() {
-                            "ElyBy" => ql_instances::auth::AccountType::ElyBy,
-                            "LittleSkin" => ql_instances::auth::AccountType::LittleSkin,
-                            _ => ql_instances::auth::AccountType::Microsoft,
-                        };
-                        
-                        // Try to read refresh token and refresh the account data
-                        if let Ok(refresh_token) = ql_instances::auth::read_refresh_token(&account.username, account_type) {
-                            // Create a basic runtime for async operations
-                            if let Ok(runtime) = tokio::runtime::Runtime::new() {
-                                let account_data_result = match account_type {
-                                    ql_instances::auth::AccountType::ElyBy | ql_instances::auth::AccountType::LittleSkin => {
-                                        runtime.block_on(ql_instances::auth::yggdrasil::login_refresh(
-                                            account.username.clone(),
-                                            refresh_token,
-                                            account_type,
-                                        )).map_err(|e| e.to_string())
-                                    }
-                                    ql_instances::auth::AccountType::Microsoft => {
-                                        runtime.block_on(ql_instances::auth::ms::login_refresh(
-                                            account.username.clone(),
-                                            refresh_token,
-                                            None,
-                                        )).map_err(|e| e.to_string())
-                                    }
-                                };
-                                
-                                if let Ok(account_data) = account_data_result {
-                                    return Some(account_data);
-                                }
-                            }
+        // Use iced UI logic: get_selected_account_data
+        // Direct copy of iced UI logic for account selection
+        if self.accounts.is_empty() || self.selected_account >= self.accounts.len() {
+            return None;
+        }
+        let account = &self.accounts[self.selected_account];
+        
+        // For offline accounts, no account data needed - will use username directly
+        if account.account_type == "Offline" {
+            // Return None for Offline accounts - the launch system will handle this properly
+            // by using the username directly for offline mode
+            return None;
+        }
+        
+        if let Ok(config) = LauncherConfig::load_s() {
+            if let Some(config_accounts) = config.accounts {
+                if let Some(config_account) = config_accounts.get(&account.username) {
+                    let account_type = match account.account_type.as_str() {
+                        "ElyBy" => ql_instances::auth::AccountType::ElyBy,
+                        "LittleSkin" => ql_instances::auth::AccountType::LittleSkin,
+                        _ => ql_instances::auth::AccountType::Microsoft,
+                    };
+                    let keyring_username = if let Some(keyring_id) = &config_account.keyring_identifier {
+                        keyring_id.clone()
+                    } else {
+                        match account_type {
+                            ql_instances::auth::AccountType::ElyBy => account.username.strip_suffix(" (elyby)").unwrap_or(&account.username).to_string(),
+                            ql_instances::auth::AccountType::LittleSkin => account.username.strip_suffix(" (littleskin)").unwrap_or(&account.username).to_string(),
+                            ql_instances::auth::AccountType::Microsoft => account.username.clone(),
                         }
-                        
-                        // If refresh fails, try to use stored refresh token directly as access token
-                        // This is a fallback for when tokens might be expired but we still want to try
-                        if let Ok(stored_token) = ql_instances::auth::read_refresh_token(&account.username, account_type) {
-                            if let Some(nice_username) = &config_account.username_nice {
+                    };
+                    match ql_instances::auth::read_refresh_token(&keyring_username, account_type) {
+                        Ok(refresh_token) => {
+                            return Some(ql_instances::auth::AccountData {
+                                access_token: None,
+                                uuid: config_account.uuid.clone(),
+                                refresh_token,
+                                needs_refresh: true,
+                                account_type,
+                                username: keyring_username.clone(),
+                                nice_username: config_account.username_nice.clone().unwrap_or(keyring_username),
+                            });
+                        }
+                        Err(_) => {
+                            // If token not found, return minimal AccountData for ElyBy/LittleSkin
+                            if matches!(account_type, ql_instances::auth::AccountType::ElyBy | ql_instances::auth::AccountType::LittleSkin) {
+                                let nice_username = config_account.username_nice.clone().unwrap_or_else(|| account.username.clone());
                                 return Some(ql_instances::auth::AccountData {
-                                    access_token: Some(stored_token.clone()), // Use stored token as access token
-                                    uuid: account.uuid.clone(),
-                                    refresh_token: stored_token, // Also use as refresh token
-                                    needs_refresh: true, // Mark as needing refresh
-                                    username: account.username.clone(),
-                                    nice_username: nice_username.clone(), // Use the nice_username from config
+                                    access_token: None,
+                                    uuid: config_account.uuid.clone(),
+                                    refresh_token: String::new(),
+                                    needs_refresh: true,
                                     account_type,
+                                    username: account.username.clone(),
+                                    nice_username,
                                 });
                             }
                         }
                     }
                 }
             }
-            
-            // If all token attempts fail, return None to fall back to offline mode
-            return None;
         }
-        
-        // If no accounts available, return None (will fall back to offline mode)
         None
     }
 
     /// Get account data for the currently selected account (fallback when no default is set)
+    // Use iced UI logic for fallback account data
     fn get_selected_account_data_fallback(&self) -> Option<ql_instances::auth::AccountData> {
+        self.get_selected_account_data()
+    }
+    // Iced UI logic for account data retrieval
+    fn get_selected_account_data(&self) -> Option<ql_instances::auth::AccountData> {
         if self.accounts.is_empty() || self.selected_account >= self.accounts.len() {
             return None;
         }
-
         let account = &self.accounts[self.selected_account];
         
-        // Try to load the actual authenticated account data from keyring/config
+        // For offline accounts, create minimal account data
+        if account.account_type == "Offline" {
+            return Some(ql_instances::auth::AccountData {
+                access_token: None,
+                uuid: account.uuid.clone(),
+                refresh_token: String::new(),
+                needs_refresh: false, // Offline accounts don't need refresh
+                account_type: ql_instances::auth::AccountType::Microsoft, // Use Microsoft for offline
+                username: account.username.clone(),
+                nice_username: account.username.clone(),
+            });
+        }
+        
         if let Ok(config) = LauncherConfig::load_s() {
-            // Look for the account in the config
             if let Some(config_accounts) = config.accounts {
                 if let Some(config_account) = config_accounts.get(&account.username) {
-                    // Try to get the actual account data with tokens from keyring
                     let account_type = match account.account_type.as_str() {
                         "ElyBy" => ql_instances::auth::AccountType::ElyBy,
                         "LittleSkin" => ql_instances::auth::AccountType::LittleSkin,
                         _ => ql_instances::auth::AccountType::Microsoft,
                     };
-                    
-                    // Try to read refresh token and refresh the account data
-                    if let Ok(refresh_token) = ql_instances::auth::read_refresh_token(&account.username, account_type) {
-                        // Create a basic runtime for async operations
-                        if let Ok(runtime) = tokio::runtime::Runtime::new() {
-                            let account_data_result = match account_type {
-                                ql_instances::auth::AccountType::ElyBy | ql_instances::auth::AccountType::LittleSkin => {
-                                    runtime.block_on(ql_instances::auth::yggdrasil::login_refresh(
-                                        account.username.clone(),
-                                        refresh_token,
-                                        account_type,
-                                    )).map_err(|e| e.to_string())
-                                }
-                                ql_instances::auth::AccountType::Microsoft => {
-                                    runtime.block_on(ql_instances::auth::ms::login_refresh(
-                                        account.username.clone(),
-                                        refresh_token,
-                                        None,
-                                    )).map_err(|e| e.to_string())
-                                }
-                            };
-                            
-                            if let Ok(account_data) = account_data_result {
-                                return Some(account_data);
-                            }
+                    let keyring_username = if let Some(keyring_id) = &config_account.keyring_identifier {
+                        keyring_id.clone()
+                    } else {
+                        match account_type {
+                            ql_instances::auth::AccountType::ElyBy => account.username.strip_suffix(" (elyby)").unwrap_or(&account.username).to_string(),
+                            ql_instances::auth::AccountType::LittleSkin => account.username.strip_suffix(" (littleskin)").unwrap_or(&account.username).to_string(),
+                            ql_instances::auth::AccountType::Microsoft => account.username.clone(),
                         }
-                    }
-                    
-                    // If refresh fails, try to use stored refresh token directly as access token
-                    // This is a fallback for when tokens might be expired but we still want to try
-                    if let Ok(stored_token) = ql_instances::auth::read_refresh_token(&account.username, account_type) {
-                        if let Some(nice_username) = &config_account.username_nice {
+                    };
+                    match ql_instances::auth::read_refresh_token(&keyring_username, account_type) {
+                        Ok(refresh_token) => {
                             return Some(ql_instances::auth::AccountData {
-                                access_token: Some(stored_token.clone()), // Use stored token as access token
-                                uuid: account.uuid.clone(),
-                                refresh_token: stored_token, // Also use as refresh token
-                                needs_refresh: true, // Mark as needing refresh
-                                username: account.username.clone(),
-                                nice_username: nice_username.clone(), // Use the nice_username from config
+                                access_token: None,
+                                uuid: config_account.uuid.clone(),
+                                refresh_token,
+                                needs_refresh: true,
                                 account_type,
+                                username: keyring_username.clone(),
+                                nice_username: config_account.username_nice.clone().unwrap_or(keyring_username),
                             });
+                        }
+                        Err(_) => {
+                            // If token not found, return minimal AccountData for ElyBy/LittleSkin
+                            if matches!(account_type, ql_instances::auth::AccountType::ElyBy | ql_instances::auth::AccountType::LittleSkin) {
+                                let nice_username = config_account.username_nice.clone().unwrap_or_else(|| account.username.clone());
+                                return Some(ql_instances::auth::AccountData {
+                                    access_token: None,
+                                    uuid: config_account.uuid.clone(),
+                                    refresh_token: String::new(),
+                                    needs_refresh: true,
+                                    account_type,
+                                    username: account.username.clone(),
+                                    nice_username,
+                                });
+                            }
                         }
                     }
                 }
             }
         }
-        
         None
+    }
+
+    /// Create minimal AccountData for authlib-injector when no authentication is available
+    fn create_minimal_account_data_for_authlib(&self, account: &Account) -> Option<ql_instances::auth::AccountData> {
+        let account_type = match account.account_type.as_str() {
+            "ElyBy" => ql_instances::auth::AccountType::ElyBy,
+            "LittleSkin" => ql_instances::auth::AccountType::LittleSkin,
+            _ => return None, // Only create for ElyBy/LittleSkin
+        };
+
+        // Get nice username from config if available
+        let nice_username = if let Ok(config) = LauncherConfig::load_s() {
+            if let Some(config_accounts) = config.accounts {
+                if let Some(config_account) = config_accounts.get(&account.username) {
+                    config_account.username_nice.clone().unwrap_or_else(|| account.username.clone())
+                } else {
+                    account.username.clone()
+                }
+            } else {
+                account.username.clone()
+            }
+        } else {
+            account.username.clone()
+        };
+
+        Some(ql_instances::auth::AccountData {
+            access_token: None, // No access token for offline mode
+            uuid: account.uuid.clone(),
+            refresh_token: String::new(), // Empty refresh token
+            needs_refresh: true, // Mark as needing refresh
+            username: account.username.clone(),
+            nice_username,
+            account_type,
+        })
     }
 
     /// Generate a clean username for launching based on account type and available data
@@ -1124,50 +1176,60 @@ impl App {
 
     /// Generate a clean username for a selected account without full auth data
     fn get_clean_username_for_selected_account(&self, account: &Account) -> String {
-        // Try to get the nice_username from config if available
-        if let Ok(config) = LauncherConfig::load_s() {
-            if let Some(config_accounts) = config.accounts {
-                if let Some(config_account) = config_accounts.get(&account.username) {
-                    if let Some(nice_username) = &config_account.username_nice {
-                        // Use nice_username if it's clean
-                        if nice_username.chars().all(|c| c.is_alphanumeric() || c == '_') && nice_username.len() <= 16 {
-                            return nice_username.clone();
+        // For offline accounts, use the username directly (it's already what the user specified)
+        if account.account_type == "Offline" {
+            // Clean the username to ensure it's valid for Minecraft
+            let clean = account.username.chars()
+                .filter(|c| c.is_alphanumeric() || *c == '_')
+                .take(16)
+                .collect::<String>();
+            if clean.is_empty() { "Player".to_string() } else { clean }
+        } else {
+            // Try to get the nice_username from config if available
+            if let Ok(config) = LauncherConfig::load_s() {
+                if let Some(config_accounts) = config.accounts {
+                    if let Some(config_account) = config_accounts.get(&account.username) {
+                        if let Some(nice_username) = &config_account.username_nice {
+                            // Use nice_username if it's clean
+                            if nice_username.chars().all(|c| c.is_alphanumeric() || c == '_') && nice_username.len() <= 16 {
+                                return nice_username.clone();
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // Fallback to cleaning the account username
-        match account.account_type.as_str() {
-            "ElyBy" | "LittleSkin" => {
-                // For ElyBy/LittleSkin, try to extract from email
-                if let Some(at_pos) = account.username.find('@') {
-                    let local_part = &account.username[..at_pos];
-                    let clean = local_part.chars()
-                        .filter(|c| c.is_alphanumeric() || *c == '_')
-                        .take(16)
-                        .collect::<String>();
-                    if clean.is_empty() {
-                        format!("User_{}", &account.username.chars().filter(|c| c.is_alphanumeric()).take(8).collect::<String>())
+            // Fallback to cleaning the account username
+            match account.account_type.as_str() {
+                "ElyBy" | "LittleSkin" => {
+                    // For ElyBy/LittleSkin, try to extract from email
+                    if let Some(at_pos) = account.username.find('@') {
+                        let local_part = &account.username[..at_pos];
+                        let clean = local_part.chars()
+                            .filter(|c| c.is_alphanumeric() || *c == '_')
+                            .take(16)
+                            .collect::<String>();
+                        if clean.is_empty() {
+                            format!("User_{}", &account.username.chars().filter(|c| c.is_alphanumeric()).take(8).collect::<String>())
+                        } else {
+                            clean
+                        }
                     } else {
-                        clean
+                        let clean = account.username.chars()
+                            .filter(|c| c.is_alphanumeric() || *c == '_')
+                            .take(16)
+                            .collect::<String>();
+                        if clean.is_empty() { "Player".to_string() } else { clean }
                     }
-                } else {
+                }
+                _ => {
+                    // For Microsoft and others, just clean the username
                     let clean = account.username.chars()
                         .filter(|c| c.is_alphanumeric() || *c == '_')
                         .take(16)
                         .collect::<String>();
                     if clean.is_empty() { "Player".to_string() } else { clean }
                 }
-            }
-            _ => {
-                // For Microsoft and others, just clean the username
-                let clean = account.username.chars()
-                    .filter(|c| c.is_alphanumeric() || *c == '_')
-                    .take(16)
-                    .collect::<String>();
-                if clean.is_empty() { "Player".to_string() } else { clean }
             }
         }
     }
