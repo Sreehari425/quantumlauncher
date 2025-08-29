@@ -490,9 +490,15 @@ impl App {
                     is_logged_in: true, // Offline accounts are always "logged in"
                 };
                 
+                // Save to config file to persist between launches
+                if let Err(err) = self.save_offline_account(&new_account) {
+                    self.status_message = format!("Warning: Failed to save offline account to config: {}", err);
+                } else {
+                    self.status_message = format!("Added offline account: {} (ready for launching)", 
+                        self.new_account_username);
+                }
+                
                 self.accounts.push(new_account);
-                self.status_message = format!("Added offline account: {} (ready for launching)", 
-                    self.new_account_username);
                 
                 // Reset and exit add account mode
                 self.toggle_add_account_mode();
@@ -538,11 +544,12 @@ impl App {
                 if let Some(config_accounts) = config.accounts {
                     self.accounts = config_accounts.iter().map(|(username_key, config_account)| {
                         let account_type = config_account.account_type.clone().unwrap_or_else(|| "Microsoft".to_string());
+                        let is_logged_in = account_type == "Offline"; // Offline accounts are always logged in
                         Account {
                             username: username_key.clone(), // Store full key (with suffix)
                             account_type,
                             uuid: config_account.uuid.clone(),
-                            is_logged_in: false,
+                            is_logged_in,
                         }
                     }).collect();
                     // Set current account if one was selected
@@ -721,7 +728,7 @@ impl App {
     fn save_default_account_to_config(&self, username_modified: &str) -> Result<(), String> {
         let mut config = LauncherConfig::load_s().unwrap_or_default();
         config.account_selected = Some(username_modified.to_string());
-        self.save_config_sync(&config).map_err(|e| format!("Failed to save config: {}", e))
+        self.save_config_sync(&config)
     }
 
     /// Save authenticated account to config and keyring (like iced implementation)
@@ -751,7 +758,7 @@ impl App {
         config.account_selected = Some(username_modified);
         
         // Save config
-        self.save_config_sync(&config).map_err(|e| format!("Failed to save config: {}", e))?;
+        self.save_config_sync(&config)?;
         
         // Note: The keyring token is already saved by the yggdrasil::login_new function
         // in ql_instances/src/auth/yggdrasil/mod.rs line 59:
@@ -761,16 +768,54 @@ impl App {
     }
 
     /// Save config synchronously (helper for TUI)
-    fn save_config_sync(&self, config: &LauncherConfig) -> Result<(), ql_core::JsonFileError> {
-        let config_path = ql_core::file_utils::get_launcher_dir()?.join("config.json");
-        let config_json = serde_json::to_string(config)
-            .map_err(|error| ql_core::JsonFileError::SerdeError(ql_core::JsonError::To { error }))?;
-        std::fs::write(&config_path, config_json.as_bytes())
-            .map_err(|error| ql_core::JsonFileError::Io(ql_core::IoError::Io { 
-                error: error.to_string(), 
-                path: config_path.clone() 
-            }))?;
-        Ok(())
+    fn save_config_sync(&self, config: &LauncherConfig) -> Result<(), String> {
+        let config_path = match ql_core::file_utils::get_launcher_dir() {
+            Ok(dir) => dir.join("config.json"),
+            Err(e) => return Err(format!("Failed to get launcher directory: {}", e)),
+        };
+        
+        let config_str = match serde_json::to_string_pretty(config) {
+            Ok(str) => str,
+            Err(e) => return Err(format!("Failed to serialize config: {}", e)),
+        };
+        
+        match std::fs::write(&config_path, config_str) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!("Failed to write config: {}", e)),
+        }
+    }
+    
+    /// Save offline account to config (similar to save_authenticated_account but for offline accounts)
+    fn save_offline_account(&self, account: &Account) -> Result<(), String> {
+        // Load current config
+        let mut config = LauncherConfig::load_s().unwrap_or_default();
+        
+        // Get or create accounts section
+        let accounts = config.accounts.get_or_insert_with(Default::default);
+        
+        // For offline accounts, use the username directly as the key
+        let username = account.username.clone();
+        
+        // Add account to config
+        accounts.insert(
+            username.clone(),
+            ConfigAccount {
+                uuid: account.uuid.clone(),
+                skin: None,
+                account_type: Some("Offline".to_string()),
+                keyring_identifier: None, // Offline accounts don't need keyring
+                username_nice: Some(username.clone()),
+            },
+        );
+        
+        // Set as selected account if requested
+        if self.accounts.is_empty() {
+            // If this is the first account, set it as selected
+            config.account_selected = Some(username);
+        }
+        
+        // Save config
+        self.save_config_sync(&config).map_err(|e| format!("Failed to save config: {}", e))
     }
 
     /// Check if we can launch offline (with offline accounts or Microsoft accounts)
