@@ -690,9 +690,8 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
         .style(username_style);
     f.render_widget(username_input, chunks[1]);
 
-    // Password input (only for non-Microsoft and non-Offline accounts)
-    if app.new_account_type != crate::tui::app::AccountType::Microsoft && 
-       app.new_account_type != crate::tui::app::AccountType::Offline {
+    // Password input (only for non-Offline accounts and ElyBy accounts)
+    if app.new_account_type != crate::tui::app::AccountType::Offline {
         let password_title = if app.new_account_type == crate::tui::app::AccountType::ElyBy && 
                                app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Password {
             "🔑 Password [CURRENTLY TYPING HERE]"
@@ -763,7 +762,9 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
     // Instructions and error messages
     let mut instruction_lines = vec![];
     
-    if app.new_account_type == crate::tui::app::AccountType::Microsoft {
+    // Microsoft option is removed
+    if false {
+        // This block is now unreachable but kept for future implementation
         instruction_lines.push("↑/↓: Select account type | Enter: Add account | Esc: Cancel".to_string());
         instruction_lines.push("Microsoft accounts will open OAuth2 flow".to_string());
     } else if app.new_account_type == crate::tui::app::AccountType::Offline {
