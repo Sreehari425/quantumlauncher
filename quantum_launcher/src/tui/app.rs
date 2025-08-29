@@ -672,20 +672,15 @@ impl App {
 
         let selected_account = &self.accounts[self.selected_account];
         
-        // Create the username with type modifier (like iced does)
-        let username_modified = if selected_account.account_type == "ElyBy" {
-            format!("{} (elyby)", selected_account.username)
-        } else if selected_account.account_type == "LittleSkin" {
-            format!("{} (littleskin)", selected_account.username)
-        } else {
-            selected_account.username.clone()
-        };
+        // Use the account's username directly since it's already stored with the proper format
+        // from when the accounts were loaded from the config
+        let default_key = selected_account.username.clone();
         
         // Update current account
-        self.current_account = Some(username_modified.clone());
+        self.current_account = Some(default_key.clone());
         
         // Save to config
-        if let Err(err) = self.save_default_account_to_config(&username_modified) {
+        if let Err(err) = self.save_default_account_to_config(&default_key) {
             self.status_message = format!("❌ Failed to save default account: {}", err);
         } else {
             self.status_message = format!("✅ Set {} as default account", selected_account.username);
@@ -693,9 +688,9 @@ impl App {
     }
 
     /// Save the default account selection to config
-    fn save_default_account_to_config(&self, username_modified: &str) -> Result<(), String> {
+    fn save_default_account_to_config(&self, default_key: &str) -> Result<(), String> {
         let mut config = LauncherConfig::load_s().unwrap_or_default();
-        config.account_selected = Some(username_modified.to_string());
+        config.account_selected = Some(default_key.to_string());
         self.save_config_sync(&config)
     }
 
