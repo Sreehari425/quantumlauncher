@@ -999,7 +999,7 @@ impl App {
                     match ql_instances::auth::read_refresh_token(&keyring_username, account_type) {
                         Ok(refresh_token) => {
                             return Some(ql_instances::auth::AccountData {
-                                access_token: None,
+                                access_token: Some("0".to_string()), // Fixed token
                                 uuid: config_account.uuid.clone(),
                                 refresh_token,
                                 needs_refresh: true,
@@ -1013,7 +1013,7 @@ impl App {
                             if matches!(account_type, ql_instances::auth::AccountType::ElyBy | ql_instances::auth::AccountType::LittleSkin) {
                                 let nice_username = config_account.username_nice.clone().unwrap_or_else(|| account.username.clone());
                                 return Some(ql_instances::auth::AccountData {
-                                    access_token: None,
+                                    access_token: Some("0".to_string()), // Fixed token
                                     uuid: config_account.uuid.clone(),
                                     refresh_token: String::new(),
                                     needs_refresh: true,
@@ -1045,11 +1045,11 @@ impl App {
         // For offline accounts, create minimal account data
         if account.account_type == "Offline" {
             return Some(ql_instances::auth::AccountData {
-                access_token: None,
+                access_token: Some("0".to_string()), // Use a dummy token instead of None
                 uuid: account.uuid.clone(),
                 refresh_token: String::new(),
                 needs_refresh: false, // Offline accounts don't need refresh
-                account_type: ql_instances::auth::AccountType::Microsoft, // Use Microsoft for offline
+                account_type: ql_instances::auth::AccountType::Microsoft, // Use Microsoft but with dummy token
                 username: account.username.clone(),
                 nice_username: account.username.clone(),
             });
@@ -1075,7 +1075,7 @@ impl App {
                     match ql_instances::auth::read_refresh_token(&keyring_username, account_type) {
                         Ok(refresh_token) => {
                             return Some(ql_instances::auth::AccountData {
-                                access_token: None,
+                                access_token: Some("0".to_string()), // Fixed token
                                 uuid: config_account.uuid.clone(),
                                 refresh_token,
                                 needs_refresh: true,
@@ -1089,7 +1089,7 @@ impl App {
                             if matches!(account_type, ql_instances::auth::AccountType::ElyBy | ql_instances::auth::AccountType::LittleSkin) {
                                 let nice_username = config_account.username_nice.clone().unwrap_or_else(|| account.username.clone());
                                 return Some(ql_instances::auth::AccountData {
-                                    access_token: None,
+                                    access_token: Some("0".to_string()), // Fixed token
                                     uuid: config_account.uuid.clone(),
                                     refresh_token: String::new(),
                                     needs_refresh: true,
@@ -1130,7 +1130,7 @@ impl App {
         };
 
         Some(ql_instances::auth::AccountData {
-            access_token: None, // No access token for offline mode
+            access_token: Some("0".to_string()), // Fixed token // No access token for offline mode
             uuid: account.uuid.clone(),
             refresh_token: String::new(), // Empty refresh token
             needs_refresh: true, // Mark as needing refresh
