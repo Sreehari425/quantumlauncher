@@ -262,9 +262,15 @@ fn render_account_list(f: &mut Frame, area: Rect, app: &App) {
             
             // Check if this account is the default
             let is_default = if let Some(ref current_account) = app.current_account {
-                // The account.username already contains the full modified username (e.g., "ThinThyme397339 (elyby)")
-                // so we can directly compare it with current_account
-                current_account == &account.username
+                // Create the username with type modifier to match current_account format
+                let username_modified = if account.account_type == "ElyBy" {
+                    format!("{} (elyby)", account.username)
+                } else if account.account_type == "LittleSkin" {
+                    format!("{} (littleskin)", account.username)
+                } else {
+                    account.username.clone()
+                };
+                current_account == &username_modified
             } else {
                 false
             };
@@ -284,7 +290,7 @@ fn render_account_list(f: &mut Frame, area: Rect, app: &App) {
         .block(Block::default().borders(Borders::ALL).title("Accounts"))
         .style(Style::default().fg(Color::White));
 
-    f.render_widget(accounts_list, chunks[0]);
+    f.render_widget(accounts_list, area);
 
     // Bottom panel for login form or account actions
     // Account actions - no longer supporting separate login mode
@@ -303,7 +309,7 @@ fn render_account_list(f: &mut Frame, area: Rect, app: &App) {
         .block(Block::default().borders(Borders::ALL).title("Actions"))
         .style(Style::default().fg(Color::White))
         .wrap(Wrap { trim: true });
-    f.render_widget(account_info, chunks[1]);
+    f.render_widget(account_info, area);
 }
 
 /// Render the footer with status and help
@@ -627,11 +633,11 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(10), // Account type selection - much bigger to show all 4 options (4 items + 2 borders + 4 padding)
-            Constraint::Length(3), // Username input - normal size
-            Constraint::Length(3), // Password input or info - normal size
-            Constraint::Length(3), // OTP input (if needed) or empty - normal size
-            Constraint::Min(3),    // Instructions/status - minimum space
+            Constraint::Length(5), // Account type selection
+            Constraint::Length(3), // Username input
+            Constraint::Length(3), // Password input or info
+            Constraint::Length(3), // OTP input (if needed) or empty
+            Constraint::Min(1),    // Instructions/status
         ])
         .split(area);
 
@@ -664,17 +670,15 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
     
     f.render_stateful_widget(type_list, chunks[0], &mut list_state);
 
-    // Username input with focus indication for ElyBy and LittleSkin
-    let username_title = if (app.new_account_type == crate::tui::app::AccountType::ElyBy || 
-                            app.new_account_type == crate::tui::app::AccountType::LittleSkin) && 
+    // Username input with focus indication for ElyBy
+    let username_title = if app.new_account_type == crate::tui::app::AccountType::ElyBy && 
                            app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Username {
         "👤 Username/Email [CURRENTLY TYPING HERE]"
     } else {
         "Username/Email"
     };
     
-    let username_style = if (app.new_account_type == crate::tui::app::AccountType::ElyBy || 
-                            app.new_account_type == crate::tui::app::AccountType::LittleSkin) && 
+    let username_style = if app.new_account_type == crate::tui::app::AccountType::ElyBy && 
                            app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Username {
         Style::default().fg(Color::Yellow).bold()
     } else {
@@ -686,18 +690,16 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
         .style(username_style);
     f.render_widget(username_input, chunks[1]);
 
-    // Password input (for ElyBy, LittleSkin, and Microsoft accounts)
+    // Password input (only for non-Offline accounts and ElyBy accounts)
     if app.new_account_type != crate::tui::app::AccountType::Offline {
-        let password_title = if (app.new_account_type == crate::tui::app::AccountType::ElyBy || 
-                                app.new_account_type == crate::tui::app::AccountType::LittleSkin) && 
+        let password_title = if app.new_account_type == crate::tui::app::AccountType::ElyBy && 
                                app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Password {
             "🔑 Password [CURRENTLY TYPING HERE]"
         } else {
             "Password"
         };
         
-        let password_style = if (app.new_account_type == crate::tui::app::AccountType::ElyBy || 
-                                app.new_account_type == crate::tui::app::AccountType::LittleSkin) && 
+        let password_style = if app.new_account_type == crate::tui::app::AccountType::ElyBy && 
                                app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Password {
             Style::default().fg(Color::Yellow).bold()
         } else {
@@ -760,27 +762,23 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
     // Instructions and error messages
     let mut instruction_lines = vec![];
     
-    match app.new_account_type {
-        crate::tui::app::AccountType::Microsoft => {
-            instruction_lines.push("↑/↓: Select account type | Enter: Add account | Esc: Cancel".to_string());
-            instruction_lines.push("⚠️  Microsoft accounts are not implemented yet - coming soon!".to_string());
+    // Microsoft option is removed
+    if false {
+        // This block is now unreachable but kept for future implementation
+        instruction_lines.push("↑/↓: Select account type | Enter: Add account | Esc: Cancel".to_string());
+        instruction_lines.push("Microsoft accounts will open OAuth2 flow".to_string());
+    } else if app.new_account_type == crate::tui::app::AccountType::Offline {
+        instruction_lines.push("↑/↓: Select account type | Enter: Add offline account | Esc: Cancel".to_string());
+        instruction_lines.push("Offline accounts use the specified username for playing".to_string());
+    } else if app.new_account_type == crate::tui::app::AccountType::ElyBy {
+        instruction_lines.push("↑/↓: Select account type | Tab: Next field | p: Toggle password visibility".to_string());
+        instruction_lines.push("Enter: Create account | Esc: Cancel".to_string());
+        
+        if app.needs_otp {
+            instruction_lines.push("📱 Two-factor authentication required - enter OTP code".to_string());
         }
-        crate::tui::app::AccountType::Offline => {
-            instruction_lines.push("↑/↓: Select account type | Enter: Add offline account | Esc: Cancel".to_string());
-            instruction_lines.push("Offline accounts use the specified username for playing".to_string());
-        }
-        crate::tui::app::AccountType::ElyBy => {
-            instruction_lines.push("↑/↓: Select account type | Tab: Next field | p: Toggle password visibility".to_string());
-            instruction_lines.push("Enter: Create account | Esc: Cancel".to_string());
-            
-            if app.needs_otp {
-                instruction_lines.push("📱 Two-factor authentication required - enter OTP code".to_string());
-            }
-        }
-        crate::tui::app::AccountType::LittleSkin => {
-            instruction_lines.push("↑/↓: Select account type | Tab: Next field | Enter: Add account | Esc: Cancel".to_string());
-            instruction_lines.push("⚠️  LittleSkin accounts are not implemented yet - coming soon!".to_string());
-        }
+    } else {
+        instruction_lines.push("↑/↓: Select account type | Tab: Next field | Enter: Add account | Esc: Cancel".to_string());
     }
     
     // Add error message if present

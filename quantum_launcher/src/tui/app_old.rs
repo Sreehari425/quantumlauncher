@@ -9,18 +9,18 @@ pub type AppResult<T> = Result<T, Box<dyn Error>>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AccountType {
-    Microsoft,
+    // Microsoft, // Commented out - to be implemented later
     ElyBy,
-    LittleSkin,
+    // LittleSkin, // Commented out - to be implemented later
     Offline,
 }
 
 impl fmt::Display for AccountType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let name = match self {
-            AccountType::Microsoft => "Microsoft (Coming Soon)",
+            // AccountType::Microsoft => "Microsoft", // Commented out - to be implemented later
             AccountType::ElyBy => "ElyBy",
-            AccountType::LittleSkin => "LittleSkin (Coming Soon)",
+            // AccountType::LittleSkin => "LittleSkin", // Commented out - to be implemented later
             AccountType::Offline => "Offline",
         };
         write!(f, "{}", name)
@@ -30,9 +30,9 @@ impl fmt::Display for AccountType {
 impl AccountType {
     pub fn all() -> Vec<AccountType> {
         vec![
-            AccountType::Microsoft,
+            // AccountType::Microsoft, // Commented out - to be implemented later
             AccountType::ElyBy, 
-            AccountType::LittleSkin,
+            // AccountType::LittleSkin, // Commented out - to be implemented later
             AccountType::Offline
         ]
     }
@@ -137,7 +137,7 @@ impl App {
             is_loading: false,
             // Initialize new account creation fields
             is_add_account_mode: false,
-            new_account_type: AccountType::ElyBy, // Default to ElyBy as the primary working option
+            new_account_type: AccountType::Offline, // Default to Offline since Microsoft is removed
             new_account_username: String::new(),
             new_account_password: String::new(),
             selected_account_type: 0,
@@ -339,10 +339,10 @@ impl App {
         self.new_instance_name = name;
     }
 
-    /// Switch to next field during account creation (for ElyBy and LittleSkin accounts)
+    /// Switch to next field during account creation (for ElyBy accounts)
     pub fn next_add_account_field(&mut self) {
-        if self.new_account_type != AccountType::ElyBy && self.new_account_type != AccountType::LittleSkin {
-            return; // Only ElyBy and LittleSkin accounts have field navigation
+        if self.new_account_type != AccountType::ElyBy {
+            return; // Only ElyBy accounts have field navigation
         }
         
         self.add_account_field_focus = match self.add_account_field_focus {
@@ -368,8 +368,8 @@ impl App {
 
     /// Add character to current add account field
     pub fn add_char_to_add_account_field(&mut self, c: char) {
-        if self.new_account_type != AccountType::ElyBy && self.new_account_type != AccountType::LittleSkin {
-            // For non-ElyBy/LittleSkin accounts, just add to username
+        if self.new_account_type != AccountType::ElyBy {
+            // For non-ElyBy accounts, just add to username
             self.new_account_username.push(c);
             return;
         }
@@ -387,8 +387,8 @@ impl App {
 
     /// Remove character from current add account field
     pub fn remove_char_from_add_account_field(&mut self) {
-        if self.new_account_type != AccountType::ElyBy && self.new_account_type != AccountType::LittleSkin {
-            // For non-ElyBy/LittleSkin accounts, just remove from username
+        if self.new_account_type != AccountType::ElyBy {
+            // For non-ElyBy accounts, just remove from username
             self.new_account_username.pop();
             return;
         }
@@ -431,7 +431,7 @@ impl App {
             self.new_account_username.clear();
             self.new_account_password.clear();
             self.selected_account_type = 0;
-            self.new_account_type = AccountType::ElyBy; // Default to ElyBy as the primary working option
+            self.new_account_type = AccountType::Offline; // Default to Offline since Microsoft is removed
             // Reset ElyBy specific fields
             self.new_account_otp = None;
             self.needs_otp = false;
@@ -470,16 +470,6 @@ impl App {
         }
 
         match self.new_account_type {
-            AccountType::Microsoft => {
-                self.status_message = "Microsoft accounts are not implemented yet - coming soon!".to_string();
-                self.login_error = Some("Microsoft authentication not yet available".to_string());
-                return;
-            }
-            AccountType::LittleSkin => {
-                self.status_message = "LittleSkin accounts are not implemented yet - coming soon!".to_string();
-                self.login_error = Some("LittleSkin authentication not yet available".to_string());
-                return;
-            }
             AccountType::Offline => {
                 // For offline accounts, just add with the specified username
                 let new_account = Account {
@@ -792,7 +782,7 @@ impl App {
     }
 
     /// Check if we can launch offline (with offline accounts or Microsoft accounts)
-    pub fn can_launch_offline(&self) -> bool {
+    fn can_launch_offline(&self) -> bool {
         // Allow offline launch if we have any Offline account
         // Microsoft option is commented out
         self.accounts.iter().any(|acc| acc.account_type == "Offline")
