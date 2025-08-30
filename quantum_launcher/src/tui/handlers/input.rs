@@ -133,13 +133,11 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
         }
         // Account tab specific keys
         KeyCode::Char('l') if app.current_tab == TabId::Accounts && !app.is_add_account_mode => {
-            if let Some(account) = app.get_selected_account() {
-                if account.is_logged_in {
-                    app.logout_account();
-                    app.status_message = "Account logged out.".to_string();
-                } else {
-                    app.status_message = "Use 'n' to add a new account and login during creation.".to_string();
-                }
+            if !app.accounts.is_empty() {
+                // Always allow logout attempt - the logout function will handle validation
+                app.logout_account();
+            } else {
+                app.status_message = "No accounts to logout".to_string();
             }
             false
         }

@@ -414,10 +414,69 @@ impl App {
     }
 
     pub fn logout_account(&mut self) {
-        if let Some(account) = self.accounts.get_mut(self.selected_account) {
-            account.is_logged_in = false;
+        if self.selected_account >= self.accounts.len() {
+            self.status_message = "No account selected to logout".to_string();
+            return;
         }
-        self.current_account = None;
+
+        let account = &self.accounts[self.selected_account];
+        
+        // Don't try to logout offline accounts - they can't be logged out
+        if account.account_type == "Offline" {
+            self.status_message = "Cannot logout offline accounts - they are always ready to use".to_string();
+            return;
+        }
+
+        let username = account.username.clone();
+        let account_type_str = account.account_type.clone();
+
+        // Convert account type string to auth AccountType enum
+        let account_type = match account_type_str.as_str() {
+            "ElyBy" => ql_instances::auth::AccountType::ElyBy,
+            "LittleSkin" => ql_instances::auth::AccountType::LittleSkin,
+            _ => ql_instances::auth::AccountType::Microsoft,
+        };
+
+        // Get the keyring username (without the type modifier)
+        let keyring_username = match account_type {
+            ql_instances::auth::AccountType::ElyBy => {
+                username.strip_suffix(" (elyby)").unwrap_or(&username).to_string()
+            }
+            ql_instances::auth::AccountType::LittleSkin => {
+                username.strip_suffix(" (littleskin)").unwrap_or(&username).to_string()
+            }
+            ql_instances::auth::AccountType::Microsoft => username.clone(),
+        };
+
+        // Call the proper logout function to remove keyring entry
+        if let Err(err) = ql_instances::auth::logout(&keyring_username, account_type) {
+            self.status_message = format!("Failed to logout keyring for {}: {}", keyring_username, err);
+        } else {
+            self.status_message = format!("Successfully logged out: {}", account.username);
+        }
+
+        // Remove from config file
+        if let Err(err) = self.remove_account_from_config(&username) {
+            self.status_message = format!("Warning: Failed to remove account from config: {}", err);
+        }
+
+        // Remove from in-memory accounts list
+        self.accounts.remove(self.selected_account);
+
+        // If this was the current/default account, clear it
+        if let Some(ref current) = self.current_account {
+            if current == &username {
+                self.current_account = None;
+            }
+        }
+
+        // Adjust selected account index if needed
+        if self.selected_account >= self.accounts.len() && !self.accounts.is_empty() {
+            self.selected_account = self.accounts.len() - 1;
+        }
+        if self.accounts.is_empty() {
+            self.selected_account = 0;
+        }
     }
 
     pub fn toggle_help_popup(&mut self) {
@@ -522,7 +581,33 @@ impl App {
                 if let Some(config_accounts) = config.accounts {
                     self.accounts = config_accounts.iter().map(|(username_key, config_account)| {
                         let account_type = config_account.account_type.clone().unwrap_or_else(|| "Microsoft".to_string());
-                        let is_logged_in = account_type == "Offline"; // Offline accounts are always logged in
+                        
+                        // Determine if account is logged in
+                        let is_logged_in = if account_type == "Offline" {
+                            true // Offline accounts are always logged in
+                        } else {
+                            // For ElyBy/LittleSkin accounts, check if they have a valid keyring token
+                            let keyring_username = if let Some(keyring_id) = &config_account.keyring_identifier {
+                                keyring_id.clone()
+                            } else {
+                                // Fallback to old behavior for backwards compatibility
+                                match account_type.as_str() {
+                                    "ElyBy" => username_key.strip_suffix(" (elyby)").unwrap_or(username_key).to_string(),
+                                    "LittleSkin" => username_key.strip_suffix(" (littleskin)").unwrap_or(username_key).to_string(),
+                                    _ => username_key.clone(),
+                                }
+                            };
+                            
+                            let auth_account_type = match account_type.as_str() {
+                                "ElyBy" => ql_instances::auth::AccountType::ElyBy,
+                                "LittleSkin" => ql_instances::auth::AccountType::LittleSkin,
+                                _ => ql_instances::auth::AccountType::Microsoft,
+                            };
+                            
+                            // Check if token exists in keyring
+                            ql_instances::auth::read_refresh_token(&keyring_username, auth_account_type).is_ok()
+                        };
+                        
                         Account {
                             username: username_key.clone(), // Store full key (with suffix)
                             account_type,
@@ -756,6 +841,24 @@ impl App {
             Ok(_) => Ok(()),
             Err(e) => Err(format!("Failed to write config: {}", e)),
         }
+    }
+    
+    /// Remove account from config file
+    fn remove_account_from_config(&self, username: &str) -> Result<(), String> {
+        let mut config = LauncherConfig::load_s().unwrap_or_default();
+        
+        // Remove from accounts section
+        if let Some(accounts) = &mut config.accounts {
+            accounts.remove(username);
+        }
+        
+        // If this was the selected account, clear the selection
+        if config.account_selected.as_deref() == Some(username) {
+            config.account_selected = None;
+        }
+        
+        // Save config
+        self.save_config_sync(&config)
     }
     
     /// Save offline account to config (similar to save_authenticated_account but for offline accounts)
