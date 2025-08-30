@@ -173,6 +173,7 @@ pub fn launch_instance(
         // No global defaults in CLI mode
         None,
         Vec::new(),
+        None, // No log redirection for CLI mode
     ))?;
 
     if let (Some(stdout), Some(stderr)) = {

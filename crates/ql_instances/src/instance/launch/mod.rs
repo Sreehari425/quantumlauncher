@@ -2,7 +2,7 @@ use crate::auth::AccountData;
 use error::GameLaunchError;
 use ql_core::{err, info, GenericProgress};
 use std::sync::{mpsc::Sender, Arc, Mutex};
-use tokio::process::Child;
+use tokio::{process::Child, sync::mpsc::UnboundedSender};
 
 pub(super) mod error;
 mod launcher;
@@ -20,6 +20,7 @@ use ql_core::json::GlobalSettings;
 /// - `global_settings` - (Optional) Global launcher-level settings that apply to instance
 ///   like window width/height, etc.
 /// - `pre_launch_prefix` - Commands to prepend to the launch command (e.g., "prime-run")
+/// - `log_sender` - (Optional) Sends launch logs to TUI. If None, logs are written to stdout/stderr.
 pub async fn launch(
     instance_name: String,
     username: String,
@@ -27,7 +28,25 @@ pub async fn launch(
     auth: Option<AccountData>,
     global_settings: Option<GlobalSettings>,
     extra_java_args: Vec<String>,
+    log_sender: Option<UnboundedSender<String>>,
 ) -> Result<Arc<Mutex<Child>>, GameLaunchError> {
+    // Helper function to log messages either to TUI or stdout
+    let log_info = |msg: &str| {
+        if let Some(sender) = &log_sender {
+            let _ = sender.send(format!("[INFO] {}", msg));
+        } else {
+            info!("{}", msg);
+        }
+    };
+
+    let log_error = |msg: &str| {
+        if let Some(sender) = &log_sender {
+            let _ = sender.send(format!("[ERROR] {}", msg));
+        } else {
+            err!("{}", msg);
+        }
+    };
+
     if username.is_empty() {
         return Err(GameLaunchError::UsernameIsEmpty);
     }
@@ -41,6 +60,7 @@ pub async fn launch(
         java_install_progress_sender,
         global_settings,
         extra_java_args,
+        log_sender.clone(),
     )
     .await?;
 
@@ -74,9 +94,9 @@ pub async fn launch(
         )
         .await?;
 
-    info!("Java args: {java_arguments:?}\n");
+    log_info(&format!("Java args: {java_arguments:?}\n"));
 
-    print_censored_args(auth.as_ref(), &mut game_arguments);
+    print_censored_args(auth.as_ref(), &mut game_arguments, log_sender.as_ref());
 
     let (mut command, path) = game_launcher
         .get_command(game_arguments, java_arguments)
@@ -85,9 +105,9 @@ pub async fn launch(
         .spawn()
         .map_err(|err| GameLaunchError::CommandError(err, path))?;
     if let Some(id) = child.id() {
-        info!("Launched! PID: {id}");
+        log_info(&format!("Launched! PID: {id}"));
     } else {
-        err!("No ID found!");
+        log_error("No ID found!");
     }
 
     if game_launcher.config_json.close_on_start.unwrap_or(false) {
@@ -98,7 +118,7 @@ pub async fn launch(
     Ok(Arc::new(Mutex::new(child)))
 }
 
-fn print_censored_args(auth: Option<&AccountData>, game_arguments: &mut Vec<String>) {
+fn print_censored_args(auth: Option<&AccountData>, game_arguments: &mut Vec<String>, log_sender: Option<&UnboundedSender<String>>) {
     censor(game_arguments, "--clientId", |args| {
         censor(args, "--session", |args| {
             censor(args, "--accessToken", |args| {
@@ -110,7 +130,11 @@ fn print_censored_args(auth: Option<&AccountData>, game_arguments: &mut Vec<Stri
                             .and_then(|n| n.access_token.clone())
                             .unwrap_or_default(),
                         |args| {
-                            info!("Game args: {args:?}\n");
+                            if let Some(sender) = log_sender {
+                                let _ = sender.send(format!("[INFO] Game args: {args:?}\n"));
+                            } else {
+                                info!("Game args: {args:?}\n");
+                            }
                         },
                     );
                 });

@@ -21,7 +21,7 @@ use std::{
     process::Stdio,
     sync::mpsc::Sender,
 };
-use tokio::process::Command;
+use tokio::{process::Command, sync::mpsc::UnboundedSender};
 
 use super::{error::GameLaunchError, replace_var};
 
@@ -33,6 +33,9 @@ pub struct GameLauncher {
     /// This field allows you to send progress updates
     /// to the GUI during installation.
     java_install_progress_sender: Option<Sender<GenericProgress>>,
+
+    /// Optional sender for launch logs. If provided, logs are sent to TUI instead of stdout/stderr.
+    log_sender: Option<UnboundedSender<String>>,
 
     /// Client: `QuantumLauncher/instances/NAME/`
     /// Server: `QuantumLauncher/servers/NAME/`
@@ -56,6 +59,7 @@ impl GameLauncher {
         java_install_progress_sender: Option<Sender<GenericProgress>>,
         global_settings: Option<GlobalSettings>,
         extra_java_args: Vec<String>,
+        log_sender: Option<UnboundedSender<String>>,
     ) -> Result<Self, GameLaunchError> {
         let instance_dir = get_instance_dir(&instance_name).await?;
 
@@ -74,6 +78,7 @@ impl GameLauncher {
             username,
             instance_name,
             java_install_progress_sender,
+            log_sender,
             instance_dir,
             minecraft_dir,
             config_json,
@@ -81,6 +86,24 @@ impl GameLauncher {
             global_settings,
             extra_java_args,
         })
+    }
+
+    /// Log an info message either to TUI or stdout
+    fn log_info(&self, msg: &str) {
+        if let Some(sender) = &self.log_sender {
+            let _ = sender.send(format!("[INFO] {}", msg));
+        } else {
+            info!("{}", msg);
+        }
+    }
+
+    /// Log an error message either to TUI or stderr  
+    fn log_error(&self, msg: &str) {
+        if let Some(sender) = &self.log_sender {
+            let _ = sender.send(format!("[ERROR] {}", msg));
+        } else {
+            err!("{}", msg);
+        }
     }
 
     pub fn init_game_arguments(
@@ -211,7 +234,7 @@ impl GameLauncher {
         let assets_path = launcher_dir.join("assets/dir");
 
         if old_assets_path_v2.exists() {
-            info!("Migrating old assets to new path...");
+            self.log_info("Migrating old assets to new path...");
             file_utils::copy_dir_recursive(&old_assets_path_v2, &assets_path).await?;
             tokio::fs::remove_dir_all(&old_assets_path_v2)
                 .await
@@ -716,7 +739,7 @@ impl GameLauncher {
         if !library_path.exists() {
             pt!("library {library_path:?} not found! Downloading...");
             if let Err(err) = downloader.download_library(library).await {
-                err!("Couldn't download library! Skipping...\n{err}");
+                self.log_error(&format!("Couldn't download library! Skipping...\n{err}"));
             }
         }
         #[allow(unused_mut)]
@@ -756,7 +779,7 @@ impl GameLauncher {
             self.java_install_progress_sender.take().as_ref(),
         )
         .await?;
-        info!("Java: {program:?}");
+        self.log_info(&format!("Java: {program:?}"));
         Ok((Command::new(&program), program))
     }
 
@@ -794,7 +817,7 @@ impl GameLauncher {
                 .unwrap_or_default(),
         );
         if !prefix_commands.is_empty() {
-            info!("Pre args: {prefix_commands:?}");
+            self.log_info(&format!("Pre args: {prefix_commands:?}"));
 
             let original_java_path = path.to_string_lossy().to_string();
             let mut new_command = Command::new(&prefix_commands[0]);
