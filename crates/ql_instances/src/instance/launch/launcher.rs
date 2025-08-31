@@ -21,7 +21,7 @@ use std::{
     process::Stdio,
     sync::mpsc::Sender,
 };
-use tokio::{process::Command, sync::mpsc::UnboundedSender};
+use tokio::process::Command;
 
 use super::{error::GameLaunchError, replace_var};
 
@@ -35,7 +35,7 @@ pub struct GameLauncher {
     java_install_progress_sender: Option<Sender<GenericProgress>>,
 
     /// Optional sender for launch logs. If provided, logs are sent to TUI instead of stdout/stderr.
-    log_sender: Option<UnboundedSender<String>>,
+    log_sender: Option<Sender<String>>,
 
     /// Client: `QuantumLauncher/instances/NAME/`
     /// Server: `QuantumLauncher/servers/NAME/`
@@ -59,7 +59,7 @@ impl GameLauncher {
         java_install_progress_sender: Option<Sender<GenericProgress>>,
         global_settings: Option<GlobalSettings>,
         extra_java_args: Vec<String>,
-        log_sender: Option<UnboundedSender<String>>,
+        log_sender: Option<Sender<String>>,
     ) -> Result<Self, GameLaunchError> {
         let instance_dir = get_instance_dir(&instance_name).await?;
 

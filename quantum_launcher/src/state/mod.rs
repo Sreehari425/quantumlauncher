@@ -68,8 +68,6 @@ pub struct Launcher {
     pub mouse_pos: (f32, f32),
     pub keys_pressed: HashSet<iced::keyboard::Key>,
 }
-
-#[derive(Default)]
 pub struct ImageState {
     pub bitmap: HashMap<String, Handle>,
     pub svg: HashMap<String, iced::widget::svg::Handle>,
@@ -77,7 +75,16 @@ pub struct ImageState {
     pub to_load: Mutex<HashSet<String>>,
 }
 
-pub struct ClientProcess {
+impl Default for ImageState {
+    fn default() -> Self {
+        Self {
+            bitmap: HashMap::new(),
+            svg: HashMap::new(),
+            downloads_in_progress: HashSet::new(),
+            to_load: Mutex::new(HashSet::new()),
+        }
+    }
+}pub struct ClientProcess {
     pub child: Arc<Mutex<Child>>,
     pub receiver: Option<Receiver<LogLine>>,
 }

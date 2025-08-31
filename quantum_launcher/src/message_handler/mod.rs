@@ -66,7 +66,7 @@ impl Launcher {
                     account_data,
                     global_settings,
                     extra_java_args,
-                    None, // No log redirection for iced GUI
+                    None, // Keep log_sender available for future TUI use
                 )
                 .await
                 .strerr()

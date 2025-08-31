@@ -2,7 +2,7 @@ use crate::auth::AccountData;
 use error::GameLaunchError;
 use ql_core::{err, info, GenericProgress};
 use std::sync::{mpsc::Sender, Arc, Mutex};
-use tokio::{process::Child, sync::mpsc::UnboundedSender};
+use tokio::process::Child;
 
 pub(super) mod error;
 mod launcher;
@@ -28,7 +28,7 @@ pub async fn launch(
     auth: Option<AccountData>,
     global_settings: Option<GlobalSettings>,
     extra_java_args: Vec<String>,
-    log_sender: Option<UnboundedSender<String>>,
+    log_sender: Option<Sender<String>>,
 ) -> Result<Arc<Mutex<Child>>, GameLaunchError> {
     // Helper function to log messages either to TUI or stdout
     let log_info = |msg: &str| {
@@ -118,7 +118,7 @@ pub async fn launch(
     Ok(Arc::new(Mutex::new(child)))
 }
 
-fn print_censored_args(auth: Option<&AccountData>, game_arguments: &mut Vec<String>, log_sender: Option<&UnboundedSender<String>>) {
+fn print_censored_args(auth: Option<&AccountData>, game_arguments: &mut Vec<String>, log_sender: Option<&Sender<String>>) {
     censor(game_arguments, "--clientId", |args| {
         censor(args, "--session", |args| {
             censor(args, "--accessToken", |args| {
