@@ -43,7 +43,7 @@ pub async fn run(
 
     let server_jar_path = if let Some(custom_jar) = &config_json.custom_jar {
         // Should I prioritise Fabric/Forge/Paper over a custom JAR?
-        PathBuf::from(&custom_jar.jar_path)
+        PathBuf::from(&custom_jar.name)
     } else if config_json.mod_type == "Fabric" || config_json.mod_type == "Quilt" {
         server_dir.join("fabric-server-launch.jar")
     } else if config_json.mod_type == "Forge" {

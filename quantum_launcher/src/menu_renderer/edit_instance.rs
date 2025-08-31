@@ -14,7 +14,11 @@ use ql_core::InstanceSelection;
 use super::Element;
 
 impl MenuEditInstance {
-    pub fn view(&'_ self, selected_instance: &InstanceSelection) -> Element<'_> {
+    pub fn view<'a>(
+        &'a self,
+        selected_instance: &InstanceSelection,
+        jar_choices: Option<&'a [String]>,
+    ) -> Element<'a> {
         let ts = |n: &LauncherTheme| n.style_text(Color::SecondLight);
 
         widget::scrollable(
@@ -49,7 +53,7 @@ impl MenuEditInstance {
                     self.item_java_override()
                 ).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::Dark)),
                 widget::container(
-                    self.item_custom_jar()
+                    self.item_custom_jar(jar_choices)
                 ).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),
                 widget::container(
                     self.item_mem_alloc(),
@@ -247,11 +251,26 @@ impl MenuEditInstance {
         .spacing(10)
     }
 
-    fn item_custom_jar(&self) -> widget::Column<'_, Message, LauncherTheme> {
+    fn item_custom_jar<'a>(
+        &'a self,
+        jar_choices: Option<&'a [String]>,
+    ) -> widget::Column<'a, Message, LauncherTheme> {
         let ts = |n: &LauncherTheme| n.style_text(Color::SecondLight);
+
+        let picker: Element = if let Some(choices) = jar_choices {
+            widget::pick_list(
+                choices,
+                self.config.custom_jar.as_ref().map(|n| &n.name),
+                |t| Message::EditInstance(EditInstanceMessage::CustomJarPathChanged(t)),
+            )
+            .into()
+        } else {
+            "Loading...".into()
+        };
 
         widget::column![
             "Custom JAR file",
+            picker,
             widget::text(
                 "If you want to apply tweaks to your existing JAR file,\nuse \"Mods->Jar Mods\""
             )
@@ -260,30 +279,6 @@ impl MenuEditInstance {
             widget::text("This feature is only for custom/archived versions")
                 .size(12)
                 .style(ts),
-            widget::text("Path to JAR file:").size(14),
-            widget::row![
-                widget::text_input(
-                    "Leave blank if none...",
-                    self.config
-                        .custom_jar
-                        .as_ref()
-                        .map(|cj| cj.jar_path.as_str())
-                        .unwrap_or_default()
-                )
-                .on_input(|t| Message::EditInstance(EditInstanceMessage::CustomJarPathChanged(t)))
-                .width(Length::Fill),
-                widget::button(
-                    widget::row![
-                        icon_manager::folder_with_size(13),
-                        widget::text("Browse").size(13)
-                    ]
-                    .align_y(iced::alignment::Vertical::Center)
-                    .spacing(10)
-                    .padding(2),
-                )
-                .on_press(Message::EditInstance(EditInstanceMessage::CustomJarBrowse)),
-            ]
-            .spacing(5),
         ]
         .padding(10)
         .spacing(5)

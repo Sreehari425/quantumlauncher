@@ -126,7 +126,7 @@ impl Launcher {
                     .into(),
                 LaunchTabId::Edit => {
                     if let Some(menu) = &menu.edit_instance {
-                        menu.view(selected)
+                        menu.view(selected, self.custom_jar_choices.as_deref())
                     } else {
                         widget::column!(
                             "Error: Could not read config json!",

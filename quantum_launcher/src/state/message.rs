@@ -79,8 +79,9 @@ pub enum EditInstanceMessage {
     RenameApply,
     WindowWidthChanged(String),
     WindowHeightChanged(String),
+
     CustomJarPathChanged(String),
-    CustomJarBrowse,
+    CustomJarLoaded(Res<Vec<String>>),
 }
 
 #[derive(Debug, Clone)]

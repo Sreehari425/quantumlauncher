@@ -5,10 +5,9 @@ use serde::{Deserialize, Serialize};
 use crate::{InstanceSelection, IntoIoError, IntoJsonError, JsonFileError};
 
 /// Configuration for using a custom Minecraft JAR file
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
 pub struct CustomJarConfig {
-    /// Path to the custom JAR file
-    pub jar_path: String,
+    pub name: String,
 }
 
 /// Defines how instance Java arguments should interact with global Java arguments
