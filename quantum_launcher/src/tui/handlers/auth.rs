@@ -46,11 +46,25 @@ pub fn handle_auth_event(app: &mut App, event: AuthEvent) {
             let success_msg = format!("✅ Successfully launched {}", instance_name);
             app.status_message = success_msg.clone();
             app.add_log(success_msg);
+            
+            // Mark the instance as running
+            if let Some(instance) = app.instances.iter_mut().find(|i| i.name == instance_name) {
+                instance.is_running = true;
+            }
         }
         AuthEvent::LaunchError(instance_name, error) => {
             let error_msg = format!("❌ Failed to launch {}: {}", instance_name, error);
             app.status_message = error_msg.clone();
             app.add_log(error_msg);
+        }
+        AuthEvent::LaunchEnded(instance_name) => {
+            // Mark the instance as stopped
+            if let Some(instance) = app.instances.iter_mut().find(|i| i.name == instance_name) {
+                instance.is_running = false;
+            }
+            let msg = format!("🛑 {} has stopped", instance_name);
+            app.status_message = msg.clone();
+            app.add_log(msg);
         }
     }
 }

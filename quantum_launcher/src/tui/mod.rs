@@ -26,6 +26,7 @@ pub enum AuthEvent {
     LaunchStarted(String),
     LaunchSuccess(String, std::sync::Arc<std::sync::Mutex<tokio::process::Child>>),
     LaunchError(String, String),
+    LaunchEnded(String),
 }
 
 /// Entry point for the TUI mode
@@ -65,8 +66,6 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
     app.set_auth_channel(auth_tx);
 
     loop {
-        terminal.draw(|f| ui::render(f, &mut app))?;
-
         // Check for auth events first
         if let Ok(auth_event) = auth_rx.try_recv() {
             app.handle_auth_event(auth_event);
@@ -76,8 +75,9 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
         if app.check_and_reset_forced_refresh() {
             // Clear terminal and force a complete redraw to overwrite any stdout spam
             terminal.clear()?;
-            terminal.draw(|f| ui::render(f, &mut app))?;
         }
+
+        terminal.draw(|f| ui::render(f, &mut app))?;
 
         // Handle keyboard input with timeout to allow auth events to be processed
         if let Ok(has_event) = crossterm::event::poll(std::time::Duration::from_millis(50)) {

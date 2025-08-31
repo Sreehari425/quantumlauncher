@@ -1,6 +1,6 @@
 // QuantumLauncher TUI - Application State
 
-use std::{error::Error, fmt, sync::{Arc, Mutex}};
+use std::{error::Error, fmt, sync::{Arc, Mutex}, collections::HashSet};
 use ql_core::ListEntry;
 use crate::config::{LauncherConfig, ConfigAccount};
 use tokio::sync::mpsc;
@@ -73,6 +73,7 @@ pub struct Instance {
     pub name: String,
     pub version: String,
     pub loader: String,
+    pub is_running: bool,
 }
 
 #[derive(Debug)]
@@ -279,6 +280,13 @@ impl App {
         self.is_loading = true;
         self.status_message = "Refreshing...".to_string();
 
+        // Preserve running status
+        let running_instances: HashSet<String> = self.instances
+            .iter()
+            .filter(|i| i.is_running)
+            .map(|i| i.name.clone())
+            .collect();
+
         match tokio::runtime::Runtime::new() {
             Ok(rt) => {
                 match rt.block_on(get_entries("instances".to_owned(), false)) {
@@ -305,6 +313,7 @@ impl App {
                                 name: name.clone(),
                                 version,
                                 loader,
+                                is_running: running_instances.contains(&name),
                             });
                         }
                         self.status_message = format!("Loaded {} instances", self.instances.len());
@@ -703,11 +712,45 @@ impl App {
                 };
                 self.status_message = msg.clone();
                 self.add_log(format!("[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg));
+                
+                // Mark the instance as running
+                if let Some(instance) = self.instances.iter_mut().find(|i| i.name == instance_name) {
+                    instance.is_running = true;
+                }
+                
+                // Spawn a task to monitor the process
+                if let Some(sender) = &self.auth_sender {
+                    let sender_clone = sender.clone();
+                    let instance_name_clone = instance_name.clone();
+                    let child_clone = child.clone();
+                    tokio::spawn(async move {
+                        // Poll the process status without holding the lock
+                        loop {
+                            {
+                                let mut child_guard = child_clone.lock().unwrap();
+                                if let Ok(Some(_)) = child_guard.try_wait() {
+                                    break;
+                                }
+                            }
+                            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                        }
+                        let _ = sender_clone.send(crate::tui::AuthEvent::LaunchEnded(instance_name_clone));
+                    });
+                }
             }
             crate::tui::AuthEvent::LaunchError(instance_name, error) => {
                 self.is_loading = false;
                 self.needs_forced_refresh = true; // Force refresh to overwrite debug output
                 let msg = format!("❌ Failed to launch {}: {}", instance_name, error);
+                self.status_message = msg.clone();
+                self.add_log(format!("[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg));
+            }
+            crate::tui::AuthEvent::LaunchEnded(instance_name) => {
+                // Mark the instance as stopped
+                if let Some(instance) = self.instances.iter_mut().find(|i| i.name == instance_name) {
+                    instance.is_running = false;
+                }
+                let msg = format!("🛑 {} has stopped", instance_name);
                 self.status_message = msg.clone();
                 self.add_log(format!("[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg));
             }
@@ -1050,15 +1093,7 @@ impl App {
                     format!("[{}] Launch completed successfully!", timestamp)
                 ));
                 
-                // Create a dummy tokio child for compatibility
-                let dummy_child = tokio::process::Command::new("sleep")
-                    .arg("1")
-                    .stdout(std::process::Stdio::null())
-                    .stderr(std::process::Stdio::null())
-                    .spawn()
-                    .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
-                
-                Ok(Arc::new(Mutex::new(dummy_child)))
+                Ok(child_arc)
             }
             Err(e) => {
                 let timestamp = chrono::Local::now().format("%H:%M:%S");

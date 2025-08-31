@@ -98,16 +98,23 @@ fn render_instances_tab(f: &mut Frame, area: Rect, app: &mut App) {
         .instances
         .iter()
         .map(|instance| {
+            let name_spans = vec![
+                Span::styled(&instance.name, Style::default().fg(Color::Yellow).bold()),
+                Span::raw(" "),
+            ];
+            
             ListItem::new(vec![
-                Line::from(vec![
-                    Span::styled(&instance.name, Style::default().fg(Color::Yellow).bold()),
-                    Span::raw(" "),
-                ]),
+                Line::from(name_spans),
                 Line::from(vec![
                     Span::raw("  Version: "),
                     Span::styled(&instance.version, Style::default().fg(Color::Cyan)),
                     Span::raw(" | Loader: "),
                     Span::styled(&instance.loader, Style::default().fg(Color::Green)),
+                    Span::raw(" | Status: "),
+                    Span::styled(
+                        if instance.is_running { "running" } else { "stopped" },
+                        Style::default().fg(if instance.is_running { Color::Red } else { Color::Gray })
+                    ),
                 ]),
             ])
         })
