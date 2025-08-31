@@ -79,7 +79,6 @@ pub enum EditInstanceMessage {
     RenameApply,
     WindowWidthChanged(String),
     WindowHeightChanged(String),
-    CustomJarToggle(bool),
     CustomJarPathChanged(String),
     CustomJarBrowse,
 }

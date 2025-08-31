@@ -474,12 +474,12 @@ pub fn get_jar_path(
             .join(format!("{id}.jar"))
     }
 
-    // If custom jar is specified, use it first
     if let Some(custom_jar_path) = custom_jar {
-        return PathBuf::from(custom_jar_path);
+        if !custom_jar_path.trim().is_empty() {
+            return PathBuf::from(custom_jar_path);
+        }
     }
 
-    // Otherwise fall back to existing logic
     optifine_jar.map_or_else(
         || {
             let id = version_json.get_id();

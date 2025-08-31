@@ -249,42 +249,44 @@ impl MenuEditInstance {
 
     fn item_custom_jar(&self) -> widget::Column<'_, Message, LauncherTheme> {
         let ts = |n: &LauncherTheme| n.style_text(Color::SecondLight);
-        let is_enabled = self.config.custom_jar.is_some();
 
-        let mut column = widget::column![
-            widget::checkbox(
-                "Use custom JAR",
-                is_enabled
-            ).on_toggle(|t| Message::EditInstance(EditInstanceMessage::CustomJarToggle(t))),
+        widget::column![
+            "Custom JAR file",
             widget::text(
-                "Use a custom JAR file instead of the official one.\nUseful for modified clients/servers, archived versions, or custom implementations.\nAssets will be used from this instance's selected version."
+                "If you want to apply tweaks to your existing JAR file,\nuse \"Mods->Jar Mods\""
             )
             .size(12)
             .style(ts),
-        ];
-
-        if is_enabled {
-            column = column.push(widget::column![
-                widget::text("JAR file path:").size(14),
-                widget::row![
-                    widget::text_input(
-                        "Select JAR file...",
-                        self.config.custom_jar
-                            .as_ref()
-                            .map(|cj| cj.jar_path.as_str())
-                            .unwrap_or_default()
-                    )
-                    .on_input(|t| Message::EditInstance(EditInstanceMessage::CustomJarPathChanged(t)))
-                    .width(Length::Fill),
-                    button_with_icon(icon_manager::folder(), "Browse", 14)
-                        .on_press(Message::EditInstance(EditInstanceMessage::CustomJarBrowse))
-                ]
-                .spacing(10),
+            widget::text("This feature is only for custom/archived versions")
+                .size(12)
+                .style(ts),
+            widget::text("Path to JAR file:").size(14),
+            widget::row![
+                widget::text_input(
+                    "Leave blank if none...",
+                    self.config
+                        .custom_jar
+                        .as_ref()
+                        .map(|cj| cj.jar_path.as_str())
+                        .unwrap_or_default()
+                )
+                .on_input(|t| Message::EditInstance(EditInstanceMessage::CustomJarPathChanged(t)))
+                .width(Length::Fill),
+                widget::button(
+                    widget::row![
+                        icon_manager::folder_with_size(13),
+                        widget::text("Browse").size(13)
+                    ]
+                    .align_y(iced::alignment::Vertical::Center)
+                    .spacing(10)
+                    .padding(2),
+                )
+                .on_press(Message::EditInstance(EditInstanceMessage::CustomJarBrowse)),
             ]
-            .spacing(10));
-        }
-
-        column.padding(10).spacing(10)
+            .spacing(5),
+        ]
+        .padding(10)
+        .spacing(5)
     }
 
     fn get_java_args_list<'a>(

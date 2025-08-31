@@ -224,21 +224,6 @@ impl Launcher {
                     }
                 }
             }
-            EditInstanceMessage::CustomJarToggle(enabled) => {
-                if let State::Launch(MenuLaunch {
-                    edit_instance: Some(menu),
-                    ..
-                }) = &mut self.state
-                {
-                    if enabled {
-                        menu.config.custom_jar = Some(ql_core::json::instance_config::CustomJarConfig {
-                            jar_path: String::new(),
-                        });
-                    } else {
-                        menu.config.custom_jar = None;
-                    }
-                }
-            }
             EditInstanceMessage::CustomJarPathChanged(path) => {
                 if let State::Launch(MenuLaunch {
                     edit_instance: Some(menu),

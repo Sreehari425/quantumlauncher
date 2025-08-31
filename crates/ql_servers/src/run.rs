@@ -42,7 +42,7 @@ pub async fn run(
     let config_json = InstanceConfigJson::read_from_dir(&server_dir).await?;
 
     let server_jar_path = if let Some(custom_jar) = &config_json.custom_jar {
-        // Use custom JAR if specified
+        // Should I prioritise Fabric/Forge/Paper over a custom JAR?
         PathBuf::from(&custom_jar.jar_path)
     } else if config_json.mod_type == "Fabric" || config_json.mod_type == "Quilt" {
         server_dir.join("fabric-server-launch.jar")
