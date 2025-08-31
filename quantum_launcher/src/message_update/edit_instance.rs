@@ -4,7 +4,6 @@ use ql_core::{
     json::{GlobalSettings, InstanceConfigJson},
     IntoIoError, IntoStringError, LAUNCHER_DIR,
 };
-use std::fs;
 
 use crate::{
     message_handler::format_memory,
@@ -263,35 +262,7 @@ impl Launcher {
                     }) = &mut self.state
                     {
                         if let Some(custom_jar) = &mut menu.config.custom_jar {
-                            // Create the customjars directory path for this instance
-                            let customjars_dir = LAUNCHER_DIR
-                                .join("instances")
-                                .join(&menu.instance_name)
-                                .join("customjars");
-
-                            // Create the directory if it doesn't exist
-                            if let Err(e) = fs::create_dir_all(&customjars_dir) {
-                                err!("Failed to create customjars directory: {}", e);
-                                return Ok(Task::none());
-                            }
-
-                            // Get the filename from the original path
-                            if let Some(filename) = path.file_name() {
-                                let dest_path = customjars_dir.join(filename);
-
-                                // Copy the JAR file to the customjars directory
-                                match fs::copy(&path, &dest_path) {
-                                    Ok(_) => {
-                                        // Set the jar_path to the copied location
-                                        custom_jar.jar_path = dest_path.to_string_lossy().to_string();
-                                    }
-                                    Err(e) => {
-                                        err!("Failed to copy JAR file: {}", e);
-                                    }
-                                }
-                            } else {
-                                err!("Invalid JAR file path");
-                            }
+                            custom_jar.jar_path = path.to_string_lossy().to_string();
                         }
                     }
                 }
