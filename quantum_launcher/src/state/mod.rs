@@ -260,10 +260,7 @@ impl Launcher {
             menu_launch.sidebar_width = width as u16;
         }
         self.state = State::Launch(menu_launch);
-        Task::perform(
-            get_entries("instances".to_owned(), false),
-            Message::CoreListLoaded,
-        )
+        Task::perform(get_entries(false), Message::CoreListLoaded)
     }
 }
 
@@ -391,8 +388,12 @@ fn get_theme(config: &LauncherConfig) -> LauncherTheme {
     LauncherTheme::from_vals(style, theme)
 }
 
-pub async fn get_entries(path: String, is_server: bool) -> Res<(Vec<String>, bool)> {
-    let dir_path = file_utils::get_launcher_dir().strerr()?.join(path);
+pub async fn get_entries(is_server: bool) -> Res<(Vec<String>, bool)> {
+    let dir_path = file_utils::get_launcher_dir().strerr()?.join(if is_server {
+        "servers"
+    } else {
+        "instances"
+    });
     if !dir_path.exists() {
         tokio::fs::create_dir_all(&dir_path)
             .await
@@ -404,7 +405,11 @@ pub async fn get_entries(path: String, is_server: bool) -> Res<(Vec<String>, boo
     Ok((
         file_utils::read_filenames_from_dir(&dir_path)
             .await
-            .strerr()?,
+            .strerr()?
+            .into_iter()
+            .filter(|n| !n.is_file)
+            .map(|n| n.name)
+            .collect(),
         is_server,
     ))
 }

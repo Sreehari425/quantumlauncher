@@ -93,12 +93,7 @@ impl Launcher {
             async move { ql_instances::check_for_launcher_updates().await.strerr() },
             Message::UpdateCheckResult,
         );
-
-        let get_entries_command = Task::perform(
-            get_entries("instances".to_owned(), false),
-            Message::CoreListLoaded,
-        );
-
+        let get_entries_command = Task::perform(get_entries(false), Message::CoreListLoaded);
         let log_cmd = Task::perform(file_utils::clean_log_spam(), |n| {
             Message::CoreLogCleanComplete(n.strerr())
         });

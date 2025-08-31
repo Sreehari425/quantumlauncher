@@ -305,14 +305,7 @@ impl Launcher {
                 .strerr()?;
 
             Ok(Task::perform(
-                get_entries(
-                    match self.selected_instance.as_ref().unwrap() {
-                        ql_core::InstanceSelection::Instance(_) => "instances",
-                        ql_core::InstanceSelection::Server(_) => "servers",
-                    }
-                    .to_owned(),
-                    false,
-                ),
+                get_entries(self.selected_instance.as_ref().unwrap().is_server()),
                 Message::CoreListLoaded,
             ))
         }
