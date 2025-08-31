@@ -271,6 +271,15 @@ impl App {
         }
     }
 
+    /// Launch the currently selected instance (for Shift+Enter)
+    pub fn launch_selected_instance(&mut self) {
+        if let Some(instance) = self.instances.get(self.selected_instance) {
+            // Start launching the instance (bypass account checks for quick launch)
+            let instance_name = instance.name.clone();
+            self.launch_instance(&instance_name);
+        }
+    }
+
     pub fn refresh(&mut self) {
         use std::path::PathBuf;
         use crate::state::get_entries;

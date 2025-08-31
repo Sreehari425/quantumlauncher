@@ -1,6 +1,6 @@
 // QuantumLauncher TUI - Input Event Handler
 
-use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crate::tui::app::{App, TabId, AccountType};
 
 /// Handle keyboard input events
@@ -84,8 +84,9 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             app.next_tab();
             false
         }
-        KeyCode::Enter => {
-            app.select_item();
+        KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
+            // Shift+Enter: Launch the selected instance
+            app.launch_selected_instance();
             false
         }
         // Logs tab specific keys - must come before general 'c' key

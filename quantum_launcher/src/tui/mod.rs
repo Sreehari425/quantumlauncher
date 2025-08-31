@@ -2,7 +2,7 @@
 
 use std::io;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -144,7 +144,11 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                         KeyCode::Down | KeyCode::Char('j') => app.next_item(),
                         KeyCode::Left | KeyCode::Char('h') => app.previous_tab(),
                         KeyCode::Right if app.current_tab != app::TabId::Accounts => app.next_tab(),
-                        KeyCode::Enter => app.select_item(),
+                        KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
+                            // Shift+Enter: Launch the selected instance
+                            app.launch_selected_instance();
+                        }
+                        KeyCode::Enter if app.current_tab != app::TabId::Instances => app.select_item(),
                         // Logs tab specific keys - must come before general 'c' key
                         KeyCode::Char('c') if app.current_tab == app::TabId::Logs => {
                             app.clear_logs();

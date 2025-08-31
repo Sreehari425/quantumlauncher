@@ -120,7 +120,7 @@ pub fn get_instances_help() -> Vec<Line<'static>> {
             Span::styled("═══ INSTANCES TAB ═══", Style::default().fg(Color::Cyan).bold())
         ]),
         Line::from("↑/↓ or j/k         Navigate instance list"),
-        Line::from("Enter              Launch selected instance"),
+        Line::from("Shift+Enter        Launch selected instance"),
         Line::from("e                  Edit selected instance (coming soon)"),
         Line::from("d                  Delete selected instance (coming soon)"),
         Line::from("F5                 Refresh instance list"),
