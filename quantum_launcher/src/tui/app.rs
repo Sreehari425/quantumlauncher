@@ -725,7 +725,7 @@ impl App {
                 self.status_message = format!("❌ Authentication failed: {}", error);
             }
             crate::tui::AuthEvent::LaunchStarted(instance_name) => {
-                self.status_message = format!("🚀 Launching {}...", instance_name);
+                self.status_message = format!("LAUNCHING: {}...", instance_name);
                 self.is_loading = true;
                 self.needs_forced_refresh = true; // Force refresh to overwrite debug output
                 self.add_log(format!("[{}] Launch started for instance: {}", 
@@ -985,14 +985,14 @@ impl App {
 
     /// Launch a Minecraft instance with output capture
     fn launch_instance(&mut self, instance_name: &str) {
-        self.status_message = format!("🚀 Launching instance: {}", instance_name);
+        self.status_message = format!("LAUNCHING: {}", instance_name);
         
         // Get account data if we have a current account or selected account
         let account_data = self.get_account_data_for_launch();
         let (username, _display_name) = if let Some(acc) = &account_data {
             // For authenticated accounts, use the username from account data (should be clean)
             let clean_username = self.get_clean_username_for_launch(&acc.username, &acc.nice_username, &acc.account_type);
-            self.status_message = format!("🚀 Launching with authenticated account: {} ({})", 
+            self.status_message = format!("LAUNCHING: {} ({})", 
                 acc.nice_username, acc.account_type);
             (clean_username, acc.nice_username.clone())
         } else {
@@ -1003,27 +1003,27 @@ impl App {
                 // Special handling for offline accounts
                 if selected_account.account_type == "Offline" {
                     let clean_username = self.get_clean_username_for_selected_account(selected_account);
-                    self.status_message = format!("🚀 Launching with offline account: {}", clean_username);
+                    self.status_message = format!("LAUNCHING: offline account {}", clean_username);
                     (clean_username, selected_account.username.clone())
                 } else {
                     // Try to get account data for this selected account again, but with fallback
                     let fallback_account_data = self.get_selected_account_data_fallback();
                     if let Some(acc) = fallback_account_data {
                         let clean_username = self.get_clean_username_for_launch(&acc.username, &acc.nice_username, &acc.account_type);
-                        self.status_message = format!("🚀 Launching with selected account: {} ({})", 
+                        self.status_message = format!("LAUNCHING: {} ({})", 
                             acc.nice_username, selected_account.account_type);
                         (clean_username, acc.nice_username.clone())
                     } else {
                         // No auth data available, generate clean username from account info
                         let clean_username = self.get_clean_username_for_selected_account(&selected_account);
-                        self.status_message = format!("⚠️ Using selected account: {} ({}) in offline mode. Account may need re-authentication.", 
+                        self.status_message = format!("WARNING: Using {} ({}) offline - may need re-auth", 
                             clean_username, selected_account.account_type);
                         (clean_username, selected_account.username.clone())
                     }
                 }
             } else {
                 // No accounts available, launch in offline mode
-                self.status_message = "⚠️ No accounts available. Launching in offline mode as 'Player'. Add an account with 'a' then 'n'.".to_string();
+                self.status_message = "WARNING: No accounts available. Launching offline as 'Player'. Add account with 'a' then 'n'.".to_string();
                 ("Player".to_string(), "Player".to_string())
             }
         };
@@ -1503,7 +1503,21 @@ impl App {
                         self.status_message = "Mod management feature coming soon".to_string();
                     }
                     InstanceSettingsTab::Setting => {
-                        self.status_message = "Instance settings (rename/delete) coming soon".to_string();
+                        match self.instance_settings_selected {
+                            0 => { // Rename Instance
+                                self.status_message = "Rename instance feature coming soon".to_string();
+                            }
+                            1 => { // Java Settings
+                                self.status_message = "Java configuration feature coming soon".to_string();
+                            }
+                            2 => { // Launch Options
+                                self.status_message = "Launch options configuration coming soon".to_string();
+                            }
+                            3 => { // Delete Instance
+                                self.delete_instance(&instance_name);
+                            }
+                            _ => {}
+                        }
                     }
                     InstanceSettingsTab::Logs => {
                         self.status_message = "Instance-specific logs coming soon".to_string();
@@ -1518,7 +1532,7 @@ impl App {
         let max_items = match self.instance_settings_tab {
             InstanceSettingsTab::Overview => 3, // Play, Kill, and Open Folder buttons
             InstanceSettingsTab::Mod => 1, // WIP message
-            InstanceSettingsTab::Setting => 1, // Settings message
+            InstanceSettingsTab::Setting => 4, // Rename, Java Settings, Launch Options, Delete
             InstanceSettingsTab::Logs => 1, // Logs message
         };
 
@@ -1573,6 +1587,49 @@ impl App {
             }
             Err(e) => {
                 self.status_message = format!("❌ Failed to get launcher directory: {}", e);
+            }
+        }
+    }
+
+    /// Delete an instance permanently
+    pub fn delete_instance(&mut self, instance_name: &str) {
+        // First check if the instance is running and refuse deletion if it is
+        if self.client_processes.contains_key(instance_name) {
+            self.status_message = format!("❌ Cannot delete '{}': instance is currently running. Stop it first.", instance_name);
+            return;
+        }
+
+        match file_utils::get_launcher_dir() {
+            Ok(launcher_dir) => {
+                let instance_path = launcher_dir.join("instances").join(instance_name);
+                
+                if instance_path.exists() {
+                    // Try to delete the instance directory
+                    if let Err(e) = std::fs::remove_dir_all(&instance_path) {
+                        self.status_message = format!("❌ Failed to delete instance '{}': {}", instance_name, e);
+                    } else {
+                        // Remove the instance from the list
+                        self.instances.retain(|instance| instance.name != instance_name);
+                        
+                        // Reset selection if needed
+                        if self.selected_instance >= self.instances.len() && !self.instances.is_empty() {
+                            self.selected_instance = self.instances.len() - 1;
+                        } else if self.instances.is_empty() {
+                            self.selected_instance = 0;
+                        }
+                        
+                        // Return to instances tab
+                        self.current_tab = TabId::Instances;
+                        self.instance_settings_instance = None;
+                        
+                        self.status_message = format!("DELETED: Successfully removed instance {}", instance_name);
+                    }
+                } else {
+                    self.status_message = format!("ERROR: Instance folder not found: {}", instance_name);
+                }
+            }
+            Err(e) => {
+                self.status_message = format!("ERROR: Failed to get launcher directory: {}", e);
             }
         }
     }

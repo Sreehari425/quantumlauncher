@@ -229,7 +229,7 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
         instruction_lines.push("Enter ElyBy username/email and password".to_string());
         instruction_lines.push("Use Tab to switch fields, Enter to authenticate".to_string());
         if app.needs_otp {
-            instruction_lines.push("⚠️ Two-factor authentication required - enter OTP code".to_string());
+            instruction_lines.push("WARNING: Two-factor authentication required - enter OTP code".to_string());
         }
     } else {
         instruction_lines.push("Account type not yet implemented".to_string());

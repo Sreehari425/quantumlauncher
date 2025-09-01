@@ -909,7 +909,7 @@ fn render_instance_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
             match app.instance_settings_tab {
                 crate::tui::app::InstanceSettingsTab::Overview => render_instance_overview(f, chunks[2], app.instance_settings_selected, instance),
                 crate::tui::app::InstanceSettingsTab::Mod => render_instance_mods(f, chunks[2], &instance.name),
-                crate::tui::app::InstanceSettingsTab::Setting => render_instance_settings(f, chunks[2], &instance.name),
+                crate::tui::app::InstanceSettingsTab::Setting => render_instance_settings(f, chunks[2], app.instance_settings_selected, instance),
                 crate::tui::app::InstanceSettingsTab::Logs => render_instance_logs(f, chunks[2], &instance.name),
             }
         }
@@ -1283,52 +1283,93 @@ fn render_instance_mods(f: &mut Frame, area: Rect, instance_name: &str) {
 }
 
 /// Render instance settings tab
-fn render_instance_settings(f: &mut Frame, area: Rect, instance_name: &str) {
+fn render_instance_settings(f: &mut Frame, area: Rect, selected_index: usize, instance: &crate::tui::app::Instance) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage(50), // Settings categories
+            Constraint::Percentage(50), // Settings options
             Constraint::Percentage(50), // Settings details
         ])
         .split(area);
 
-    // Left side: Settings categories
-    let categories_block = Block::default()
+    // Left side: Settings options
+    let settings_block = Block::default()
         .borders(Borders::ALL)
-        .title(" Configuration Categories ")
+        .title(" Instance Management ")
         .title_style(Style::default().fg(Color::Yellow).bold())
         .border_style(Style::default().fg(Color::Yellow));
 
-    let categories_content = Paragraph::new(vec![
-        Line::from(vec![
-            Span::styled("⚙️ General Settings", Style::default().fg(Color::Green).bold()),
-        ]),
-        Line::from("  Instance name, description"),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("Java Java Configuration", Style::default().fg(Color::Blue).bold()),
-        ]),
-        Line::from("  JVM path, memory allocation"),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("Launch Launch Options", Style::default().fg(Color::Cyan).bold()),
-        ]),
-        Line::from("  Game arguments, JVM flags"),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("Mode: Game Settings", Style::default().fg(Color::Magenta).bold()),
-        ]),
-        Line::from("  Resolution, fullscreen mode"),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("Network: Server Settings", Style::default().fg(Color::Red).bold()),
-        ]),
-        Line::from("  Default server, auto-connect"),
-    ])
-    .block(categories_block)
-    .wrap(Wrap { trim: true });
+    let settings_items = vec![
+        ListItem::new(vec![
+            Line::from(vec![
+                Span::styled("  [R] ", Style::default().fg(Color::Green).bold()),
+                Span::styled("Rename Instance", Style::default().fg(Color::White).bold()),
+            ]),
+            Line::from(vec![
+                Span::raw("      "),
+                Span::styled("Change the instance name", Style::default().fg(Color::Gray)),
+            ]),
+        ]).style(if selected_index == 0 {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        } else {
+            Style::default()
+        }),
+        
+        ListItem::new(vec![
+            Line::from(vec![
+                Span::styled("  [J] ", Style::default().fg(Color::Blue).bold()),
+                Span::styled("Java Settings", Style::default().fg(Color::White).bold()),
+            ]),
+            Line::from(vec![
+                Span::raw("      "),
+                Span::styled("Configure JVM and memory", Style::default().fg(Color::Gray)),
+            ]),
+        ]).style(if selected_index == 1 {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        } else {
+            Style::default()
+        }),
+        
+        ListItem::new(vec![
+            Line::from(vec![
+                Span::styled("  [L] ", Style::default().fg(Color::Cyan).bold()),
+                Span::styled("Launch Options", Style::default().fg(Color::White).bold()),
+            ]),
+            Line::from(vec![
+                Span::raw("      "),
+                Span::styled("Game arguments and JVM flags", Style::default().fg(Color::Gray)),
+            ]),
+        ]).style(if selected_index == 2 {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        } else {
+            Style::default()
+        }),
+        
+        ListItem::new(vec![
+            Line::from(vec![
+                Span::styled("  [X] ", Style::default().fg(Color::Red).bold()),
+                Span::styled("Delete Instance", Style::default().fg(Color::White).bold()),
+            ]),
+            Line::from(vec![
+                Span::raw("      "),
+                Span::styled("Permanently remove this instance", Style::default().fg(Color::Gray)),
+            ]),
+        ]).style(if selected_index == 3 {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        } else {
+            Style::default()
+        }),
+    ];
 
-    f.render_widget(categories_content, chunks[0]);
+    let settings_list = List::new(settings_items)
+        .block(settings_block)
+        .highlight_symbol("  ");
+    
+    // Create a ListState for scrolling
+    let mut list_state = ListState::default();
+    list_state.select(Some(selected_index));
+    
+    f.render_stateful_widget(settings_list, chunks[0], &mut list_state);
 
     // Right side: Settings details
     let details_block = Block::default()
@@ -1337,48 +1378,108 @@ fn render_instance_settings(f: &mut Frame, area: Rect, instance_name: &str) {
         .title_style(Style::default().fg(Color::Cyan).bold())
         .border_style(Style::default().fg(Color::Cyan));
 
-    let details_content = Paragraph::new(vec![
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("Java: Instance Configuration", Style::default().fg(Color::Yellow).bold()),
+    let details_content = match selected_index {
+        0 => Paragraph::new(vec![
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("[R] Rename Instance", Style::default().fg(Color::Green).bold()),
+            ]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("Current Name: ", Style::default().fg(Color::Yellow)),
+                Span::styled(&instance.name, Style::default().fg(Color::White).bold()),
+            ]),
+            Line::from(""),
+            Line::from("This feature is under development."),
+            Line::from(""),
+            Line::from("Will allow you to:"),
+            Line::from("  > Change instance display name"),
+            Line::from("  > Keep all mods and settings"),
+            Line::from("  > Update folder name if needed"),
         ]),
-        Line::from(""),
-        Line::from("This feature is under development!"),
-        Line::from(""),
-        Line::from("Upcoming features:"),
-        Line::from(""),
-        Line::from(vec![
-            Span::raw("  "),
-            Span::styled("✓ ", Style::default().fg(Color::Green)),
-            Span::raw("Rename & manage instances"),
+        1 => Paragraph::new(vec![
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("[J] Java Configuration", Style::default().fg(Color::Blue).bold()),
+            ]),
+            Line::from(""),
+            Line::from("Java settings for this instance:"),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("Memory: ", Style::default().fg(Color::Yellow)),
+                Span::styled("Auto-detected", Style::default().fg(Color::Gray)),
+            ]),
+            Line::from(vec![
+                Span::styled("Java Path: ", Style::default().fg(Color::Yellow)),
+                Span::styled("System default", Style::default().fg(Color::Gray)),
+            ]),
+            Line::from(""),
+            Line::from("Coming soon:"),
+            Line::from("  > Memory allocation slider"),
+            Line::from("  > Custom Java path selection"),
+            Line::from("  > JVM argument editor"),
         ]),
-        Line::from(vec![
-            Span::raw("  "),
-            Span::styled("✓ ", Style::default().fg(Color::Green)),
-            Span::raw("Memory allocation slider"),
+        2 => Paragraph::new(vec![
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("[L] Launch Options", Style::default().fg(Color::Cyan).bold()),
+            ]),
+            Line::from(""),
+            Line::from("Launch configuration for this instance:"),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("Version: ", Style::default().fg(Color::Yellow)),
+                Span::styled(&instance.version, Style::default().fg(Color::White)),
+            ]),
+            Line::from(vec![
+                Span::styled("Loader: ", Style::default().fg(Color::Yellow)),
+                Span::styled(&instance.loader, Style::default().fg(Color::White)),
+            ]),
+            Line::from(""),
+            Line::from("Coming soon:"),
+            Line::from("  > Custom game arguments"),
+            Line::from("  > Resolution settings"),
+            Line::from("  > Server auto-connect"),
         ]),
-        Line::from(vec![
-            Span::raw("  "),
-            Span::styled("✓ ", Style::default().fg(Color::Green)),
-            Span::raw("Java version selection"),
+        3 => Paragraph::new(vec![
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("[X] Delete Instance", Style::default().fg(Color::Red).bold()),
+            ]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("!!! WARNING !!!", Style::default().fg(Color::Red).bold()),
+            ]),
+            Line::from(""),
+            Line::from("This will permanently delete:"),
+            Line::from(vec![
+                Span::raw("  > Instance: "),
+                Span::styled(&instance.name, Style::default().fg(Color::White).bold()),
+            ]),
+            Line::from("  > All world saves"),
+            Line::from("  > All mods and configurations"),
+            Line::from("  > All resource packs and shaders"),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("Press Enter to confirm deletion", Style::default().fg(Color::Red)),
+            ]),
+            Line::from(""),
+            if instance.is_running {
+                Line::from(vec![
+                    Span::styled("ERROR: Cannot delete running instance", Style::default().fg(Color::Red).bold()),
+                ])
+            } else {
+                Line::from(vec![
+                    Span::styled("READY: Instance can be deleted", Style::default().fg(Color::Green)),
+                ])
+            },
         ]),
-        Line::from(vec![
-            Span::raw("  "),
-            Span::styled("✓ ", Style::default().fg(Color::Green)),
-            Span::raw("Custom JVM arguments"),
+        _ => Paragraph::new(vec![
+            Line::from(""),
+            Line::from("Select a configuration option"),
         ]),
-        Line::from(vec![
-            Span::raw("  "),
-            Span::styled("✓ ", Style::default().fg(Color::Green)),
-            Span::raw("Game resolution presets"),
-        ]),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("Coming in the next update! Soon", Style::default().fg(Color::Green)),
-        ]),
-    ])
+    }
     .block(details_block)
-    .alignment(Alignment::Center)
     .wrap(Wrap { trim: true });
 
     f.render_widget(details_content, chunks[1]);
