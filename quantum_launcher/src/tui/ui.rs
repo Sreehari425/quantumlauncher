@@ -639,6 +639,19 @@ fn get_create_help(app: &App) -> Vec<Line> {
         ]);
     }
 
+    // Version search controls
+    help.extend(vec![
+        Line::from(vec![
+            Span::styled("Version search:", Style::default().fg(Color::Yellow)),
+        ]),
+        Line::from("Ctrl+S             Toggle search mode for versions"),
+        Line::from("Type               Filter versions while search is active"),
+        Line::from("Backspace          Delete character (search mode)"),
+        Line::from("Esc                Exit search mode"),
+        Line::from("Enter              Create using the selected match"),
+        Line::from(""),
+    ]);
+
     help.extend(vec![
         Line::from(vec![
             Span::styled("Create Instance Guide:", Style::default().fg(Color::Yellow)),
