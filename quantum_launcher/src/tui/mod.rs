@@ -30,6 +30,10 @@ pub enum AuthEvent {
     LaunchSuccess(String, std::sync::Arc<std::sync::Mutex<tokio::process::Child>>),
     LaunchError(String, String),
     LaunchEnded(String),
+    InstanceCreateStarted(String),
+    InstanceCreateProgress { instance_name: String, message: String },
+    InstanceCreateSuccess { instance_name: String },
+    InstanceCreateError { instance_name: String, error: String },
 }
 
 /// Entry point for the TUI mode
@@ -224,6 +228,18 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                 app.select_instance_settings_item();
                             } else if app.current_tab == app::TabId::Instances {
                                 app.select_item(); // This will open instance settings
+                            } else if app.current_tab == app::TabId::Create && !app.is_editing_name {
+                                // Handle Create tab instance creation
+                                if app.new_instance_name.is_empty() {
+                                    // If no name entered, start editing the name
+                                    app.is_editing_name = true;
+                                    app.status_message = "Editing instance name. Press Esc to finish editing.".to_string();
+                                } else if !app.available_versions.is_empty() && !app.is_loading {
+                                    // If name is entered and versions available, create instance
+                                    app.create_instance();
+                                } else if app.available_versions.is_empty() {
+                                    app.status_message = "❌ No versions available. Press F5 to refresh.".to_string();
+                                }
                             } else {
                                 app.select_item();
                             }

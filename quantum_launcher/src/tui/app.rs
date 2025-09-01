@@ -283,35 +283,74 @@ impl App {
         self.is_loading = true;
         self.status_message = format!("Creating instance '{}'... This may take a while", instance_name);
 
-        // Create instance in background
+        // Send instance creation started event
+        if let Some(sender) = &self.auth_sender {
+            let _ = sender.send(crate::tui::AuthEvent::InstanceCreateStarted(instance_name.clone()));
+        }
+
+        // Create instance in background using proper async handling like iced implementation
+        let auth_sender = self.auth_sender.clone();
+        let instance_name_for_spawn = instance_name.clone();
         tokio::spawn(async move {
+            // Create progress sender channel
+            let (progress_sender, progress_receiver) = std::sync::mpsc::channel();
+            
+            // Spawn a task to handle progress updates
+            if let Some(sender) = auth_sender.clone() {
+                let instance_name_for_progress = instance_name_for_spawn.clone();
+                tokio::spawn(async move {
+                    while let Ok(progress) = progress_receiver.try_recv() {
+                        let message = match progress {
+                            ql_core::DownloadProgress::DownloadingJsonManifest => "Downloading manifest...".to_string(),
+                            ql_core::DownloadProgress::DownloadingVersionJson => "Downloading version JSON...".to_string(),
+                            ql_core::DownloadProgress::DownloadingJar => "Downloading game jar...".to_string(),
+                            ql_core::DownloadProgress::DownloadingAssets { progress, out_of } => {
+                                format!("Downloading assets ({}/{})", progress, out_of)
+                            },
+                            ql_core::DownloadProgress::DownloadingLibraries { progress, out_of } => {
+                                format!("Downloading libraries ({}/{})", progress, out_of)
+                            },
+                            ql_core::DownloadProgress::DownloadingLoggingConfig => "Downloading logging config...".to_string(),
+                        };
+                        let _ = sender.send(crate::tui::AuthEvent::InstanceCreateProgress {
+                            instance_name: instance_name_for_progress.clone(),
+                            message,
+                        });
+                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    }
+                });
+            }
+
+            // Create the instance
             let result = ql_instances::create_instance(
-                instance_name.clone(),
+                instance_name_for_spawn.clone(),
                 version.clone(),
-                None, // No progress sender for now
+                Some(progress_sender),
                 download_assets,
             ).await;
 
-            // Note: In a real implementation, you'd want to send the result back to the app
-            // For now, just log it
-            match result {
-                Ok(_) => {
-                    println!("Successfully created instance: {}", instance_name);
-                }
-                Err(e) => {
-                    eprintln!("Failed to create instance {}: {}", instance_name, e);
+            // Send result back to the UI
+            if let Some(sender) = auth_sender {
+                match result {
+                    Ok(_) => {
+                        let _ = sender.send(crate::tui::AuthEvent::InstanceCreateSuccess {
+                            instance_name: instance_name_for_spawn.clone(),
+                        });
+                    }
+                    Err(e) => {
+                        let _ = sender.send(crate::tui::AuthEvent::InstanceCreateError {
+                            instance_name: instance_name_for_spawn.clone(),
+                            error: e.to_string(),
+                        });
+                    }
                 }
             }
         });
 
-        // Reset form and switch to instances tab
+        // Reset form and prepare for updates
         self.new_instance_name.clear();
         self.is_editing_name = false;
         self.download_assets = true; // Reset to default
-        self.current_tab = TabId::Instances;
-        
-        // Schedule a refresh in a few seconds to show the new instance
-        // Note: This is a simplistic approach. In a real app, you'd use proper async messaging
     }
 
     pub fn select_item(&mut self) {
@@ -325,16 +364,8 @@ impl App {
                 self.status_message = format!("Opened settings for instance: {}", self.instances[self.selected_instance].name);
             }
             TabId::Create => {
-                if !self.new_instance_name.is_empty() && !self.available_versions.is_empty() {
-                    let version = &self.available_versions[self.selected_version];
-                    self.status_message = format!("Creating instance '{}' with version '{}' (feature coming soon)", self.new_instance_name, version.name);
-                    // TODO: Implement actual instance creation
-                    // self.create_instance();
-                } else if self.new_instance_name.is_empty() {
-                    self.status_message = "Please enter an instance name first".to_string();
-                } else {
-                    self.status_message = "No version selected".to_string();
-                }
+                // Create tab should not use select_item - use create_instance instead
+                self.status_message = "Use Enter to create instance or Ctrl+N to edit name".to_string();
             }
             _ => {}
         }
@@ -837,6 +868,33 @@ impl App {
                     instance.is_running = false;
                 }
                 let msg = format!("🛑 {} has stopped", instance_name);
+                self.status_message = msg.clone();
+                self.add_log(format!("[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg));
+            }
+            crate::tui::AuthEvent::InstanceCreateStarted(instance_name) => {
+                self.status_message = format!("🔨 Creating instance '{}'... This may take a while", instance_name);
+                self.is_loading = true;
+                self.add_log(format!("[{}] Started creating instance: {}", 
+                    chrono::Local::now().format("%H:%M:%S"), instance_name));
+            }
+            crate::tui::AuthEvent::InstanceCreateProgress { instance_name, message } => {
+                self.status_message = format!("🔨 Creating '{}': {}", instance_name, message);
+                self.add_log(format!("[{}] Instance '{}': {}", 
+                    chrono::Local::now().format("%H:%M:%S"), instance_name, message));
+            }
+            crate::tui::AuthEvent::InstanceCreateSuccess { instance_name } => {
+                self.is_loading = false;
+                let msg = format!("✅ Successfully created instance '{}'", instance_name);
+                self.status_message = msg.clone();
+                self.add_log(format!("[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg));
+                
+                // Switch to instances tab (don't auto-refresh to avoid runtime conflict)
+                self.current_tab = TabId::Instances;
+                self.status_message = format!("✅ Successfully created instance '{}'. Press F5 to refresh instances list.", instance_name);
+            }
+            crate::tui::AuthEvent::InstanceCreateError { instance_name, error } => {
+                self.is_loading = false;
+                let msg = format!("❌ Failed to create instance '{}': {}", instance_name, error);
                 self.status_message = msg.clone();
                 self.add_log(format!("[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg));
             }
