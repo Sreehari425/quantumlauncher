@@ -34,6 +34,9 @@ pub enum AuthEvent {
     InstanceCreateProgress { instance_name: String, message: String },
     InstanceCreateSuccess { instance_name: String },
     InstanceCreateError { instance_name: String, error: String },
+    RefreshStarted,
+    RefreshCompleted,
+    RefreshData { instances: Vec<(String, String, String)> }, // (name, version, loader)
 }
 
 /// Entry point for the TUI mode
@@ -254,9 +257,8 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                         }
                         KeyCode::Char('?') => app.toggle_help_popup(),
                         KeyCode::F(5) => {
-                            // Temporary fix: Disable F5 refresh to prevent runtime panic
-                            // The refresh() method creates a nested Tokio runtime which causes crashes
-                            app.status_message = "Refresh disabled (would cause crash). Restart TUI to see new instances.".to_string();
+                            // Trigger async refresh
+                            app.start_refresh();
                         }
                         KeyCode::F(12) => {
                             // Force terminal clear and redraw (useful if debug output disrupted display)

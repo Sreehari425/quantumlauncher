@@ -380,6 +380,55 @@ impl App {
         }
     }
 
+    /// Start async refresh of instances
+    pub fn start_refresh(&mut self) {
+        if let Some(sender) = &self.auth_sender {
+            let sender_clone = sender.clone();
+            
+            // Send refresh started event
+            let _ = sender.send(crate::tui::AuthEvent::RefreshStarted);
+            
+            // Spawn refresh task using the existing async infrastructure
+            tokio::spawn(async move {
+                match crate::state::get_entries("instances".to_owned(), false).await {
+                    Ok((instance_names, _)) => {
+                        let mut instance_data = Vec::new();
+                        
+                        // Gather data for each instance
+                        for name in instance_names {
+                            let instance_dir = match ql_core::file_utils::get_launcher_dir() {
+                                Ok(launcher_dir) => launcher_dir.join("instances").join(&name),
+                                Err(_) => continue,
+                            };
+                            
+                            // Get loader info from config.json
+                            let loader = match ql_core::json::InstanceConfigJson::read_from_dir(&instance_dir).await {
+                                Ok(cfg) => cfg.mod_type,
+                                Err(_) => "Vanilla".to_string(),
+                            };
+                            
+                            // Get version info from details.json  
+                            let version = match ql_core::json::VersionDetails::load_from_path(&instance_dir).await {
+                                Ok(details) => details.id,
+                                Err(_) => "Unknown".to_string(),
+                            };
+                            
+                            instance_data.push((name, version, loader));
+                        }
+                        
+                        // Send the instance data back
+                        let _ = sender_clone.send(crate::tui::AuthEvent::RefreshData { instances: instance_data });
+                        let _ = sender_clone.send(crate::tui::AuthEvent::RefreshCompleted);
+                    }
+                    Err(_) => {
+                        // Still signal completion even on error
+                        let _ = sender_clone.send(crate::tui::AuthEvent::RefreshCompleted);
+                    }
+                }
+            });
+        }
+    }
+
     pub fn refresh(&mut self) {
         use std::path::PathBuf;
         use crate::state::get_entries;
@@ -897,6 +946,44 @@ impl App {
                 let msg = format!("❌ Failed to create instance '{}': {}", instance_name, error);
                 self.status_message = msg.clone();
                 self.add_log(format!("[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg));
+            }
+            crate::tui::AuthEvent::RefreshStarted => {
+                self.status_message = "🔄 Refreshing instances...".to_string();
+                self.is_loading = true;
+                self.add_log(format!("[{}] Started refreshing instances", 
+                    chrono::Local::now().format("%H:%M:%S")));
+            }
+            crate::tui::AuthEvent::RefreshCompleted => {
+                self.is_loading = false;
+                self.status_message = "✅ Instances refreshed successfully".to_string();
+                self.add_log(format!("[{}] Instances refresh completed", 
+                    chrono::Local::now().format("%H:%M:%S")));
+            }
+            crate::tui::AuthEvent::RefreshData { instances } => {
+                // Preserve running status
+                let running_instances: HashSet<String> = self.instances
+                    .iter()
+                    .filter(|i| i.is_running)
+                    .map(|i| i.name.clone())
+                    .collect();
+                
+                // Update instances with new data
+                self.instances.clear();
+                for (name, version, loader) in instances {
+                    self.instances.push(Instance {
+                        name: name.clone(),
+                        version,
+                        loader,
+                        is_running: running_instances.contains(&name),
+                    });
+                }
+                
+                // Ensure selected instance is still valid
+                if self.selected_instance >= self.instances.len() && !self.instances.is_empty() {
+                    self.selected_instance = self.instances.len() - 1;
+                } else if self.instances.is_empty() {
+                    self.selected_instance = 0;
+                }
             }
         }
     }
