@@ -12,6 +12,9 @@ use ratatui::{
 };
 use tokio::sync::mpsc;
 
+// Configuration constants
+const TUI_REFRESH_INTERVAL_MS: u64 = 500; // Periodic refresh to override stdout/stderr interference
+
 mod app;
 mod ui;
 
@@ -65,6 +68,9 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
     let (auth_tx, mut auth_rx) = mpsc::unbounded_channel::<AuthEvent>();
     app.set_auth_channel(auth_tx);
 
+    // Track last refresh time for periodic refreshing
+    let mut last_refresh = std::time::Instant::now();
+
     loop {
         // Check for auth events first
         if let Ok(auth_event) = auth_rx.try_recv() {
@@ -72,9 +78,17 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
         }
 
         // Check if we need a forced refresh (e.g., after launch events that might spam stdout)
-        if app.check_and_reset_forced_refresh() {
+        let needs_forced_refresh = app.check_and_reset_forced_refresh();
+        
+        // Check if it's time for periodic refresh
+        let needs_periodic_refresh = last_refresh.elapsed().as_millis() >= TUI_REFRESH_INTERVAL_MS as u128;
+        
+        if needs_forced_refresh || needs_periodic_refresh {
             // Clear terminal and force a complete redraw to overwrite any stdout spam
             terminal.clear()?;
+            if needs_periodic_refresh {
+                last_refresh = std::time::Instant::now();
+            }
         }
 
         terminal.draw(|f| ui::render(f, &mut app))?;
