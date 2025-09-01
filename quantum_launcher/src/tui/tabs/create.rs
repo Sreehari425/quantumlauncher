@@ -26,7 +26,7 @@ pub fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
         if app.is_editing_name {
             "Enter instance name... (editing)"
         } else {
-            "Enter instance name... (press 'n' to edit)"
+            "Enter instance name... (press Ctrl+N to edit)"
         }
     } else {
         &app.new_instance_name

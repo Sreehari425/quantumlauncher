@@ -95,6 +95,7 @@ pub struct App {
     pub selected_version: usize,
     pub new_instance_name: String,
     pub is_editing_name: bool,
+    pub download_assets: bool,
     pub show_help_popup: bool,
     pub accounts: Vec<Account>,
     pub selected_account: usize,
@@ -147,6 +148,7 @@ impl App {
             selected_version: 0,
             new_instance_name: String::new(),
             is_editing_name: false,
+            download_assets: true, // Default to true like in Iced UI
             show_help_popup: false,
             accounts: Vec::new(),
             selected_account: 0,
@@ -265,6 +267,51 @@ impl App {
             }
             _ => {}
         }
+    }
+
+    /// Create a new Minecraft instance
+    pub fn create_instance(&mut self) {
+        if self.new_instance_name.is_empty() || self.available_versions.is_empty() || self.is_loading {
+            return;
+        }
+
+        let instance_name = self.new_instance_name.clone();
+        let version = self.available_versions[self.selected_version].clone();
+        let download_assets = self.download_assets;
+
+        // Set loading state
+        self.is_loading = true;
+        self.status_message = format!("Creating instance '{}'... This may take a while", instance_name);
+
+        // Create instance in background
+        tokio::spawn(async move {
+            let result = ql_instances::create_instance(
+                instance_name.clone(),
+                version.clone(),
+                None, // No progress sender for now
+                download_assets,
+            ).await;
+
+            // Note: In a real implementation, you'd want to send the result back to the app
+            // For now, just log it
+            match result {
+                Ok(_) => {
+                    println!("Successfully created instance: {}", instance_name);
+                }
+                Err(e) => {
+                    eprintln!("Failed to create instance {}: {}", instance_name, e);
+                }
+            }
+        });
+
+        // Reset form and switch to instances tab
+        self.new_instance_name.clear();
+        self.is_editing_name = false;
+        self.download_assets = true; // Reset to default
+        self.current_tab = TabId::Instances;
+        
+        // Schedule a refresh in a few seconds to show the new instance
+        // Note: This is a simplistic approach. In a real app, you'd use proper async messaging
     }
 
     pub fn select_item(&mut self) {

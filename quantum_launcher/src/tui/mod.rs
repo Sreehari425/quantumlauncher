@@ -172,6 +172,11 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                         KeyCode::Char(c) if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
                             app.add_char_to_add_account_field(c);
                         }
+                        // Create tab editing mode - handle escape to exit editing
+                        KeyCode::Esc if app.current_tab == app::TabId::Create && app.is_editing_name => {
+                            app.is_editing_name = false;
+                            app.status_message = "Finished editing instance name.".to_string();
+                        }
                         // General key handling
                         KeyCode::Char('q') | KeyCode::Esc => {
                             if app.current_tab == app::TabId::InstanceSettings {
@@ -238,13 +243,21 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                             terminal.clear()?;
                             app.status_message = "🔄 Terminal refreshed".to_string();
                         }
-                        KeyCode::Char('n') if app.current_tab == app::TabId::Create => {
+                        KeyCode::Char('n') if app.current_tab == app::TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
                             app.is_editing_name = !app.is_editing_name;
                             if app.is_editing_name {
-                                app.status_message = "Editing instance name. Press 'n' again to finish editing.".to_string();
+                                app.status_message = "Editing instance name. Press Ctrl+N again to finish editing.".to_string();
                             } else {
                                 app.status_message = "Finished editing instance name.".to_string();
                             }
+                        }
+                        KeyCode::Char('d') if app.current_tab == app::TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            app.download_assets = !app.download_assets;
+                            app.status_message = if app.download_assets {
+                                "✅ Download assets enabled (sound/music will be available)".to_string()
+                            } else {
+                                "⚠️  Download assets disabled (faster creation, no sound/music)".to_string()
+                            };
                         }
                         // Account tab specific keys
                         KeyCode::Char('l') if app.current_tab == app::TabId::Accounts && !app.is_add_account_mode => {

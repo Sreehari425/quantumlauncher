@@ -66,21 +66,21 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             app.add_char_to_add_account_field(c);
             false
         }
-        // General key handling
-        KeyCode::Char('q') | KeyCode::Esc => true,
-        KeyCode::Up | KeyCode::Char('k') => {
+        // General key handling - but NOT when editing instance name
+        KeyCode::Char('q') | KeyCode::Esc if !(app.current_tab == TabId::Create && app.is_editing_name) => true,
+        KeyCode::Up | KeyCode::Char('k') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.prev_item();
             false
         }
-        KeyCode::Down | KeyCode::Char('j') => {
+        KeyCode::Down | KeyCode::Char('j') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.next_item();
             false
         }
-        KeyCode::Left | KeyCode::Char('h') => {
+        KeyCode::Left | KeyCode::Char('h') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.previous_tab();
             false
         }
-        KeyCode::Right if app.current_tab != TabId::Accounts => {
+        KeyCode::Right if app.current_tab != TabId::Accounts && !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.next_tab();
             false
         }
@@ -95,27 +95,27 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             app.status_message = "✅ Logs cleared".to_string();
             false
         }
-        KeyCode::Char('c') => {
+        KeyCode::Char('c') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.set_tab(TabId::Create);
             false
         }
-        KeyCode::Char('i') => {
+        KeyCode::Char('i') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.set_tab(TabId::Instances);
             false
         }
-        KeyCode::Char('s') => {
+        KeyCode::Char('s') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.set_tab(TabId::Settings);
             false
         }
-        KeyCode::Char('a') => {
+        KeyCode::Char('a') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.set_tab(TabId::Accounts);
             false
         }
-        KeyCode::Char('l') if app.current_tab != TabId::Accounts => {
+        KeyCode::Char('l') if app.current_tab != TabId::Accounts && !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.set_tab(TabId::Logs);
             false
         }
-        KeyCode::Char('?') => {
+        KeyCode::Char('?') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.toggle_help_popup();
             false
         }
@@ -123,12 +123,49 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             app.refresh();
             false
         }
-        KeyCode::Char('n') if app.current_tab == TabId::Create => {
-            app.is_editing_name = !app.is_editing_name;
-            if app.is_editing_name {
-                app.status_message = "Editing instance name. Press 'n' again to finish editing.".to_string();
+        // Create tab editing mode - handle character input first when editing
+        KeyCode::Backspace if app.current_tab == TabId::Create && app.is_editing_name => {
+            app.new_instance_name.pop();
+            false
+        }
+        KeyCode::Char(c) if app.current_tab == TabId::Create && app.is_editing_name => {
+            app.new_instance_name.push(c);
+            false
+        }
+        KeyCode::Esc if app.current_tab == TabId::Create && app.is_editing_name => {
+            app.is_editing_name = false;
+            app.status_message = "Finished editing instance name.".to_string();
+            false
+        }
+        // Create tab commands (only when NOT editing)
+        KeyCode::Char('d') if app.current_tab == TabId::Create && !app.is_editing_name && key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.download_assets = !app.download_assets;
+            app.status_message = if app.download_assets {
+                "✅ Download assets enabled (sound/music will be available)".to_string()
             } else {
-                app.status_message = "Finished editing instance name.".to_string();
+                "⚠️  Download assets disabled (faster creation, no sound/music)".to_string()
+            };
+            false
+        }
+        KeyCode::Tab if app.current_tab == TabId::Create && !app.is_editing_name => {
+            app.download_assets = !app.download_assets;
+            app.status_message = if app.download_assets {
+                "✅ Download assets enabled (sound/music will be available)".to_string()
+            } else {
+                "⚠️  Download assets disabled (faster creation, no sound/music)".to_string()
+            };
+            false
+        }
+        KeyCode::Enter if app.current_tab == TabId::Create && !app.is_editing_name => {
+            if app.new_instance_name.is_empty() {
+                // If no name entered, start editing the name
+                app.is_editing_name = true;
+                app.status_message = "Editing instance name. Press Esc to finish editing.".to_string();
+            } else if !app.available_versions.is_empty() && !app.is_loading {
+                // If name is entered and versions available, create instance
+                app.create_instance();
+            } else if app.available_versions.is_empty() {
+                app.status_message = "❌ No versions available. Press F5 to refresh.".to_string();
             }
             false
         }
@@ -142,23 +179,8 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             }
             false
         }
-        KeyCode::Char('n') if app.current_tab == TabId::Accounts => {
-            if !app.is_add_account_mode {
-                app.toggle_add_account_mode();
-                app.status_message = "Add account mode. Select type and enter credentials.".to_string();
-            }
-            false
-        }
         KeyCode::Char('d') if app.current_tab == TabId::Accounts && !app.is_add_account_mode => {
             app.set_default_account();
-            false
-        }
-        KeyCode::Backspace if app.current_tab == TabId::Create && app.is_editing_name => {
-            app.new_instance_name.pop();
-            false
-        }
-        KeyCode::Char(c) if app.current_tab == TabId::Create && app.is_editing_name => {
-            app.new_instance_name.push(c);
             false
         }
         _ => false

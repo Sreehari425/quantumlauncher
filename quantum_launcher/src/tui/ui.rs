@@ -164,6 +164,8 @@ fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3), // Instance name input
+            Constraint::Length(3), // Download assets checkbox
+            Constraint::Length(3), // Create button
             Constraint::Min(0),    // Version list
         ])
         .margin(1)
@@ -174,7 +176,7 @@ fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
         if app.is_editing_name {
             "Enter instance name... (editing)"
         } else {
-            "Enter instance name... (press 'n' to edit)"
+            "Enter instance name... (press Ctrl+N to edit)"
         }
     } else {
         &app.new_instance_name
@@ -190,52 +192,134 @@ fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
         Block::default()
             .borders(Borders::ALL)
             .title(if app.is_editing_name {
-                " Instance Name (Editing - press 'n' to finish) "
+                " Instance Name (Editing - press Esc to finish) "
             } else {
-                " Instance Name (press 'n' to edit) "
+                " Instance Name (press Ctrl+N to edit) "
             })
     );
-
     f.render_widget(name_input, chunks[0]);
 
-    // Version list
+    // Download assets checkbox
+    let checkbox_text = if app.download_assets {
+        "☑ Download assets? (Enables sound/music, but slower)"
+    } else {
+        "☐ Download assets? (Enables sound/music, but slower)"
+    };
+    let checkbox = Paragraph::new(checkbox_text)
+        .style(Style::default().fg(Color::Green))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Options (press Ctrl+D to toggle) ")
+        );
+    f.render_widget(checkbox, chunks[1]);
+
+    // Create button and status
+    let can_create = !app.new_instance_name.is_empty() && !app.available_versions.is_empty();
+    let button_text = if app.is_loading {
+        "Creating instance... Please wait"
+    } else if app.new_instance_name.is_empty() {
+        "Press Enter to name instance"
+    } else if can_create {
+        "Press Enter to create instance"
+    } else {
+        "No version selected"
+    };
+    
+    let button_style = if app.is_loading {
+        Style::default().fg(Color::Yellow)
+    } else if can_create {
+        Style::default().fg(Color::Green).bold()
+    } else {
+        Style::default().fg(Color::Red)
+    };
+    
+    let create_button = Paragraph::new(button_text)
+        .style(button_style)
+        .alignment(Alignment::Center)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Create Instance ")
+        );
+    f.render_widget(create_button, chunks[2]);
+
+    // Version list - enhanced with better styling
     if app.available_versions.is_empty() {
         let block = Block::default()
             .borders(Borders::ALL)
-            .title(" Minecraft Versions ");
-        let paragraph = Paragraph::new("Loading versions...\nPress F5 to refresh")
-            .block(block)
-            .alignment(Alignment::Center);
-        f.render_widget(paragraph, chunks[1]);
+            .title(" Minecraft Versions ")
+            .title_style(Style::default().fg(Color::Cyan).bold());
+        let paragraph = Paragraph::new(vec![
+            Line::from("Loading versions..."),
+            Line::from(""),
+            Line::from("Press F5 to refresh"),
+            Line::from(""),
+            Line::from("Supported versions:"),
+            Line::from("  • Release versions"),
+            Line::from("  • Snapshot versions"),
+            Line::from("  • Beta/Alpha versions"),
+        ])
+        .style(Style::default().fg(Color::Gray))
+        .block(block)
+        .alignment(Alignment::Center);
+        f.render_widget(paragraph, chunks[3]);
     } else {
         let items: Vec<ListItem> = app
             .available_versions
             .iter()
-            .map(|version| {
-                ListItem::new(Line::from(vec![
-                    Span::styled(&version.name, Style::default().fg(Color::Cyan)),
-                    if version.is_classic_server {
-                        Span::styled(" (Classic Server)", Style::default().fg(Color::Yellow))
-                    } else {
-                        Span::raw("")
-                    },
-                ]))
+            .enumerate()
+            .map(|(i, version)| {
+                let is_selected = i == app.selected_version;
+                let (type_label, type_color) = if version.name.contains("w") || version.name.contains("-pre") || version.name.contains("-rc") {
+                    ("Snapshot", Color::Yellow)
+                } else if version.name.contains("a") || version.name.contains("b") {
+                    ("Alpha/Beta", Color::Magenta)
+                } else {
+                    ("Release", Color::Green)
+                };
+                
+                ListItem::new(vec![
+                    Line::from(vec![
+                        if is_selected { 
+                            Span::styled("▶ ", Style::default().fg(Color::Yellow).bold())
+                        } else { 
+                            Span::raw("  ")
+                        },
+                        Span::styled(&version.name, Style::default().fg(Color::Cyan).bold()),
+                        Span::raw(" "),
+                        Span::styled(format!("[{}]", type_label), Style::default().fg(type_color)),
+                        if version.is_classic_server {
+                            Span::styled(" (Server)", Style::default().fg(Color::Blue))
+                        } else {
+                            Span::raw("")
+                        },
+                    ])
+                ])
             })
             .collect();
 
         let mut list_state = ListState::default();
         list_state.select(Some(app.selected_version));
 
+        let selected_version_name = if let Some(version) = app.available_versions.get(app.selected_version) {
+            format!(" Minecraft Versions - Selected: {} ", version.name)
+        } else {
+            " Minecraft Versions ".to_string()
+        };
+
         let list = List::new(items)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title(" Minecraft Versions (↑/↓ to select, Enter to create) "),
+                    .title(selected_version_name)
+                    .title_style(Style::default().fg(Color::Cyan).bold())
+                    .border_style(Style::default().fg(Color::Cyan))
             )
             .highlight_style(Style::default().bg(Color::DarkGray))
-            .highlight_symbol("▶ ");
+            .highlight_symbol("");
 
-        f.render_stateful_widget(list, chunks[1], &mut list_state);
+        f.render_stateful_widget(list, chunks[3], &mut list_state);
     }
 }
 
@@ -530,26 +614,33 @@ fn get_create_help(app: &App) -> Vec<Line> {
             ]),
             Line::from("Type               Enter instance name"),
             Line::from("Backspace          Delete character"),
-            Line::from("Enter              Finish editing name"),
-            Line::from("Esc                Cancel editing"),
+            Line::from("Esc                Finish editing name"),
             Line::from(""),
         ]);
     } else {
         help.extend(vec![
             Line::from("↑/↓ or j/k         Navigate version list"),
-            Line::from("n                  Edit instance name"),
-            Line::from("Enter              Create instance"),
+            Line::from("Ctrl+N             Edit name / Create instance"),
+            Line::from("Ctrl+D             Toggle download assets"),
             Line::from(""),
         ]);
     }
 
     help.extend(vec![
         Line::from(vec![
-            Span::styled("Tips:", Style::default().fg(Color::Yellow)),
+            Span::styled("Create Instance Guide:", Style::default().fg(Color::Yellow)),
         ]),
-        Line::from("• Choose a descriptive name for your instance"),
-        Line::from("• Select the Minecraft version you want to play"),
-        Line::from("• Press Enter when ready to create the instance"),
+        Line::from("1. Press Ctrl+N to edit instance name"),
+        Line::from("2. Select Minecraft version (↑/↓)"), 
+        Line::from("3. Toggle asset download (press Ctrl+D)"),
+        Line::from("   ☑ Enabled: Slower download, with sound/music"),
+        Line::from("   ☐ Disabled: Faster download, no sound/music"),
+        Line::from("4. Press Enter to create"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Tip: ", Style::default().fg(Color::Cyan)),
+            Span::raw("Simple controls: Ctrl+N to edit/create, Ctrl+D to toggle assets")
+        ]),
         Line::from(""),
     ]);
 
