@@ -98,17 +98,37 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
             if has_event {
                 if let Event::Key(key) = event::read()? {
                     if key.kind == KeyEventKind::Press {
-                // Handle help popup separately
-                if app.show_help_popup {
-                    match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc | KeyCode::Char('?') => {
-                            app.toggle_help_popup();
+                        // Handle delete confirmation popup
+                        if app.show_delete_confirm {
+                            match key.code {
+                                KeyCode::Char('y') | KeyCode::Char('Y') => {
+                                    // Confirm deletion
+                                    if let Some(idx) = app.instance_settings_instance {
+                                        let name = app.instances[idx].name.clone();
+                                        app.delete_instance(&name);
+                                    }
+                                    app.show_delete_confirm = false;
+                                }
+                                KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
+                                    // Cancel deletion
+                                    app.show_delete_confirm = false;
+                                    app.status_message = "Instance deletion cancelled.".to_string();
+                                }
+                                _ => {}
+                            }
+                            continue;
                         }
-                        _ => {}
-                    }
-                } else {
-                    // Normal key handling when help popup is not shown
-                    match key.code {
+                        // Handle help popup separately
+                        if app.show_help_popup {
+                            match key.code {
+                                KeyCode::Char('q') | KeyCode::Esc | KeyCode::Char('?') => {
+                                    app.toggle_help_popup();
+                                }
+                                _ => {}
+                            }
+                        } else {
+                            // Normal key handling when help/help and delete popup are not shown
+                            match key.code {
                         // Account tab specific keys - must come first to override general patterns
                         KeyCode::Esc if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
                             app.toggle_add_account_mode();

@@ -126,6 +126,7 @@ pub struct App {
     pub instance_settings_selected: usize, // Selected item in instance settings
     // Process tracking for kill functionality
     pub client_processes: HashMap<String, ClientProcess>, // Track running instances
+    pub show_delete_confirm: bool, // Show confirmation popup for instance deletion
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -138,7 +139,7 @@ pub enum InstanceSettingsTab {
 
 impl App {
     pub fn new() -> Self {
-        let mut app = Self {
+    let mut app = Self {
             current_tab: TabId::Instances,
             instances: Vec::new(),
             selected_instance: 0,
@@ -174,6 +175,7 @@ impl App {
             instance_settings_selected: 0,
             // Initialize client process tracking
             client_processes: HashMap::new(),
+            show_delete_confirm: false,
         };
         
         // Load instances and accounts on startup
@@ -1512,7 +1514,7 @@ impl App {
                                 self.status_message = "Launch options configuration coming soon".to_string();
                             }
                             3 => { // Delete Instance
-                                self.delete_instance(&instance_name);
+                                self.show_delete_confirm = true;
                             }
                             _ => {}
                         }

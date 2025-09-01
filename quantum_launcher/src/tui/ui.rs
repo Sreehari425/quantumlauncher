@@ -34,6 +34,34 @@ pub fn render(f: &mut Frame, app: &mut App) {
     if app.show_help_popup {
         render_help_popup(f, app);
     }
+
+    if app.show_delete_confirm {
+        render_delete_confirm_popup(f, app);
+    }
+}
+/// Render confirmation popup for instance deletion
+fn render_delete_confirm_popup(f: &mut Frame, _app: &App) {
+    let popup_area = centered_rect(50, 30, f.area());
+    
+    let block = Block::default()
+        .title(" Confirm Instance Deletion ")
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Red).bold());
+    let lines = vec![
+        Line::from(""),
+        Line::from("Are you sure you want to permanently delete this instance?"),
+        Line::from(""),
+        Line::from("This action cannot be undone!"),
+        Line::from(""),
+        Line::from("Press 'Y' to confirm, 'N' or Esc to cancel."),
+        Line::from(""),
+    ];
+    let para = Paragraph::new(lines)
+        .block(block)
+        .alignment(Alignment::Center)
+        .wrap(Wrap { trim: true });
+    f.render_widget(Clear, popup_area); // Clear the popup area
+    f.render_widget(para, popup_area);
 }
 
 /// Render the header with tabs
