@@ -476,7 +476,7 @@ pub fn get_jar_path(
 
     if let Some(custom_jar_path) = custom_jar {
         if !custom_jar_path.trim().is_empty() {
-            return PathBuf::from(custom_jar_path);
+            return LAUNCHER_DIR.join("custom_jars").join(custom_jar_path);
         }
     }
 

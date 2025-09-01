@@ -1,7 +1,7 @@
 use crate::{
     icon_manager,
     menu_renderer::{button_with_icon, FONT_MONO},
-    state::{EditInstanceMessage, MenuEditInstance, Message},
+    state::{EditInstanceMessage, MenuEditInstance, Message, NONE_JAR_NAME},
     stylesheet::{color::Color, styles::LauncherTheme},
 };
 use iced::{widget, Length};
@@ -47,11 +47,11 @@ impl MenuEditInstance {
                 )
                 .padding(10)
                 .spacing(10))
-                .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),
+                .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::Dark)),
 
                 widget::container(
                     self.item_java_override()
-                ).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::Dark)),
+                ).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),
                 widget::container(
                     self.item_custom_jar(jar_choices)
                 ).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),
@@ -260,7 +260,13 @@ impl MenuEditInstance {
         let picker: Element = if let Some(choices) = jar_choices {
             widget::pick_list(
                 choices,
-                self.config.custom_jar.as_ref().map(|n| &n.name),
+                Some(
+                    self.config
+                        .custom_jar
+                        .as_ref()
+                        .map(|n| n.name.clone())
+                        .unwrap_or(NONE_JAR_NAME.to_owned()),
+                ),
                 |t| Message::EditInstance(EditInstanceMessage::CustomJarPathChanged(t)),
             )
             .into()
@@ -270,15 +276,37 @@ impl MenuEditInstance {
 
         widget::column![
             "Custom JAR file",
-            picker,
             widget::text(
-                "If you want to apply tweaks to your existing JAR file,\nuse \"Mods->Jar Mods\""
+                r#"This feature is for *replacing* the Minecraft JAR,
+not adding to it.
+If you want to apply tweaks to your existing JAR file,
+use "Mods->Jar Mods""#
             )
             .size(12)
             .style(ts),
-            widget::text("This feature is only for custom/archived versions")
-                .size(12)
-                .style(ts),
+            widget::Space::with_height(2),
+            picker,
+            widget::Column::new().push_maybe(
+                self.config.custom_jar.is_some().then_some(
+                    widget::column![
+                        widget::text("Try this in case the game crashes otherwise")
+                            .size(12)
+                            .style(ts),
+                        widget::checkbox(
+                            "Auto-set mainClass",
+                            self.config
+                                .custom_jar
+                                .as_ref()
+                                .is_some_and(|n| n.autoset_main_class)
+                        )
+                        .on_toggle(|n| Message::EditInstance(
+                            EditInstanceMessage::AutoSetMainClassToggle(n)
+                        )),
+                        widget::Space::with_height(5),
+                    ]
+                    .spacing(5)
+                )
+            ),
         ]
         .padding(10)
         .spacing(5)

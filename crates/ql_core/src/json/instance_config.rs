@@ -8,6 +8,7 @@ use crate::{InstanceSelection, IntoIoError, IntoJsonError, JsonFileError};
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
 pub struct CustomJarConfig {
     pub name: String,
+    pub autoset_main_class: bool,
 }
 
 /// Defines how instance Java arguments should interact with global Java arguments

@@ -228,14 +228,24 @@ impl Launcher {
             EditInstanceMessage::CustomJarPathChanged(path) => {
                 if path == ADD_JAR_NAME {
                     return Ok(self.add_custom_jar());
-                } else if path == REMOVE_JAR_NAME {
-                    todo!("Remove jars")
                 } else if let State::Launch(MenuLaunch {
                     edit_instance: Some(menu),
                     ..
                 }) = &mut self.state
                 {
-                    if path == NONE_JAR_NAME {
+                    if path == REMOVE_JAR_NAME {
+                        if let (Some(jar), Some(list)) =
+                            (&menu.config.custom_jar, &mut self.custom_jar_choices)
+                        {
+                            list.retain(|n| *n != jar.name);
+                            let name = jar.name.clone();
+                            menu.config.custom_jar = None;
+                            return Ok(Task::perform(
+                                tokio::fs::remove_file(LAUNCHER_DIR.join("custom_jars").join(name)),
+                                |_| Message::Nothing,
+                            ));
+                        }
+                    } else if path == NONE_JAR_NAME {
                         menu.config.custom_jar = None;
                     } else {
                         menu.config
@@ -249,6 +259,23 @@ impl Launcher {
                 Ok(items) => self.custom_jar_choices = Some(items),
                 Err(err) => err!("Couldn't load list of custom jars! {err}"),
             },
+            EditInstanceMessage::AutoSetMainClassToggle(t) => {
+                if let State::Launch(MenuLaunch {
+                    edit_instance:
+                        Some(MenuEditInstance {
+                            config:
+                                InstanceConfigJson {
+                                    custom_jar: Some(custom_jar),
+                                    ..
+                                },
+                            ..
+                        }),
+                    ..
+                }) = &mut self.state
+                {
+                    custom_jar.autoset_main_class = t;
+                }
+            }
         }
         Ok(Task::none())
     }
@@ -280,6 +307,7 @@ impl Launcher {
                 .custom_jar
                 .get_or_insert_with(CustomJarConfig::default) = CustomJarConfig {
                 name: file_name.clone(),
+                autoset_main_class: false,
             };
 
             Task::perform(
