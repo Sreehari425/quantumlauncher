@@ -570,12 +570,10 @@ impl App {
             AccountType::Microsoft => {
                 self.status_message = "Microsoft accounts are not implemented yet - coming soon!".to_string();
                 self.login_error = Some("Microsoft authentication not yet available".to_string());
-                return;
             }
             AccountType::LittleSkin => {
                 self.status_message = "LittleSkin accounts are not implemented yet - coming soon!".to_string();
                 self.login_error = Some("LittleSkin authentication not yet available".to_string());
-                return;
             }
             AccountType::Offline => {
                 // For offline accounts, just add with the specified username
@@ -1015,7 +1013,7 @@ impl App {
                         (clean_username, acc.nice_username.clone())
                     } else {
                         // No auth data available, generate clean username from account info
-                        let clean_username = self.get_clean_username_for_selected_account(&selected_account);
+                        let clean_username = self.get_clean_username_for_selected_account(selected_account);
                         self.status_message = format!("WARNING: Using {} ({}) offline - may need re-auth", 
                             clean_username, selected_account.account_type);
                         (clean_username, selected_account.username.clone())
@@ -1538,7 +1536,7 @@ impl App {
 
         if max_items > 1 {
             self.instance_settings_selected = (self.instance_settings_selected as i32 + direction)
-                .rem_euclid(max_items as i32) as usize;
+                .rem_euclid(max_items) as usize;
         }
     }
 
