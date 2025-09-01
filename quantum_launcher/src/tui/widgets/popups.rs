@@ -271,10 +271,8 @@ pub fn get_global_help() -> Vec<Line<'static>> {
             Span::styled("═══ GLOBAL CONTROLS ═══", Style::default().fg(Color::White).bold())
         ]),
         Line::from("←/→ or h/l         Switch between tabs"),
-        Line::from("i                  Go to Instances tab"),
-        Line::from("c                  Go to Create tab"),
-        Line::from("s                  Go to Settings tab"),
-        Line::from("a                  Go to Accounts tab"),
+        Line::from("Tab                Cycle forward through tabs"),
+        Line::from("Shift+Tab          Cycle backward through tabs"),
         Line::from("?                  Show/hide this help popup"),
         Line::from("q                  Quit application"),
         Line::from("F5                 Refresh current data"),

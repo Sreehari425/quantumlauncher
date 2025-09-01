@@ -189,16 +189,14 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                 app.select_item();
                             }
                         }
+                        // Tab navigation
+                        KeyCode::Tab => app.next_tab(),
+                        KeyCode::BackTab => app.previous_tab(),
                         // Logs tab specific keys - must come before general 'c' key
                         KeyCode::Char('c') if app.current_tab == app::TabId::Logs => {
                             app.clear_logs();
                             app.status_message = "✅ Logs cleared".to_string();
                         }
-                        KeyCode::Char('c') => app.set_tab(app::TabId::Create),
-                        KeyCode::Char('i') => app.set_tab(app::TabId::Instances),
-                        KeyCode::Char('s') => app.set_tab(app::TabId::Settings),
-                        KeyCode::Char('a') => app.set_tab(app::TabId::Accounts),
-                        KeyCode::Char('l') if app.current_tab != app::TabId::Accounts => app.set_tab(app::TabId::Logs),
                         KeyCode::Char('?') => app.toggle_help_popup(),
                         KeyCode::F(5) => app.refresh(),
                         KeyCode::F(12) => {

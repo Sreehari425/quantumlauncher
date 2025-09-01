@@ -16,7 +16,7 @@ pub fn render_instances_tab(f: &mut Frame, area: Rect, app: &mut App) {
         let block = Block::default()
             .borders(Borders::ALL)
             .title(" Instances ");
-        let paragraph = Paragraph::new("No instances found.\nPress F5 to refresh or go to Create tab to make a new instance.")
+        let paragraph = Paragraph::new("No instances found.\nPress F5 to refresh or use Tab to navigate to Create tab to make a new instance.")
             .block(block)
             .wrap(Wrap { trim: true });
         f.render_widget(paragraph, area);

@@ -16,11 +16,11 @@ use crate::tui::app::{App, TabId};
 /// Render the header with tabs
 pub fn render_header(f: &mut Frame, area: Rect, app: &App) {
     let tabs = vec![
-        Line::from("Instances (i)"),
-        Line::from("Create (c)"),
-        Line::from("Settings (s)"),
-        Line::from("Accounts (a)"),
-        Line::from("Logs (l)"),
+        Line::from("Instances"),
+        Line::from("Create"),
+        Line::from("Settings"),
+        Line::from("Accounts"),
+        Line::from("Logs"),
     ];
 
     let selected_tab = match app.current_tab {

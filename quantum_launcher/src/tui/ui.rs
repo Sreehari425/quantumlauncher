@@ -40,11 +40,11 @@ pub fn render(f: &mut Frame, app: &mut App) {
 fn render_header(f: &mut Frame, area: Rect, app: &App) {
     // Normal main tabs (same for all pages including instance settings)
     let tabs = vec![
-        Line::from("Instances (i)"),
-        Line::from("Create (c)"),
-        Line::from("Settings (s)"),
-        Line::from("Accounts (a)"),
-        Line::from("Logs (l)"),
+        Line::from("Instances"),
+        Line::from("Create"),
+        Line::from("Settings"),
+        Line::from("Accounts"),
+        Line::from("Logs"),
     ];
 
     let selected_tab = match app.current_tab {
@@ -81,7 +81,7 @@ fn render_instances_tab(f: &mut Frame, area: Rect, app: &mut App) {
         let block = Block::default()
             .borders(Borders::ALL)
             .title(" Instances ");
-        let paragraph = Paragraph::new("No instances found.\nPress F5 to refresh or go to Create tab to make a new instance.")
+        let paragraph = Paragraph::new("No instances found.\nPress F5 to refresh or use Tab to navigate to Create tab to make a new instance.")
             .block(block)
             .alignment(Alignment::Center)
             .wrap(Wrap { trim: true });
