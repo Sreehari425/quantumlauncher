@@ -907,7 +907,7 @@ fn render_instance_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
 
             // Render content based on selected sub-tab
             match app.instance_settings_tab {
-                crate::tui::app::InstanceSettingsTab::Overview => render_instance_overview(f, chunks[2], app.instance_settings_selected),
+                crate::tui::app::InstanceSettingsTab::Overview => render_instance_overview(f, chunks[2], app.instance_settings_selected, instance),
                 crate::tui::app::InstanceSettingsTab::Mod => render_instance_mods(f, chunks[2], &instance.name),
                 crate::tui::app::InstanceSettingsTab::Setting => render_instance_settings(f, chunks[2], &instance.name),
                 crate::tui::app::InstanceSettingsTab::Logs => render_instance_logs(f, chunks[2], &instance.name),
@@ -920,7 +920,6 @@ fn render_instance_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
 fn render_instance_info_card(f: &mut Frame, area: Rect, instance: &crate::tui::app::Instance) {
     let status_color = if instance.is_running { Color::Green } else { Color::Gray };
     let status_text = if instance.is_running { "● RUNNING" } else { "○ STOPPED" };
-    let status_icon = if instance.is_running { "●" } else { "○" };
 
     // Create a nice card layout
     let card_chunks = Layout::default()
@@ -1000,7 +999,7 @@ fn render_instance_info_card(f: &mut Frame, area: Rect, instance: &crate::tui::a
 }
 
 /// Render instance overview tab
-fn render_instance_overview(f: &mut Frame, area: Rect, selected_index: usize) {
+fn render_instance_overview(f: &mut Frame, area: Rect, selected_index: usize, instance: &crate::tui::app::Instance) {
     // Create a two-column layout for better organization
     let main_chunks = Layout::default()
         .direction(Direction::Horizontal)
@@ -1011,14 +1010,14 @@ fn render_instance_overview(f: &mut Frame, area: Rect, selected_index: usize) {
         .split(area);
 
     // Left side: Quick Actions
-    render_instance_actions(f, main_chunks[0], selected_index);
+    render_instance_actions(f, main_chunks[0], selected_index, instance);
     
     // Right side: Instance Statistics and Info
     render_instance_info_panel(f, main_chunks[1]);
 }
 
 /// Render the quick actions panel
-fn render_instance_actions(f: &mut Frame, area: Rect, selected_index: usize) {
+fn render_instance_actions(f: &mut Frame, area: Rect, selected_index: usize, instance: &crate::tui::app::Instance) {
     let actions_block = Block::default()
         .borders(Borders::ALL)
         .title(" Quick Actions ")
@@ -1028,12 +1027,27 @@ fn render_instance_actions(f: &mut Frame, area: Rect, selected_index: usize) {
     let actions_items = vec![
         ListItem::new(vec![
             Line::from(vec![
-                Span::styled("  ▶ ", Style::default().fg(Color::Green).bold()),
-                Span::styled("Launch Instance", Style::default().fg(Color::White).bold()),
+                Span::styled("  ▶ ", if instance.is_running {
+                    Style::default().fg(Color::DarkGray).bold()
+                } else {
+                    Style::default().fg(Color::Green).bold()
+                }),
+                Span::styled("Launch Instance", if instance.is_running {
+                    Style::default().fg(Color::DarkGray)
+                } else {
+                    Style::default().fg(Color::White).bold()
+                }),
             ]),
             Line::from(vec![
                 Span::raw("    "),
-                Span::styled("Start playing this instance", Style::default().fg(Color::Gray)),
+                Span::styled(
+                    if instance.is_running {
+                        "Instance is already running"
+                    } else {
+                        "Start playing this instance"
+                    },
+                    Style::default().fg(Color::Gray)
+                ),
             ]),
         ]).style(if selected_index == 0 {
             Style::default().bg(Color::DarkGray).fg(Color::White)
@@ -1043,12 +1057,27 @@ fn render_instance_actions(f: &mut Frame, area: Rect, selected_index: usize) {
         
         ListItem::new(vec![
             Line::from(vec![
-                Span::styled("  ⏹ ", Style::default().fg(Color::Red).bold()),
-                Span::styled("Force Stop", Style::default().fg(Color::White).bold()),
+                Span::styled("  ⏹ ", if instance.is_running { 
+                    Style::default().fg(Color::Red).bold() 
+                } else { 
+                    Style::default().fg(Color::DarkGray).bold() 
+                }),
+                Span::styled("Force Stop", if instance.is_running {
+                    Style::default().fg(Color::White).bold()
+                } else {
+                    Style::default().fg(Color::DarkGray)
+                }),
             ]),
             Line::from(vec![
                 Span::raw("    "),
-                Span::styled("Kill running instance process", Style::default().fg(Color::Gray)),
+                Span::styled(
+                    if instance.is_running {
+                        "Kill running instance process"
+                    } else {
+                        "Instance not running"
+                    }, 
+                    Style::default().fg(Color::Gray)
+                ),
             ]),
         ]).style(if selected_index == 1 {
             Style::default().bg(Color::DarkGray).fg(Color::White)

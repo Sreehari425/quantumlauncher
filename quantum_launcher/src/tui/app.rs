@@ -1,8 +1,9 @@
 // QuantumLauncher TUI - Application State
 
-use std::{error::Error, fmt, sync::{Arc, Mutex}, collections::HashSet};
+use std::{error::Error, fmt, sync::{Arc, Mutex}, collections::{HashSet, HashMap}};
 use ql_core::ListEntry;
 use crate::config::{LauncherConfig, ConfigAccount};
+use crate::state::{ClientProcess};
 use tokio::sync::mpsc;
 
 pub type AppResult<T> = Result<T, Box<dyn Error>>;
@@ -123,6 +124,8 @@ pub struct App {
     pub instance_settings_instance: Option<usize>, // Index of the instance being viewed in settings
     pub instance_settings_tab: InstanceSettingsTab, // Current tab in instance settings
     pub instance_settings_selected: usize, // Selected item in instance settings
+    // Process tracking for kill functionality
+    pub client_processes: HashMap<String, ClientProcess>, // Track running instances
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -169,6 +172,8 @@ impl App {
             instance_settings_instance: None,
             instance_settings_tab: InstanceSettingsTab::Overview,
             instance_settings_selected: 0,
+            // Initialize client process tracking
+            client_processes: HashMap::new(),
         };
         
         // Load instances and accounts on startup
@@ -737,6 +742,13 @@ impl App {
                 self.status_message = msg.clone();
                 self.add_log(format!("[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg));
                 
+                // Store the process in client_processes for kill functionality
+                let client_process = ClientProcess {
+                    child: child.clone(),
+                    receiver: None, // No log receiver in TUI version
+                };
+                self.client_processes.insert(instance_name.clone(), client_process);
+                
                 // Mark the instance as running
                 if let Some(instance) = self.instances.iter_mut().find(|i| i.name == instance_name) {
                     instance.is_running = true;
@@ -770,6 +782,9 @@ impl App {
                 self.add_log(format!("[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg));
             }
             crate::tui::AuthEvent::LaunchEnded(instance_name) => {
+                // Remove the process from tracking
+                self.client_processes.remove(&instance_name);
+                
                 // Mark the instance as stopped
                 if let Some(instance) = self.instances.iter_mut().find(|i| i.name == instance_name) {
                     instance.is_running = false;
@@ -1463,15 +1478,20 @@ impl App {
         if let Some(instance_idx) = self.instance_settings_instance {
             if let Some(instance) = self.instances.get(instance_idx) {
                 let instance_name = instance.name.clone(); // Clone the name to avoid borrow issues
+                let instance_running = instance.is_running; // Clone the running status
                 match self.instance_settings_tab {
                     InstanceSettingsTab::Overview => {
                         match self.instance_settings_selected {
                             0 => { // Play button
-                                self.launch_instance(&instance_name);
-                                self.current_tab = TabId::Instances; // Return to instances after launching
+                                if instance_running {
+                                    self.status_message = format!("❌ Instance '{}' is already running", instance_name);
+                                } else {
+                                    self.launch_instance(&instance_name);
+                                    self.current_tab = TabId::Instances; // Return to instances after launching
+                                }
                             }
                             1 => { // Kill button
-                                self.status_message = format!("Kill functionality for '{}' coming soon", instance_name);
+                                self.kill_instance(&instance_name);
                             }
                             2 => { // Open Folder button
                                 self.status_message = format!("Opening folder for '{}' - feature coming soon", instance_name);
@@ -1505,6 +1525,36 @@ impl App {
         if max_items > 1 {
             self.instance_settings_selected = (self.instance_settings_selected as i32 + direction)
                 .rem_euclid(max_items as i32) as usize;
+        }
+    }
+
+    /// Kill a running instance
+    pub fn kill_instance(&mut self, instance_name: &str) {
+        if let Some(process) = self.client_processes.remove(instance_name) {
+            self.status_message = format!("🔪 Terminating instance: {}", instance_name);
+            
+            // Spawn a task to kill the process
+            if let Some(sender) = &self.auth_sender {
+                let sender_clone = sender.clone();
+                let instance_name_clone = instance_name.to_string();
+                
+                tokio::spawn(async move {
+                    // Use the same logic as iced UI - only call start_kill
+                    let result = {
+                        let mut child = process.child.lock().unwrap();
+                        child.start_kill()
+                    };
+                    
+                    if let Err(e) = result {
+                        eprintln!("Failed to kill process gracefully: {}", e);
+                    }
+                    
+                    // Always send LaunchEnded to update the UI
+                    let _ = sender_clone.send(crate::tui::AuthEvent::LaunchEnded(instance_name_clone));
+                });
+            }
+        } else {
+            self.status_message = format!("❌ Instance {} is not running", instance_name);
         }
     }
 }
