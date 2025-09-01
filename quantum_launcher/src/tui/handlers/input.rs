@@ -164,7 +164,7 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             };
             false
         }
-        KeyCode::Enter if app.current_tab == TabId::Create && !app.is_editing_name => {
+    KeyCode::Enter if app.current_tab == TabId::Create && !app.is_editing_name => {
             if app.version_search_active {
                 app.create_instance();
                 return false;
@@ -188,12 +188,14 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             }
             false
         }
-        KeyCode::Char(c) if app.current_tab == TabId::Create && !app.is_editing_name => {
-            if app.version_search_active {
-                app.add_char_to_version_search(c);
-            } else {
-                app.start_version_search_with_char(c);
-            }
+        // Only accept characters when search is active
+        KeyCode::Char(c) if app.current_tab == TabId::Create && !app.is_editing_name && app.version_search_active => {
+            app.add_char_to_version_search(c);
+            false
+        }
+        // Ctrl+S toggles search mode
+        KeyCode::Char('s') if app.current_tab == TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+            if app.version_search_active { app.exit_version_search(); } else { app.start_version_search(); }
             false
         }
         // Account tab specific keys

@@ -62,13 +62,14 @@ pub fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
             &app.available_versions
         };
 
-        // Build title with search hint
+        // Build title with search hint (Ctrl+S to toggle)
         let mut title = String::from(" Minecraft Versions ");
         if app.version_search_active {
             title.push_str(" - Search: ");
             title.push_str(&app.version_search_query);
+            title.push_str("  (Esc to cancel)");
         } else {
-            title.push_str("  (type to search)");
+            title.push_str("  (Ctrl+S to search)");
         }
 
         let items: Vec<ListItem> = version_source

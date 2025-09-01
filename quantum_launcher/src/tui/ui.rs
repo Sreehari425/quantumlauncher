@@ -318,7 +318,7 @@ fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
         } else if let Some(version) = version_source.get(sel_idx) {
             format!(" Minecraft Versions - Selected: {} ", version.name)
         } else {
-            " Minecraft Versions ".to_string()
+            " Minecraft Versions  (Ctrl+S to search) ".to_string()
         };
 
         let list = List::new(items)

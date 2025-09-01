@@ -261,12 +261,16 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                 app.remove_char_from_version_search();
                             }
                         }
-                        KeyCode::Char(c) if app.current_tab == app::TabId::Create && !app.is_editing_name => {
-                            // Start or continue search
+                        // Only accept characters when search is active
+                        KeyCode::Char(c) if app.current_tab == app::TabId::Create && !app.is_editing_name && app.version_search_active => {
+                            app.add_char_to_version_search(c);
+                        }
+                        // Ctrl+S toggles search mode
+                        KeyCode::Char('s') if app.current_tab == app::TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
                             if app.version_search_active {
-                                app.add_char_to_version_search(c);
+                                app.exit_version_search();
                             } else {
-                                app.start_version_search_with_char(c);
+                                app.start_version_search();
                             }
                         }
                         // Tab navigation
