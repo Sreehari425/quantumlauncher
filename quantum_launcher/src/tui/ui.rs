@@ -244,7 +244,7 @@ fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
         );
     f.render_widget(create_button, chunks[2]);
 
-    // Version list - enhanced with better styling
+    // Version list - enhanced with better styling and live search
     if app.available_versions.is_empty() {
         let block = Block::default()
             .borders(Borders::ALL)
@@ -265,12 +265,23 @@ fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
         .alignment(Alignment::Center);
         f.render_widget(paragraph, chunks[3]);
     } else {
-        let items: Vec<ListItem> = app
-            .available_versions
+        let version_source = if app.version_search_active {
+            &app.filtered_versions
+        } else {
+            &app.available_versions
+        };
+
+        let sel_idx = if app.version_search_active {
+            app.selected_filtered_version
+        } else {
+            app.selected_version
+        };
+
+        let items: Vec<ListItem> = version_source
             .iter()
             .enumerate()
             .map(|(i, version)| {
-                let is_selected = i == app.selected_version;
+                let is_selected = i == sel_idx;
                 let (type_label, type_color) = if version.name.contains("w") || version.name.contains("-pre") || version.name.contains("-rc") {
                     ("Snapshot", Color::Yellow)
                 } else if version.name.contains("a") || version.name.contains("b") {
@@ -300,9 +311,11 @@ fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
             .collect();
 
         let mut list_state = ListState::default();
-        list_state.select(Some(app.selected_version));
+        list_state.select(Some(sel_idx));
 
-        let selected_version_name = if let Some(version) = app.available_versions.get(app.selected_version) {
+        let selected_version_name = if app.version_search_active {
+            format!(" Minecraft Versions - Search: {} ({} matches) ", app.version_search_query, version_source.len())
+        } else if let Some(version) = version_source.get(sel_idx) {
             format!(" Minecraft Versions - Selected: {} ", version.name)
         } else {
             " Minecraft Versions ".to_string()

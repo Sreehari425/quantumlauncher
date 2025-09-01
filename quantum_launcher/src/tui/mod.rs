@@ -186,7 +186,10 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                         }
                         // General key handling
                         KeyCode::Char('q') | KeyCode::Esc => {
-                            if app.current_tab == app::TabId::InstanceSettings {
+                            if app.current_tab == app::TabId::Create && app.version_search_active {
+                                // Exit version search instead of quitting
+                                app.exit_version_search();
+                            } else if app.current_tab == app::TabId::InstanceSettings {
                                 // Esc in instance settings goes back to instances
                                 app.current_tab = app::TabId::Instances;
                                 app.status_message = "Returned to instances list".to_string();
@@ -232,6 +235,11 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                             } else if app.current_tab == app::TabId::Instances {
                                 app.select_item(); // This will open instance settings
                             } else if app.current_tab == app::TabId::Create && !app.is_editing_name {
+                                // If searching, create with filtered selection
+                                if app.version_search_active {
+                                    app.create_instance();
+                                    continue;
+                                }
                                 // Handle Create tab instance creation
                                 if app.new_instance_name.is_empty() {
                                     // If no name entered, start editing the name
@@ -245,6 +253,20 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                 }
                             } else {
                                 app.select_item();
+                            }
+                        }
+                        // Create tab: live search typing
+                        KeyCode::Backspace if app.current_tab == app::TabId::Create && !app.is_editing_name => {
+                            if app.version_search_active {
+                                app.remove_char_from_version_search();
+                            }
+                        }
+                        KeyCode::Char(c) if app.current_tab == app::TabId::Create && !app.is_editing_name => {
+                            // Start or continue search
+                            if app.version_search_active {
+                                app.add_char_to_version_search(c);
+                            } else {
+                                app.start_version_search_with_char(c);
                             }
                         }
                         // Tab navigation

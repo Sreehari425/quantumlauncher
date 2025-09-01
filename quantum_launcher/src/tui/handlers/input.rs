@@ -67,7 +67,15 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             false
         }
         // General key handling - but NOT when editing instance name
-        KeyCode::Char('q') | KeyCode::Esc if !(app.current_tab == TabId::Create && app.is_editing_name) => true,
+        // If Esc pressed during version search, exit search instead of quitting
+        KeyCode::Char('q') | KeyCode::Esc if !(app.current_tab == TabId::Create && app.is_editing_name) => {
+            if app.current_tab == TabId::Create && app.version_search_active {
+                app.exit_version_search();
+                false
+            } else {
+                true
+            }
+        }
         KeyCode::Up | KeyCode::Char('k') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.prev_item();
             false
@@ -157,6 +165,10 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             false
         }
         KeyCode::Enter if app.current_tab == TabId::Create && !app.is_editing_name => {
+            if app.version_search_active {
+                app.create_instance();
+                return false;
+            }
             if app.new_instance_name.is_empty() {
                 // If no name entered, start editing the name
                 app.is_editing_name = true;
@@ -166,6 +178,21 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
                 app.create_instance();
             } else if app.available_versions.is_empty() {
                 app.status_message = "❌ No versions available. Press F5 to refresh.".to_string();
+            }
+            false
+        }
+        // Live search in Create tab
+        KeyCode::Backspace if app.current_tab == TabId::Create && !app.is_editing_name => {
+            if app.version_search_active {
+                app.remove_char_from_version_search();
+            }
+            false
+        }
+        KeyCode::Char(c) if app.current_tab == TabId::Create && !app.is_editing_name => {
+            if app.version_search_active {
+                app.add_char_to_version_search(c);
+            } else {
+                app.start_version_search_with_char(c);
             }
             false
         }

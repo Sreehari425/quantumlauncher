@@ -46,7 +46,7 @@ pub fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
 
     f.render_widget(name_input, chunks[0]);
 
-    // Version list
+    // Version list (supports live search)
     if app.available_versions.is_empty() {
         let block = Block::default()
             .borders(Borders::ALL)
@@ -56,8 +56,22 @@ pub fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
             .style(Style::default().fg(Color::Gray));
         f.render_widget(paragraph, chunks[1]);
     } else {
-        let items: Vec<ListItem> = app
-            .available_versions
+        let version_source = if app.version_search_active {
+            &app.filtered_versions
+        } else {
+            &app.available_versions
+        };
+
+        // Build title with search hint
+        let mut title = String::from(" Minecraft Versions ");
+        if app.version_search_active {
+            title.push_str(" - Search: ");
+            title.push_str(&app.version_search_query);
+        } else {
+            title.push_str("  (type to search)");
+        }
+
+        let items: Vec<ListItem> = version_source
             .iter()
             .map(|version| {
                 ListItem::new(Line::from(vec![
@@ -68,13 +82,18 @@ pub fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
             .collect();
 
         let mut list_state = ListState::default();
-        list_state.select(Some(app.selected_version));
+        let sel = if app.version_search_active {
+            app.selected_filtered_version
+        } else {
+            app.selected_version
+        };
+        list_state.select(Some(sel));
 
         let list = List::new(items)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title(" Minecraft Versions ")
+                    .title(title)
             )
             .highlight_style(Style::default().bg(Color::DarkGray))
             .highlight_symbol("▶ ");

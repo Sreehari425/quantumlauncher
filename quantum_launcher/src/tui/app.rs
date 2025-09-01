@@ -93,6 +93,11 @@ pub struct App {
     pub selected_instance: usize,
     pub available_versions: Vec<ListEntry>,
     pub selected_version: usize,
+    // Version search/filtering (Create tab)
+    pub version_search_active: bool,
+    pub version_search_query: String,
+    pub filtered_versions: Vec<ListEntry>,
+    pub selected_filtered_version: usize,
     pub new_instance_name: String,
     pub is_editing_name: bool,
     pub download_assets: bool,
@@ -146,6 +151,10 @@ impl App {
             selected_instance: 0,
             available_versions: Vec::new(),
             selected_version: 0,
+            version_search_active: false,
+            version_search_query: String::new(),
+            filtered_versions: Vec::new(),
+            selected_filtered_version: 0,
             new_instance_name: String::new(),
             is_editing_name: false,
             download_assets: true, // Default to true like in Iced UI
@@ -229,7 +238,11 @@ impl App {
                 }
             }
             TabId::Create => {
-                if !self.available_versions.is_empty() {
+                if self.version_search_active {
+                    if !self.filtered_versions.is_empty() {
+                        self.selected_filtered_version = (self.selected_filtered_version + 1) % self.filtered_versions.len();
+                    }
+                } else if !self.available_versions.is_empty() {
                     self.selected_version = (self.selected_version + 1) % self.available_versions.len();
                 }
             }
@@ -252,7 +265,13 @@ impl App {
                 }
             }
             TabId::Create => {
-                if !self.available_versions.is_empty() && self.selected_version > 0 {
+                if self.version_search_active {
+                    if !self.filtered_versions.is_empty() && self.selected_filtered_version > 0 {
+                        self.selected_filtered_version -= 1;
+                    } else if !self.filtered_versions.is_empty() {
+                        self.selected_filtered_version = self.filtered_versions.len() - 1;
+                    }
+                } else if !self.available_versions.is_empty() && self.selected_version > 0 {
                     self.selected_version -= 1;
                 } else if !self.available_versions.is_empty() {
                     self.selected_version = self.available_versions.len() - 1;
@@ -276,7 +295,12 @@ impl App {
         }
 
         let instance_name = self.new_instance_name.clone();
-        let version = self.available_versions[self.selected_version].clone();
+        let version = if self.version_search_active {
+            if self.filtered_versions.is_empty() { return; }
+            self.filtered_versions[self.selected_filtered_version].clone()
+        } else {
+            self.available_versions[self.selected_version].clone()
+        };
         let download_assets = self.download_assets;
 
         // Set loading state
@@ -351,6 +375,69 @@ impl App {
         self.new_instance_name.clear();
         self.is_editing_name = false;
         self.download_assets = true; // Reset to default
+    }
+
+    // --- Version search helpers (Create tab) ---
+    pub fn start_version_search(&mut self) {
+        if !self.version_search_active {
+            self.version_search_active = true;
+            self.version_search_query.clear();
+            self.filtered_versions = self.available_versions.clone();
+            self.selected_filtered_version = 0;
+            self.status_message = "Search versions: type to filter, Backspace to edit, Esc to cancel".to_string();
+        }
+    }
+
+    pub fn start_version_search_with_char(&mut self, c: char) {
+        self.start_version_search();
+        self.version_search_query.push(c);
+        self.update_filtered_versions();
+    }
+
+    pub fn exit_version_search(&mut self) {
+        if self.version_search_active {
+            self.version_search_active = false;
+            self.version_search_query.clear();
+            self.filtered_versions.clear();
+            self.selected_filtered_version = 0;
+            self.status_message = "Exited version search".to_string();
+        }
+    }
+
+    pub fn add_char_to_version_search(&mut self, c: char) {
+        if self.version_search_active {
+            self.version_search_query.push(c);
+            self.update_filtered_versions();
+        }
+    }
+
+    pub fn remove_char_from_version_search(&mut self) {
+        if self.version_search_active {
+            if self.version_search_query.pop().is_none() {
+                // Already empty -> exit search
+                self.exit_version_search();
+            } else {
+                self.update_filtered_versions();
+            }
+        }
+    }
+
+    fn update_filtered_versions(&mut self) {
+        let query = self.version_search_query.to_lowercase();
+        if query.is_empty() {
+            self.filtered_versions = self.available_versions.clone();
+        } else {
+            self.filtered_versions = self
+                .available_versions
+                .iter()
+                .cloned()
+                .filter(|v| v.name.to_lowercase().contains(&query))
+                .collect();
+        }
+        // Reset selection if out of bounds
+        if self.selected_filtered_version >= self.filtered_versions.len() {
+            self.selected_filtered_version = if self.filtered_versions.is_empty() { 0 } else { 0 };
+        }
     }
 
     pub fn select_item(&mut self) {
@@ -486,6 +573,8 @@ impl App {
                     match rt.block_on(ql_instances::list_versions()) {
                         Ok(versions) => {
                             self.available_versions = versions;
+                            // Initialize filtered list to full list
+                            self.filtered_versions = self.available_versions.clone();
                         }
                         Err(e) => {
                             self.status_message = format!("Failed to load versions: {}", e);
