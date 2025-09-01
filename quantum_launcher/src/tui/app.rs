@@ -1,7 +1,7 @@
 // QuantumLauncher TUI - Application State
 
 use std::{error::Error, fmt, sync::{Arc, Mutex}, collections::{HashSet, HashMap}};
-use ql_core::ListEntry;
+use ql_core::{ListEntry, open_file_explorer, file_utils};
 use crate::config::{LauncherConfig, ConfigAccount};
 use crate::state::{ClientProcess};
 use tokio::sync::mpsc;
@@ -1494,7 +1494,7 @@ impl App {
                                 self.kill_instance(&instance_name);
                             }
                             2 => { // Open Folder button
-                                self.status_message = format!("Opening folder for '{}' - feature coming soon", instance_name);
+                                self.open_instance_folder(&instance_name);
                             }
                             _ => {}
                         }
@@ -1555,6 +1555,25 @@ impl App {
             }
         } else {
             self.status_message = format!("❌ Instance {} is not running", instance_name);
+        }
+    }
+
+    /// Open instance folder in file explorer
+    pub fn open_instance_folder(&mut self, instance_name: &str) {
+        match file_utils::get_launcher_dir() {
+            Ok(launcher_dir) => {
+                let instance_path = launcher_dir.join("instances").join(instance_name);
+                
+                if instance_path.exists() {
+                    self.status_message = format!("📂 Opening folder for instance: {}", instance_name);
+                    open_file_explorer(&instance_path);
+                } else {
+                    self.status_message = format!("❌ Instance folder not found: {}", instance_name);
+                }
+            }
+            Err(e) => {
+                self.status_message = format!("❌ Failed to get launcher directory: {}", e);
+            }
         }
     }
 }
