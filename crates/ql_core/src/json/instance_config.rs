@@ -4,6 +4,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::{InstanceSelection, IntoIoError, IntoJsonError, JsonFileError};
 
+/// Configuration for using a custom Minecraft JAR file
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct CustomJarConfig {
+    /// Path to the custom JAR file
+    pub jar_path: String,
+}
+
 /// Defines how instance Java arguments should interact with global Java arguments
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum JavaArgsMode {
@@ -227,6 +234,19 @@ pub struct InstanceConfigJson {
     ///
     /// **Default: `PreLaunchPrefixMode::CombineGlobalLocal`**
     pub pre_launch_prefix_mode: Option<PreLaunchPrefixMode>,
+    /// **Client Only**
+    ///
+    /// Custom jar configuration for using alternative client jars.
+    /// When set, the launcher will use the specified custom jar instead of the default
+    /// Minecraft jar, but will use assets from the instance's configured version.
+    ///
+    /// This is useful for:
+    /// - Modified client jars (e.g., Cypress, Omniarchive special versions)
+    /// - Custom modded jars not available through official channels
+    /// - Client jars from external sources
+    ///
+    /// **Default: `None`** (use official Minecraft jar)
+    pub custom_jar: Option<CustomJarConfig>,
 }
 
 impl InstanceConfigJson {
