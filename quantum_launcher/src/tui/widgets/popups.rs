@@ -175,16 +175,24 @@ pub fn get_settings_help() -> Vec<Line<'static>> {
         Line::from(vec![
             Span::styled("═══ SETTINGS TAB ═══", Style::default().fg(Color::Magenta).bold())
         ]),
-        Line::from("↑/↓ or j/k         Navigate settings"),
-        Line::from("Enter/Space        Toggle setting values"),
-        Line::from("←/→ or h/l         Adjust numeric values"),
-        Line::from("r                  Reset to defaults"),
-        Line::from("s                  Save settings"),
+        Line::from("↑/↓ or j/k         Navigate settings list"),
+        Line::from("Enter              Edit selected setting"),
+        Line::from("c                  Clear Java installs (when selected)"),
+        Line::from("Esc                Cancel editing / Exit"),
+        Line::from("s                  Save current edit"),
         Line::from(""),
         Line::from(vec![
-            Span::raw("Configure launcher behavior and performance here")
+            Span::styled("Available Settings:", Style::default().bold())
         ]),
+        Line::from("• Java Arguments   - Global JVM arguments"),
+        Line::from("• Pre-launch Prefix - Commands before launch"),
+        Line::from("• Window Size      - Default Minecraft window"),
+        Line::from("• Clear Java Installs - Reset Java detection"),
+        Line::from("• UI Scale         - Interface scaling"),
         Line::from(""),
+        Line::from(vec![
+            Span::raw("Configure global launcher settings that apply to all instances")
+        ]),
     ]
 }
 

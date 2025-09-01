@@ -45,6 +45,14 @@ pub enum TabId {
     Settings,
     Accounts,
     Logs,
+    InstanceSettings,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum AddAccountFieldFocus {
+    Username,
+    Password,
+    Otp,
 }
 
 #[derive(Debug, Clone)]
@@ -64,6 +72,7 @@ impl fmt::Display for TabId {
             TabId::Settings => write!(f, "Settings"),
             TabId::Accounts => write!(f, "Accounts"),
             TabId::Logs => write!(f, "Logs"),
+            TabId::InstanceSettings => write!(f, "Instance Settings"),
         }
     }
 }
@@ -110,13 +119,18 @@ pub struct App {
     pub game_logs: Vec<String>,
     // Terminal refresh tracking
     pub needs_forced_refresh: bool,
+    // Instance settings fields
+    pub instance_settings_instance: Option<usize>, // Index of the instance being viewed in settings
+    pub instance_settings_tab: InstanceSettingsTab, // Current tab in instance settings
+    pub instance_settings_selected: usize, // Selected item in instance settings
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum AddAccountFieldFocus {
-    Username,
-    Password,
-    Otp,
+pub enum InstanceSettingsTab {
+    Overview,
+    Mod,
+    Setting,
+    Logs,
 }
 
 impl App {
@@ -151,6 +165,10 @@ impl App {
             auth_sender: None,
             game_logs: Vec::new(),
             needs_forced_refresh: false,
+            // Initialize instance settings fields
+            instance_settings_instance: None,
+            instance_settings_tab: InstanceSettingsTab::Overview,
+            instance_settings_selected: 0,
         };
         
         // Load instances and accounts on startup
@@ -175,6 +193,7 @@ impl App {
             TabId::Settings => TabId::Accounts,
             TabId::Accounts => TabId::Logs,
             TabId::Logs => TabId::Instances,
+            TabId::InstanceSettings => TabId::Instances,
         };
     }
 
@@ -185,6 +204,7 @@ impl App {
             TabId::Settings => TabId::Create,
             TabId::Accounts => TabId::Settings,
             TabId::Logs => TabId::Accounts,
+            TabId::InstanceSettings => TabId::Instances,
         };
     }
 
@@ -243,17 +263,12 @@ impl App {
     pub fn select_item(&mut self) {
         match self.current_tab {
             TabId::Instances => {
-                if let Some(instance) = self.instances.get(self.selected_instance) {
-                    // Check if we have a default account or if we need one
-                    if self.current_account.is_none() && !self.can_launch_offline() {
-                        self.status_message = "⚠️ No default account set. Add an account (press 'a' then 'n') or set one as default (press 'd')".to_string();
-                        return;
-                    }
-                    
-                    // Start launching the instance
-                    let instance_name = instance.name.clone();
-                    self.launch_instance(&instance_name);
-                }
+                // Open instance settings page instead of launching directly
+                self.instance_settings_instance = Some(self.selected_instance);
+                self.instance_settings_tab = InstanceSettingsTab::Overview;
+                self.instance_settings_selected = 0;
+                self.current_tab = TabId::InstanceSettings;
+                self.status_message = format!("Opened settings for instance: {}", self.instances[self.selected_instance].name);
             }
             TabId::Create => {
                 if !self.new_instance_name.is_empty() && !self.available_versions.is_empty() {
@@ -1419,5 +1434,77 @@ impl App {
         let needs_refresh = self.needs_forced_refresh;
         self.needs_forced_refresh = false;
         needs_refresh
+    }
+
+    /// Navigate to next instance settings tab
+    pub fn next_instance_settings_tab(&mut self) {
+        self.instance_settings_tab = match self.instance_settings_tab {
+            InstanceSettingsTab::Overview => InstanceSettingsTab::Mod,
+            InstanceSettingsTab::Mod => InstanceSettingsTab::Setting,
+            InstanceSettingsTab::Setting => InstanceSettingsTab::Logs,
+            InstanceSettingsTab::Logs => InstanceSettingsTab::Overview,
+        };
+        self.instance_settings_selected = 0; // Reset selection when switching tabs
+    }
+
+    /// Navigate to previous instance settings tab
+    pub fn prev_instance_settings_tab(&mut self) {
+        self.instance_settings_tab = match self.instance_settings_tab {
+            InstanceSettingsTab::Overview => InstanceSettingsTab::Logs,
+            InstanceSettingsTab::Mod => InstanceSettingsTab::Overview,
+            InstanceSettingsTab::Setting => InstanceSettingsTab::Mod,
+            InstanceSettingsTab::Logs => InstanceSettingsTab::Setting,
+        };
+        self.instance_settings_selected = 0; // Reset selection when switching tabs
+    }
+
+    /// Select item in instance settings
+    pub fn select_instance_settings_item(&mut self) {
+        if let Some(instance_idx) = self.instance_settings_instance {
+            if let Some(instance) = self.instances.get(instance_idx) {
+                let instance_name = instance.name.clone(); // Clone the name to avoid borrow issues
+                match self.instance_settings_tab {
+                    InstanceSettingsTab::Overview => {
+                        match self.instance_settings_selected {
+                            0 => { // Play button
+                                self.launch_instance(&instance_name);
+                                self.current_tab = TabId::Instances; // Return to instances after launching
+                            }
+                            1 => { // Kill button
+                                self.status_message = format!("Kill functionality for '{}' coming soon", instance_name);
+                            }
+                            2 => { // Open Folder button
+                                self.status_message = format!("Opening folder for '{}' - feature coming soon", instance_name);
+                            }
+                            _ => {}
+                        }
+                    }
+                    InstanceSettingsTab::Mod => {
+                        self.status_message = "Mod management feature coming soon".to_string();
+                    }
+                    InstanceSettingsTab::Setting => {
+                        self.status_message = "Instance settings (rename/delete) coming soon".to_string();
+                    }
+                    InstanceSettingsTab::Logs => {
+                        self.status_message = "Instance-specific logs coming soon".to_string();
+                    }
+                }
+            }
+        }
+    }
+
+    /// Navigate items in instance settings
+    pub fn navigate_instance_settings(&mut self, direction: i32) {
+        let max_items = match self.instance_settings_tab {
+            InstanceSettingsTab::Overview => 3, // Play, Kill, and Open Folder buttons
+            InstanceSettingsTab::Mod => 1, // WIP message
+            InstanceSettingsTab::Setting => 1, // Settings message
+            InstanceSettingsTab::Logs => 1, // Logs message
+        };
+
+        if max_items > 1 {
+            self.instance_settings_selected = (self.instance_settings_selected as i32 + direction)
+                .rem_euclid(max_items as i32) as usize;
+        }
     }
 }

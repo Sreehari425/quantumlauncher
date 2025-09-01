@@ -156,7 +156,7 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
     if app.new_account_type != crate::tui::app::AccountType::Offline {
         let password_title = if app.new_account_type == crate::tui::app::AccountType::ElyBy && 
                                app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Password {
-            "� Password [CURRENTLY TYPING HERE]"
+            "Password [CURRENTLY TYPING HERE]"
         } else {
             "Password"
         };

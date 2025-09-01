@@ -139,16 +139,56 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                             app.add_char_to_add_account_field(c);
                         }
                         // General key handling
-                        KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
-                        KeyCode::Up | KeyCode::Char('k') => app.prev_item(),
-                        KeyCode::Down | KeyCode::Char('j') => app.next_item(),
-                        KeyCode::Left | KeyCode::Char('h') => app.previous_tab(),
-                        KeyCode::Right if app.current_tab != app::TabId::Accounts => app.next_tab(),
+                        KeyCode::Char('q') | KeyCode::Esc => {
+                            if app.current_tab == app::TabId::InstanceSettings {
+                                // Esc in instance settings goes back to instances
+                                app.current_tab = app::TabId::Instances;
+                                app.status_message = "Returned to instances list".to_string();
+                            } else {
+                                return Ok(());
+                            }
+                        }
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            if app.current_tab == app::TabId::InstanceSettings {
+                                app.navigate_instance_settings(-1);
+                            } else {
+                                app.prev_item();
+                            }
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            if app.current_tab == app::TabId::InstanceSettings {
+                                app.navigate_instance_settings(1);
+                            } else {
+                                app.next_item();
+                            }
+                        }
+                        KeyCode::Left | KeyCode::Char('h') => {
+                            if app.current_tab == app::TabId::InstanceSettings {
+                                app.prev_instance_settings_tab();
+                            } else {
+                                app.previous_tab();
+                            }
+                        }
+                        KeyCode::Right => {
+                            if app.current_tab == app::TabId::InstanceSettings {
+                                app.next_instance_settings_tab();
+                            } else if app.current_tab != app::TabId::Accounts {
+                                app.next_tab();
+                            }
+                        }
                         KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
                             // Shift+Enter: Launch the selected instance
                             app.launch_selected_instance();
                         }
-                        KeyCode::Enter if app.current_tab != app::TabId::Instances => app.select_item(),
+                        KeyCode::Enter => {
+                            if app.current_tab == app::TabId::InstanceSettings {
+                                app.select_instance_settings_item();
+                            } else if app.current_tab == app::TabId::Instances {
+                                app.select_item(); // This will open instance settings
+                            } else {
+                                app.select_item();
+                            }
+                        }
                         // Logs tab specific keys - must come before general 'c' key
                         KeyCode::Char('c') if app.current_tab == app::TabId::Logs => {
                             app.clear_logs();

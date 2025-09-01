@@ -5,12 +5,10 @@ use ratatui::{
     style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::{
-        block::Title,
         Block, Borders, Clear, Gauge, List, ListItem, ListState, Paragraph, Tabs, Wrap,
     },
     Frame,
 };
-use ql_core::LAUNCHER_VERSION_NAME;
 
 use crate::tui::app::{App, TabId};
 
@@ -19,7 +17,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3), // Header with tabs
+            Constraint::Length(3), // Header with tabs (consistent for all pages)
             Constraint::Min(0),    // Main content
             Constraint::Length(3), // Footer with status
         ])
@@ -40,6 +38,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
 
 /// Render the header with tabs
 fn render_header(f: &mut Frame, area: Rect, app: &App) {
+    // Normal main tabs (same for all pages including instance settings)
     let tabs = vec![
         Line::from("Instances (i)"),
         Line::from("Create (c)"),
@@ -54,19 +53,14 @@ fn render_header(f: &mut Frame, area: Rect, app: &App) {
         TabId::Settings => 2,
         TabId::Accounts => 3,
         TabId::Logs => 4,
+        TabId::InstanceSettings => 0, // Show as Instances tab when in instance settings
     };
 
-    let tabs = Tabs::new(tabs)
-        .block(Block::default().borders(Borders::ALL).title(
-            Title::from(format!(" QuantumLauncher TUI {} ", LAUNCHER_VERSION_NAME))
-                .alignment(Alignment::Center),
-        ))
-        .style(Style::default().fg(Color::White))
-        .highlight_style(Style::default().fg(Color::Yellow).bold())
-        .select(selected_tab)
-        .divider("│");
-
-    f.render_widget(tabs, area);
+    let tabs_widget = Tabs::new(tabs)
+        .block(Block::default().borders(Borders::ALL).title(" QuantumLauncher "))
+        .highlight_style(Style::default().fg(Color::Yellow))
+        .select(selected_tab);
+    f.render_widget(tabs_widget, area);
 }
 
 /// Render the main content area based on current tab
@@ -77,6 +71,7 @@ fn render_main_content(f: &mut Frame, area: Rect, app: &mut App) {
         TabId::Settings => render_settings_tab(f, area, app),
         TabId::Accounts => render_accounts_tab(f, area, app),
         TabId::Logs => render_logs_tab(f, area, app),
+        TabId::InstanceSettings => render_instance_settings_tab(f, area, app),
     }
 }
 
@@ -276,7 +271,7 @@ fn render_account_list(f: &mut Frame, area: Rect, app: &App) {
                 false
             };
             
-            let default_indicator = if is_default { " ★ (default)" } else { "" };
+            let default_indicator = if is_default { " * (default)" } else { "" };
             let content = format!("{} [{}]{}{}", account.username, account.account_type, status, default_indicator);
             
             let mut item = ListItem::new(content);
@@ -417,7 +412,7 @@ fn render_help_popup(f: &mut Frame, app: &App) {
     let help_text = get_contextual_help(app);
 
     let block = Block::default()
-        .title("❓ Help & Controls")
+        .title("Help & Controls")
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Yellow))
         .style(Style::default().bg(Color::Black));
@@ -456,6 +451,9 @@ fn get_contextual_help(app: &App) -> Vec<Line> {
         TabId::Logs => {
             help_text.extend(get_logs_help());
         }
+        TabId::InstanceSettings => {
+            help_text.extend(get_instance_settings_help(app));
+        }
     }
 
     // Add common/global help
@@ -482,7 +480,7 @@ fn get_instances_help(_app: &App) -> Vec<Line> {
         Line::from("F5                 Refresh instance list"),
         Line::from(""),
         Line::from(vec![
-            Span::styled("💡 Tip: ", Style::default().fg(Color::Yellow)),
+            Span::styled("Tip: ", Style::default().fg(Color::Yellow)),
             Span::raw("Select an instance and press Enter for launch info (use CLI for actual launching)")
         ]),
         Line::from(""),
@@ -500,7 +498,7 @@ fn get_create_help(app: &App) -> Vec<Line> {
     if app.is_editing_name {
         help.extend(vec![
             Line::from(vec![
-                Span::styled("🎯 Currently editing instance name", Style::default().fg(Color::Yellow).italic())
+                Span::styled("Currently editing instance name", Style::default().fg(Color::Yellow).italic())
             ]),
             Line::from("Type               Enter instance name"),
             Line::from("Backspace          Delete character"),
@@ -519,7 +517,7 @@ fn get_create_help(app: &App) -> Vec<Line> {
 
     help.extend(vec![
         Line::from(vec![
-            Span::styled("💡 Tips:", Style::default().fg(Color::Yellow)),
+            Span::styled("Tips:", Style::default().fg(Color::Yellow)),
         ]),
         Line::from("• Choose a descriptive name for your instance"),
         Line::from("• Select the Minecraft version you want to play"),
@@ -543,7 +541,7 @@ fn get_settings_help() -> Vec<Line<'static>> {
         Line::from("s                  Save settings"),
         Line::from(""),
         Line::from(vec![
-            Span::styled("💡 Tip: ", Style::default().fg(Color::Yellow)),
+            Span::styled("Tip: ", Style::default().fg(Color::Yellow)),
             Span::raw("Configure launcher behavior and performance here")
         ]),
         Line::from(""),
@@ -561,7 +559,7 @@ fn get_accounts_help(app: &App) -> Vec<Line<'static>> {
     if app.is_add_account_mode {
         help.extend(vec![
             Line::from(vec![
-                Span::styled("🎯 Currently adding new account", Style::default().fg(Color::Yellow).italic())
+                Span::styled("Currently adding new account", Style::default().fg(Color::Yellow).italic())
             ]),
             Line::from("↑/↓ or j/k         Select account type"),
             Line::from("Tab                Switch between fields"),
@@ -589,16 +587,16 @@ fn get_accounts_help(app: &App) -> Vec<Line<'static>> {
 
     help.extend(vec![
         Line::from(vec![
-            Span::styled("💡 Account Status:", Style::default().fg(Color::Yellow)),
+            Span::styled("Account Status:", Style::default().fg(Color::Yellow)),
         ]),
-        Line::from("🟢 Green          - Currently logged in"),
-        Line::from("🔴 Red            - Not logged in"),
-        Line::from("🟡 Yellow         - Login in progress"),
-        Line::from("★                 - Default account (used for launching)"),
-        Line::from("🔵 Blue           - Offline account (ready for launching)"),
+        Line::from("Green          - Currently logged in"),
+        Line::from("Red            - Not logged in"),
+        Line::from("Yellow         - Login in progress"),
+        Line::from("*              - Default account (used for launching)"),
+        Line::from("Blue           - Offline account (ready for launching)"),
         Line::from(""),
         Line::from(vec![
-            Span::styled("🌐 ElyBy Support:", Style::default().fg(Color::Cyan)),
+            Span::styled("ElyBy Support:", Style::default().fg(Color::Cyan)),
         ]),
         Line::from("• Full username/password authentication"),
         Line::from("• Two-factor authentication (OTP) support"),
@@ -675,7 +673,7 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
     let username_title = if (app.new_account_type == crate::tui::app::AccountType::ElyBy || 
                             app.new_account_type == crate::tui::app::AccountType::LittleSkin) && 
                            app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Username {
-        "👤 Username/Email [CURRENTLY TYPING HERE]"
+        "Username/Email [CURRENTLY TYPING HERE]"
     } else {
         "Username/Email"
     };
@@ -698,7 +696,7 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
         let password_title = if (app.new_account_type == crate::tui::app::AccountType::ElyBy || 
                                 app.new_account_type == crate::tui::app::AccountType::LittleSkin) && 
                                app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Password {
-            "🔑 Password [CURRENTLY TYPING HERE]"
+            "Password [CURRENTLY TYPING HERE]"
         } else {
             "Password"
         };
@@ -740,9 +738,9 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
     // OTP input (only if needed for ElyBy)
     if app.needs_otp {
         let otp_title = if app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Otp {
-            "🔐 OTP Code [CURRENTLY TYPING HERE]"
+            "OTP Code [CURRENTLY TYPING HERE]"
         } else {
-            "🔐 OTP Code"
+            "OTP Code"
         };
         
         let otp_style = if app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Otp {
@@ -770,7 +768,7 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
     match app.new_account_type {
         crate::tui::app::AccountType::Microsoft => {
             instruction_lines.push("↑/↓: Select account type | Enter: Add account | Esc: Cancel".to_string());
-            instruction_lines.push("⚠️  Microsoft accounts are not implemented yet - coming soon!".to_string());
+            instruction_lines.push("Warning: Microsoft accounts are not implemented yet - coming soon!".to_string());
         }
         crate::tui::app::AccountType::Offline => {
             instruction_lines.push("↑/↓: Select account type | Enter: Add offline account | Esc: Cancel".to_string());
@@ -781,19 +779,19 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
             instruction_lines.push("Enter: Create account | Esc: Cancel".to_string());
             
             if app.needs_otp {
-                instruction_lines.push("📱 Two-factor authentication required - enter OTP code".to_string());
+                instruction_lines.push("Two-factor authentication required - enter OTP code".to_string());
             }
         }
         crate::tui::app::AccountType::LittleSkin => {
             instruction_lines.push("↑/↓: Select account type | Tab: Next field | Enter: Add account | Esc: Cancel".to_string());
-            instruction_lines.push("⚠️  LittleSkin accounts are not implemented yet - coming soon!".to_string());
+            instruction_lines.push("Warning: LittleSkin accounts are not implemented yet - coming soon!".to_string());
         }
     }
     
     // Add error message if present
     if let Some(ref error) = app.login_error {
         instruction_lines.push("".to_string());
-        instruction_lines.push(format!("❌ Error: {}", error));
+        instruction_lines.push(format!("Error: {}", error));
     }
     
     let instructions_text = instruction_lines.join("\n");
@@ -857,9 +855,614 @@ fn get_logs_help() -> Vec<Line<'static>> {
         Line::from("f                  Filter logs"),
         Line::from(""),
         Line::from(vec![
-            Span::styled("💡 Tip: ", Style::default().fg(Color::Yellow)),
+            Span::styled("Tip: ", Style::default().fg(Color::Yellow)),
             Span::raw("Game output and launcher events are shown here")
         ]),
+        Line::from(""),
+    ]
+}
+
+/// Render the instance settings tab
+fn render_instance_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
+    if let Some(instance_idx) = app.instance_settings_instance {
+        if let Some(instance) = app.instances.get(instance_idx) {
+            // Create a clean, modern layout
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Length(7), // Instance info card (expanded)
+                    Constraint::Length(3), // Sub-tabs
+                    Constraint::Min(0),    // Content
+                ])
+                .split(area);
+
+            // Render instance info card with better styling
+            render_instance_info_card(f, chunks[0], instance);
+
+            // Render sub-tabs with better styling
+            let sub_tabs = vec![
+                Line::from("Overview"),
+                Line::from("Mods"), 
+                Line::from("Settings"),
+                Line::from("Logs"),
+            ];
+
+            let selected_sub_tab = match app.instance_settings_tab {
+                crate::tui::app::InstanceSettingsTab::Overview => 0,
+                crate::tui::app::InstanceSettingsTab::Mod => 1,
+                crate::tui::app::InstanceSettingsTab::Setting => 2,
+                crate::tui::app::InstanceSettingsTab::Logs => 3,
+            };
+
+            let sub_tabs_widget = Tabs::new(sub_tabs)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Instance Management ")
+                        .title_style(Style::default().fg(Color::Cyan).bold())
+                )
+                .highlight_style(Style::default().fg(Color::Yellow).bold().bg(Color::DarkGray))
+                .select(selected_sub_tab);
+            f.render_widget(sub_tabs_widget, chunks[1]);
+
+            // Render content based on selected sub-tab
+            match app.instance_settings_tab {
+                crate::tui::app::InstanceSettingsTab::Overview => render_instance_overview(f, chunks[2], app.instance_settings_selected),
+                crate::tui::app::InstanceSettingsTab::Mod => render_instance_mods(f, chunks[2], &instance.name),
+                crate::tui::app::InstanceSettingsTab::Setting => render_instance_settings(f, chunks[2], &instance.name),
+                crate::tui::app::InstanceSettingsTab::Logs => render_instance_logs(f, chunks[2], &instance.name),
+            }
+        }
+    }
+}
+
+/// Render a beautiful instance info card
+fn render_instance_info_card(f: &mut Frame, area: Rect, instance: &crate::tui::app::Instance) {
+    let status_color = if instance.is_running { Color::Green } else { Color::Gray };
+    let status_text = if instance.is_running { "● RUNNING" } else { "○ STOPPED" };
+    let status_icon = if instance.is_running { "●" } else { "○" };
+
+    // Create a nice card layout
+    let card_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1), // Title line
+            Constraint::Length(1), // Empty line
+            Constraint::Length(1), // Version info
+            Constraint::Length(1), // Loader info  
+            Constraint::Length(1), // Status info
+            Constraint::Length(1), // Navigation help
+        ])
+        .margin(1)
+        .split(area);
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Instance Details ")
+        .title_style(Style::default().fg(Color::Cyan).bold())
+        .border_style(Style::default().fg(Color::Blue));
+
+    // Instance name (prominent)
+    let name_text = Paragraph::new(
+        Line::from(vec![
+            Span::styled("▶ ", Style::default().fg(Color::Yellow)),
+            Span::styled(&instance.name, Style::default().fg(Color::Cyan).bold()),
+        ])
+    ).alignment(Alignment::Left);
+    
+    // Version info with nice formatting
+    let version_text = Paragraph::new(
+        Line::from(vec![
+            Span::raw("  Minecraft Version: "),
+            Span::styled(&instance.version, Style::default().fg(Color::Green).bold()),
+        ])
+    ).alignment(Alignment::Left);
+    
+    // Loader info
+    let loader_text = Paragraph::new(
+        Line::from(vec![
+            Span::raw("  Mod Loader: "),
+            Span::styled(&instance.loader, Style::default().fg(Color::Yellow).bold()),
+        ])
+    ).alignment(Alignment::Left);
+    
+    // Status with colored indicator
+    let status_text_widget = Paragraph::new(
+        Line::from(vec![
+            Span::raw("  Status: "),
+            Span::styled(status_text, Style::default().fg(status_color).bold()),
+        ])
+    ).alignment(Alignment::Left);
+    
+    // Navigation help
+    let help_text = Paragraph::new(
+        Line::from(vec![
+            Span::styled("  ← → ", Style::default().fg(Color::Gray)),
+            Span::raw("Switch tabs  "),
+            Span::styled("↑ ↓ ", Style::default().fg(Color::Gray)),
+            Span::raw("Navigate  "),
+            Span::styled("Enter ", Style::default().fg(Color::Gray)),
+            Span::raw("Select  "),
+            Span::styled("Esc ", Style::default().fg(Color::Gray)),
+            Span::raw("Back"),
+        ])
+    ).alignment(Alignment::Left);
+
+    // Render the card background
+    f.render_widget(block, area);
+    
+    // Render content inside the card
+    f.render_widget(name_text, card_chunks[0]);
+    f.render_widget(version_text, card_chunks[2]);
+    f.render_widget(loader_text, card_chunks[3]);
+    f.render_widget(status_text_widget, card_chunks[4]);
+    f.render_widget(help_text, card_chunks[5]);
+}
+
+/// Render instance overview tab
+fn render_instance_overview(f: &mut Frame, area: Rect, selected_index: usize) {
+    // Create a two-column layout for better organization
+    let main_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(40), // Actions column
+            Constraint::Percentage(60), // Info column
+        ])
+        .split(area);
+
+    // Left side: Quick Actions
+    render_instance_actions(f, main_chunks[0], selected_index);
+    
+    // Right side: Instance Statistics and Info
+    render_instance_info_panel(f, main_chunks[1]);
+}
+
+/// Render the quick actions panel
+fn render_instance_actions(f: &mut Frame, area: Rect, selected_index: usize) {
+    let actions_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Quick Actions ")
+        .title_style(Style::default().fg(Color::Green).bold())
+        .border_style(Style::default().fg(Color::Green));
+
+    let actions_items = vec![
+        ListItem::new(vec![
+            Line::from(vec![
+                Span::styled("  ▶ ", Style::default().fg(Color::Green).bold()),
+                Span::styled("Launch Instance", Style::default().fg(Color::White).bold()),
+            ]),
+            Line::from(vec![
+                Span::raw("    "),
+                Span::styled("Start playing this instance", Style::default().fg(Color::Gray)),
+            ]),
+        ]).style(if selected_index == 0 {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        } else {
+            Style::default()
+        }),
+        
+        ListItem::new(vec![
+            Line::from(vec![
+                Span::styled("  ⏹ ", Style::default().fg(Color::Red).bold()),
+                Span::styled("Force Stop", Style::default().fg(Color::White).bold()),
+            ]),
+            Line::from(vec![
+                Span::raw("    "),
+                Span::styled("Kill running instance process", Style::default().fg(Color::Gray)),
+            ]),
+        ]).style(if selected_index == 1 {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        } else {
+            Style::default()
+        }),
+        
+        ListItem::new(vec![
+            Line::from(vec![
+                Span::styled("  Folder ", Style::default().fg(Color::Blue).bold()),
+                Span::styled("Open Folder", Style::default().fg(Color::White).bold()),
+            ]),
+            Line::from(vec![
+                Span::raw("    "),
+                Span::styled("Browse instance directory", Style::default().fg(Color::Gray)),
+            ]),
+        ]).style(if selected_index == 2 {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        } else {
+            Style::default()
+        }),
+    ];
+
+    let actions_list = List::new(actions_items)
+        .block(actions_block)
+        .highlight_symbol("  ");
+    f.render_widget(actions_list, area);
+}
+
+/// Render the info panel with statistics
+fn render_instance_info_panel(f: &mut Frame, area: Rect) {
+    let info_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage(50), // Instance stats
+            Constraint::Percentage(50), // Recent activity
+        ])
+        .split(area);
+
+    // Instance Statistics
+    let stats_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Instance Statistics ")
+        .title_style(Style::default().fg(Color::Cyan).bold())
+        .border_style(Style::default().fg(Color::Cyan));
+
+    let stats_content = Paragraph::new(vec![
+        Line::from(vec![
+            Span::styled("Stats: Total Playtime: ", Style::default().fg(Color::Yellow)),
+            Span::styled("2h 45m", Style::default().fg(Color::White).bold()),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Last:  Last Played: ", Style::default().fg(Color::Yellow)),
+            Span::styled("Never", Style::default().fg(Color::Gray)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Size: Instance Size: ", Style::default().fg(Color::Yellow)),
+            Span::styled("~847 MB", Style::default().fg(Color::White).bold()),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Created:  Created: ", Style::default().fg(Color::Yellow)),
+            Span::styled("Today", Style::default().fg(Color::Green)),
+        ]),
+    ])
+    .block(stats_block)
+    .wrap(Wrap { trim: true });
+
+    f.render_widget(stats_content, info_chunks[0]);
+
+    // Recent Activity / Quick Info
+    let activity_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Quick Info ")
+        .title_style(Style::default().fg(Color::Magenta).bold())
+        .border_style(Style::default().fg(Color::Magenta));
+
+    let activity_content = Paragraph::new(vec![
+        Line::from(vec![
+            Span::styled("Performance: Performance: ", Style::default().fg(Color::Green)),
+            Span::styled("Optimized", Style::default().fg(Color::Green).bold()),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Java: Java Version: ", Style::default().fg(Color::Blue)),
+            Span::styled("Auto-detected", Style::default().fg(Color::White)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Mode: Game Mode: ", Style::default().fg(Color::Yellow)),
+            Span::styled("Survival", Style::default().fg(Color::White)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Network: Multiplayer: ", Style::default().fg(Color::Cyan)),
+            Span::styled("Ready", Style::default().fg(Color::Green)),
+        ]),
+    ])
+    .block(activity_block)
+    .wrap(Wrap { trim: true });
+
+    f.render_widget(activity_content, info_chunks[1]);
+}
+
+/// Render instance mods tab
+fn render_instance_mods(f: &mut Frame, area: Rect, instance_name: &str) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(60), // Mod list
+            Constraint::Percentage(40), // Mod actions/info
+        ])
+        .split(area);
+
+    // Left side: Mod list (placeholder)
+    let mods_block = Block::default()
+        .borders(Borders::ALL)
+        .title(format!(" Installed Mods ({}) ", 0))
+        .title_style(Style::default().fg(Color::Green).bold())
+        .border_style(Style::default().fg(Color::Green));
+
+    let mods_content = Paragraph::new(vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Java: Mod Management Coming Soon!", Style::default().fg(Color::Yellow).bold()),
+        ]),
+        Line::from(""),
+        Line::from("Planned features:"),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("• ", Style::default().fg(Color::Green)),
+            Span::raw("Browse & install from Modrinth"),
+        ]),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("• ", Style::default().fg(Color::Green)),
+            Span::raw("Enable/disable mods easily"),
+        ]),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("• ", Style::default().fg(Color::Green)),
+            Span::raw("Automatic dependency resolution"),
+        ]),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("• ", Style::default().fg(Color::Green)),
+            Span::raw("Mod compatibility checking"),
+        ]),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("• ", Style::default().fg(Color::Green)),
+            Span::raw("One-click mod updates"),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Stay tuned for updates! Launch", Style::default().fg(Color::Cyan)),
+        ]),
+    ])
+    .block(mods_block)
+    .alignment(Alignment::Center)
+    .wrap(Wrap { trim: true });
+
+    f.render_widget(mods_content, chunks[0]);
+
+    // Right side: Actions panel
+    let actions_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Mod Actions ")
+        .title_style(Style::default().fg(Color::Blue).bold())
+        .border_style(Style::default().fg(Color::Blue));
+
+    let actions_content = Paragraph::new(vec![
+        Line::from(vec![
+            Span::styled("Browse Browse Mods", Style::default().fg(Color::Yellow).bold()),
+        ]),
+        Line::from("Discover new mods"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Performance: Quick Install", Style::default().fg(Color::Green).bold()),
+        ]),
+        Line::from("Install popular mods"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Update Update All", Style::default().fg(Color::Cyan).bold()),
+        ]),
+        Line::from("Check for mod updates"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Import  Import Pack", Style::default().fg(Color::Magenta).bold()),
+        ]),
+        Line::from("Import modpack files"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("WIP  Work in Progress", Style::default().fg(Color::Red)),
+        ]),
+    ])
+    .block(actions_block)
+    .wrap(Wrap { trim: true });
+
+    f.render_widget(actions_content, chunks[1]);
+}
+
+/// Render instance settings tab
+fn render_instance_settings(f: &mut Frame, area: Rect, instance_name: &str) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(50), // Settings categories
+            Constraint::Percentage(50), // Settings details
+        ])
+        .split(area);
+
+    // Left side: Settings categories
+    let categories_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Configuration Categories ")
+        .title_style(Style::default().fg(Color::Yellow).bold())
+        .border_style(Style::default().fg(Color::Yellow));
+
+    let categories_content = Paragraph::new(vec![
+        Line::from(vec![
+            Span::styled("⚙️ General Settings", Style::default().fg(Color::Green).bold()),
+        ]),
+        Line::from("  Instance name, description"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Java Java Configuration", Style::default().fg(Color::Blue).bold()),
+        ]),
+        Line::from("  JVM path, memory allocation"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Launch Launch Options", Style::default().fg(Color::Cyan).bold()),
+        ]),
+        Line::from("  Game arguments, JVM flags"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Mode: Game Settings", Style::default().fg(Color::Magenta).bold()),
+        ]),
+        Line::from("  Resolution, fullscreen mode"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Network: Server Settings", Style::default().fg(Color::Red).bold()),
+        ]),
+        Line::from("  Default server, auto-connect"),
+    ])
+    .block(categories_block)
+    .wrap(Wrap { trim: true });
+
+    f.render_widget(categories_content, chunks[0]);
+
+    // Right side: Settings details
+    let details_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Configuration Panel ")
+        .title_style(Style::default().fg(Color::Cyan).bold())
+        .border_style(Style::default().fg(Color::Cyan));
+
+    let details_content = Paragraph::new(vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Java: Instance Configuration", Style::default().fg(Color::Yellow).bold()),
+        ]),
+        Line::from(""),
+        Line::from("This feature is under development!"),
+        Line::from(""),
+        Line::from("Upcoming features:"),
+        Line::from(""),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("✓ ", Style::default().fg(Color::Green)),
+            Span::raw("Rename & manage instances"),
+        ]),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("✓ ", Style::default().fg(Color::Green)),
+            Span::raw("Memory allocation slider"),
+        ]),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("✓ ", Style::default().fg(Color::Green)),
+            Span::raw("Java version selection"),
+        ]),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("✓ ", Style::default().fg(Color::Green)),
+            Span::raw("Custom JVM arguments"),
+        ]),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("✓ ", Style::default().fg(Color::Green)),
+            Span::raw("Game resolution presets"),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Coming in the next update! Soon", Style::default().fg(Color::Green)),
+        ]),
+    ])
+    .block(details_block)
+    .alignment(Alignment::Center)
+    .wrap(Wrap { trim: true });
+
+    f.render_widget(details_content, chunks[1]);
+}
+
+/// Render instance logs tab
+fn render_instance_logs(f: &mut Frame, area: Rect, instance_name: &str) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3), // Log controls
+            Constraint::Min(0),    // Log viewer
+        ])
+        .split(area);
+
+    // Top: Log controls
+    let controls_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Log Controls ")
+        .title_style(Style::default().fg(Color::Green).bold())
+        .border_style(Style::default().fg(Color::Green));
+
+    let controls_content = Paragraph::new(
+        Line::from(vec![
+            Span::styled("Filter: Filter: ", Style::default().fg(Color::Yellow)),
+            Span::raw("All  "),
+            Span::styled("Export Export  ", Style::default().fg(Color::Blue)),
+            Span::styled("Clear  Clear  ", Style::default().fg(Color::Red)),
+            Span::styled("Live Live  ", Style::default().fg(Color::Green)),
+            Span::styled("Pause  Pause", Style::default().fg(Color::Gray)),
+        ])
+    )
+    .block(controls_block)
+    .alignment(Alignment::Center);
+
+    f.render_widget(controls_content, chunks[0]);
+
+    // Bottom: Log viewer
+    let logs_block = Block::default()
+        .borders(Borders::ALL)
+        .title(format!(" Logs for {} ", instance_name))
+        .title_style(Style::default().fg(Color::Cyan).bold())
+        .border_style(Style::default().fg(Color::Cyan));
+
+    let logs_content = Paragraph::new(vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("📋 Real-time Log Viewer", Style::default().fg(Color::Yellow).bold()),
+        ]),
+        Line::from(""),
+        Line::from("This feature is under development!"),
+        Line::from(""),
+        Line::from("Planned features:"),
+        Line::from(""),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("• ", Style::default().fg(Color::Green)),
+            Span::raw("Real-time game log streaming"),
+        ]),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("• ", Style::default().fg(Color::Green)),
+            Span::raw("Error highlighting and filtering"),
+        ]),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("• ", Style::default().fg(Color::Green)),
+            Span::raw("Performance metrics display"),
+        ]),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("• ", Style::default().fg(Color::Green)),
+            Span::raw("Log export and sharing"),
+        ]),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("• ", Style::default().fg(Color::Green)),
+            Span::raw("Crash report analysis"),
+        ]),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("• ", Style::default().fg(Color::Green)),
+            Span::raw("Search and navigation"),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Monitor Monitor your game's performance in real-time!", Style::default().fg(Color::Cyan)),
+        ]),
+    ])
+    .block(logs_block)
+    .alignment(Alignment::Center)
+    .wrap(Wrap { trim: true });
+
+    f.render_widget(logs_content, chunks[1]);
+}
+
+/// Get help text for instance settings
+fn get_instance_settings_help(_app: &App) -> Vec<Line<'static>> {
+    vec![
+        Line::from(vec![
+            Span::styled("═══ INSTANCE SETTINGS ═══", Style::default().fg(Color::Cyan).bold())
+        ]),
+        Line::from("Left/Right or h/l   Switch between sub-tabs"),
+        Line::from("Up/Down or j/k      Navigate items/actions"),
+        Line::from("Enter               Select action/item"),
+        Line::from("Esc                 Return to instances"),
+        Line::from(""),
+        Line::from("Overview Tab:"),
+        Line::from("  ↑/↓               Navigate between Play/Kill"),
+        Line::from("  Enter on Play     Launch the instance"),
+        Line::from("  Enter on Kill     Stop running instance"),
+        Line::from(""),
+        Line::from("Other tabs show planned features."),
         Line::from(""),
     ]
 }
