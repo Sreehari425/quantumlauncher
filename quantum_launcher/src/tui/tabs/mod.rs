@@ -5,3 +5,4 @@ pub mod create;
 pub mod settings;
 pub mod accounts;
 pub mod logs;
+pub mod instance_settings;
