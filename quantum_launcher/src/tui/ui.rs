@@ -1279,7 +1279,7 @@ fn render_instance_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
                 crate::tui::app::InstanceSettingsTab::Overview => render_instance_overview(f, chunks[2], app.instance_settings_selected, instance),
                 crate::tui::app::InstanceSettingsTab::Mod => render_instance_mods(f, chunks[2], &instance.name),
                 crate::tui::app::InstanceSettingsTab::Setting => render_instance_settings(f, chunks[2], app.instance_settings_selected, instance),
-                crate::tui::app::InstanceSettingsTab::Logs => render_instance_logs(f, chunks[2], &instance.name),
+                crate::tui::app::InstanceSettingsTab::Logs => render_instance_logs(f, chunks[2], app, &instance.name),
             }
         }
     }
@@ -1855,7 +1855,7 @@ fn render_instance_settings(f: &mut Frame, area: Rect, selected_index: usize, in
 }
 
 /// Render instance logs tab
-fn render_instance_logs(f: &mut Frame, area: Rect, instance_name: &str) {
+fn render_instance_logs(f: &mut Frame, area: Rect, app: &App, instance_name: &str) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -1893,53 +1893,23 @@ fn render_instance_logs(f: &mut Frame, area: Rect, instance_name: &str) {
         .title_style(Style::default().fg(Color::Cyan).bold())
         .border_style(Style::default().fg(Color::Cyan));
 
-    let logs_content = Paragraph::new(vec![
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("📋 Real-time Log Viewer", Style::default().fg(Color::Yellow).bold()),
-        ]),
-        Line::from(""),
-        Line::from("This feature is under development!"),
-        Line::from(""),
-        Line::from("Planned features:"),
-        Line::from(""),
-        Line::from(vec![
-            Span::raw("  "),
-            Span::styled("• ", Style::default().fg(Color::Green)),
-            Span::raw("Real-time game log streaming"),
-        ]),
-        Line::from(vec![
-            Span::raw("  "),
-            Span::styled("• ", Style::default().fg(Color::Green)),
-            Span::raw("Error highlighting and filtering"),
-        ]),
-        Line::from(vec![
-            Span::raw("  "),
-            Span::styled("• ", Style::default().fg(Color::Green)),
-            Span::raw("Performance metrics display"),
-        ]),
-        Line::from(vec![
-            Span::raw("  "),
-            Span::styled("• ", Style::default().fg(Color::Green)),
-            Span::raw("Log export and sharing"),
-        ]),
-        Line::from(vec![
-            Span::raw("  "),
-            Span::styled("• ", Style::default().fg(Color::Green)),
-            Span::raw("Crash report analysis"),
-        ]),
-        Line::from(vec![
-            Span::raw("  "),
-            Span::styled("• ", Style::default().fg(Color::Green)),
-            Span::raw("Search and navigation"),
-        ]),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("Monitor Monitor your game's performance in real-time!", Style::default().fg(Color::Cyan)),
-        ]),
-    ])
+    // Show live tail (last N lines) for this instance
+    let tail_lines = 500usize;
+    let content_lines: Vec<Line> = if let Some(buf) = app.instance_logs.get(instance_name) {
+        let start = buf.len().saturating_sub(tail_lines);
+        buf[start..]
+            .iter()
+            .map(|s| Line::from(s.clone()))
+            .collect()
+    } else {
+        vec![
+            Line::from(""),
+            Line::from("No logs yet. Launch the instance to see output here."),
+        ]
+    };
+    let logs_content = Paragraph::new(content_lines)
     .block(logs_block)
-    .alignment(Alignment::Center)
+        .alignment(Alignment::Left)
     .wrap(Wrap { trim: true });
 
     f.render_widget(logs_content, chunks[1]);

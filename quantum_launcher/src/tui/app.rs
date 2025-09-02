@@ -149,6 +149,8 @@ pub struct App {
     // Settings → Licenses submenu state
     pub settings_focus: SettingsFocus, // Which pane is focused in Settings
     pub license_selected: usize,       // Selected license in the Licenses submenu
+    // Per-instance logs (instance name -> recent lines)
+    pub instance_logs: HashMap<String, Vec<String>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -230,6 +232,7 @@ impl App {
             about_license_text: None,
             settings_focus: SettingsFocus::Left,
             license_selected: 0,
+            instance_logs: HashMap::new(),
         };
         
         // Load instances and accounts on startup
@@ -1120,8 +1123,7 @@ impl App {
                 };
                 self.client_processes.insert(instance_name.clone(), client_process);
                 
-                // NEW: Stream game's stdout/stderr into the core in-memory logger so Logs tab updates live
-                // We avoid spawning ql_instances::read_logs and instead do a lightweight forwarder.
+                // NEW: Stream game's stdout/stderr into the core logger and per-instance buffer so Logs UIs update live
                 {
                     // Take stdout/stderr handles once and spawn readers
                     let (stdout, stderr) = {
@@ -1130,6 +1132,8 @@ impl App {
                     };
 
                     if let Some(mut out) = stdout {
+                        let inst_name = instance_name.clone();
+                        let ui_tx = self.auth_sender.clone();
                         tokio::spawn(async move {
                             use tokio::io::{AsyncBufReadExt, BufReader};
                             let mut lines = BufReader::new(&mut out).lines();
@@ -1138,10 +1142,13 @@ impl App {
                                 let mut s = line;
                                 if !s.ends_with('\n') { s.push('\n'); }
                                 ql_core::print::print_to_storage(&s, ql_core::print::LogType::Info);
+                                if let Some(tx) = &ui_tx { let _ = tx.send(crate::tui::AuthEvent::InstanceLogLine { instance_name: inst_name.clone(), line: s.clone() }); }
                             }
                         });
                     }
                     if let Some(mut err) = stderr {
+                        let inst_name = instance_name.clone();
+                        let ui_tx = self.auth_sender.clone();
                         tokio::spawn(async move {
                             use tokio::io::{AsyncBufReadExt, BufReader};
                             let mut lines = BufReader::new(&mut err).lines();
@@ -1149,6 +1156,7 @@ impl App {
                                 let mut s = line;
                                 if !s.ends_with('\n') { s.push('\n'); }
                                 ql_core::print::print_to_storage(&s, ql_core::print::LogType::Error);
+                                if let Some(tx) = &ui_tx { let _ = tx.send(crate::tui::AuthEvent::InstanceLogLine { instance_name: inst_name.clone(), line: s.clone() }); }
                             }
                         });
                     }
@@ -1197,6 +1205,13 @@ impl App {
                 let msg = format!("🛑 {} has stopped", instance_name);
                 self.status_message = msg.clone();
                 self.add_log(format!("[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg));
+            }
+            crate::tui::AuthEvent::InstanceLogLine { instance_name, line } => {
+                // Update instance-specific buffer (limit to 2000 lines per instance)
+                let buf = self.instance_logs.entry(instance_name).or_default();
+                let ln = line.trim_end_matches('\n').to_string();
+                buf.push(ln);
+                if buf.len() > 2000 { let excess = buf.len() - 2000; buf.drain(0..excess); }
             }
             crate::tui::AuthEvent::InstanceCreateStarted(instance_name) => {
                 self.status_message = format!("🔨 Creating instance '{}'... This may take a while", instance_name);

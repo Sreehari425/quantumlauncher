@@ -30,6 +30,8 @@ pub enum AuthEvent {
     LaunchSuccess(String, std::sync::Arc<std::sync::Mutex<tokio::process::Child>>),
     LaunchError(String, String),
     LaunchEnded(String),
+    // New: per-instance log line streamed from the running game's stdout/stderr
+    InstanceLogLine { instance_name: String, line: String },
     InstanceCreateStarted(String),
     InstanceCreateProgress { instance_name: String, message: String },
     InstanceCreateSuccess { instance_name: String },
