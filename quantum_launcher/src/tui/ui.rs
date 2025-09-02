@@ -265,29 +265,21 @@ fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
         .alignment(Alignment::Center);
         f.render_widget(paragraph, chunks[3]);
     } else {
-        let version_source = if app.version_search_active {
-            &app.filtered_versions
-        } else {
-            &app.available_versions
-        };
-
-        let sel_idx = if app.version_search_active {
-            app.selected_filtered_version
-        } else {
-            app.selected_version
-        };
+    // Always use filtered_versions (respects both filters and search)
+    let version_source = &app.filtered_versions;
+    let sel_idx = app.selected_filtered_version;
 
         let items: Vec<ListItem> = version_source
             .iter()
             .enumerate()
             .map(|(i, version)| {
                 let is_selected = i == sel_idx;
-                let (type_label, type_color) = if version.name.contains("w") || version.name.contains("-pre") || version.name.contains("-rc") {
-                    ("Snapshot", Color::Yellow)
-                } else if version.name.contains("a") || version.name.contains("b") {
-                    ("Alpha/Beta", Color::Magenta)
-                } else {
-                    ("Release", Color::Green)
+                let cat = crate::tui::app::App::classify_version(&version.name);
+                let (type_label, type_color) = match cat {
+                    crate::tui::app::VersionCategory::Snapshot => ("Snapshot", Color::Yellow),
+                    crate::tui::app::VersionCategory::Beta => ("Beta", Color::Magenta),
+                    crate::tui::app::VersionCategory::Alpha => ("Alpha", Color::LightMagenta),
+                    crate::tui::app::VersionCategory::Release => ("Release", Color::Green),
                 };
                 
                 ListItem::new(vec![
@@ -332,7 +324,43 @@ fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
             .highlight_style(Style::default().bg(Color::DarkGray))
             .highlight_symbol("");
 
-        f.render_stateful_widget(list, chunks[3], &mut list_state);
+        // Draw filter toggles above the list as a small hint/status row
+    let filter_line = Paragraph::new(vec![
+            Line::from(vec![
+                Span::styled("Filters: ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("[R:{}] ", if app.filter_release {"on"} else {"off"}),
+                    Style::default().fg(Color::Green)
+                ),
+                Span::styled(
+                    format!("[S:{}] ", if app.filter_snapshot {"on"} else {"off"}),
+                    Style::default().fg(Color::Yellow)
+                ),
+                Span::styled(
+                    format!("[B:{}] ", if app.filter_beta {"on"} else {"off"}),
+                    Style::default().fg(Color::Magenta)
+                ),
+                Span::styled(
+                    format!("[A:{}] ", if app.filter_alpha {"on"} else {"off"}),
+                    Style::default().fg(Color::LightMagenta)
+                ),
+        Span::raw("  (F6:R, F7:S, F8:B, F9:A, F10:Reset)"),
+            ])
+        ])
+        .block(Block::default().borders(Borders::ALL).title(" Filters "))
+        .style(Style::default().fg(Color::White));
+
+        // Layout: add a small top area for filters
+        let list_area = {
+            let sub = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Length(3), Constraint::Min(0)])
+                .split(chunks[3]);
+            f.render_widget(filter_line, sub[0]);
+            sub[1]
+        };
+
+        f.render_stateful_widget(list, list_area, &mut list_state);
     }
 }
 
@@ -652,6 +680,19 @@ fn get_create_help(app: &App) -> Vec<Line> {
         Line::from(""),
     ]);
 
+    // Version type filters
+    help.extend(vec![
+        Line::from(vec![
+            Span::styled("Version filters:", Style::default().fg(Color::Yellow)),
+        ]),
+        Line::from("F6                 Toggle Release"),
+        Line::from("F7                 Toggle Snapshot"),
+        Line::from("F8                 Toggle Beta"),
+        Line::from("F9                 Toggle Alpha"),
+        Line::from("F10                Reset all filters"),
+        Line::from(""),
+    ]);
+
     help.extend(vec![
         Line::from(vec![
             Span::styled("Create Instance Guide:", Style::default().fg(Color::Yellow)),
@@ -662,6 +703,15 @@ fn get_create_help(app: &App) -> Vec<Line> {
         Line::from("   ☑ Enabled: Slower download, with sound/music"),
         Line::from("   ☐ Disabled: Faster download, no sound/music"),
         Line::from("4. Press Enter to create"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Filters:", Style::default().fg(Color::Yellow)),
+        ]),
+        Line::from("Ctrl+R             Toggle Release"),
+        Line::from("Ctrl+P             Toggle Snapshot"),
+        Line::from("Ctrl+B             Toggle Beta"),
+        Line::from("Ctrl+A             Toggle Alpha"),
+        Line::from("Ctrl+0             Reset all filters"),
         Line::from(""),
         Line::from(vec![
             Span::styled("Tip: ", Style::default().fg(Color::Cyan)),

@@ -98,6 +98,11 @@ pub struct App {
     pub version_search_query: String,
     pub filtered_versions: Vec<ListEntry>,
     pub selected_filtered_version: usize,
+    // Version type filters
+    pub filter_release: bool,
+    pub filter_snapshot: bool,
+    pub filter_beta: bool,
+    pub filter_alpha: bool,
     pub new_instance_name: String,
     pub is_editing_name: bool,
     pub download_assets: bool,
@@ -143,6 +148,14 @@ pub enum InstanceSettingsTab {
     Logs,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VersionCategory {
+    Release,
+    Snapshot,
+    Beta,
+    Alpha,
+}
+
 impl App {
     pub fn new() -> Self {
     let mut app = Self {
@@ -155,6 +168,10 @@ impl App {
             version_search_query: String::new(),
             filtered_versions: Vec::new(),
             selected_filtered_version: 0,
+            filter_release: true,
+            filter_snapshot: true,
+            filter_beta: true,
+            filter_alpha: true,
             new_instance_name: String::new(),
             is_editing_name: false,
             download_assets: true, // Default to true like in Iced UI
@@ -238,12 +255,8 @@ impl App {
                 }
             }
             TabId::Create => {
-                if self.version_search_active {
-                    if !self.filtered_versions.is_empty() {
-                        self.selected_filtered_version = (self.selected_filtered_version + 1) % self.filtered_versions.len();
-                    }
-                } else if !self.available_versions.is_empty() {
-                    self.selected_version = (self.selected_version + 1) % self.available_versions.len();
+                if !self.filtered_versions.is_empty() {
+                    self.selected_filtered_version = (self.selected_filtered_version + 1) % self.filtered_versions.len();
                 }
             }
             TabId::Accounts => {
@@ -265,16 +278,10 @@ impl App {
                 }
             }
             TabId::Create => {
-                if self.version_search_active {
-                    if !self.filtered_versions.is_empty() && self.selected_filtered_version > 0 {
-                        self.selected_filtered_version -= 1;
-                    } else if !self.filtered_versions.is_empty() {
-                        self.selected_filtered_version = self.filtered_versions.len() - 1;
-                    }
-                } else if !self.available_versions.is_empty() && self.selected_version > 0 {
-                    self.selected_version -= 1;
-                } else if !self.available_versions.is_empty() {
-                    self.selected_version = self.available_versions.len() - 1;
+                if !self.filtered_versions.is_empty() && self.selected_filtered_version > 0 {
+                    self.selected_filtered_version -= 1;
+                } else if !self.filtered_versions.is_empty() {
+                    self.selected_filtered_version = self.filtered_versions.len() - 1;
                 }
             }
             TabId::Accounts => {
@@ -294,13 +301,9 @@ impl App {
             return;
         }
 
-        let instance_name = self.new_instance_name.clone();
-        let version = if self.version_search_active {
-            if self.filtered_versions.is_empty() { return; }
-            self.filtered_versions[self.selected_filtered_version].clone()
-        } else {
-            self.available_versions[self.selected_version].clone()
-        };
+    let instance_name = self.new_instance_name.clone();
+    if self.filtered_versions.is_empty() { return; }
+    let version = self.filtered_versions[self.selected_filtered_version].clone();
         let download_assets = self.download_assets;
 
         // Set loading state
@@ -424,21 +427,58 @@ impl App {
 
     fn update_filtered_versions(&mut self) {
         let query = self.version_search_query.to_lowercase();
-        if query.is_empty() {
-            self.filtered_versions = self.available_versions.clone();
-        } else {
-            self.filtered_versions = self
-                .available_versions
-                .iter()
-                .cloned()
-                .filter(|v| v.name.to_lowercase().contains(&query))
-                .collect();
-        }
+        self.filtered_versions = self
+            .available_versions
+            .iter()
+            .cloned()
+            .filter(|v| {
+                // Apply type filters first
+                let cat = Self::classify_version(&v.name);
+                let type_ok = match cat {
+                    VersionCategory::Release => self.filter_release,
+                    VersionCategory::Snapshot => self.filter_snapshot,
+                    VersionCategory::Beta => self.filter_beta,
+                    VersionCategory::Alpha => self.filter_alpha,
+                };
+                if !type_ok {
+                    return false;
+                }
+                // Then apply search query (if any)
+                if query.is_empty() {
+                    true
+                } else {
+                    v.name.to_lowercase().contains(&query)
+                }
+            })
+            .collect();
         // Reset selection if out of bounds
         if self.selected_filtered_version >= self.filtered_versions.len() {
             self.selected_filtered_version = if self.filtered_versions.is_empty() { 0 } else { 0 };
         }
     }
+
+    // --- Version classification & filter toggles ---
+    pub fn classify_version(name: &str) -> VersionCategory {
+        // Snapshot: matches snapshot regex or has -pre/-rc suffixes
+        if ql_core::REGEX_SNAPSHOT.is_match(name) || name.contains("-pre") || name.contains("-rc") {
+            return VersionCategory::Snapshot;
+        }
+        // Alpha/Beta historically start with 'a' or 'b'
+        if name.starts_with('a') {
+            return VersionCategory::Alpha;
+        }
+        if name.starts_with('b') || name.starts_with("inf-") {
+            return VersionCategory::Beta;
+        }
+        VersionCategory::Release
+    }
+
+    pub fn toggle_filter_release(&mut self) { self.filter_release = !self.filter_release; self.update_filtered_versions(); }
+    pub fn toggle_filter_snapshot(&mut self) { self.filter_snapshot = !self.filter_snapshot; self.update_filtered_versions(); }
+    pub fn toggle_filter_beta(&mut self) { self.filter_beta = !self.filter_beta; self.update_filtered_versions(); }
+    pub fn toggle_filter_alpha(&mut self) { self.filter_alpha = !self.filter_alpha; self.update_filtered_versions(); }
+    pub fn reset_all_filters(&mut self) { self.filter_release = true; self.filter_snapshot = true; self.filter_beta = true; self.filter_alpha = true; self.update_filtered_versions(); }
+
 
     pub fn select_item(&mut self) {
         match self.current_tab {
@@ -573,8 +613,8 @@ impl App {
                     match rt.block_on(ql_instances::list_versions()) {
                         Ok(versions) => {
                             self.available_versions = versions;
-                            // Initialize filtered list to full list
-                            self.filtered_versions = self.available_versions.clone();
+                            // Initialize filtered list using current filters
+                            self.update_filtered_versions();
                         }
                         Err(e) => {
                             self.status_message = format!("Failed to load versions: {}", e);

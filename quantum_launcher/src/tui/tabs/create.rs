@@ -75,9 +75,17 @@ pub fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
         let items: Vec<ListItem> = version_source
             .iter()
             .map(|version| {
+                // Classify version type
+                let cat = crate::tui::app::App::classify_version(&version.name);
+                let (label, color) = match cat {
+                    crate::tui::app::VersionCategory::Snapshot => (" [Snapshot]", Color::Yellow),
+                    crate::tui::app::VersionCategory::Beta => (" [Beta]", Color::Magenta),
+                    crate::tui::app::VersionCategory::Alpha => (" [Alpha]", Color::LightMagenta),
+                    crate::tui::app::VersionCategory::Release => (" [Release]", Color::Green),
+                };
                 ListItem::new(Line::from(vec![
                     Span::raw(&version.name),
-                    Span::styled(" [Release]", Style::default().fg(Color::Cyan)), // Default to Release
+                    Span::styled(label, Style::default().fg(color)),
                 ]))
             })
             .collect();

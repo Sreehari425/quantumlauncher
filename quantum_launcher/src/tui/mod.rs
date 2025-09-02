@@ -273,6 +273,25 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                 app.start_version_search();
                             }
                         }
+                        // Filter toggles in Create tab
+                        KeyCode::Char('r') if app.current_tab == app::TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            app.toggle_filter_release();
+                        }
+                        KeyCode::Char('b') if app.current_tab == app::TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            app.toggle_filter_beta();
+                        }
+                        KeyCode::Char('a') if app.current_tab == app::TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            app.toggle_filter_alpha();
+                        }
+                        // Ctrl+Shift+S doesn't exist; reuse Ctrl+Shift+S-like by Ctrl+S already used; use Ctrl+Shift+X alternative -> choose Ctrl+Shift+S? Not ideal.
+                        // We'll use Ctrl+Shift+S emulated by Ctrl+P for Snapshot to avoid conflict.
+                        KeyCode::Char('p') if app.current_tab == app::TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            app.toggle_filter_snapshot();
+                        }
+                        // Reset filters: Ctrl+0
+                        KeyCode::Char('0') if app.current_tab == app::TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            app.reset_all_filters();
+                        }
                         // Tab navigation
                         KeyCode::Tab => app.next_tab(),
                         KeyCode::BackTab => app.previous_tab(),
@@ -290,6 +309,27 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                             // Force terminal clear and redraw (useful if debug output disrupted display)
                             terminal.clear()?;
                             app.status_message = "🔄 Terminal refreshed".to_string();
+                        }
+                        // Version type filters (Create tab)
+                        KeyCode::F(6) if app.current_tab == app::TabId::Create => {
+                            app.toggle_filter_release();
+                            app.status_message = format!("Filter Release: {}", if app.filter_release {"on"} else {"off"});
+                        }
+                        KeyCode::F(7) if app.current_tab == app::TabId::Create => {
+                            app.toggle_filter_snapshot();
+                            app.status_message = format!("Filter Snapshot: {}", if app.filter_snapshot {"on"} else {"off"});
+                        }
+                        KeyCode::F(8) if app.current_tab == app::TabId::Create => {
+                            app.toggle_filter_beta();
+                            app.status_message = format!("Filter Beta: {}", if app.filter_beta {"on"} else {"off"});
+                        }
+                        KeyCode::F(9) if app.current_tab == app::TabId::Create => {
+                            app.toggle_filter_alpha();
+                            app.status_message = format!("Filter Alpha: {}", if app.filter_alpha {"on"} else {"off"});
+                        }
+                        KeyCode::F(10) if app.current_tab == app::TabId::Create => {
+                            app.reset_all_filters();
+                            app.status_message = "Filters reset".to_string();
                         }
                         KeyCode::Char('n') if app.current_tab == app::TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
                             app.is_editing_name = !app.is_editing_name;

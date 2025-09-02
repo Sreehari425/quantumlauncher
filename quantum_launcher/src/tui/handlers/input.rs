@@ -198,6 +198,48 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             if app.version_search_active { app.exit_version_search(); } else { app.start_version_search(); }
             false
         }
+        // Version type filters (Create tab)
+        KeyCode::F(6) if app.current_tab == TabId::Create => {
+            app.toggle_filter_release();
+            false
+        }
+        KeyCode::F(7) if app.current_tab == TabId::Create => {
+            app.toggle_filter_snapshot();
+            false
+        }
+        KeyCode::F(8) if app.current_tab == TabId::Create => {
+            app.toggle_filter_beta();
+            false
+        }
+        KeyCode::F(9) if app.current_tab == TabId::Create => {
+            app.toggle_filter_alpha();
+            false
+        }
+        KeyCode::F(10) if app.current_tab == TabId::Create => {
+            app.reset_all_filters();
+            false
+        }
+        // Filter toggles in Create tab
+        KeyCode::Char('r') if app.current_tab == TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.toggle_filter_release();
+            false
+        }
+        KeyCode::Char('b') if app.current_tab == TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.toggle_filter_beta();
+            false
+        }
+        KeyCode::Char('a') if app.current_tab == TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.toggle_filter_alpha();
+            false
+        }
+        KeyCode::Char('p') if app.current_tab == TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.toggle_filter_snapshot();
+            false
+        }
+        KeyCode::Char('0') if app.current_tab == TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.reset_all_filters();
+            false
+        }
         // Account tab specific keys
         KeyCode::Char('l') if app.current_tab == TabId::Accounts && !app.is_add_account_mode => {
             if !app.accounts.is_empty() {
