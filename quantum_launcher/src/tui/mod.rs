@@ -2,7 +2,7 @@
 
 use std::io;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, KeyModifiers},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, KeyModifiers, MouseEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -103,8 +103,8 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
         // Handle keyboard input with timeout to allow auth events to be processed
         if let Ok(has_event) = crossterm::event::poll(std::time::Duration::from_millis(50)) {
             if has_event {
-                if let Event::Key(key) = event::read()? {
-                    if key.kind == KeyEventKind::Press {
+                match event::read()? {
+                    Event::Key(key) if key.kind == KeyEventKind::Press => {
                         // Handle delete confirmation popup
                         if app.show_delete_confirm {
                             match key.code {
@@ -385,8 +385,25 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                         }
                         _ => {}
                     }
-                }
+                        }
+                    },
+                    Event::Mouse(me) => {
+                        // Mouse wheel scroll support for Settings → About license pane
+                        match me.kind {
+                            MouseEventKind::ScrollUp => {
+                                if app.current_tab == app::TabId::Settings && app.about_selected == 4 {
+                                    app.about_scroll = app.about_scroll.saturating_sub(3);
+                                }
+                            }
+                            MouseEventKind::ScrollDown => {
+                                if app.current_tab == app::TabId::Settings && app.about_selected == 4 {
+                                    app.about_scroll = app.about_scroll.saturating_add(3);
+                                }
+                            }
+                            _ => {}
+                        }
                     }
+                    _ => {}
                 }
             }
         }
