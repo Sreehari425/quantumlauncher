@@ -101,7 +101,7 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
                     Line::from("A simple, powerful Minecraft launcher."),
                     Line::from("") ,
                     Line::from("Upstream project: Mrmayman & contributors."),
-                    Line::from("TUI subsystem: contributed and maintained by Sreehari425."),
+                    Line::from("TUI subsystem made by Sreehari425."),
                     Line::from("Built with ratatui (https://ratatui.rs)."),
                     Line::from("") ,
                     Line::from("QuantumLauncher is free and open source software under the GNU GPLv3 License."),

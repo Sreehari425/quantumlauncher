@@ -80,7 +80,7 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             app.previous_tab();
             false
         }
-        KeyCode::Right if app.current_tab != TabId::Accounts && !(app.current_tab == TabId::Create && app.is_editing_name) => {
+    KeyCode::Right if !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.next_tab();
             false
         }

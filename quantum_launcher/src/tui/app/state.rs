@@ -643,7 +643,6 @@ impl App {
 								// Trim and append newline to match other log entries
 								let mut s = line;
 								if !s.ends_with('\n') { s.push('\n'); }
-								ql_core::print::print_to_storage(&s, ql_core::print::LogType::Info);
 								if let Some(tx) = &ui_tx { let _ = tx.send(crate::tui::AuthEvent::InstanceLogLine { instance_name: inst_name.clone(), line: s.clone() }); }
 							}
 						});
@@ -657,7 +656,6 @@ impl App {
 							while let Ok(Some(line)) = lines.next_line().await {
 								let mut s = line;
 								if !s.ends_with('\n') { s.push('\n'); }
-								ql_core::print::print_to_storage(&s, ql_core::print::LogType::Error);
 								if let Some(tx) = &ui_tx { let _ = tx.send(crate::tui::AuthEvent::InstanceLogLine { instance_name: inst_name.clone(), line: s.clone() }); }
 							}
 						});

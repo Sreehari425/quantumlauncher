@@ -90,19 +90,19 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
     let mut last_refresh = std::time::Instant::now();
 
     loop {
-        // Sync TUI logs with core logger buffer (last 500 lines)
+        // Sync TUI logs with core logger buffer (freeze when user scrolled up)
         {
             let latest = ql_core::print::get_logs_lines(Some(2000));
-            if latest != app.game_logs {
-                let was_at_bottom = app.logs_offset == 0 && app.logs_auto_follow;
-                app.game_logs = latest;
-                if was_at_bottom {
+            let at_bottom = app.logs_offset == 0 && app.logs_auto_follow;
+            if at_bottom {
+                if latest != app.game_logs {
+                    app.game_logs = latest;
                     app.logs_offset = 0; // keep following
                 }
+            } else {
+                // User is viewing history; don't replace buffer to avoid snapping
             }
-            // Clamp offset so it doesn't exceed available history
-            let max_offset = app.game_logs.len().saturating_sub(app.logs_visible_lines);
-            if app.logs_offset > max_offset { app.logs_offset = max_offset; }
+            // Do not clamp here using raw lines; renderer clamps by wrapped rows.
         }
 
         // Check for auth events first

@@ -4,11 +4,12 @@ use ratatui::{
     layout::Rect,
     style::{Color, Style},
     text::Line,
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Paragraph},
     Frame,
 };
 
 use crate::tui::app::App;
+use textwrap::Options as TwOptions;
 
 /// Render the global logs tab with viewport and auto-follow behavior
 pub fn render_logs_tab(f: &mut Frame, area: Rect, app: &mut App) {
@@ -16,21 +17,32 @@ pub fn render_logs_tab(f: &mut Frame, area: Rect, app: &mut App) {
         .borders(Borders::ALL)
         .title(" Game Logs ");
 
-    // Update visible lines estimate based on area height (minus borders and title spacing)
-    let inner_height = area.height.saturating_sub(4).max(1); // leave space for title and padding
-    app.logs_visible_lines = inner_height as usize;
+    // Compute inner content area for accurate width/height
+    let inner = block.inner(area);
+    let inner_height = inner.height.max(1);
+    let inner_width = inner.width.max(1);
+    app.logs_visible_lines = inner_height as usize; // visible ROWS
 
-    let total = app.game_logs.len();
-    // Compute start index based on offset from bottom
-    let end = total;
-    // Maximum offset to keep at least a full page when possible
-    let max_offset = total.saturating_sub(app.logs_visible_lines);
-    if app.logs_offset > max_offset {
-        app.logs_offset = max_offset;
+    // Hard-wrap all log lines to rows so scrolling is by rows, not raw lines
+    let wrap_opts = TwOptions::new(inner_width as usize).break_words(true);
+    let mut rows: Vec<String> = Vec::new();
+    for l in &app.game_logs {
+        if l.is_empty() {
+            rows.push(String::new());
+        } else {
+            for seg in textwrap::wrap(l, wrap_opts.clone()) {
+                rows.push(seg.into_owned());
+            }
+        }
     }
+
+    let total_rows = rows.len();
+    let end = total_rows;
+    let max_offset = total_rows.saturating_sub(app.logs_visible_lines);
+    if app.logs_offset > max_offset { app.logs_offset = max_offset; }
     let start = end.saturating_sub(app.logs_visible_lines + app.logs_offset);
 
-    let log_text = if app.game_logs.is_empty() {
+    let log_text = if rows.is_empty() {
         vec![
             Line::from("No game logs to display."),
             Line::from(""),
@@ -40,16 +52,11 @@ pub fn render_logs_tab(f: &mut Frame, area: Rect, app: &mut App) {
             Line::from(app.status_message.clone()),
         ]
     } else {
-        app.game_logs[start..end]
-            .iter()
-            .cloned()
-            .map(Line::from)
-            .collect::<Vec<_>>()
+        rows[start..end].iter().cloned().map(Line::from).collect::<Vec<_>>()
     };
 
     let paragraph = Paragraph::new(log_text)
-        .block(block)
-        .wrap(Wrap { trim: true });
+        .block(block);
     f.render_widget(paragraph, area);
 }
 
@@ -105,30 +112,33 @@ pub fn render_instance_logs(
         .title(format!(" Logs for {} ", instance_name))
         .border_style(Style::default().fg(Color::Cyan));
 
-    // Compute visible lines for instance logs viewport
-    let inner_height = chunks[1].height.saturating_sub(2).max(1); // borders only
-    app.instance_logs_visible_lines = inner_height as usize;
+    // Compute inner rect and visible rows/width
+    let inner = logs_block.inner(chunks[1]);
+    let inner_height = inner.height.max(1);
+    let inner_width = inner.width.max(1);
+    app.instance_logs_visible_lines = inner_height as usize; // visible ROWS
 
-    // Determine which slice of the instance buffer to show based on offset
+    // Determine which slice of the instance buffer to show based on offset (row-based)
     let content_lines: Vec<Line> = if let Some(buf) = app.instance_logs.get(instance_name) {
-        let total = buf.len();
-        // Clamp offset based on total and viewport
-        let max_offset = total.saturating_sub(app.instance_logs_visible_lines);
-        if app.instance_logs_offset > max_offset {
-            app.instance_logs_offset = max_offset;
+        let wrap_opts = TwOptions::new(inner_width as usize).break_words(true);
+        let mut rows: Vec<String> = Vec::new();
+        for l in buf.iter() {
+            if l.is_empty() { rows.push(String::new()); } else {
+                for seg in textwrap::wrap(l, wrap_opts.clone()) { rows.push(seg.into_owned()); }
+            }
         }
-        let end = total;
+        let total_rows = rows.len();
+        let end = total_rows;
+        let max_offset = total_rows.saturating_sub(app.instance_logs_visible_lines);
+        if app.instance_logs_offset > max_offset { app.instance_logs_offset = max_offset; }
         let start = end.saturating_sub(app.instance_logs_visible_lines + app.instance_logs_offset);
-        if total == 0 {
+        if total_rows == 0 {
             vec![
                 Line::from(""),
                 Line::from("No logs yet. Launch the instance to see output here."),
             ]
         } else {
-            buf[start..end]
-                .iter()
-                .map(|s| Line::from(s.clone()))
-                .collect()
+            rows[start..end].iter().cloned().map(Line::from).collect()
         }
     } else {
         vec![
@@ -138,8 +148,7 @@ pub fn render_instance_logs(
     };
 
     let logs_content = Paragraph::new(content_lines)
-        .block(logs_block)
-        .wrap(Wrap { trim: true });
+        .block(logs_block);
 
     f.render_widget(logs_content, chunks[1]);
 }
