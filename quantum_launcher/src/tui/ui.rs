@@ -370,7 +370,8 @@ fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         // Make the left menu wider so names fit comfortably; give middle pane more room
-        .constraints([Constraint::Length(40), Constraint::Length(30), Constraint::Min(0)])
+        // Make middle submenu a bit wider to avoid truncation of long names
+        .constraints([Constraint::Length(32), Constraint::Length(42), Constraint::Min(0)])
         .split(area);
 
     // Left categories with combined About & Licenses
