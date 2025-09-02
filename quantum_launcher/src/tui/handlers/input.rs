@@ -27,19 +27,11 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             false
         }
         KeyCode::Up if app.current_tab == TabId::Accounts && app.is_add_account_mode => {
-            if app.new_account_type == AccountType::ElyBy {
-                app.prev_account_type();
-            } else {
-                app.prev_account_type();
-            }
+            app.prev_account_type();
             false
         }
         KeyCode::Down if app.current_tab == TabId::Accounts && app.is_add_account_mode => {
-            if app.new_account_type == AccountType::ElyBy {
-                app.next_account_type();
-            } else {
-                app.next_account_type();
-            }
+            app.next_account_type();
             false
         }
         KeyCode::Backspace if app.current_tab == TabId::Accounts && app.is_add_account_mode => {
@@ -95,6 +87,11 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
         KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
             // Shift+Enter: Launch the selected instance
             app.launch_selected_instance();
+            false
+        }
+        // Enter on Instances: open instance settings
+        KeyCode::Enter if app.current_tab == TabId::Instances => {
+            app.select_item();
             false
         }
         // Logs tab specific keys - must come before general 'c' key

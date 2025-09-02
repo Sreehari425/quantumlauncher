@@ -258,7 +258,7 @@ fn get_contextual_help(app: &App) -> Vec<Line> {
     help_text
 }
 
-/// Help for About tab
+// Help for About tab
 // About help removed; integrated into Settings help
 
 /// Help for Instances tab
@@ -468,7 +468,7 @@ fn get_global_help() -> Vec<Line<'static>> {
 
 // accounts rendering moved to tabs::accounts
 
-/// Render the logs tab
+// Render the logs tab
 // moved to tabs::logs::render_logs_tab
 
 /// Help for Logs tab
@@ -493,7 +493,7 @@ fn get_logs_help() -> Vec<Line<'static>> {
 
 // Instance settings renderers moved to tabs::instance_settings
 
-/// Render instance logs tab
+// Render instance logs tab
 // moved to tabs::logs::render_instance_logs
 
 /// Get help text for instance settings

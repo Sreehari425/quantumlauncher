@@ -95,69 +95,72 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
                 Paragraph::new(overview)
                     .block(Block::default().borders(Borders::ALL).title(" About & Licenses "))
                     .wrap(Wrap { trim: true })
+            } else if app.license_selected == 0 {
+                let about_lines: Vec<Line> = vec![
+                    Line::from(Span::styled("QuantumLauncher", Style::default().fg(Color::Cyan).bold())),
+                    Line::from("A simple, powerful Minecraft launcher."),
+                    Line::from("") ,
+                    Line::from("Upstream project: Mrmayman & contributors."),
+                    Line::from("TUI subsystem: contributed and maintained by Sreehari425."),
+                    Line::from("Built with ratatui (https://ratatui.rs)."),
+                    Line::from("") ,
+                    Line::from("QuantumLauncher is free and open source software under the GNU GPLv3 License."),
+                    Line::from("No warranty is provided for this software."),
+                    Line::from("You're free to share, modify, and redistribute it under the same license."),
+                    Line::from("If you like this launcher, consider sharing it with your friends."),
+                    Line::from("Every new user motivates me to keep working on this :)"),
+                    Line::from("") ,
+                    Line::from("Source : https://github.com/Mrmayman/QuantumLauncher"),
+                    Line::from("") ,
+                ];
+
+                let overview = Paragraph::new(about_lines)
+                    .block(Block::default().borders(Borders::ALL).title(" About "))
+                    .wrap(Wrap { trim: true });
+                f.render_widget(overview, chunks[2]);
+                Paragraph::new("").block(Block::default())
             } else {
-                if app.license_selected == 0 {
-                    let about_lines: Vec<Line> = vec![
-                        Line::from(Span::styled("QuantumLauncher", Style::default().fg(Color::Cyan).bold())),
-                        Line::from("A simple, powerful Minecraft launcher."),
-                        Line::from("") ,
-                        Line::from("Upstream project: Mrmayman & contributors."),
-                        Line::from("TUI subsystem: contributed and maintained by Sreehari425."),
-                        Line::from("Built with ratatui (https://ratatui.rs)."),
-                        Line::from("") ,
-                        Line::from("QuantumLauncher is free and open source software under the GNU GPLv3 License."),
-                        Line::from("No warranty is provided for this software."),
-                        Line::from("You're free to share, modify, and redistribute it under the same license."),
-                        Line::from("If you like this launcher, consider sharing it with your friends."),
-                        Line::from("Every new user motivates me to keep working on this :)"),
-                        Line::from("") ,
-                        Line::from("Source : https://github.com/Mrmayman/QuantumLauncher"),
-                        Line::from("") ,
-                    ];
-
-                    let overview = Paragraph::new(about_lines)
-                        .block(Block::default().borders(Borders::ALL).title(" About "))
-                        .wrap(Wrap { trim: true });
-                    f.render_widget(overview, chunks[2]);
-                    Paragraph::new("").block(Block::default())
-                } else {
-                    let idx0 = app.license_selected - 1;
-                    let idx = idx0.min(App::licenses().len().saturating_sub(1));
-                    let (name, candidates) = App::licenses()[idx];
-                    let mut content = String::new();
-                    let mut loaded = false;
-                    for p in candidates {
-                        if let Ok(s) = std::fs::read_to_string(p) {
-                            content = s;
-                            loaded = true;
-                            break;
-                        }
+                let idx0 = app.license_selected - 1;
+                let idx = idx0.min(App::licenses().len().saturating_sub(1));
+                let (name, candidates) = App::licenses()[idx];
+                let mut content = String::new();
+                let mut loaded = false;
+                for p in candidates {
+                    if let Ok(s) = std::fs::read_to_string(p) {
+                        content = s;
+                        loaded = true;
+                        break;
                     }
-                    if !loaded {
-                        if let Some(fallback) = App::license_fallback_content(idx) {
-                            content = fallback.to_string();
-                            loaded = true;
-                        }
-                    }
-                    if !loaded {
-                        let mut not_found_msg = format!("{} file not found. Please ensure it is distributed with the program.", name);
-                        not_found_msg.push_str("\n\nTried the following paths:\n");
-                        for p in candidates.iter() {
-                            not_found_msg.push_str(&format!(" - {}\n", p));
-                        }
-                        content = not_found_msg;
-                    }
-
-                    let mut lines = vec![
-                        Line::from(Span::styled(format!("{}", name), Style::default().fg(Color::Green).bold())),
-                        Line::from("")
-                    ];
-                    for line in content.lines() { lines.push(Line::from(line.to_string())); }
-                    Paragraph::new(lines)
-                        .block(Block::default().borders(Borders::ALL).title(format!(" {} ", name)))
-                        .wrap(Wrap { trim: true })
-                        .scroll((app.about_scroll, 0))
                 }
+                if !loaded {
+                    if let Some(fallback) = App::license_fallback_content(idx) {
+                        content = fallback.to_string();
+                        loaded = true;
+                    }
+                }
+                if !loaded {
+                    let mut not_found_msg = format!(
+                        "{} file not found. Please ensure it is distributed with the program.",
+                        name
+                    );
+                    not_found_msg.push_str("\n\nTried the following paths:\n");
+                    for p in candidates.iter() {
+                        not_found_msg.push_str(&format!(" - {}\n", p));
+                    }
+                    content = not_found_msg;
+                }
+
+                let mut lines = vec![
+                    Line::from(Span::styled(name.to_string(), Style::default().fg(Color::Green).bold())),
+                    Line::from("")
+                ];
+                for line in content.lines() {
+                    lines.push(Line::from(line.to_string()));
+                }
+                Paragraph::new(lines)
+                    .block(Block::default().borders(Borders::ALL).title(format!(" {} ", name)))
+                    .wrap(Wrap { trim: true })
+                    .scroll((app.about_scroll, 0))
             }
         }
         _ => Paragraph::new("").block(Block::default()),
