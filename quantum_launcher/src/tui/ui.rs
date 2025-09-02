@@ -422,8 +422,10 @@ fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
                 Line::from(Span::styled("QuantumLauncher", Style::default().fg(Color::Cyan).bold())),
                 Line::from("A simple, powerful Minecraft launcher."),
                 Line::from(""),
-                Line::from("This TUI is licensed under GPLv3."),
-                Line::from("Source: https://github.com/mrmayman/quantumlauncher"),
+                Line::from("Copyright (C) 2025 Mrmayman & contributors."),
+                Line::from("Copyright (C) 2025 Sreehari425 — TUI subsystem."),
+                Line::from(""),
+                Line::from("Licensed under the GNU GPL v3. See the bundled LICENSE file for full terms."),
                 Line::from(""),
             ];
             let mut license_lines = vec![
