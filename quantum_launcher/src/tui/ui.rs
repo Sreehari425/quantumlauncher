@@ -1170,11 +1170,23 @@ fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
 }
 
 /// Render the logs tab
-fn render_logs_tab(f: &mut Frame, area: Rect, app: &App) {
+fn render_logs_tab(f: &mut Frame, area: Rect, app: &mut App) {
     let block = Block::default()
         .borders(Borders::ALL)
         .title(" Game Logs ");
     
+    // Update visible lines estimate based on area height (minus borders and title spacing)
+    let inner_height = area.height.saturating_sub(4).max(1); // leave space for title and padding
+    app.logs_visible_lines = inner_height as usize;
+
+    let total = app.game_logs.len();
+    // Compute start index based on offset from bottom
+    let end = total;
+    // Maximum offset to keep at least a full page when possible
+    let max_offset = total.saturating_sub(app.logs_visible_lines);
+    if app.logs_offset > max_offset { app.logs_offset = max_offset; }
+    let start = end.saturating_sub(app.logs_visible_lines + app.logs_offset);
+
     let log_text = if app.game_logs.is_empty() {
         vec![
             Line::from("No game logs to display."),
@@ -1185,23 +1197,11 @@ fn render_logs_tab(f: &mut Frame, area: Rect, app: &App) {
             Line::from(app.status_message.clone()),
         ]
     } else {
-        let mut lines = vec![
-            Line::from(format!("Game Logs ({} lines):", app.game_logs.len())),
-            Line::from(""),
-        ];
-        
-        // Show last 20 lines of logs
-        let start_idx = if app.game_logs.len() > 20 {
-            app.game_logs.len() - 20
-        } else {
-            0
-        };
-        
-        for log_line in &app.game_logs[start_idx..] {
-            lines.push(Line::from(log_line.clone()));
-        }
-        
-        lines
+        app.game_logs[start..end]
+            .iter()
+            .cloned()
+            .map(Line::from)
+            .collect::<Vec<_>>()
     };
     
     let paragraph = Paragraph::new(log_text)
@@ -1217,13 +1217,15 @@ fn get_logs_help() -> Vec<Line<'static>> {
         Line::from(vec![
             Span::styled("═══ LOGS TAB ═══", Style::default().fg(Color::Magenta).bold())
         ]),
-        Line::from("↑/↓ or j/k         Scroll through logs"),
+        Line::from("↑/↓ or j/k         Scroll by one line"),
+        Line::from("PageUp/PageDown    Scroll by one page"),
+        Line::from("Home/End or g/G    Jump to top/bottom"),
+        Line::from("Mouse wheel        Scroll logs"),
         Line::from("c                  Clear logs"),
-        Line::from("f                  Filter logs"),
         Line::from(""),
         Line::from(vec![
             Span::styled("Tip: ", Style::default().fg(Color::Yellow)),
-            Span::raw("Game output and launcher events are shown here")
+            Span::raw("Logs auto-follow at bottom; scroll up to pause follow")
         ]),
         Line::from(""),
     ]

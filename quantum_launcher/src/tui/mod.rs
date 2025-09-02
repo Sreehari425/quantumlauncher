@@ -48,6 +48,8 @@ pub fn run_tui() -> AppResult<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
+    // Disable stdio logging so println!/eprintln! don't corrupt the TUI
+    ql_core::print::set_stdio_logging_enabled(false);
     // Create async runtime and run the app
     let rt = tokio::runtime::Runtime::new()?;
     let app = App::new();
@@ -61,6 +63,9 @@ pub fn run_tui() -> AppResult<()> {
         DisableMouseCapture
     )?;
     terminal.show_cursor()?;
+
+    // Re-enable stdio logging now that TUI is closed
+    ql_core::print::set_stdio_logging_enabled(true);
 
     if let Err(err) = res {
         println!("{err:?}");
@@ -79,6 +84,21 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
     let mut last_refresh = std::time::Instant::now();
 
     loop {
+        // Sync TUI logs with core logger buffer (last 500 lines)
+        {
+            let latest = ql_core::print::get_logs_lines(Some(2000));
+            if latest != app.game_logs {
+                let was_at_bottom = app.logs_offset == 0 && app.logs_auto_follow;
+                app.game_logs = latest;
+                if was_at_bottom {
+                    app.logs_offset = 0; // keep following
+                }
+            }
+            // Clamp offset so it doesn't exceed available history
+            let max_offset = app.game_logs.len().saturating_sub(app.logs_visible_lines);
+            if app.logs_offset > max_offset { app.logs_offset = max_offset; }
+        }
+
         // Check for auth events first
         if let Ok(auth_event) = auth_rx.try_recv() {
             app.handle_auth_event(auth_event);
@@ -136,6 +156,58 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                         } else {
                             // Normal key handling when help/help and delete popup are not shown
                             match key.code {
+                        // Logs tab scrolling
+                        KeyCode::Up if app.current_tab == app::TabId::Logs => {
+                            app.logs_auto_follow = false;
+                            app.logs_offset = app.logs_offset.saturating_add(1);
+                        }
+                        KeyCode::Down if app.current_tab == app::TabId::Logs => {
+                            app.logs_offset = app.logs_offset.saturating_sub(1);
+                            if app.logs_offset == 0 { app.logs_auto_follow = true; }
+                        }
+                        KeyCode::PageUp if app.current_tab == app::TabId::Logs => {
+                            app.logs_auto_follow = false;
+                            app.logs_offset = app.logs_offset.saturating_add(app.logs_visible_lines);
+                        }
+                        KeyCode::PageDown if app.current_tab == app::TabId::Logs => {
+                            app.logs_offset = app.logs_offset.saturating_sub(app.logs_visible_lines);
+                            if app.logs_offset == 0 { app.logs_auto_follow = true; }
+                        }
+                        KeyCode::Home if app.current_tab == app::TabId::Logs => {
+                            app.logs_auto_follow = false;
+                            // scroll to top
+                            app.logs_offset = app.game_logs.len();
+                        }
+                        KeyCode::End if app.current_tab == app::TabId::Logs => {
+                            // follow bottom
+                            app.logs_offset = 0;
+                            app.logs_auto_follow = true;
+                        }
+                        KeyCode::Char('c') if app.current_tab == app::TabId::Logs => {
+                            app.clear_logs();
+                            app.logs_offset = 0;
+                            app.logs_auto_follow = true;
+                        }
+                        KeyCode::Char('j') if app.current_tab == app::TabId::Logs => {
+                            // scroll down one line (towards bottom)
+                            app.logs_offset = app.logs_offset.saturating_sub(1);
+                            if app.logs_offset == 0 { app.logs_auto_follow = true; }
+                        }
+                        KeyCode::Char('k') if app.current_tab == app::TabId::Logs => {
+                            // scroll up one line (away from bottom)
+                            app.logs_auto_follow = false;
+                            app.logs_offset = app.logs_offset.saturating_add(1);
+                        }
+                        KeyCode::Char('g') if app.current_tab == app::TabId::Logs => {
+                            // go to top
+                            app.logs_auto_follow = false;
+                            app.logs_offset = app.game_logs.len();
+                        }
+                        KeyCode::Char('G') if app.current_tab == app::TabId::Logs => {
+                            // go to bottom
+                            app.logs_offset = 0;
+                            app.logs_auto_follow = true;
+                        }
                         // Account tab specific keys - must come first to override general patterns
                         KeyCode::Esc if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
                             app.toggle_add_account_mode();
@@ -411,16 +483,23 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                         }
                     },
                     Event::Mouse(me) => {
-                        // Mouse wheel scroll support for Settings → About license pane
                         match me.kind {
                             MouseEventKind::ScrollUp => {
                                 if app.current_tab == app::TabId::Settings {
                                     app.about_scroll = app.about_scroll.saturating_sub(3);
                                 }
+                                if app.current_tab == app::TabId::Logs {
+                                    app.logs_auto_follow = false;
+                                    app.logs_offset = app.logs_offset.saturating_add(3);
+                                }
                             }
                             MouseEventKind::ScrollDown => {
                                 if app.current_tab == app::TabId::Settings {
                                     app.about_scroll = app.about_scroll.saturating_add(3);
+                                }
+                                if app.current_tab == app::TabId::Logs {
+                                    app.logs_offset = app.logs_offset.saturating_sub(3);
+                                    if app.logs_offset == 0 { app.logs_auto_follow = true; }
                                 }
                             }
                             _ => {}

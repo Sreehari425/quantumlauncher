@@ -220,7 +220,7 @@ fn load_launcher_dir() -> (Option<std::path::PathBuf>, bool) {
     let mut launcher_dir = None;
     let is_dir_err = match launcher_dir_res {
         Ok(n) => {
-            eprintln!("- Launcher dir: {}", n.display());
+            info_no_log!("Launcher dir: {}", n.display());
             launcher_dir = Some(n);
             false
         }
@@ -310,7 +310,8 @@ fn do_migration() {
     // Can't use `info!` for logs,
     // since that runs get_logs_dir which lazy allocates LAUNCHER_DIR
     // which creates the new_dir and that would fail the migration
-    println!("Running migration");
+    // Avoid direct stdout in TUI environment; use logger storage instead
+    ql_core::print::print_to_storage("Running migration\n", ql_core::print::LogType::Info);
     if let (Some(legacy_dir), Some(new_dir)) = (
         file_utils::migration_legacy_launcher_dir(),
         file_utils::migration_launcher_dir(),

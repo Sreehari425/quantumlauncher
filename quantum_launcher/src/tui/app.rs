@@ -129,6 +129,10 @@ pub struct App {
     pub auth_sender: Option<mpsc::UnboundedSender<crate::tui::AuthEvent>>,
     // Game logs storage
     pub game_logs: Vec<String>,
+    // Logs view state
+    pub logs_offset: usize,            // number of lines scrolled up from the bottom (0 = bottom)
+    pub logs_visible_lines: usize,     // lines that fit in viewport (updated by renderer)
+    pub logs_auto_follow: bool,        // auto follow new logs when at bottom
     // Terminal refresh tracking
     pub needs_forced_refresh: bool,
     // Instance settings fields
@@ -209,6 +213,9 @@ impl App {
             add_account_field_focus: AddAccountFieldFocus::Username,
             auth_sender: None,
             game_logs: Vec::new(),
+            logs_offset: 0,
+            logs_visible_lines: 20,
+            logs_auto_follow: true,
             needs_forced_refresh: false,
             // Initialize instance settings fields
             instance_settings_instance: None,
@@ -1113,6 +1120,40 @@ impl App {
                 };
                 self.client_processes.insert(instance_name.clone(), client_process);
                 
+                // NEW: Stream game's stdout/stderr into the core in-memory logger so Logs tab updates live
+                // We avoid spawning ql_instances::read_logs and instead do a lightweight forwarder.
+                {
+                    // Take stdout/stderr handles once and spawn readers
+                    let (stdout, stderr) = {
+                        let mut guard = child.lock().unwrap();
+                        (guard.stdout.take(), guard.stderr.take())
+                    };
+
+                    if let Some(mut out) = stdout {
+                        tokio::spawn(async move {
+                            use tokio::io::{AsyncBufReadExt, BufReader};
+                            let mut lines = BufReader::new(&mut out).lines();
+                            while let Ok(Some(line)) = lines.next_line().await {
+                                // Trim and append newline to match other log entries
+                                let mut s = line;
+                                if !s.ends_with('\n') { s.push('\n'); }
+                                ql_core::print::print_to_storage(&s, ql_core::print::LogType::Info);
+                            }
+                        });
+                    }
+                    if let Some(mut err) = stderr {
+                        tokio::spawn(async move {
+                            use tokio::io::{AsyncBufReadExt, BufReader};
+                            let mut lines = BufReader::new(&mut err).lines();
+                            while let Ok(Some(line)) = lines.next_line().await {
+                                let mut s = line;
+                                if !s.ends_with('\n') { s.push('\n'); }
+                                ql_core::print::print_to_storage(&s, ql_core::print::LogType::Error);
+                            }
+                        });
+                    }
+                }
+                
                 // Mark the instance as running
                 if let Some(instance) = self.instances.iter_mut().find(|i| i.name == instance_name) {
                     instance.is_running = true;
@@ -1861,7 +1902,12 @@ impl App {
 
     /// Add a log line to game logs
     pub fn add_log(&mut self, log_line: String) {
-        self.game_logs.push(log_line);
+    // Push to local buffer for immediate rendering
+    self.game_logs.push(log_line.clone());
+    // Mirror into core in-memory logger so external readers (and future sessions) see it
+    let mut s = log_line;
+    if !s.ends_with('\n') { s.push('\n'); }
+    ql_core::print::print_to_storage(&s, ql_core::print::LogType::Info);
         // Keep only last 1000 lines to prevent memory issues
         if self.game_logs.len() > 1000 {
             self.game_logs.remove(0);
