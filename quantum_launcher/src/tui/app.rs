@@ -365,6 +365,24 @@ impl App {
         ]
     }
 
+    /// Compile-time embedded license text fallbacks (mirrors the Iced UI behavior)
+    /// Index corresponds to `Self::licenses()` ordering
+    pub fn license_fallback_content(index: usize) -> Option<&'static str> {
+        match index {
+            // QuantumLauncher GPLv3
+            0 => Some(include_str!("../../../LICENSE")),
+            // Forge Installer (Apache 2.0)
+            1 => Some(include_str!("../../../assets/licenses/APACHE_2.txt")),
+            // Fonts (OFL)
+            2 => Some(include_str!("../../../assets/licenses/OFL.txt")),
+            // Password Asterisks Font (CC BY-SA 3.0)
+            3 => Some(include_str!("../../../assets/licenses/CC_BY_SA_3_0.txt")),
+            // LWJGL
+            4 => Some(include_str!("../../../assets/licenses/LWJGL.txt")),
+            _ => None,
+        }
+    }
+
     /// Load LICENSE text and cache it
     pub fn load_license_text(&mut self) {
         if self.about_license_text.is_none() {

@@ -501,6 +501,7 @@ fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
                     let (name, candidates) = App::licenses()[idx];
                     let mut content = String::new();
                     let mut loaded = false;
+                    // 1) Try runtime files
                     for p in candidates {
                         if let Ok(s) = std::fs::read_to_string(p) {
                             content = s;
@@ -508,8 +509,15 @@ fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
                             break;
                         }
                     }
+                    // 2) Fallback to compile-time embedded contents (matches Iced UI)
                     if !loaded {
-                        // Build a helpful message that includes the candidate paths we tried
+                        if let Some(fallback) = App::license_fallback_content(idx) {
+                            content = fallback.to_string();
+                            loaded = true;
+                        }
+                    }
+                    // 3) If still not loaded, show helpful not-found info
+                    if !loaded {
                         let mut not_found_msg = format!("{} file not found. Please ensure it is distributed with the program.", name);
                         not_found_msg.push_str("\n\nTried the following paths:\n");
                         for p in candidates.iter() {
