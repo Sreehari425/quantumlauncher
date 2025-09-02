@@ -345,6 +345,15 @@ impl App {
     pub fn licenses() -> &'static [(&'static str, &'static [&'static str])] {
         // Display labels chosen to match the GUI-style menu
         &[
+            // QuantumLauncher project license (GPLv3)
+            (
+                "QuantumLauncher (GPLv3)",
+                &[
+                    "LICENSE",
+                    "../LICENSE",
+                    "../../LICENSE",
+                ],
+            ),
             // Forge installer (Apache-2.0)
             ("Forge Installer", &["assets/licenses/APACHE_2.txt", "../assets/licenses/APACHE_2.txt", "../../assets/licenses/APACHE_2.txt"]),
             // Fonts packaged under OFL

@@ -485,8 +485,7 @@ fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
                         Line::from("If you like this launcher, consider sharing it with your friends."),
                         Line::from("Every new user motivates me to keep working on this :)"),
                         Line::from("") ,
-                        Line::from("Source (upstream): https://github.com/Mrmayman/QuantumLauncher"),
-                        Line::from("Contributions / PR: https://github.com/Sreehari425/quantumlauncher"),
+                        Line::from("Source : https://github.com/Mrmayman/QuantumLauncher"),
                         Line::from("") ,
                     ];
 
