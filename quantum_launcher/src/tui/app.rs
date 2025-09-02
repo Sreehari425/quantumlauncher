@@ -142,6 +142,9 @@ pub struct App {
     pub about_selected: usize, // Left menu selection index
     pub about_scroll: u16,     // Right content scroll offset
     pub about_license_text: Option<String>, // Cached LICENSE content
+    // Settings → Licenses submenu state
+    pub settings_focus: SettingsFocus, // Which pane is focused in Settings
+    pub license_selected: usize,       // Selected license in the Licenses submenu
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -150,6 +153,12 @@ pub enum InstanceSettingsTab {
     Mod,
     Setting,
     Logs,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SettingsFocus {
+    Left,
+    Middle,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -212,6 +221,8 @@ impl App {
             about_selected: 0,
             about_scroll: 0,
             about_license_text: None,
+            settings_focus: SettingsFocus::Left,
+            license_selected: 0,
         };
         
         // Load instances and accounts on startup
@@ -273,9 +284,17 @@ impl App {
                 }
             }
             TabId::Settings => {
-                // Settings left menu (General, Java, UI/Theme, Launch, About = 5 items)
-                self.about_selected = (self.about_selected + 1) % 5;
-                self.about_scroll = 0;
+                // Settings left menu (General, Java, UI/Theme, Launch, Licenses, About = 6 items)
+                if self.settings_focus == SettingsFocus::Middle && self.about_selected == Self::licenses_menu_index() {
+                    // license_selected uses 0 = About, 1..=N = licenses; allow cycling through About + N licenses
+                    let count = Self::licenses().len() + 1; // +1 for the About entry
+                    if count > 0 {
+                        self.license_selected = (self.license_selected + 1) % count;
+                    }
+                } else {
+                    self.about_selected = (self.about_selected + 1) % 6;
+                    self.about_scroll = 0;
+                }
             }
             _ => {}
         }
@@ -305,11 +324,36 @@ impl App {
                 }
             }
             TabId::Settings => {
-                if self.about_selected > 0 { self.about_selected -= 1; } else { self.about_selected = 4; }
-                self.about_scroll = 0;
+                if self.settings_focus == SettingsFocus::Middle && self.about_selected == Self::licenses_menu_index() {
+                    // Match next_item behavior: include About as an option (0), so total = licenses.len() + 1
+                    let count = Self::licenses().len() + 1;
+                    if count > 0 {
+                        if self.license_selected > 0 { self.license_selected -= 1; } else { self.license_selected = count - 1; }
+                    }
+                } else {
+                    if self.about_selected > 0 { self.about_selected -= 1; } else { self.about_selected = 5; }
+                    self.about_scroll = 0;
+                }
             }
             _ => {}
         }
+    }
+
+    // Index of the combined "About & Licenses" entry in the left settings menu
+    pub const fn licenses_menu_index() -> usize { 4 }
+
+    pub fn licenses() -> &'static [(&'static str, &'static [&'static str])] {
+        // Display labels chosen to match the GUI-style menu
+        &[
+            // Forge installer (Apache-2.0)
+            ("Forge Installer", &["assets/licenses/APACHE_2.txt", "../assets/licenses/APACHE_2.txt", "../../assets/licenses/APACHE_2.txt"]),
+            // Fonts packaged under OFL
+            ("Fonts (Inter/Jetbrains Mono)", &["assets/licenses/OFL.txt", "../assets/licenses/OFL.txt", "../../assets/licenses/OFL.txt"]),
+            // Password asterisks asset license (use CC BY-SA where provided)
+            ("Password Asterisks Font", &["assets/licenses/CC_BY_SA_3_0.txt", "../assets/licenses/CC_BY_SA_3_0.txt", "../../assets/licenses/CC_BY_SA_3_0.txt"]),
+            // LWJGL license
+            ("LWJGL", &["assets/licenses/LWJGL.txt", "../assets/licenses/LWJGL.txt", "../../assets/licenses/LWJGL.txt"]),
+        ]
     }
 
     /// Load LICENSE text and cache it

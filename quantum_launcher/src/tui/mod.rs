@@ -193,6 +193,9 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                 // Esc in instance settings goes back to instances
                                 app.current_tab = app::TabId::Instances;
                                 app.status_message = "Returned to instances list".to_string();
+                            } else if app.current_tab == app::TabId::Settings && app.about_selected == app::App::licenses_menu_index() && app.settings_focus == app::SettingsFocus::Middle {
+                                // In Settings Licenses submenu: Esc returns focus to left pane
+                                app.settings_focus = app::SettingsFocus::Left;
                             } else {
                                 return Ok(());
                             }
@@ -224,6 +227,13 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                         KeyCode::Left | KeyCode::Char('h') => {
                             if app.current_tab == app::TabId::InstanceSettings {
                                 app.prev_instance_settings_tab();
+                            } else if app.current_tab == app::TabId::Settings {
+                                // Settings: move focus back to left pane when on Licenses
+                                if app.about_selected == app::App::licenses_menu_index() {
+                                    app.settings_focus = app::SettingsFocus::Left;
+                                } else {
+                                    app.previous_tab();
+                                }
                             } else {
                                 app.previous_tab();
                             }
@@ -231,8 +241,21 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                         KeyCode::Right => {
                             if app.current_tab == app::TabId::InstanceSettings {
                                 app.next_instance_settings_tab();
+                            } else if app.current_tab == app::TabId::Settings {
+                                // Settings: when on Licenses, move focus to middle pane
+                                if app.about_selected == app::App::licenses_menu_index() {
+                                    app.settings_focus = app::SettingsFocus::Middle;
+                                } else if app.current_tab != app::TabId::Accounts {
+                                    app.next_tab();
+                                }
                             } else if app.current_tab != app::TabId::Accounts {
                                 app.next_tab();
+                            }
+                        }
+                        KeyCode::Enter if app.current_tab == app::TabId::Settings => {
+                            // When hovering Licenses, Enter focuses the middle pane
+                            if app.about_selected == app::App::licenses_menu_index() {
+                                app.settings_focus = app::SettingsFocus::Middle;
                             }
                         }
                         KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
@@ -391,12 +414,12 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                         // Mouse wheel scroll support for Settings → About license pane
                         match me.kind {
                             MouseEventKind::ScrollUp => {
-                                if app.current_tab == app::TabId::Settings && app.about_selected == 4 {
+                                if app.current_tab == app::TabId::Settings {
                                     app.about_scroll = app.about_scroll.saturating_sub(3);
                                 }
                             }
                             MouseEventKind::ScrollDown => {
-                                if app.current_tab == app::TabId::Settings && app.about_selected == 4 {
+                                if app.current_tab == app::TabId::Settings {
                                     app.about_scroll = app.about_scroll.saturating_add(3);
                                 }
                             }
