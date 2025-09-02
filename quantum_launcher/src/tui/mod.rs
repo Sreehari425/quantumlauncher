@@ -200,6 +200,8 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                         KeyCode::Up | KeyCode::Char('k') => {
                             if app.current_tab == app::TabId::InstanceSettings {
                                 app.navigate_instance_settings(-1);
+                            } else if app.current_tab == app::TabId::Settings {
+                                app.prev_item();
                             } else {
                                 app.prev_item();
                             }
@@ -207,9 +209,17 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                         KeyCode::Down | KeyCode::Char('j') => {
                             if app.current_tab == app::TabId::InstanceSettings {
                                 app.navigate_instance_settings(1);
+                            } else if app.current_tab == app::TabId::Settings {
+                                app.next_item();
                             } else {
                                 app.next_item();
                             }
+                        }
+                        KeyCode::PageUp if app.current_tab == app::TabId::Settings => {
+                            app.about_scroll = app.about_scroll.saturating_sub(8);
+                        }
+                        KeyCode::PageDown if app.current_tab == app::TabId::Settings => {
+                            app.about_scroll = app.about_scroll.saturating_add(8);
                         }
                         KeyCode::Left | KeyCode::Char('h') => {
                             if app.current_tab == app::TabId::InstanceSettings {

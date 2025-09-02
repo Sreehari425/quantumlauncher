@@ -365,24 +365,106 @@ fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
 }
 
 /// Render the settings tab
-fn render_settings_tab(f: &mut Frame, area: Rect, _app: &App) {
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(" Settings ");
-    let paragraph = Paragraph::new(vec![
-        Line::from("Settings functionality coming soon!"),
-        Line::from(""),
-        Line::from("This will include:"),
-        Line::from("• Java settings"),
-        Line::from("• Memory allocation"),
-        Line::from("• Theme preferences"),
-        Line::from("• Launch options"),
-    ])
-    .block(block)
-    .alignment(Alignment::Left)
-    .wrap(Wrap { trim: true });
-    f.render_widget(paragraph, area);
+fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
+    // Left list: settings sections (placeholders) + About
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Length(28), Constraint::Min(0)])
+        .split(area);
+
+    let items = vec![
+        ListItem::new("General"),
+        ListItem::new("Java"),
+        ListItem::new("UI / Theme"),
+        ListItem::new("Launch"),
+        ListItem::new("About"),
+    ];
+
+    let mut list_state = ListState::default();
+    list_state.select(Some(app.about_selected));
+
+    let list = List::new(items)
+        .block(Block::default().borders(Borders::ALL).title(" Settings "))
+        .highlight_style(Style::default().bg(Color::DarkGray))
+        .highlight_symbol("▶ ");
+    f.render_stateful_widget(list, chunks[0], &mut list_state);
+
+    // Right content based on selected section
+    let right = match app.about_selected {
+        0 => Paragraph::new(vec![
+                Line::from("General settings coming soon!"),
+                Line::from("")
+            ])
+            .block(Block::default().borders(Borders::ALL).title(" General "))
+            .wrap(Wrap { trim: true }),
+        1 => Paragraph::new(vec![
+                Line::from("Java settings coming soon!"),
+                Line::from("")
+            ])
+            .block(Block::default().borders(Borders::ALL).title(" Java "))
+            .wrap(Wrap { trim: true }),
+        2 => Paragraph::new(vec![
+                Line::from("UI / Theme settings coming soon!"),
+                Line::from("")
+            ])
+            .block(Block::default().borders(Borders::ALL).title(" UI / Theme "))
+            .wrap(Wrap { trim: true }),
+        3 => Paragraph::new(vec![
+                Line::from("Launch options coming soon!"),
+                Line::from("")
+            ])
+            .block(Block::default().borders(Borders::ALL).title(" Launch "))
+            .wrap(Wrap { trim: true }),
+        _ => {
+            // About section reuses About tab content
+            app.load_license_text();
+            let about_lines: Vec<Line> = vec![
+                Line::from(Span::styled("QuantumLauncher", Style::default().fg(Color::Cyan).bold())),
+                Line::from("A simple, powerful Minecraft launcher."),
+                Line::from(""),
+                Line::from("This TUI is licensed under GPLv3."),
+                Line::from("Source: https://github.com/Sreehari425/quantumlauncher"),
+                Line::from(""),
+            ];
+            let mut license_lines = vec![
+                Line::from(Span::styled("GNU GENERAL PUBLIC LICENSE v3", Style::default().fg(Color::Green).bold())),
+                Line::from("")
+            ];
+            if let Some(txt) = &app.about_license_text {
+                for line in txt.lines() { license_lines.push(Line::from(line.to_string())); }
+            }
+
+            // Layout inside right panel: overview at top then license scrollable
+            let inner = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Length(8), Constraint::Min(0)])
+                .split(chunks[1]);
+
+            let overview = Paragraph::new(about_lines)
+                .block(Block::default().borders(Borders::ALL).title(" About "))
+                .wrap(Wrap { trim: true });
+            f.render_widget(overview, inner[0]);
+
+            let license = Paragraph::new(license_lines)
+                .block(Block::default().borders(Borders::ALL).title(" License (GPLv3) "))
+                .wrap(Wrap { trim: true })
+                .scroll((app.about_scroll, 0));
+            f.render_widget(license, inner[1]);
+
+            // Return an empty paragraph; the real drawing above handled both areas
+            Paragraph::new("")
+                .block(Block::default())
+        }
+    };
+
+    // Only render when not About (About drew directly to allow two stacked panels)
+    if app.about_selected != 4 {
+        f.render_widget(right, chunks[1]);
+    }
 }
+
+/// Render the About tab with split panel (left menu, right content)
+// About tab removed; About content integrated into Settings
 
 /// Render the accounts tab
 fn render_accounts_tab(f: &mut Frame, area: Rect, app: &App) {
@@ -619,6 +701,9 @@ fn get_contextual_help(app: &App) -> Vec<Line> {
 
     help_text
 }
+
+/// Help for About tab
+// About help removed; integrated into Settings help
 
 /// Help for Instances tab
 fn get_instances_help(_app: &App) -> Vec<Line> {
@@ -1380,7 +1465,7 @@ fn render_instance_info_panel(f: &mut Frame, area: Rect) {
 }
 
 /// Render instance mods tab
-fn render_instance_mods(f: &mut Frame, area: Rect, instance_name: &str) {
+fn render_instance_mods(f: &mut Frame, area: Rect, _instance_name: &str) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([

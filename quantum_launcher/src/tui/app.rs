@@ -138,6 +138,10 @@ pub struct App {
     // Process tracking for kill functionality
     pub client_processes: HashMap<String, ClientProcess>, // Track running instances
     pub show_delete_confirm: bool, // Show confirmation popup for instance deletion
+    // About page state
+    pub about_selected: usize, // Left menu selection index
+    pub about_scroll: u16,     // Right content scroll offset
+    pub about_license_text: Option<String>, // Cached LICENSE content
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -204,6 +208,10 @@ impl App {
             // Initialize client process tracking
             client_processes: HashMap::new(),
             show_delete_confirm: false,
+            // About
+            about_selected: 0,
+            about_scroll: 0,
+            about_license_text: None,
         };
         
         // Load instances and accounts on startup
@@ -264,6 +272,11 @@ impl App {
                     self.selected_account = (self.selected_account + 1) % self.accounts.len();
                 }
             }
+            TabId::Settings => {
+                // Settings left menu (General, Java, UI/Theme, Launch, About = 5 items)
+                self.about_selected = (self.about_selected + 1) % 5;
+                self.about_scroll = 0;
+            }
             _ => {}
         }
     }
@@ -291,7 +304,31 @@ impl App {
                     self.selected_account = self.accounts.len() - 1;
                 }
             }
+            TabId::Settings => {
+                if self.about_selected > 0 { self.about_selected -= 1; } else { self.about_selected = 4; }
+                self.about_scroll = 0;
+            }
             _ => {}
+        }
+    }
+
+    /// Load LICENSE text and cache it
+    pub fn load_license_text(&mut self) {
+        if self.about_license_text.is_none() {
+            let paths = [
+                std::path::PathBuf::from("LICENSE"),
+                std::path::PathBuf::from("../LICENSE"),
+                std::path::PathBuf::from("../../LICENSE"),
+            ];
+            for p in paths {
+                if let Ok(s) = std::fs::read_to_string(&p) {
+                    self.about_license_text = Some(s);
+                    break;
+                }
+            }
+            if self.about_license_text.is_none() {
+                self.about_license_text = Some("LICENSE file not found. Make sure the GPLv3 license is distributed with the program.".to_string());
+            }
         }
     }
 
