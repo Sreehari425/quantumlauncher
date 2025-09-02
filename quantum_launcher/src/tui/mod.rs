@@ -15,6 +15,8 @@ use tokio::sync::mpsc;
 // Configuration constants
 const TUI_REFRESH_INTERVAL_MS: u64 = 500; // Periodic refresh to override stdout/stderr interference
 
+// Use the refactored app module
+#[path = "app/mod.rs"]
 mod app;
 mod ui;
 
