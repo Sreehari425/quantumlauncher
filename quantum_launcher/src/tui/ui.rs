@@ -1279,7 +1279,10 @@ fn render_instance_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
                 crate::tui::app::InstanceSettingsTab::Overview => render_instance_overview(f, chunks[2], app.instance_settings_selected, instance),
                 crate::tui::app::InstanceSettingsTab::Mod => render_instance_mods(f, chunks[2], &instance.name),
                 crate::tui::app::InstanceSettingsTab::Setting => render_instance_settings(f, chunks[2], app.instance_settings_selected, instance),
-                crate::tui::app::InstanceSettingsTab::Logs => render_instance_logs(f, chunks[2], app, &instance.name),
+                crate::tui::app::InstanceSettingsTab::Logs => {
+                    let instance_name = instance.name.clone();
+                    render_instance_logs(f, chunks[2], app, &instance_name)
+                },
             }
         }
     }
@@ -1855,7 +1858,7 @@ fn render_instance_settings(f: &mut Frame, area: Rect, selected_index: usize, in
 }
 
 /// Render instance logs tab
-fn render_instance_logs(f: &mut Frame, area: Rect, app: &App, instance_name: &str) {
+fn render_instance_logs(f: &mut Frame, area: Rect, app: &mut App, instance_name: &str) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -1872,14 +1875,22 @@ fn render_instance_logs(f: &mut Frame, area: Rect, app: &App, instance_name: &st
         .border_style(Style::default().fg(Color::Green));
 
     let controls_content = Paragraph::new(
-        Line::from(vec![
-            Span::styled("Filter: Filter: ", Style::default().fg(Color::Yellow)),
-            Span::raw("All  "),
-            Span::styled("Export Export  ", Style::default().fg(Color::Blue)),
-            Span::styled("Clear  Clear  ", Style::default().fg(Color::Red)),
-            Span::styled("Live Live  ", Style::default().fg(Color::Green)),
-            Span::styled("Pause  Pause", Style::default().fg(Color::Gray)),
-        ])
+        vec![
+            Line::from(vec![
+                Span::styled("Filter: ", Style::default().fg(Color::Yellow)),
+                Span::raw("All  "),
+                Span::styled("Export  ", Style::default().fg(Color::Blue)),
+                Span::styled("Clear  ", Style::default().fg(Color::Red)),
+                Span::styled("Live  ", Style::default().fg(Color::Green)),
+                Span::styled("Pause", Style::default().fg(Color::Gray)),
+            ]),
+            Line::from(vec![
+                Span::styled("Scroll: ", Style::default().fg(Color::Yellow)),
+                Span::raw("↑/↓, PageUp/PageDown, Home/End, Mouse wheel | "),
+                Span::styled("Tip: ", Style::default().fg(Color::Yellow)),
+                Span::raw("Auto-follow at bottom; scroll up to pause"),
+            ]),
+        ]
     )
     .block(controls_block)
     .alignment(Alignment::Center);
@@ -1892,15 +1903,32 @@ fn render_instance_logs(f: &mut Frame, area: Rect, app: &App, instance_name: &st
         .title(format!(" Logs for {} ", instance_name))
         .title_style(Style::default().fg(Color::Cyan).bold())
         .border_style(Style::default().fg(Color::Cyan));
+    
+    // Compute visible lines for instance logs viewport
+    let inner_height = chunks[1].height.saturating_sub(2).max(1); // borders only
+    app.instance_logs_visible_lines = inner_height as usize;
 
-    // Show live tail (last N lines) for this instance
-    let tail_lines = 500usize;
+    // Determine which slice of the instance buffer to show based on offset
     let content_lines: Vec<Line> = if let Some(buf) = app.instance_logs.get(instance_name) {
-        let start = buf.len().saturating_sub(tail_lines);
-        buf[start..]
-            .iter()
-            .map(|s| Line::from(s.clone()))
-            .collect()
+        let total = buf.len();
+        // Clamp offset based on total and viewport
+        let max_offset = total.saturating_sub(app.instance_logs_visible_lines);
+        if app.instance_logs_offset > max_offset {
+            app.instance_logs_offset = max_offset;
+        }
+        let end = total;
+        let start = end.saturating_sub(app.instance_logs_visible_lines + app.instance_logs_offset);
+        if total == 0 {
+            vec![
+                Line::from(""),
+                Line::from("No logs yet. Launch the instance to see output here."),
+            ]
+        } else {
+            buf[start..end]
+                .iter()
+                .map(|s| Line::from(s.clone()))
+                .collect()
+        }
     } else {
         vec![
             Line::from(""),
@@ -1908,9 +1936,9 @@ fn render_instance_logs(f: &mut Frame, area: Rect, app: &App, instance_name: &st
         ]
     };
     let logs_content = Paragraph::new(content_lines)
-    .block(logs_block)
+        .block(logs_block)
         .alignment(Alignment::Left)
-    .wrap(Wrap { trim: true });
+        .wrap(Wrap { trim: true });
 
     f.render_widget(logs_content, chunks[1]);
 }

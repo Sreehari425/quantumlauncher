@@ -151,6 +151,10 @@ pub struct App {
     pub license_selected: usize,       // Selected license in the Licenses submenu
     // Per-instance logs (instance name -> recent lines)
     pub instance_logs: HashMap<String, Vec<String>>,
+    // Per-instance logs view state
+    pub instance_logs_offset: usize,        // number of lines scrolled up from bottom (0 = bottom)
+    pub instance_logs_visible_lines: usize, // lines that fit in viewport (set by renderer)
+    pub instance_logs_auto_follow: bool,    // follow new lines when at bottom
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -233,6 +237,9 @@ impl App {
             settings_focus: SettingsFocus::Left,
             license_selected: 0,
             instance_logs: HashMap::new(),
+            instance_logs_offset: 0,
+            instance_logs_visible_lines: 20,
+            instance_logs_auto_follow: true,
         };
         
         // Load instances and accounts on startup
@@ -1212,6 +1219,13 @@ impl App {
                 let ln = line.trim_end_matches('\n').to_string();
                 buf.push(ln);
                 if buf.len() > 2000 { let excess = buf.len() - 2000; buf.drain(0..excess); }
+                // Auto-follow only when viewing instance logs and at bottom
+                if self.current_tab == crate::tui::app::TabId::InstanceSettings
+                    && self.instance_settings_tab == crate::tui::app::InstanceSettingsTab::Logs
+                    && self.instance_logs_auto_follow
+                {
+                    self.instance_logs_offset = 0;
+                }
             }
             crate::tui::AuthEvent::InstanceCreateStarted(instance_name) => {
                 self.status_message = format!("🔨 Creating instance '{}'... This may take a while", instance_name);

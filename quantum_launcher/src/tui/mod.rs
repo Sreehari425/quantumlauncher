@@ -210,6 +210,33 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                             app.logs_offset = 0;
                             app.logs_auto_follow = true;
                         }
+                        // Instance-specific logs scrolling (Instance Settings -> Logs)
+                        KeyCode::Up if app.current_tab == app::TabId::InstanceSettings && app.instance_settings_tab == app::InstanceSettingsTab::Logs => {
+                            app.instance_logs_auto_follow = false;
+                            app.instance_logs_offset = app.instance_logs_offset.saturating_add(1);
+                        }
+                        KeyCode::Down if app.current_tab == app::TabId::InstanceSettings && app.instance_settings_tab == app::InstanceSettingsTab::Logs => {
+                            app.instance_logs_offset = app.instance_logs_offset.saturating_sub(1);
+                            if app.instance_logs_offset == 0 { app.instance_logs_auto_follow = true; }
+                        }
+                        KeyCode::PageUp if app.current_tab == app::TabId::InstanceSettings && app.instance_settings_tab == app::InstanceSettingsTab::Logs => {
+                            app.instance_logs_auto_follow = false;
+                            app.instance_logs_offset = app.instance_logs_offset.saturating_add(app.instance_logs_visible_lines);
+                        }
+                        KeyCode::PageDown if app.current_tab == app::TabId::InstanceSettings && app.instance_settings_tab == app::InstanceSettingsTab::Logs => {
+                            app.instance_logs_offset = app.instance_logs_offset.saturating_sub(app.instance_logs_visible_lines);
+                            if app.instance_logs_offset == 0 { app.instance_logs_auto_follow = true; }
+                        }
+                        KeyCode::Home if app.current_tab == app::TabId::InstanceSettings && app.instance_settings_tab == app::InstanceSettingsTab::Logs => {
+                            app.instance_logs_auto_follow = false;
+                            // scroll to very top (use current instance's buffer length in renderer; here we max out offset later)
+                            // We'll clamp in renderer based on available lines
+                            app.instance_logs_offset = app.instance_logs_offset.saturating_add(usize::MAX/2);
+                        }
+                        KeyCode::End if app.current_tab == app::TabId::InstanceSettings && app.instance_settings_tab == app::InstanceSettingsTab::Logs => {
+                            app.instance_logs_offset = 0;
+                            app.instance_logs_auto_follow = true;
+                        }
                         // Account tab specific keys - must come first to override general patterns
                         KeyCode::Esc if app.current_tab == app::TabId::Accounts && app.is_add_account_mode => {
                             app.toggle_add_account_mode();
@@ -494,6 +521,10 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                     app.logs_auto_follow = false;
                                     app.logs_offset = app.logs_offset.saturating_add(3);
                                 }
+                                if app.current_tab == app::TabId::InstanceSettings && app.instance_settings_tab == app::InstanceSettingsTab::Logs {
+                                    app.instance_logs_auto_follow = false;
+                                    app.instance_logs_offset = app.instance_logs_offset.saturating_add(3);
+                                }
                             }
                             MouseEventKind::ScrollDown => {
                                 if app.current_tab == app::TabId::Settings {
@@ -502,6 +533,10 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                 if app.current_tab == app::TabId::Logs {
                                     app.logs_offset = app.logs_offset.saturating_sub(3);
                                     if app.logs_offset == 0 { app.logs_auto_follow = true; }
+                                }
+                                if app.current_tab == app::TabId::InstanceSettings && app.instance_settings_tab == app::InstanceSettingsTab::Logs {
+                                    app.instance_logs_offset = app.instance_logs_offset.saturating_sub(3);
+                                    if app.instance_logs_offset == 0 { app.instance_logs_auto_follow = true; }
                                 }
                             }
                             _ => {}
