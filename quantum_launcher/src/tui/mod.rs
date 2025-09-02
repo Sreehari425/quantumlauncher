@@ -245,10 +245,10 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                 // Settings: when on Licenses, move focus to middle pane
                                 if app.about_selected == app::App::licenses_menu_index() {
                                     app.settings_focus = app::SettingsFocus::Middle;
-                                } else if app.current_tab != app::TabId::Accounts {
+                                } else {
                                     app.next_tab();
                                 }
-                            } else if app.current_tab != app::TabId::Accounts {
+                            } else {
                                 app.next_tab();
                             }
                         }
