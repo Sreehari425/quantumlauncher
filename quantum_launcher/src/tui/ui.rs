@@ -10,7 +10,12 @@ use ratatui::{
     Frame,
 };
 
-use crate::tui::app::{App, TabId, SettingsFocus};
+use crate::tui::app::{App, TabId};
+use crate::tui::tabs::logs::{render_logs_tab, render_instance_logs};
+use crate::tui::tabs::instances::render_instances_tab;
+use crate::tui::tabs::create::render_create_tab;
+use crate::tui::tabs::accounts::render_accounts_tab;
+use crate::tui::tabs::settings::render_settings_tab;
 
 /// Main rendering function
 pub fn render(f: &mut Frame, app: &mut App) {
@@ -39,34 +44,9 @@ pub fn render(f: &mut Frame, app: &mut App) {
         render_delete_confirm_popup(f, app);
     }
 }
-/// Render confirmation popup for instance deletion
-fn render_delete_confirm_popup(f: &mut Frame, _app: &App) {
-    let popup_area = centered_rect(50, 30, f.area());
-    
-    let block = Block::default()
-        .title(" Confirm Instance Deletion ")
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Red).bold());
-    let lines = vec![
-        Line::from(""),
-        Line::from("Are you sure you want to permanently delete this instance?"),
-        Line::from(""),
-        Line::from("This action cannot be undone!"),
-        Line::from(""),
-        Line::from("Press 'Y' to confirm, 'N' or Esc to cancel."),
-        Line::from(""),
-    ];
-    let para = Paragraph::new(lines)
-        .block(block)
-        .alignment(Alignment::Center)
-        .wrap(Wrap { trim: true });
-    f.render_widget(Clear, popup_area); // Clear the popup area
-    f.render_widget(para, popup_area);
-}
 
 /// Render the header with tabs
 fn render_header(f: &mut Frame, area: Rect, app: &App) {
-    // Normal main tabs (same for all pages including instance settings)
     let tabs = vec![
         Line::from("Instances"),
         Line::from("Create"),
@@ -81,7 +61,7 @@ fn render_header(f: &mut Frame, area: Rect, app: &App) {
         TabId::Settings => 2,
         TabId::Accounts => 3,
         TabId::Logs => 4,
-        TabId::InstanceSettings => 0, // Show as Instances tab when in instance settings
+        TabId::InstanceSettings => 0,
     };
 
     let tabs_widget = Tabs::new(tabs)
@@ -103,531 +83,6 @@ fn render_main_content(f: &mut Frame, area: Rect, app: &mut App) {
     }
 }
 
-/// Render the instances tab
-fn render_instances_tab(f: &mut Frame, area: Rect, app: &mut App) {
-    if app.instances.is_empty() {
-        let block = Block::default()
-            .borders(Borders::ALL)
-            .title(" Instances ");
-        let paragraph = Paragraph::new("No instances found.\nPress F5 to refresh or use Tab to navigate to Create tab to make a new instance.")
-            .block(block)
-            .alignment(Alignment::Center)
-            .wrap(Wrap { trim: true });
-        f.render_widget(paragraph, area);
-        return;
-    }
-
-    let items: Vec<ListItem> = app
-        .instances
-        .iter()
-        .map(|instance| {
-            let name_spans = vec![
-                Span::styled(&instance.name, Style::default().fg(Color::Yellow).bold()),
-                Span::raw(" "),
-            ];
-            
-            ListItem::new(vec![
-                Line::from(name_spans),
-                Line::from(vec![
-                    Span::raw("  Version: "),
-                    Span::styled(&instance.version, Style::default().fg(Color::Cyan)),
-                    Span::raw(" | Loader: "),
-                    Span::styled(&instance.loader, Style::default().fg(Color::Green)),
-                    Span::raw(" | Status: "),
-                    Span::styled(
-                        if instance.is_running { "running" } else { "stopped" },
-                        Style::default().fg(if instance.is_running { Color::Red } else { Color::Gray })
-                    ),
-                ]),
-            ])
-        })
-        .collect();
-
-    let mut list_state = ListState::default();
-    list_state.select(Some(app.selected_instance));
-
-    let list = List::new(items)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Instances (↑/↓ to navigate, Enter to launch) "),
-        )
-        .highlight_style(Style::default().bg(Color::DarkGray))
-        .highlight_symbol("▶ ");
-
-    f.render_stateful_widget(list, area, &mut list_state);
-}
-
-/// Render the create instance tab
-fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(3), // Instance name input
-            Constraint::Length(3), // Download assets checkbox
-            Constraint::Length(3), // Create button
-            Constraint::Min(0),    // Version list
-        ])
-        .margin(1)
-        .split(area);
-
-    // Instance name input
-    let name_input = Paragraph::new(if app.new_instance_name.is_empty() {
-        if app.is_editing_name {
-            "Enter instance name... (editing)"
-        } else {
-            "Enter instance name... (press Ctrl+N to edit)"
-        }
-    } else {
-        &app.new_instance_name
-    })
-    .style(if app.new_instance_name.is_empty() {
-        Style::default().fg(Color::Gray)
-    } else if app.is_editing_name {
-        Style::default().fg(Color::Yellow)
-    } else {
-        Style::default().fg(Color::White)
-    })
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(if app.is_editing_name {
-                " Instance Name (Editing - press Esc to finish) "
-            } else {
-                " Instance Name (press Ctrl+N to edit) "
-            })
-    );
-    f.render_widget(name_input, chunks[0]);
-
-    // Download assets checkbox
-    let checkbox_text = if app.download_assets {
-        "☑ Download assets? (Enables sound/music, but slower)"
-    } else {
-        "☐ Download assets? (Enables sound/music, but slower)"
-    };
-    let checkbox = Paragraph::new(checkbox_text)
-        .style(Style::default().fg(Color::Green))
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Options (press Ctrl+D to toggle) ")
-        );
-    f.render_widget(checkbox, chunks[1]);
-
-    // Create button and status
-    let can_create = !app.new_instance_name.is_empty() && !app.available_versions.is_empty();
-    let button_text = if app.is_loading {
-        "Creating instance... Please wait"
-    } else if app.new_instance_name.is_empty() {
-        "Press Enter to name instance"
-    } else if can_create {
-        "Press Enter to create instance"
-    } else {
-        "No version selected"
-    };
-    
-    let button_style = if app.is_loading {
-        Style::default().fg(Color::Yellow)
-    } else if can_create {
-        Style::default().fg(Color::Green).bold()
-    } else {
-        Style::default().fg(Color::Red)
-    };
-    
-    let create_button = Paragraph::new(button_text)
-        .style(button_style)
-        .alignment(Alignment::Center)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Create Instance ")
-        );
-    f.render_widget(create_button, chunks[2]);
-
-    // Version list - enhanced with better styling and live search
-    if app.available_versions.is_empty() {
-        let block = Block::default()
-            .borders(Borders::ALL)
-            .title(" Minecraft Versions ")
-            .title_style(Style::default().fg(Color::Cyan).bold());
-        let paragraph = Paragraph::new(vec![
-            Line::from("Loading versions..."),
-            Line::from(""),
-            Line::from("Press F5 to refresh"),
-            Line::from(""),
-            Line::from("Supported versions:"),
-            Line::from("  • Release versions"),
-            Line::from("  • Snapshot versions"),
-            Line::from("  • Beta/Alpha versions"),
-        ])
-        .style(Style::default().fg(Color::Gray))
-        .block(block)
-        .alignment(Alignment::Center);
-        f.render_widget(paragraph, chunks[3]);
-    } else {
-    // Always use filtered_versions (respects both filters and search)
-    let version_source = &app.filtered_versions;
-    let sel_idx = app.selected_filtered_version;
-
-        let items: Vec<ListItem> = version_source
-            .iter()
-            .enumerate()
-            .map(|(i, version)| {
-                let is_selected = i == sel_idx;
-                let cat = crate::tui::app::App::classify_version(&version.name);
-                let (type_label, type_color) = match cat {
-                    crate::tui::app::VersionCategory::Snapshot => ("Snapshot", Color::Yellow),
-                    crate::tui::app::VersionCategory::Beta => ("Beta", Color::Magenta),
-                    crate::tui::app::VersionCategory::Alpha => ("Alpha", Color::LightMagenta),
-                    crate::tui::app::VersionCategory::Release => ("Release", Color::Green),
-                };
-                
-                ListItem::new(vec![
-                    Line::from(vec![
-                        if is_selected { 
-                            Span::styled("▶ ", Style::default().fg(Color::Yellow).bold())
-                        } else { 
-                            Span::raw("  ")
-                        },
-                        Span::styled(&version.name, Style::default().fg(Color::Cyan).bold()),
-                        Span::raw(" "),
-                        Span::styled(format!("[{}]", type_label), Style::default().fg(type_color)),
-                        if version.is_classic_server {
-                            Span::styled(" (Server)", Style::default().fg(Color::Blue))
-                        } else {
-                            Span::raw("")
-                        },
-                    ])
-                ])
-            })
-            .collect();
-
-        let mut list_state = ListState::default();
-        list_state.select(Some(sel_idx));
-
-        let selected_version_name = if app.version_search_active {
-            format!(" Minecraft Versions - Search: {} ({} matches) ", app.version_search_query, version_source.len())
-        } else if let Some(version) = version_source.get(sel_idx) {
-            format!(" Minecraft Versions - Selected: {} ", version.name)
-        } else {
-            " Minecraft Versions  (Ctrl+S to search) ".to_string()
-        };
-
-        let list = List::new(items)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(selected_version_name)
-                    .title_style(Style::default().fg(Color::Cyan).bold())
-                    .border_style(Style::default().fg(Color::Cyan))
-            )
-            .highlight_style(Style::default().bg(Color::DarkGray))
-            .highlight_symbol("");
-
-        // Draw filter toggles above the list as a small hint/status row
-    let filter_line = Paragraph::new(vec![
-            Line::from(vec![
-                Span::styled("Filters: ", Style::default().fg(Color::Cyan)),
-                Span::styled(
-                    format!("[R:{}] ", if app.filter_release {"on"} else {"off"}),
-                    Style::default().fg(Color::Green)
-                ),
-                Span::styled(
-                    format!("[S:{}] ", if app.filter_snapshot {"on"} else {"off"}),
-                    Style::default().fg(Color::Yellow)
-                ),
-                Span::styled(
-                    format!("[B:{}] ", if app.filter_beta {"on"} else {"off"}),
-                    Style::default().fg(Color::Magenta)
-                ),
-                Span::styled(
-                    format!("[A:{}] ", if app.filter_alpha {"on"} else {"off"}),
-                    Style::default().fg(Color::LightMagenta)
-                ),
-        Span::raw("  (F6:R, F7:S, F8:B, F9:A, F10:Reset)"),
-            ])
-        ])
-        .block(Block::default().borders(Borders::ALL).title(" Filters "))
-        .style(Style::default().fg(Color::White));
-
-        // Layout: add a small top area for filters
-        let list_area = {
-            let sub = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([Constraint::Length(3), Constraint::Min(0)])
-                .split(chunks[3]);
-            f.render_widget(filter_line, sub[0]);
-            sub[1]
-        };
-
-        f.render_stateful_widget(list, list_area, &mut list_state);
-    }
-}
-
-/// Render the settings tab
-fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
-    // Triple-pane layout: Left (categories), Middle (submenu for Licenses), Right (details)
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        // Make the left menu wider so names fit comfortably; give middle pane more room
-        // Make middle submenu a bit wider to avoid truncation of long names
-        .constraints([Constraint::Length(32), Constraint::Length(42), Constraint::Min(0)])
-        .split(area);
-
-    // Left categories with combined About & Licenses
-    let left_items = vec![
-        ListItem::new("General"),
-        ListItem::new("Java"),
-        ListItem::new("UI / Theme"),
-        ListItem::new("Launch"),
-        ListItem::new("About & Licenses"),
-    ];
-    let mut left_state = ListState::default();
-    left_state.select(Some(app.about_selected));
-    let left_block = Block::default()
-        .borders(Borders::ALL)
-        .title(" Settings ")
-        .border_style(Style::default().fg(Color::Cyan));
-    // Stronger highlight so selection is obvious in wide pane
-    let left_list = List::new(left_items)
-        .block(left_block)
-        .highlight_style(Style::default().bg(Color::Blue).fg(Color::Black).bold())
-        .highlight_symbol("▸ ");
-    f.render_stateful_widget(left_list, chunks[0], &mut left_state);
-
-    // Middle pane: Licenses submenu when selected
-    let is_licenses = app.about_selected == App::licenses_menu_index();
-    let middle_block = Block::default()
-        .borders(Borders::ALL)
-        .title(" Submenu ")
-        .border_style(if app.settings_focus == SettingsFocus::Middle { Style::default().fg(Color::Yellow) } else { Style::default() });
-    if is_licenses {
-        let mut items: Vec<ListItem> = Vec::new();
-        // First entry: About
-        let mut about_entry = String::from("  About");
-        if app.license_selected == 0 { about_entry.push_str("  ←"); }
-        items.push(ListItem::new(about_entry));
-        // Then license entries
-        for (i, (name, _)) in App::licenses().iter().enumerate() {
-            let mut s = String::new();
-            s.push_str("  "); // indent
-            s.push_str(name);
-            if i + 1 == app.license_selected { s.push_str("  ←"); }
-            items.push(ListItem::new(s));
-        }
-        let mut mid_state = ListState::default();
-        mid_state.select(Some(app.license_selected));
-        let submenu = List::new(items)
-            .block(middle_block)
-            .highlight_style(Style::default().bg(Color::DarkGray))
-            .highlight_symbol("▶ ");
-        f.render_stateful_widget(submenu, chunks[1], &mut mid_state);
-    } else {
-        let para = Paragraph::new("Select an option on the left. Licenses will appear here.")
-            .block(middle_block)
-            .wrap(Wrap { trim: true });
-        f.render_widget(para, chunks[1]);
-    }
-
-    // Right content based on selected section
-    let right = match app.about_selected {
-        0 => Paragraph::new(vec![
-                Line::from("General settings coming soon!"),
-                Line::from("")
-            ])
-            .block(Block::default().borders(Borders::ALL).title(" General "))
-            .wrap(Wrap { trim: true }),
-        1 => Paragraph::new(vec![
-                Line::from("Java settings coming soon!"),
-                Line::from("")
-            ])
-            .block(Block::default().borders(Borders::ALL).title(" Java "))
-            .wrap(Wrap { trim: true }),
-        2 => Paragraph::new(vec![
-                Line::from("UI / Theme settings coming soon!"),
-                Line::from("")
-            ])
-            .block(Block::default().borders(Borders::ALL).title(" UI / Theme "))
-            .wrap(Wrap { trim: true }),
-        3 => Paragraph::new(vec![
-                Line::from("Launch options coming soon!"),
-                Line::from("")
-            ])
-            .block(Block::default().borders(Borders::ALL).title(" Launch "))
-            .wrap(Wrap { trim: true }),
-        4 => {
-            // Combined About & Licenses
-            if app.settings_focus == SettingsFocus::Left {
-                let overview = vec![
-                    Line::from(Span::styled("About & Licenses", Style::default().fg(Color::Yellow).bold())),
-                    Line::from("Select 'About' or one of the licenses from the middle pane."),
-                    Line::from(""),
-                    Line::from("Project License: GNU GPL v3 (see LICENSE)"),
-                ];
-                Paragraph::new(overview)
-                    .block(Block::default().borders(Borders::ALL).title(" About & Licenses "))
-                    .wrap(Wrap { trim: true })
-            } else {
-                // Middle focused: index 0 = About, others = license text
-                if app.license_selected == 0 {
-                    // About section: show brief project info and point to bundled LICENSE file
-                    let about_lines: Vec<Line> = vec![
-                        Line::from(Span::styled("QuantumLauncher", Style::default().fg(Color::Cyan).bold())),
-                        Line::from("A simple, powerful Minecraft launcher."),
-                        Line::from("") ,
-                        Line::from("Upstream project: Mrmayman & contributors."),
-                        Line::from("TUI subsystem: contributed and maintained by Sreehari425."),
-                        Line::from("Built with ratatui (https://ratatui.rs)."),
-                        Line::from("") ,
-                        Line::from("QuantumLauncher is free and open source software under the GNU GPLv3 License."),
-                        Line::from("No warranty is provided for this software."),
-                        Line::from("You're free to share, modify, and redistribute it under the same license."),
-                        Line::from("If you like this launcher, consider sharing it with your friends."),
-                        Line::from("Every new user motivates me to keep working on this :)"),
-                        Line::from("") ,
-                        Line::from("Source : https://github.com/Mrmayman/QuantumLauncher"),
-                        Line::from("") ,
-                    ];
-
-                    let overview = Paragraph::new(about_lines)
-                        .block(Block::default().borders(Borders::ALL).title(" About "))
-                        .wrap(Wrap { trim: true });
-                    f.render_widget(overview, chunks[2]);
-                    Paragraph::new("").block(Block::default())
-                } else {
-                    // License index offset by 1
-                    let idx0 = app.license_selected - 1;
-                    let idx = idx0.min(App::licenses().len().saturating_sub(1));
-                    let (name, candidates) = App::licenses()[idx];
-                    let mut content = String::new();
-                    let mut loaded = false;
-                    // 1) Try runtime files
-                    for p in candidates {
-                        if let Ok(s) = std::fs::read_to_string(p) {
-                            content = s;
-                            loaded = true;
-                            break;
-                        }
-                    }
-                    // 2) Fallback to compile-time embedded contents (matches Iced UI)
-                    if !loaded {
-                        if let Some(fallback) = App::license_fallback_content(idx) {
-                            content = fallback.to_string();
-                            loaded = true;
-                        }
-                    }
-                    // 3) If still not loaded, show helpful not-found info
-                    if !loaded {
-                        let mut not_found_msg = format!("{} file not found. Please ensure it is distributed with the program.", name);
-                        not_found_msg.push_str("\n\nTried the following paths:\n");
-                        for p in candidates.iter() {
-                            not_found_msg.push_str(&format!(" - {}\n", p));
-                        }
-                        content = not_found_msg;
-                    }
-
-                    let mut lines = vec![
-                        Line::from(Span::styled(format!("{}", name), Style::default().fg(Color::Green).bold())),
-                        Line::from("")
-                    ];
-                    for line in content.lines() { lines.push(Line::from(line.to_string())); }
-                    Paragraph::new(lines)
-                        .block(Block::default().borders(Borders::ALL).title(format!(" {} ", name)))
-                        .wrap(Wrap { trim: true })
-                        .scroll((app.about_scroll, 0))
-                }
-            }
-        }
-        _ => Paragraph::new("").block(Block::default()),
-    };
-
-    // Render right pane unless we drew the About stacked view inside case 4
-    let drew_about_stacked = app.about_selected == 4 && app.settings_focus == SettingsFocus::Middle && app.license_selected == 0;
-    if !drew_about_stacked {
-        f.render_widget(right, chunks[2]);
-    }
-}
-
-/// Render the About tab with split panel (left menu, right content)
-// About tab removed; About content integrated into Settings
-
-/// Render the accounts tab
-fn render_accounts_tab(f: &mut Frame, area: Rect, app: &App) {
-    if app.is_add_account_mode {
-        render_add_account_form(f, area, app);
-    } else {
-        render_account_list(f, area, app);
-    }
-}
-
-fn render_account_list(f: &mut Frame, area: Rect, app: &App) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Min(10),  // Account list
-            Constraint::Length(8), // Login form or account actions
-        ])
-        .split(area);
-
-    // Account List
-    let account_items: Vec<ListItem> = app.accounts
-        .iter()
-        .enumerate()
-        .map(|(i, account)| {
-            let status = if account.account_type == "Offline" {
-                " (offline - ready to launch)"
-            } else if account.is_logged_in { 
-                " (logged in)" 
-            } else { 
-                "" 
-            };
-            
-            // Check if this account is the default
-            let is_default = if let Some(ref current_account) = app.current_account {
-                // The account.username already contains the full modified username (e.g., "ThinThyme397339 (elyby)")
-                // so we can directly compare it with current_account
-                current_account == &account.username
-            } else {
-                false
-            };
-            
-            let default_indicator = if is_default { " * (default)" } else { "" };
-            let content = format!("{} [{}]{}{}", account.username, account.account_type, status, default_indicator);
-            
-            let mut item = ListItem::new(content);
-            if i == app.selected_account {
-                item = item.style(Style::default().bg(Color::Yellow).fg(Color::Black));
-            }
-            item
-        })
-        .collect();
-
-    let accounts_list = List::new(account_items)
-        .block(Block::default().borders(Borders::ALL).title("Accounts"))
-        .style(Style::default().fg(Color::White));
-
-    f.render_widget(accounts_list, chunks[0]);
-
-    // Bottom panel for login form or account actions
-    // Account actions - no longer supporting separate login mode
-    let selected_account_info = if let Some(account) = app.get_selected_account() {
-        if account.is_logged_in {
-            format!("Selected: {} (logged in)\nPress 'l' to logout, 'n' to add new account", account.username)
-        } else {
-            format!("Selected: {} (not logged in)\nPress 'n' to add new account (login during creation)", account.username)
-        }
-    } else {
-        format!("Debug: {} accounts, selected index: {}\nPress 'n' to add new account", 
-            app.accounts.len(), app.selected_account)
-    };
-
-    let account_info = Paragraph::new(selected_account_info)
-        .block(Block::default().borders(Borders::ALL).title("Actions"))
-        .style(Style::default().fg(Color::White))
-        .wrap(Wrap { trim: true });
-    f.render_widget(account_info, chunks[1]);
-}
-
 /// Render the footer with status and help
 fn render_footer(f: &mut Frame, area: Rect, app: &App) {
     let chunks = Layout::default()
@@ -635,16 +90,13 @@ fn render_footer(f: &mut Frame, area: Rect, app: &App) {
         .constraints([Constraint::Min(0), Constraint::Length(35), Constraint::Length(20)])
         .split(area);
 
-    // Status message
     let status = Paragraph::new(app.status_message.clone())
         .block(Block::default().borders(Borders::ALL).title(" Status "))
         .style(Style::default().fg(Color::White))
         .wrap(Wrap { trim: true });
     f.render_widget(status, chunks[0]);
 
-    // Default account info
     let account_info = if let Some(current_account) = &app.current_account {
-        // Extract the base username without modifiers
         let display_name = if current_account.contains(" (elyby)") {
             current_account.replace(" (elyby)", "")
         } else if current_account.contains(" (littleskin)") {
@@ -656,14 +108,13 @@ fn render_footer(f: &mut Frame, area: Rect, app: &App) {
     } else {
         "No default account".to_string()
     };
-    
+
     let account = Paragraph::new(account_info)
         .block(Block::default().borders(Borders::ALL).title(" Account "))
         .style(Style::default().fg(Color::Cyan))
         .alignment(Alignment::Center);
     f.render_widget(account, chunks[1]);
 
-    // Help/keybinds
     let help = Paragraph::new("'?' help | 'q' quit")
         .block(Block::default().borders(Borders::ALL).title(" Keys "))
         .style(Style::default().fg(Color::Gray))
@@ -687,19 +138,11 @@ fn render_loading_popup(f: &mut Frame) {
 
     f.render_widget(loading_text, area);
 
-    // Simple loading indicator
-    let progress_area = Rect {
-        x: area.x + 2,
-        y: area.y + 3,
-        width: area.width - 4,
-        height: 1,
-    };
-
+    let progress_area = Rect { x: area.x + 2, y: area.y + 3, width: area.width - 4, height: 1 };
     let gauge = Gauge::default()
         .block(Block::default())
         .gauge_style(Style::default().fg(Color::Yellow))
-        .ratio(0.5); // Static for now, could be animated
-
+        .ratio(0.5);
     f.render_widget(gauge, progress_area);
 }
 
@@ -722,6 +165,33 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
             Constraint::Percentage((100 - percent_x) / 2),
         ])
         .split(popup_layout[1])[1]
+}
+/// Render confirmation popup for instance deletion
+fn render_delete_confirm_popup(f: &mut Frame, _app: &App) {
+    let popup_area = centered_rect(50, 30, f.area());
+
+    let block = Block::default()
+        .title(" Confirm Instance Deletion ")
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Red).bold());
+
+    let lines = vec![
+        Line::from(""),
+        Line::from("Are you sure you want to permanently delete this instance?"),
+        Line::from(""),
+        Line::from("This action cannot be undone!"),
+        Line::from(""),
+        Line::from("Press 'Y' to confirm, 'N' or Esc to cancel."),
+        Line::from(""),
+    ];
+
+    let para = Paragraph::new(lines)
+        .block(block)
+        .alignment(Alignment::Center)
+        .wrap(Wrap { trim: true });
+
+    f.render_widget(Clear, popup_area);
+    f.render_widget(para, popup_area);
 }
 
 /// Render help popup with contextual controls based on current tab and state
@@ -995,221 +465,10 @@ fn get_global_help() -> Vec<Line<'static>> {
     ]
 }
 
-fn render_add_account_form(f: &mut Frame, area: Rect, app: &App) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(10), // Account type selection - much bigger to show all 4 options (4 items + 2 borders + 4 padding)
-            Constraint::Length(3), // Username input - normal size
-            Constraint::Length(3), // Password input or info - normal size
-            Constraint::Length(3), // OTP input (if needed) or empty - normal size
-            Constraint::Min(3),    // Instructions/status - minimum space
-        ])
-        .split(area);
-
-    // Account type selection
-    let account_types = crate::tui::app::AccountType::all();
-    let type_items: Vec<ListItem> = account_types
-        .iter()
-        .enumerate()
-        .map(|(i, account_type)| {
-            let content = account_type.to_string();
-            let mut item = ListItem::new(content);
-            // Ensure selected_account_type is within bounds
-            if i == app.selected_account_type && app.selected_account_type < account_types.len() {
-                item = item.style(Style::default().bg(Color::Yellow).fg(Color::Black));
-            }
-            item
-        })
-        .collect();
-    
-    // Create a ListState to control scrolling
-    let mut list_state = ListState::default();
-    if app.selected_account_type < account_types.len() {
-        list_state.select(Some(app.selected_account_type));
-    }
-
-    let type_list = List::new(type_items)
-        .block(Block::default().borders(Borders::ALL).title("Account Type"))
-        .style(Style::default().fg(Color::White))
-        .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
-    
-    f.render_stateful_widget(type_list, chunks[0], &mut list_state);
-
-    // Username input with focus indication for ElyBy and LittleSkin
-    let username_title = if (app.new_account_type == crate::tui::app::AccountType::ElyBy || 
-                            app.new_account_type == crate::tui::app::AccountType::LittleSkin) && 
-                           app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Username {
-        "Username/Email [CURRENTLY TYPING HERE]"
-    } else {
-        "Username/Email"
-    };
-    
-    let username_style = if (app.new_account_type == crate::tui::app::AccountType::ElyBy || 
-                            app.new_account_type == crate::tui::app::AccountType::LittleSkin) && 
-                           app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Username {
-        Style::default().fg(Color::Yellow).bold()
-    } else {
-        Style::default().fg(Color::White)
-    };
-    
-    let username_input = Paragraph::new(app.new_account_username.as_str())
-        .block(Block::default().borders(Borders::ALL).title(username_title))
-        .style(username_style);
-    f.render_widget(username_input, chunks[1]);
-
-    // Password input (for ElyBy, LittleSkin, and Microsoft accounts)
-    if app.new_account_type != crate::tui::app::AccountType::Offline {
-        let password_title = if (app.new_account_type == crate::tui::app::AccountType::ElyBy || 
-                                app.new_account_type == crate::tui::app::AccountType::LittleSkin) && 
-                               app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Password {
-            "Password [CURRENTLY TYPING HERE]"
-        } else {
-            "Password"
-        };
-        
-        let password_style = if (app.new_account_type == crate::tui::app::AccountType::ElyBy || 
-                                app.new_account_type == crate::tui::app::AccountType::LittleSkin) && 
-                               app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Password {
-            Style::default().fg(Color::Yellow).bold()
-        } else {
-            Style::default().fg(Color::White)
-        };
-        
-        let password_display = if app.show_password {
-            app.new_account_password.clone()
-        } else {
-            "*".repeat(app.new_account_password.len())
-        };
-        
-        let password_input = Paragraph::new(password_display.as_str())
-            .block(Block::default().borders(Borders::ALL).title(password_title))
-            .style(password_style);
-        f.render_widget(password_input, chunks[2]);
-    } else if app.new_account_type == crate::tui::app::AccountType::Offline {
-        let info_text = "Offline accounts use the specified username for playing";
-        let info_paragraph = Paragraph::new(info_text)
-            .block(Block::default().borders(Borders::ALL).title("Info"))
-            .style(Style::default().fg(Color::Gray))
-            .alignment(Alignment::Center);
-        f.render_widget(info_paragraph, chunks[2]);
-    } else {
-        let info_text = "Microsoft accounts use OAuth2 authentication";
-        let info_paragraph = Paragraph::new(info_text)
-            .block(Block::default().borders(Borders::ALL).title("Info"))
-            .style(Style::default().fg(Color::Gray))
-            .alignment(Alignment::Center);
-        f.render_widget(info_paragraph, chunks[2]);
-    }
-    
-    // OTP input (only if needed for ElyBy)
-    if app.needs_otp {
-        let otp_title = if app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Otp {
-            "OTP Code [CURRENTLY TYPING HERE]"
-        } else {
-            "OTP Code"
-        };
-        
-        let otp_style = if app.add_account_field_focus == crate::tui::app::AddAccountFieldFocus::Otp {
-            Style::default().fg(Color::Yellow).bold()
-        } else {
-            Style::default().fg(Color::White)
-        };
-        
-        let empty_string = String::new();
-        let otp_display = app.new_account_otp.as_ref().unwrap_or(&empty_string);
-        let otp_input = Paragraph::new(otp_display.as_str())
-            .block(Block::default().borders(Borders::ALL).title(otp_title))
-            .style(otp_style);
-        f.render_widget(otp_input, chunks[3]);
-    } else {
-        // Empty placeholder
-        let empty_paragraph = Paragraph::new("")
-            .style(Style::default().fg(Color::Gray));
-        f.render_widget(empty_paragraph, chunks[3]);
-    }
-
-    // Instructions and error messages
-    let mut instruction_lines = vec![];
-    
-    match app.new_account_type {
-        crate::tui::app::AccountType::Microsoft => {
-            instruction_lines.push("↑/↓: Select account type | Enter: Add account | Esc: Cancel".to_string());
-            instruction_lines.push("Warning: Microsoft accounts are not implemented yet - coming soon!".to_string());
-        }
-        crate::tui::app::AccountType::Offline => {
-            instruction_lines.push("↑/↓: Select account type | Enter: Add offline account | Esc: Cancel".to_string());
-            instruction_lines.push("Offline accounts use the specified username for playing".to_string());
-        }
-        crate::tui::app::AccountType::ElyBy => {
-            instruction_lines.push("↑/↓: Select account type | Tab: Next field | p: Toggle password visibility".to_string());
-            instruction_lines.push("Enter: Create account | Esc: Cancel".to_string());
-            
-            if app.needs_otp {
-                instruction_lines.push("Two-factor authentication required - enter OTP code".to_string());
-            }
-        }
-        crate::tui::app::AccountType::LittleSkin => {
-            instruction_lines.push("↑/↓: Select account type | Tab: Next field | Enter: Add account | Esc: Cancel".to_string());
-            instruction_lines.push("Warning: LittleSkin accounts are not implemented yet - coming soon!".to_string());
-        }
-    }
-    
-    // Add error message if present
-    if let Some(ref error) = app.login_error {
-        instruction_lines.push("".to_string());
-        instruction_lines.push(format!("Error: {}", error));
-    }
-    
-    let instructions_text = instruction_lines.join("\n");
-    let instructions_paragraph = Paragraph::new(instructions_text)
-        .block(Block::default().borders(Borders::ALL).title("Instructions"))
-        .style(Style::default().fg(Color::Green))
-        .wrap(Wrap { trim: true });
-    f.render_widget(instructions_paragraph, chunks[4]);
-}
+// accounts rendering moved to tabs::accounts
 
 /// Render the logs tab
-fn render_logs_tab(f: &mut Frame, area: Rect, app: &mut App) {
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(" Game Logs ");
-    
-    // Update visible lines estimate based on area height (minus borders and title spacing)
-    let inner_height = area.height.saturating_sub(4).max(1); // leave space for title and padding
-    app.logs_visible_lines = inner_height as usize;
-
-    let total = app.game_logs.len();
-    // Compute start index based on offset from bottom
-    let end = total;
-    // Maximum offset to keep at least a full page when possible
-    let max_offset = total.saturating_sub(app.logs_visible_lines);
-    if app.logs_offset > max_offset { app.logs_offset = max_offset; }
-    let start = end.saturating_sub(app.logs_visible_lines + app.logs_offset);
-
-    let log_text = if app.game_logs.is_empty() {
-        vec![
-            Line::from("No game logs to display."),
-            Line::from(""),
-            Line::from("Launch a Minecraft instance to see logs here."),
-            Line::from(""),
-            Line::from("Recent activity:"),
-            Line::from(app.status_message.clone()),
-        ]
-    } else {
-        app.game_logs[start..end]
-            .iter()
-            .cloned()
-            .map(Line::from)
-            .collect::<Vec<_>>()
-    };
-    
-    let paragraph = Paragraph::new(log_text)
-        .block(block)
-        .alignment(Alignment::Left)
-        .wrap(Wrap { trim: true });
-    f.render_widget(paragraph, area);
-}
+// moved to tabs::logs::render_logs_tab
 
 /// Help for Logs tab
 fn get_logs_help() -> Vec<Line<'static>> {
@@ -1858,90 +1117,7 @@ fn render_instance_settings(f: &mut Frame, area: Rect, selected_index: usize, in
 }
 
 /// Render instance logs tab
-fn render_instance_logs(f: &mut Frame, area: Rect, app: &mut App, instance_name: &str) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(3), // Log controls
-            Constraint::Min(0),    // Log viewer
-        ])
-        .split(area);
-
-    // Top: Log controls
-    let controls_block = Block::default()
-        .borders(Borders::ALL)
-        .title(" Log Controls ")
-        .title_style(Style::default().fg(Color::Green).bold())
-        .border_style(Style::default().fg(Color::Green));
-
-    let controls_content = Paragraph::new(
-        vec![
-            Line::from(vec![
-                Span::styled("Filter: ", Style::default().fg(Color::Yellow)),
-                Span::raw("All  "),
-                Span::styled("Export  ", Style::default().fg(Color::Blue)),
-                Span::styled("Clear  ", Style::default().fg(Color::Red)),
-                Span::styled("Live  ", Style::default().fg(Color::Green)),
-                Span::styled("Pause", Style::default().fg(Color::Gray)),
-            ]),
-            Line::from(vec![
-                Span::styled("Scroll: ", Style::default().fg(Color::Yellow)),
-                Span::raw("↑/↓, PageUp/PageDown, Home/End, Mouse wheel | "),
-                Span::styled("Tip: ", Style::default().fg(Color::Yellow)),
-                Span::raw("Auto-follow at bottom; scroll up to pause"),
-            ]),
-        ]
-    )
-    .block(controls_block)
-    .alignment(Alignment::Center);
-
-    f.render_widget(controls_content, chunks[0]);
-
-    // Bottom: Log viewer
-    let logs_block = Block::default()
-        .borders(Borders::ALL)
-        .title(format!(" Logs for {} ", instance_name))
-        .title_style(Style::default().fg(Color::Cyan).bold())
-        .border_style(Style::default().fg(Color::Cyan));
-    
-    // Compute visible lines for instance logs viewport
-    let inner_height = chunks[1].height.saturating_sub(2).max(1); // borders only
-    app.instance_logs_visible_lines = inner_height as usize;
-
-    // Determine which slice of the instance buffer to show based on offset
-    let content_lines: Vec<Line> = if let Some(buf) = app.instance_logs.get(instance_name) {
-        let total = buf.len();
-        // Clamp offset based on total and viewport
-        let max_offset = total.saturating_sub(app.instance_logs_visible_lines);
-        if app.instance_logs_offset > max_offset {
-            app.instance_logs_offset = max_offset;
-        }
-        let end = total;
-        let start = end.saturating_sub(app.instance_logs_visible_lines + app.instance_logs_offset);
-        if total == 0 {
-            vec![
-                Line::from(""),
-                Line::from("No logs yet. Launch the instance to see output here."),
-            ]
-        } else {
-            buf[start..end]
-                .iter()
-                .map(|s| Line::from(s.clone()))
-                .collect()
-        }
-    } else {
-        vec![
-            Line::from(""),
-            Line::from("No logs yet. Launch the instance to see output here."),
-        ]
-    };
-    let logs_content = Paragraph::new(content_lines)
-        .block(logs_block)
-        .alignment(Alignment::Left)
-        .wrap(Wrap { trim: true });
-
-    f.render_widget(logs_content, chunks[1]);
-}
+// moved to tabs::logs::render_instance_logs
 
 /// Get help text for instance settings
 fn get_instance_settings_help(_app: &App) -> Vec<Line<'static>> {

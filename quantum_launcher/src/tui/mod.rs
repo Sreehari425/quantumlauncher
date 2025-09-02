@@ -18,6 +18,7 @@ const TUI_REFRESH_INTERVAL_MS: u64 = 500; // Periodic refresh to override stdout
 // Use the refactored app module
 #[path = "app/mod.rs"]
 mod app;
+pub mod tabs;
 mod ui;
 
 pub use app::{App, AppResult};
