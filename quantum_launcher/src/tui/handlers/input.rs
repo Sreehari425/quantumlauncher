@@ -124,10 +124,7 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             app.toggle_help_popup();
             false
         }
-        KeyCode::F(5) => {
-            app.refresh();
-            false
-        }
+    // F5 is handled in the main TUI loop for async refresh
         // Create tab editing mode - handle character input first when editing
         KeyCode::Backspace if app.current_tab == TabId::Create && app.is_editing_name => {
             app.new_instance_name.pop();
