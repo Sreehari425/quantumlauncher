@@ -143,12 +143,12 @@ pub fn get_create_help(app: &App) -> Vec<Line> {
     if app.is_editing_name {
         help.extend(vec![
             Line::from("Typing text...      Instance name input is active"),
-            Line::from("n                  Finish editing name and focus version list"),
+            Line::from("Esc                Finish editing name and focus version list"),
             Line::from("Backspace          Remove character from name"),
         ]);
     } else {
         help.extend(vec![
-            Line::from("n                  Start editing instance name"),
+            Line::from("Ctrl+N             Start editing instance name"),
             Line::from("↑/↓ or j/k         Navigate Minecraft versions"),
             Line::from("Enter              Create instance with selected version"),
         ]);
@@ -253,12 +253,14 @@ pub fn get_logs_help() -> Vec<Line<'static>> {
         Line::from(vec![
             Span::styled("═══ LOGS TAB ═══", Style::default().fg(Color::Red).bold())
         ]),
+        Line::from("↑/↓ or j/k         Scroll by one line"),
+        Line::from("PageUp/PageDown    Scroll by one page"),
+        Line::from("Home/End or g/G    Jump to top/bottom"),
+        Line::from("Mouse wheel        Scroll logs"),
         Line::from("c                  Clear logs"),
-        Line::from("↑/↓ or j/k         Scroll through logs"),
-        Line::from("F5                 Refresh logs"),
         Line::from(""),
         Line::from(vec![
-            Span::raw("View game launch logs and debug information here")
+            Span::raw("Logs auto-follow at bottom; scroll up to pause follow")
         ]),
         Line::from(""),
     ]
@@ -270,9 +272,9 @@ pub fn get_global_help() -> Vec<Line<'static>> {
         Line::from(vec![
             Span::styled("═══ GLOBAL CONTROLS ═══", Style::default().fg(Color::White).bold())
         ]),
-        Line::from("←/→ or h/l         Switch between tabs"),
-        Line::from("Tab                Cycle forward through tabs"),
-        Line::from("Shift+Tab          Cycle backward through tabs"),
+    Line::from("←/→              Switch between tabs"),
+    Line::from("Tab                Next tab"),
+    Line::from("Shift+Tab          Previous tab"),
         Line::from("?                  Show/hide this help popup"),
         Line::from("q                  Quit application"),
         Line::from("F5                 Refresh current data"),

@@ -302,7 +302,7 @@ fn get_create_help(app: &App) -> Vec<Line> {
     } else {
         help.extend(vec![
             Line::from("↑/↓ or j/k         Navigate version list"),
-            Line::from("Ctrl+N             Edit name / Create instance"),
+            Line::from("Ctrl+N             Edit instance name"),
             Line::from("Ctrl+D             Toggle download assets"),
             Line::from(""),
         ]);
@@ -338,9 +338,9 @@ fn get_create_help(app: &App) -> Vec<Line> {
         Line::from(vec![
             Span::styled("Create Instance Guide:", Style::default().fg(Color::Yellow)),
         ]),
-        Line::from("1. Press Ctrl+N to edit instance name"),
-        Line::from("2. Select Minecraft version (↑/↓)"), 
-        Line::from("3. Toggle asset download (press Ctrl+D)"),
+    Line::from("1. Press Ctrl+N to edit instance name"),
+    Line::from("2. Select Minecraft version (↑/↓)"), 
+    Line::from("3. Toggle asset download (Ctrl+D)"),
         Line::from("   ☑ Enabled: Slower download, with sound/music"),
         Line::from("   ☐ Disabled: Faster download, no sound/music"),
         Line::from("4. Press Enter to create"),
@@ -452,11 +452,9 @@ fn get_global_help() -> Vec<Line<'static>> {
         Line::from(vec![
             Span::styled("═══ GLOBAL CONTROLS ═══", Style::default().fg(Color::White).bold())
         ]),
-        Line::from("←/→ or h/l         Switch between tabs"),
-        Line::from("i                  Go to Instances tab"),
-        Line::from("c                  Go to Create tab"),
-        Line::from("s                  Go to Settings tab"),
-        Line::from("a                  Go to Accounts tab"),
+    Line::from("←/→                Switch between tabs"),
+    Line::from("Tab                Next tab"),
+    Line::from("Shift+Tab          Previous tab"),
         Line::from("?                  Show/hide this help popup"),
         Line::from("q                  Quit application"),
         Line::from("F5                 Refresh current data"),
@@ -480,7 +478,7 @@ fn get_logs_help() -> Vec<Line<'static>> {
         Line::from("↑/↓ or j/k         Scroll by one line"),
         Line::from("PageUp/PageDown    Scroll by one page"),
         Line::from("Home/End or g/G    Jump to top/bottom"),
-        Line::from("Mouse wheel        Scroll logs"),
+        Line::from("Mouse wheel        Scroll"),
         Line::from("c                  Clear logs"),
         Line::from(""),
         Line::from(vec![
