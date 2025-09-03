@@ -65,7 +65,20 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
         f.render_stateful_widget(submenu, chunks[1], &mut mid_state);
     } else {
         // Show contextual submenu entries for certain sections
-        if app.about_selected == 1 {
+        if app.about_selected == 0 {
+            // General: submenu item for Global Game Window Size
+            let items = vec![
+                ListItem::new(vec![
+                    Line::from(Span::styled("  Global Game Window Size", Style::default().fg(Color::White).bold())),
+                    Line::from(Span::raw("    Press Enter to edit as WIDTH,HEIGHT (empty to clear)")),
+                ])
+                .style(if app.settings_focus == SettingsFocus::Middle { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+            ];
+            let list = List::new(items)
+                .block(middle_block)
+                .highlight_symbol("▶ ");
+            f.render_widget(list, chunks[1]);
+        } else if app.about_selected == 1 {
             // Java: show a single entry for Global Java Arguments
             let items = vec![
                 ListItem::new(vec![

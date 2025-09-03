@@ -125,11 +125,11 @@ fn render_instance_info_card(f: &mut Frame, area: Rect, instance: &Instance) {
     let help_text = Paragraph::new(
         Line::from(vec![
             Span::styled("  ← → ", Style::default().fg(Color::Gray)),
-            Span::raw("Switch tabs  "),
+            Span::raw("Switch tabs   "),
             Span::styled("↑ ↓ ", Style::default().fg(Color::Gray)),
-            Span::raw("Navigate  "),
+            Span::raw("Navigate   "),
             Span::styled("Enter ", Style::default().fg(Color::Gray)),
-            Span::raw("Select  "),
+            Span::raw("Select   "),
             Span::styled("Esc ", Style::default().fg(Color::Gray)),
             Span::raw("Back"),
         ]),
@@ -338,25 +338,37 @@ fn render_instance_settings(f: &mut Frame, area: Rect, selected_index: usize, in
 
     let settings_items = vec![
         ListItem::new(vec![
-            Line::from(vec![Span::styled("  ✏ Rename Instance", Style::default().fg(Color::White).bold())]),
-            Line::from(vec![Span::raw("    Change the name of this instance")]),
+            Line::from(vec![
+                Span::styled("  [R] ", Style::default().fg(Color::Green).bold()),
+                Span::styled("Rename Instance", Style::default().fg(Color::White)),
+            ]),
+            Line::from(vec![Span::styled("    Change the name of this instance", Style::default().fg(Color::Gray))]),
         ])
-        .style(if selected_index == 0 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+        .style(if selected_index == 0 { Style::default().bg(Color::DarkGray) } else { Style::default() }),
         ListItem::new(vec![
-            Line::from(vec![Span::styled("  ☕ Java Settings", Style::default().fg(Color::White).bold())]),
-            Line::from(vec![Span::raw("    Edit memory allocation (Xmx)")]),
+            Line::from(vec![
+                Span::styled("  [J] ", Style::default().fg(Color::Blue).bold()),
+                Span::styled("Java Settings", Style::default().fg(Color::White)),
+            ]),
+            Line::from(vec![Span::styled("    Configure JVM and memory", Style::default().fg(Color::Gray))]),
         ])
-        .style(if selected_index == 1 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+        .style(if selected_index == 1 { Style::default().bg(Color::DarkGray) } else { Style::default() }),
         ListItem::new(vec![
-            Line::from(vec![Span::styled("  ⚙ Launch Options", Style::default().fg(Color::White).bold())]),
-            Line::from(vec![Span::raw("    Configure launch arguments")]),
+            Line::from(vec![
+                Span::styled("  [L] ", Style::default().fg(Color::Cyan).bold()),
+                Span::styled("Launch Options", Style::default().fg(Color::White)),
+            ]),
+            Line::from(vec![Span::styled("    Game arguments and JVM flags", Style::default().fg(Color::Gray))]),
         ])
-        .style(if selected_index == 2 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+        .style(if selected_index == 2 { Style::default().bg(Color::DarkGray) } else { Style::default() }),
         ListItem::new(vec![
-            Line::from(vec![Span::styled("  🗑 Delete Instance", Style::default().fg(Color::Red).bold())]),
-            Line::from(vec![Span::raw("    Permanently remove this instance")]),
+            Line::from(vec![
+                Span::styled("  🗑 ", Style::default().fg(Color::Red).bold()),
+                Span::styled("Delete Instance", Style::default().fg(Color::Red).bold()),
+            ]),
+            Line::from(vec![Span::styled("    Permanently remove this instance", Style::default().fg(Color::Gray))]),
         ])
-        .style(if selected_index == 3 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+        .style(if selected_index == 3 { Style::default().bg(Color::DarkGray) } else { Style::default() }),
     ];
 
     let settings_list = List::new(settings_items).block(settings_block).highlight_symbol("  ");

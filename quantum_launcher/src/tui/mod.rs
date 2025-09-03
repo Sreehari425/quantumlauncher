@@ -419,26 +419,21 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                     app.settings_focus = app::SettingsFocus::Middle;
                                     continue;
                                 }
-                                // Settings Java: allow focusing middle pane to show submenu and activate editing
-                                KeyCode::Right if app.current_tab == app::TabId::Settings && app.about_selected == 1 => {
+                                // Settings General/Java: allow focusing middle pane to show submenu and activate editing
+                                KeyCode::Right if app.current_tab == app::TabId::Settings && (app.about_selected == 0 || app.about_selected == 1) => {
                                     app.settings_focus = app::SettingsFocus::Middle;
                                     continue;
                                 }
-                                KeyCode::Left | KeyCode::Char('h') if app.current_tab == app::TabId::Settings && app.about_selected == 1 => {
+                                KeyCode::Left | KeyCode::Char('h') if app.current_tab == app::TabId::Settings && (app.about_selected == 0 || app.about_selected == 1) => {
                                     app.settings_focus = app::SettingsFocus::Left;
                                     continue;
                                 }
-                                KeyCode::Enter if app.current_tab == app::TabId::Settings && app.about_selected == 1 => {
-                                    // When in Java section, pressing Enter opens the global editor regardless of focus for simplicity
-                                    app.open_global_java_args_edit();
-                                    continue;
-                                }
-                                // Settings -> Java: Enter opens global Java args editor
+                                // Settings -> Java: Enter opens global Java args editor (from either pane)
                                 KeyCode::Enter if app.current_tab == app::TabId::Settings && app.about_selected == 1 => {
                                     app.open_global_java_args_edit();
                                     continue;
                                 }
-                                // Settings -> General: Enter opens global window size editor
+                                // Settings -> General: Enter opens global window size editor (from either pane)
                                 KeyCode::Enter if app.current_tab == app::TabId::Settings && app.about_selected == 0 => {
                                     app.open_global_window_size_edit();
                                     continue;
