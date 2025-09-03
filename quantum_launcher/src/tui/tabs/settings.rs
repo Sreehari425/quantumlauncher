@@ -88,9 +88,20 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
 
     // Right content based on selected section
     let right = match app.about_selected {
-        0 => Paragraph::new(vec![Line::from("General settings coming soon!"), Line::from("")])
-            .block(Block::default().borders(Borders::ALL).title(" General "))
-            .wrap(Wrap { trim: true }),
+        0 => {
+            let lines = vec![
+                Line::from(Span::styled("General Settings", Style::default().fg(Color::Cyan).bold())),
+                Line::from(""),
+                Line::from(Span::styled("Global Game Window Size", Style::default().fg(Color::White).bold())),
+                Line::from("Set a default WIDTH,HEIGHT for game window. Instances with no local size will use this."),
+                Line::from("Press Enter to edit as WIDTH,HEIGHT (empty to clear)."),
+                Line::from(""),
+                Line::from("Examples: 854,480  |  1366,768  |  1920,1080"),
+            ];
+            Paragraph::new(lines)
+                .block(Block::default().borders(Borders::ALL).title(" General "))
+                .wrap(Wrap { trim: true })
+        }
         1 => {
             // Global Java settings: allow editing global extra_java_args
             let lines = vec![

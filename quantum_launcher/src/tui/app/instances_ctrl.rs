@@ -148,6 +148,7 @@ impl App {
                                 ArgsEditKind::Game => cfg.game_args = Some(parsed_args),
                                 ArgsEditKind::GlobalJava => {},
                                 ArgsEditKind::WindowSize => {},
+                                ArgsEditKind::GlobalWindowSize => {},
                                 ArgsEditKind::PreLaunchPrefixInstance => {},
                                 ArgsEditKind::PreLaunchPrefixGlobal => {},
                             }
@@ -160,6 +161,7 @@ impl App {
                                             ArgsEditKind::Game => "✅ Saved Game arguments",
                                             ArgsEditKind::GlobalJava => "",
                                             ArgsEditKind::WindowSize => "",
+                                            ArgsEditKind::GlobalWindowSize => "",
                                             ArgsEditKind::PreLaunchPrefixInstance => "",
                                             ArgsEditKind::PreLaunchPrefixGlobal => "",
                                         }.to_string();

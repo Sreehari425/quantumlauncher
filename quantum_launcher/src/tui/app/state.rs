@@ -189,6 +189,7 @@ pub enum ArgsEditKind {
 	Game,
 	GlobalJava,
 	WindowSize,
+	GlobalWindowSize,
 	PreLaunchPrefixInstance,
 	PreLaunchPrefixGlobal,
 }

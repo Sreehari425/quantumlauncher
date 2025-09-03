@@ -193,6 +193,8 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                                 }
                                             }
                                         }
+                                    } else if app.args_edit_kind == app::ArgsEditKind::GlobalWindowSize {
+                                        app.apply_global_window_size_edit();
                                     } else {
                                         app.apply_args_edit();
                                     }
@@ -434,6 +436,11 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                 // Settings -> Java: Enter opens global Java args editor
                                 KeyCode::Enter if app.current_tab == app::TabId::Settings && app.about_selected == 1 => {
                                     app.open_global_java_args_edit();
+                                    continue;
+                                }
+                                // Settings -> General: Enter opens global window size editor
+                                KeyCode::Enter if app.current_tab == app::TabId::Settings && app.about_selected == 0 => {
+                                    app.open_global_window_size_edit();
                                     continue;
                                 }
                                 // F12: force redraw

@@ -60,4 +60,53 @@ impl App {
             Err(e) => { self.status_message = format!("❌ Failed to save global config: {}", e); }
         }
     }
+
+    /// Open popup to edit global window size (WIDTH,HEIGHT) in LauncherConfig.global_settings
+    pub fn open_global_window_size_edit(&mut self) {
+        use crate::tui::app::ArgsEditKind;
+        let cfg = match LauncherConfig::load_s() {
+            Ok(c) => c,
+            Err(e) => { self.status_message = format!("❌ Failed to load global config: {}", e); return; }
+        };
+        let (w, h) = cfg
+            .global_settings
+            .as_ref()
+            .map(|gs| (gs.window_width, gs.window_height))
+            .unwrap_or((None, None));
+        let text = match (w, h) { (Some(w), Some(h)) => format!("{},{}", w, h), _ => String::new() };
+        self.is_editing_args = true;
+        self.args_edit_input = text;
+        self.args_edit_kind = ArgsEditKind::GlobalWindowSize;
+        self.status_message = "Editing global window size (WIDTH,HEIGHT; empty to clear)".to_string();
+    }
+
+    /// Save popup buffer into global window size in LauncherConfig.global_settings
+    pub fn apply_global_window_size_edit(&mut self) {
+        use crate::tui::app::ArgsEditKind;
+        if self.args_edit_kind != ArgsEditKind::GlobalWindowSize { return; }
+        let mut cfg = match LauncherConfig::load_s() {
+            Ok(c) => c,
+            Err(e) => { self.status_message = format!("❌ Failed to load global config: {}", e); return; }
+        };
+        let txt = self.args_edit_input.trim();
+        if txt.is_empty() {
+            if let Some(gs) = cfg.global_settings.as_mut() {
+                gs.window_width = None;
+                gs.window_height = None;
+            }
+        } else {
+            let parts: Vec<&str> = txt.split([',', 'x', 'X']).collect();
+            if parts.len() >= 2 {
+                let w = parts[0].trim().parse::<u32>().ok();
+                let h = parts[1].trim().parse::<u32>().ok();
+                let gs = cfg.global_settings.get_or_insert_with(Default::default);
+                gs.window_width = w;
+                gs.window_height = h;
+            }
+        }
+        match self.save_config_sync(&cfg) {
+            Ok(_) => { self.is_editing_args = false; self.status_message = "✅ Saved global window size".to_string(); }
+            Err(e) => { self.status_message = format!("❌ Failed to save global config: {}", e); }
+        }
+    }
 }
