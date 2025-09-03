@@ -146,12 +146,17 @@ impl App {
                             match self.args_edit_kind {
                                 ArgsEditKind::Java => cfg.java_args = Some(parsed_args),
                                 ArgsEditKind::Game => cfg.game_args = Some(parsed_args),
+                                ArgsEditKind::GlobalJava => {}
                             }
                             match serde_json::to_string_pretty(&cfg) {
                                 Ok(new_s) => match std::fs::write(&path, new_s) {
                                     Ok(_) => {
                                         self.is_editing_args = false;
-                                        self.status_message = match self.args_edit_kind { ArgsEditKind::Java => "✅ Saved Java arguments", ArgsEditKind::Game => "✅ Saved Game arguments" }.to_string();
+                                        self.status_message = match self.args_edit_kind {
+                                            ArgsEditKind::Java => "✅ Saved Java arguments",
+                                            ArgsEditKind::Game => "✅ Saved Game arguments",
+                                            ArgsEditKind::GlobalJava => "",
+                                        }.to_string();
                                     }
                                     Err(e) => { self.status_message = format!("❌ Failed to write config: {}", e); }
                                 },
@@ -251,7 +256,7 @@ impl App {
 }
 
 /// Parse a shell-like string into arguments, supporting quotes and escapes
-fn parse_shell_like_args(input: &str) -> Vec<String> {
+pub fn parse_shell_like_args(input: &str) -> Vec<String> {
     let mut args = Vec::new();
     let mut cur = String::new();
     let mut in_single = false;

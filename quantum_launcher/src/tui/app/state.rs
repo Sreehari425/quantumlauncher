@@ -164,6 +164,8 @@ pub struct App {
 	pub is_editing_args: bool,      // whether args edit popup is active
 	pub args_edit_input: String,    // text buffer for args (space-separated, supports quotes)
 	pub args_edit_kind: ArgsEditKind, // which args are being edited
+	// Current Java args mode (for display and quick changes)
+	pub java_args_mode_current: ql_core::json::JavaArgsMode,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -185,6 +187,7 @@ pub enum InstanceSettingsPage {
 pub enum ArgsEditKind {
 	Java,
 	Game,
+	GlobalJava,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -272,6 +275,7 @@ impl App {
 			is_editing_args: false,
 			args_edit_input: String::new(),
 			args_edit_kind: ArgsEditKind::Java,
+			java_args_mode_current: ql_core::json::JavaArgsMode::Combine,
 		};
         
 		// Load instances and accounts on startup

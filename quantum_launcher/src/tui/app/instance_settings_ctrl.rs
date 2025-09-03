@@ -2,6 +2,9 @@
 
 use crate::tui::app::{App, InstanceSettingsTab, TabId};
 use crate::tui::app::InstanceSettingsPage;
+use ql_core::json::{InstanceConfigJson, JavaArgsMode};
+use ql_core::file_utils;
+use std::path::PathBuf;
 
 impl App {
     /// Navigate to next instance settings tab
@@ -28,65 +31,74 @@ impl App {
 
     /// Select item in instance settings
     pub fn select_instance_settings_item(&mut self) {
-        if let Some(instance_idx) = self.instance_settings_instance {
-            if let Some(instance) = self.instances.get(instance_idx) {
-                let instance_name = instance.name.clone();
-                let instance_running = instance.is_running;
-                match self.instance_settings_tab {
-                    InstanceSettingsTab::Overview => match self.instance_settings_selected {
-                        0 => {
-                            // Play button
-                            if instance_running {
-                                self.status_message = format!("❌ Instance '{}' is already running", instance_name);
-                            } else {
-                                self.launch_instance(&instance_name);
-                                self.current_tab = TabId::Instances; // Return to instances after launching
-                            }
-                        }
-                        1 => {
-                            // Kill button
-                            self.kill_instance(&instance_name);
-                        }
-                        2 => {
-                            // Open Folder button
-                            self.open_instance_folder(&instance_name);
-                        }
-                        _ => {}
-                    },
-                    InstanceSettingsTab::Mod => {
-                        self.status_message = "Mod management feature coming soon".to_string();
-                    }
-                    InstanceSettingsTab::Setting => match self.instance_settings_selected {
-                        0 => {
-                            // Rename Instance -> open inline popup for renaming
-                            if let Some(idx) = self.instance_settings_instance {
-                                self.is_renaming_instance = true;
-                                self.rename_input = self.instances[idx].name.clone();
-                                self.status_message = "Editing instance name. Type new name and press Enter to apply, Esc to cancel.".to_string();
-                            }
-                        }
-                        1 => {
-                            // Java Settings -> go to Java subpage (with placeholders and Memory)
-                            self.instance_settings_page = InstanceSettingsPage::Java;
-                            self.preload_memory_summary();
-                            self.instance_settings_selected = 0; // selection within Java page
-                            self.status_message = "Opened Java settings".to_string();
-                        }
-                        2 => {
-                            // Launch Options
-                            self.instance_settings_page = InstanceSettingsPage::Launch;
-                            self.status_message = "Opened Launch options".to_string();
-                        }
-                        3 => {
-                            // Delete Instance
-                            self.show_delete_confirm = true;
-                        }
-                        _ => {}
-                    },
-                    InstanceSettingsTab::Logs => {
-                        self.status_message = "Instance-specific logs coming soon".to_string();
+        let Some(instance_idx) = self.instance_settings_instance else { return; };
+        let (instance_name, instance_running) = match self.instances.get(instance_idx) {
+            Some(i) => (i.name.clone(), i.is_running),
+            None => return,
+        };
+
+        match self.instance_settings_tab {
+            InstanceSettingsTab::Overview => match self.instance_settings_selected {
+                0 => {
+                    // Play button
+                    if instance_running {
+                        self.status_message = format!("❌ Instance '{}' is already running", instance_name);
+                    } else {
+                        self.launch_instance(&instance_name);
+                        self.current_tab = TabId::Instances; // Return to instances after launching
                     }
                 }
+                1 => {
+                    // Kill button
+                    self.kill_instance(&instance_name);
+                }
+                2 => {
+                    // Open Folder button
+                    self.open_instance_folder(&instance_name);
+                }
+                _ => {}
+            },
+            InstanceSettingsTab::Mod => {
+                self.status_message = "Mod management feature coming soon".to_string();
+            }
+            InstanceSettingsTab::Setting => match self.instance_settings_selected {
+                0 => {
+                    // Rename Instance -> open inline popup for renaming
+                    self.is_renaming_instance = true;
+                    self.rename_input = instance_name.clone();
+                    self.status_message = "Editing instance name. Type new name and press Enter to apply, Esc to cancel.".to_string();
+                }
+                1 => {
+                    // Java Settings -> go to Java subpage (with placeholders and Memory)
+                    self.instance_settings_page = InstanceSettingsPage::Java;
+                    self.preload_memory_summary();
+                    self.instance_settings_selected = 0; // selection within Java page
+
+                    // Load current JavaArgsMode from config for display
+                    if let Ok(dir) = file_utils::get_launcher_dir() {
+                        let path = dir.join("instances").join(&instance_name).join("config.json");
+                        if let Ok(s) = std::fs::read_to_string(&path) {
+                            if let Ok(cfg) = serde_json::from_str::<InstanceConfigJson>(&s) {
+                                self.java_args_mode_current = cfg.java_args_mode.unwrap_or(JavaArgsMode::Combine);
+                            }
+                        }
+                    }
+
+                    self.status_message = "Opened Java settings".to_string();
+                }
+                2 => {
+                    // Launch Options
+                    self.instance_settings_page = InstanceSettingsPage::Launch;
+                    self.status_message = "Opened Launch options".to_string();
+                }
+                3 => {
+                    // Delete Instance
+                    self.show_delete_confirm = true;
+                }
+                _ => {}
+            },
+            InstanceSettingsTab::Logs => {
+                self.status_message = "Instance-specific logs coming soon".to_string();
             }
         }
     }
@@ -96,7 +108,13 @@ impl App {
         let max_items = match self.instance_settings_tab {
             InstanceSettingsTab::Overview => 3, // Play, Kill, and Open Folder buttons
             InstanceSettingsTab::Mod => 1,
-            InstanceSettingsTab::Setting => match self.instance_settings_page { InstanceSettingsPage::List => 4, InstanceSettingsPage::Java => 6, InstanceSettingsPage::Launch => 5 },
+            InstanceSettingsTab::Setting => match self.instance_settings_page {
+                InstanceSettingsPage::List => 4,
+                // Java page items: 0..=5 (6 items total)
+                InstanceSettingsPage::Java => 6,
+                // Launch page items: 0..=4 (5 items total)
+                InstanceSettingsPage::Launch => 5,
+            },
             InstanceSettingsTab::Logs => 1,     // Logs message
         };
 
@@ -110,7 +128,44 @@ impl App {
     pub fn select_in_java_page(&mut self) {
         match self.instance_settings_selected {
             0 => { self.status_message = "(placeholder) Custom Java executable".to_string(); }
-            1 => { self.status_message = "(placeholder) Java arguments mode".to_string(); }
+            1 => {
+                // Cycle JavaArgsMode and persist to config
+                let Some(idx) = self.instance_settings_instance else { return; };
+                let Some(inst) = self.instances.get(idx) else { return; };
+                let instance_name = inst.name.clone();
+
+                // Compute next mode
+                let current = self.java_args_mode_current;
+                let all = JavaArgsMode::ALL;
+                let pos = all.iter().position(|m| m == &current).unwrap_or(0);
+                let next = all[(pos + 1) % all.len()];
+
+                match file_utils::get_launcher_dir() {
+                    Ok(dir) => {
+                        let path = dir.join("instances").join(&instance_name).join("config.json");
+                        match std::fs::read_to_string(&path) {
+                            Ok(s) => match serde_json::from_str::<InstanceConfigJson>(&s) {
+                                Ok(mut cfg) => {
+                                    cfg.java_args_mode = Some(next);
+                                    match serde_json::to_string_pretty(&cfg) {
+                                        Ok(new_s) => match std::fs::write(&path, new_s) {
+                                            Ok(_) => {
+                                                self.java_args_mode_current = next;
+                                                self.status_message = format!("✅ Java arguments mode: {}", next);
+                                            }
+                                            Err(e) => { self.status_message = format!("❌ Failed to write config: {}", e); }
+                                        },
+                                        Err(e) => { self.status_message = format!("❌ Failed to serialize config: {}", e); }
+                                    }
+                                }
+                                Err(e) => { self.status_message = format!("❌ Failed to parse config: {}", e); }
+                            },
+                            Err(e) => { self.status_message = format!("❌ Failed to read config: {}", e); }
+                        }
+                    }
+                    Err(e) => { self.status_message = format!("❌ Failed to get launcher directory: {}", e); }
+                }
+            }
             2 => { self.open_java_args_edit(); }
             3 => { self.status_message = "(placeholder) Pre-launch prefix mode".to_string(); }
             4 => { self.status_message = "(placeholder) Pre-launch prefix commands (global)".to_string(); }
@@ -141,8 +196,6 @@ impl App {
 
     fn open_args_edit(&mut self, java: bool) {
         use crate::tui::app::ArgsEditKind;
-        use ql_core::{file_utils, json::InstanceConfigJson};
-        use std::path::PathBuf;
         let Some(idx) = self.instance_settings_instance else { return; };
         let Some(inst) = self.instances.get(idx) else { return; };
         let instance_name = inst.name.clone();

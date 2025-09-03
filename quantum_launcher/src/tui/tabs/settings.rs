@@ -64,10 +64,26 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
             .highlight_symbol("▶ ");
         f.render_stateful_widget(submenu, chunks[1], &mut mid_state);
     } else {
-        let para = Paragraph::new("Select an option on the left. Licenses will appear here.")
-            .block(middle_block)
-            .wrap(Wrap { trim: true });
-        f.render_widget(para, chunks[1]);
+        // Show contextual submenu entries for certain sections
+        if app.about_selected == 1 {
+            // Java: show a single entry for Global Java Arguments
+            let items = vec![
+                ListItem::new(vec![
+                    Line::from(Span::styled("  Global Java arguments", Style::default().fg(Color::White).bold())),
+                    Line::from(Span::raw("    Press Enter to edit as text (comma-separated)")),
+                ])
+                .style(if app.settings_focus == SettingsFocus::Middle { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+            ];
+            let list = List::new(items)
+                .block(middle_block)
+                .highlight_symbol("▶ ");
+            f.render_widget(list, chunks[1]);
+        } else {
+            let para = Paragraph::new("Select an option on the left. Licenses will appear here.")
+                .block(middle_block)
+                .wrap(Wrap { trim: true });
+            f.render_widget(para, chunks[1]);
+        }
     }
 
     // Right content based on selected section
@@ -75,9 +91,21 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
         0 => Paragraph::new(vec![Line::from("General settings coming soon!"), Line::from("")])
             .block(Block::default().borders(Borders::ALL).title(" General "))
             .wrap(Wrap { trim: true }),
-        1 => Paragraph::new(vec![Line::from("Java settings coming soon!"), Line::from("")])
-            .block(Block::default().borders(Borders::ALL).title(" Java "))
-            .wrap(Wrap { trim: true }),
+        1 => {
+            // Global Java settings: allow editing global extra_java_args
+            let lines = vec![
+                Line::from(Span::styled("Global Java Settings", Style::default().fg(Color::Cyan).bold())),
+                Line::from(""),
+                Line::from("Edit global Java arguments used by all instances (combined depending on instance mode)."),
+                Line::from("Press Enter to edit as comma-separated list. Quotes preserve spaces/commas."),
+                Line::from(""),
+                Line::from(Span::styled("Tip:", Style::default().fg(Color::Yellow))),
+                Line::from(" - Mode per-instance controls how these global args interact (Combine/Disable/Fallback)."),
+            ];
+            Paragraph::new(lines)
+                .block(Block::default().borders(Borders::ALL).title(" Java "))
+                .wrap(Wrap { trim: true })
+        }
         2 => Paragraph::new(vec![Line::from("UI / Theme settings coming soon!"), Line::from("")])
             .block(Block::default().borders(Borders::ALL).title(" UI / Theme "))
             .wrap(Wrap { trim: true }),

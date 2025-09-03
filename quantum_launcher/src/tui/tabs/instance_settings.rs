@@ -381,7 +381,8 @@ fn render_instance_java_settings(f: &mut Frame, area: Rect, app: &App, instance:
         // 1: Java args interaction mode
         ListItem::new(vec![
             Line::from(Span::styled("  Interaction with global Java arguments (mode)", Style::default().fg(Color::White).bold())),
-            Line::from(Span::raw("    (placeholder)")),
+            Line::from(Span::raw(format!("    {}", app.java_args_mode_current))),
+            Line::from(Span::raw(format!("    {}", app.java_args_mode_current.get_description()))),
         ])
             .style(if app.instance_settings_selected == 1 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
 

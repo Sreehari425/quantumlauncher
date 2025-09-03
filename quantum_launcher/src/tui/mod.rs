@@ -157,7 +157,13 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                         if app.is_editing_args {
                             match key.code {
                                 KeyCode::Esc => { app.cancel_args_edit(); }
-                                KeyCode::Enter => { app.apply_args_edit(); }
+                                KeyCode::Enter => {
+                                    if app.args_edit_kind == app::ArgsEditKind::GlobalJava {
+                                        app.apply_global_java_args_edit();
+                                    } else {
+                                        app.apply_args_edit();
+                                    }
+                                }
                                 KeyCode::Backspace => { app.args_edit_input.pop(); }
                                 KeyCode::Char(c) => { app.args_edit_input.push(c); }
                                 _ => {}
@@ -376,6 +382,25 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                 }
                                 KeyCode::Enter if app.current_tab == app::TabId::Settings && app.about_selected == app::App::licenses_menu_index() => {
                                     app.settings_focus = app::SettingsFocus::Middle;
+                                    continue;
+                                }
+                                // Settings Java: allow focusing middle pane to show submenu and activate editing
+                                KeyCode::Right if app.current_tab == app::TabId::Settings && app.about_selected == 1 => {
+                                    app.settings_focus = app::SettingsFocus::Middle;
+                                    continue;
+                                }
+                                KeyCode::Left | KeyCode::Char('h') if app.current_tab == app::TabId::Settings && app.about_selected == 1 => {
+                                    app.settings_focus = app::SettingsFocus::Left;
+                                    continue;
+                                }
+                                KeyCode::Enter if app.current_tab == app::TabId::Settings && app.about_selected == 1 => {
+                                    // When in Java section, pressing Enter opens the global editor regardless of focus for simplicity
+                                    app.open_global_java_args_edit();
+                                    continue;
+                                }
+                                // Settings -> Java: Enter opens global Java args editor
+                                KeyCode::Enter if app.current_tab == app::TabId::Settings && app.about_selected == 1 => {
+                                    app.open_global_java_args_edit();
                                     continue;
                                 }
                                 // F12: force redraw

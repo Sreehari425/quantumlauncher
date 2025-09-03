@@ -271,7 +271,11 @@ fn render_args_edit_popup(f: &mut Frame, app: &App) {
     let area = centered_rect(70, 45, f.area());
     f.render_widget(Clear, area);
 
-    let title = match app.args_edit_kind { crate::tui::app::ArgsEditKind::Java => " Edit Java Arguments ", crate::tui::app::ArgsEditKind::Game => " Edit Game Arguments " };
+    let title = match app.args_edit_kind {
+        crate::tui::app::ArgsEditKind::Java => " Edit Java Arguments ",
+        crate::tui::app::ArgsEditKind::Game => " Edit Game Arguments ",
+        crate::tui::app::ArgsEditKind::GlobalJava => " Edit Global Java Arguments ",
+    };
     let block = Block::default()
         .title(title)
         .borders(Borders::ALL)
