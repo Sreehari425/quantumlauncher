@@ -2,8 +2,131 @@
 
 use std::collections::HashSet;
 use crate::tui::app::{App, Instance};
+use ql_core::json::InstanceConfigJson;
+use ql_core::file_utils;
+use std::path::PathBuf;
 
 impl App {
+    /// Preload current memory value from config without opening popup
+    pub fn preload_memory_summary(&mut self) {
+        let Some(idx) = self.instance_settings_instance else { return; };
+        let instance_name = if let Some(i) = self.instances.get(idx) { i.name.clone() } else { return };
+        let (mb, _err) = match file_utils::get_launcher_dir() {
+            Ok(dir) => {
+                let mut p = PathBuf::from(dir);
+                p.push("instances");
+                p.push(&instance_name);
+                match std::fs::read_to_string(p.join("config.json")) {
+                    Ok(s) => match serde_json::from_str::<InstanceConfigJson>(&s) {
+                        Ok(cfg) => (cfg.ram_in_mb, None),
+                        Err(e) => (2048, Some(format!("parse error: {}", e))),
+                    },
+                    Err(e) => (2048, Some(format!("read error: {}", e))),
+                }
+            }
+            Err(e) => (2048, Some(format!("dir error: {}", e))),
+        };
+        self.memory_edit_mb = mb;
+        self.memory_edit_input = mb.to_string();
+    }
+    /// Open the memory edit popup for the current instance in InstanceSettings
+    pub fn open_memory_edit(&mut self) {
+        let Some(idx) = self.instance_settings_instance else {
+            self.status_message = "No instance selected".to_string();
+            return;
+        };
+        let instance_name = self.instances.get(idx).map(|i| i.name.clone());
+        if instance_name.is_none() { return; }
+        let instance_name = instance_name.unwrap();
+        // Preload from disk
+        let (last_mb, err) = match file_utils::get_launcher_dir() {
+            Ok(dir) => {
+                let mut p = PathBuf::from(dir);
+                p.push("instances");
+                p.push(&instance_name);
+                match std::fs::read_to_string(p.join("config.json")) {
+                    Ok(s) => match serde_json::from_str::<InstanceConfigJson>(&s) {
+                        Ok(cfg) => (cfg.ram_in_mb, None),
+                        Err(e) => (2048, Some(format!("parse error: {}", e))),
+                    },
+                    Err(e) => (2048, Some(format!("read error: {}", e))),
+                }
+            }
+            Err(e) => (2048, Some(format!("dir error: {}", e))),
+        };
+        self.memory_edit_mb = last_mb;
+        self.memory_edit_input = last_mb.to_string();
+        self.is_editing_memory = true;
+        self.status_message = match err {
+            Some(e) => format!("Editing memory (loaded default due to {}): {} MB", e, last_mb),
+            None => format!("Editing memory: {} MB", last_mb),
+        };
+    }
+
+    /// Apply memory edit: validate, save to config.json, and close popup
+    pub fn apply_memory_edit(&mut self) {
+        if !self.is_editing_memory { return; }
+        let Some(idx) = self.instance_settings_instance else { return; };
+        let Some(inst) = self.instances.get(idx) else { return; };
+        let instance_name = inst.name.clone();
+
+        // Parse input; allow suffixes like G/GB
+        let txt = self.memory_edit_input.trim();
+        let parsed_mb = if txt.is_empty() {
+            None
+        } else {
+            let lower = txt.to_ascii_lowercase();
+            if let Some(stripped) = lower.strip_suffix("gb").or_else(|| lower.strip_suffix('g')) {
+                stripped.trim().parse::<f64>().ok().map(|g| (g * 1024.0).round() as usize)
+            } else if let Some(stripped) = lower.strip_suffix("mb").or_else(|| lower.strip_suffix('m')) {
+                stripped.trim().parse::<usize>().ok()
+            } else {
+                lower.parse::<usize>().ok()
+            }
+        };
+
+        let Some(mb) = parsed_mb else {
+            self.status_message = "❌ Invalid memory value. Examples: 2048, 2G, 4GB".to_string();
+            return;
+        };
+
+        // Clamp sensible range: 256 MB .. 16384 MB
+        let mb = mb.clamp(256, 16384);
+
+        // Load, update, save config
+        match file_utils::get_launcher_dir() {
+            Ok(dir) => {
+                let path = dir.join("instances").join(&instance_name).join("config.json");
+                match std::fs::read_to_string(&path) {
+                    Ok(s) => match serde_json::from_str::<InstanceConfigJson>(&s) {
+                        Ok(mut cfg) => {
+                            cfg.ram_in_mb = mb;
+                            match serde_json::to_string_pretty(&cfg) {
+                                Ok(new_s) => match std::fs::write(&path, new_s) {
+                                    Ok(_) => {
+                                        self.is_editing_memory = false;
+                                        self.memory_edit_mb = mb;
+                                        self.status_message = format!("✅ Saved memory: {} MB", mb);
+                                    }
+                                    Err(e) => { self.status_message = format!("❌ Failed to write config: {}", e); }
+                                },
+                                Err(e) => { self.status_message = format!("❌ Failed to serialize config: {}", e); }
+                            }
+                        }
+                        Err(e) => { self.status_message = format!("❌ Failed to parse config: {}", e); }
+                    },
+                    Err(e) => { self.status_message = format!("❌ Failed to read config: {}", e); }
+                }
+            }
+            Err(e) => { self.status_message = format!("❌ Failed to get launcher directory: {}", e); }
+        }
+    }
+
+    /// Cancel memory edit
+    pub fn cancel_memory_edit(&mut self) {
+        self.is_editing_memory = false;
+        self.status_message = "Cancelled memory edit".to_string();
+    }
     /// Start async refresh of instances
     pub fn start_refresh(&mut self) {
         if let Some(sender) = &self.auth_sender {

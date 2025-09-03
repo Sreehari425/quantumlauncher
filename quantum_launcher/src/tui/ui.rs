@@ -49,6 +49,11 @@ pub fn render(f: &mut Frame, app: &mut App) {
     if app.is_renaming_instance {
         render_rename_popup(f, app);
     }
+
+    // Memory allocation editor popup
+    if app.is_editing_memory {
+        render_memory_edit_popup(f, app);
+    }
 }
 
 /// Render the header with tabs
@@ -224,6 +229,34 @@ fn render_rename_popup(f: &mut Frame, app: &App) {
         .block(block)
         .alignment(Alignment::Left)
         .wrap(Wrap { trim: true });
+
+    f.render_widget(para, area);
+}
+
+/// Render memory allocation popup
+fn render_memory_edit_popup(f: &mut Frame, app: &App) {
+    let area = centered_rect(60, 30, f.area());
+    f.render_widget(Clear, area);
+
+    let block = Block::default()
+        .title(" Edit Memory Allocation ")
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Magenta).bold());
+
+    let mut lines = Vec::new();
+    lines.push(Line::from(""));
+    lines.push(Line::from(vec![Span::raw("Enter RAM in MB or GB (e.g., "), Span::styled("2048", Style::default().fg(Color::Yellow)), Span::raw(", "), Span::styled("2G", Style::default().fg(Color::Yellow)), Span::raw(", "), Span::styled("4GB", Style::default().fg(Color::Yellow)), Span::raw(")") ]));
+    lines.push(Line::from("Recommended: 2-3 GB for vanilla; 4-8 GB for heavy modpacks"));
+    lines.push(Line::from(""));
+    lines.push(Line::from(vec![Span::styled("Current: ", Style::default().fg(Color::Green)), Span::raw(format!("{} MB", app.memory_edit_mb))]));
+    lines.push(Line::from(vec![Span::styled("New value: ", Style::default().fg(Color::Green)), Span::raw(app.memory_edit_input.clone())]));
+    lines.push(Line::from(""));
+    lines.push(Line::from("Type to edit, Enter to save, Esc to cancel, Backspace to delete"));
+
+    let para = Paragraph::new(lines)
+        .block(block)
+        .wrap(Wrap { trim: true })
+        .alignment(Alignment::Left);
 
     f.render_widget(para, area);
 }

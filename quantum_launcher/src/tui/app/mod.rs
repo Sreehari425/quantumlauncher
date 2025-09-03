@@ -20,6 +20,7 @@ pub use state::{
     AppResult,
     Instance,
     InstanceSettingsTab,
+    InstanceSettingsPage,
     SettingsFocus,
     TabId,
     VersionCategory,

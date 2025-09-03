@@ -142,6 +142,17 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                             }
                             continue;
                         }
+                        // Memory edit popup handling
+                        if app.is_editing_memory {
+                            match key.code {
+                                KeyCode::Esc => { app.cancel_memory_edit(); }
+                                KeyCode::Enter => { app.apply_memory_edit(); }
+                                KeyCode::Backspace => { app.memory_edit_input.pop(); }
+                                KeyCode::Char(c) => { app.memory_edit_input.push(c); }
+                                _ => {}
+                            }
+                            continue;
+                        }
                         // Handle delete confirmation popup
                         if app.show_delete_confirm {
                             match key.code {
@@ -288,8 +299,15 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                     app.start_refresh();
                                     continue;
                                 }
-                                // Esc in instance settings returns to Instances
+                                // Esc in instance settings: back from subpage or to Instances
                                 KeyCode::Esc if app.current_tab == app::TabId::InstanceSettings => {
+                                    if app.instance_settings_tab == app::InstanceSettingsTab::Setting {
+                                        if app.instance_settings_page != app::InstanceSettingsPage::List {
+                                            app.instance_settings_page = app::InstanceSettingsPage::List;
+                                            app.status_message = "Back to Settings list".to_string();
+                                            continue;
+                                        }
+                                    }
                                     app.current_tab = app::TabId::Instances;
                                     app.status_message = "Returned to instances list".to_string();
                                     continue;
@@ -312,6 +330,10 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                     continue;
                                 }
                                 KeyCode::Enter if app.current_tab == app::TabId::InstanceSettings => {
+                                    if app.instance_settings_tab == app::InstanceSettingsTab::Setting && app.instance_settings_page == app::InstanceSettingsPage::Java {
+                                        app.select_in_java_page();
+                                        continue;
+                                    }
                                     app.select_instance_settings_item();
                                     continue;
                                 }

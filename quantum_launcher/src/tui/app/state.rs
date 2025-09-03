@@ -137,6 +137,7 @@ pub struct App {
 	pub instance_settings_instance: Option<usize>, // Index of the instance being viewed in settings
 	pub instance_settings_tab: InstanceSettingsTab, // Current tab in instance settings
 	pub instance_settings_selected: usize, // Selected item in instance settings
+	pub instance_settings_page: InstanceSettingsPage, // Which subpage inside Settings tab
 	// Process tracking for kill functionality
 	pub client_processes: HashMap<String, ClientProcess>, // Track running instances
 	pub show_delete_confirm: bool, // Show confirmation popup for instance deletion
@@ -155,6 +156,10 @@ pub struct App {
 	// Rename instance popup state
 	pub is_renaming_instance: bool, // whether rename popup is active
 	pub rename_input: String,       // buffer for new name while typing
+	// Memory allocation edit popup state
+	pub is_editing_memory: bool,    // whether memory edit popup is active
+	pub memory_edit_mb: usize,      // working value for RAM in MB
+	pub memory_edit_input: String,  // text buffer for manual entry
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -163,6 +168,13 @@ pub enum InstanceSettingsTab {
 	Mod,
 	Setting,
 	Logs,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum InstanceSettingsPage {
+	List,
+	Java,
+	Launch,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -225,7 +237,8 @@ impl App {
 			// Initialize instance settings fields
 			instance_settings_instance: None,
 			instance_settings_tab: InstanceSettingsTab::Overview,
-			instance_settings_selected: 0,
+		instance_settings_selected: 0,
+		instance_settings_page: InstanceSettingsPage::List,
 			// Initialize client process tracking
 			client_processes: HashMap::new(),
 			show_delete_confirm: false,
@@ -241,6 +254,10 @@ impl App {
 			// Rename popup
 			is_renaming_instance: false,
 			rename_input: String::new(),
+			// Memory popup
+			is_editing_memory: false,
+			memory_edit_mb: 2048,
+			memory_edit_input: String::new(),
 		};
         
 		// Load instances and accounts on startup

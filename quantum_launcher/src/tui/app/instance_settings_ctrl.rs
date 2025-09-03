@@ -1,6 +1,7 @@
 // Instance Settings controls and actions (navigation, play/kill/open/delete)
 
 use crate::tui::app::{App, InstanceSettingsTab, TabId};
+use crate::tui::app::InstanceSettingsPage;
 
 impl App {
     /// Navigate to next instance settings tab
@@ -65,12 +66,16 @@ impl App {
                             }
                         }
                         1 => {
-                            // Java Settings
-                            self.status_message = "Java configuration feature coming soon".to_string();
+                            // Java Settings -> go to Java subpage (with placeholders and Memory)
+                            self.instance_settings_page = InstanceSettingsPage::Java;
+                            self.preload_memory_summary();
+                            self.instance_settings_selected = 0; // selection within Java page
+                            self.status_message = "Opened Java settings".to_string();
                         }
                         2 => {
                             // Launch Options
-                            self.status_message = "Launch options configuration coming soon".to_string();
+                            self.instance_settings_page = InstanceSettingsPage::Launch;
+                            self.status_message = "Opened Launch options".to_string();
                         }
                         3 => {
                             // Delete Instance
@@ -90,14 +95,30 @@ impl App {
     pub fn navigate_instance_settings(&mut self, direction: i32) {
         let max_items = match self.instance_settings_tab {
             InstanceSettingsTab::Overview => 3, // Play, Kill, and Open Folder buttons
-        InstanceSettingsTab::Mod => 1,
-            InstanceSettingsTab::Setting => 4,  // Rename, Java Settings, Launch Options, Delete
+            InstanceSettingsTab::Mod => 1,
+            InstanceSettingsTab::Setting => match self.instance_settings_page { InstanceSettingsPage::List => 4, InstanceSettingsPage::Java => 7, InstanceSettingsPage::Launch => 1 },
             InstanceSettingsTab::Logs => 1,     // Logs message
         };
 
         if max_items > 1 {
             self.instance_settings_selected =
                 (self.instance_settings_selected as i32 + direction).rem_euclid(max_items) as usize;
+        }
+    }
+
+    /// Handle Enter inside Java subpage list
+    pub fn select_in_java_page(&mut self) {
+        match self.instance_settings_selected {
+            0 => { self.status_message = "(placeholder) Custom Java executable".to_string(); }
+            1 => { self.status_message = "(placeholder) Java arguments mode".to_string(); }
+            2 => { self.status_message = "(placeholder) Java arguments list".to_string(); }
+            3 => { self.status_message = "(placeholder) Game arguments list".to_string(); }
+            4 => { self.status_message = "(placeholder) Pre-launch prefix mode".to_string(); }
+            5 => { self.status_message = "(placeholder) Pre-launch prefix commands (global)".to_string(); }
+            6 => { // Memory
+                self.open_memory_edit();
+            }
+            _ => {}
         }
     }
 

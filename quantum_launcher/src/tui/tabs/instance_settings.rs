@@ -8,7 +8,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::tui::app::{App, InstanceSettingsTab, Instance};
+use crate::tui::app::{App, InstanceSettingsTab, Instance, InstanceSettingsPage};
 use crate::tui::tabs::logs::render_instance_logs;
 
 pub fn render_instance_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
@@ -51,7 +51,13 @@ pub fn render_instance_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
             match app.instance_settings_tab {
                 InstanceSettingsTab::Overview => render_instance_overview(f, chunks[2], app.instance_settings_selected, instance),
                 InstanceSettingsTab::Mod => render_instance_mods(f, chunks[2], &instance.name),
-                InstanceSettingsTab::Setting => render_instance_settings(f, chunks[2], app.instance_settings_selected, instance),
+                InstanceSettingsTab::Setting => {
+                    match app.instance_settings_page {
+                        InstanceSettingsPage::List => render_instance_settings(f, chunks[2], app.instance_settings_selected, instance),
+                        InstanceSettingsPage::Java => render_instance_java_settings(f, chunks[2], app, instance),
+                        InstanceSettingsPage::Launch => render_instance_launch_settings(f, chunks[2], app, instance),
+                    }
+                }
                 InstanceSettingsTab::Logs => {
                     let instance_name = instance.name.clone();
                     render_instance_logs(f, chunks[2], app, &instance_name)
@@ -338,7 +344,7 @@ fn render_instance_settings(f: &mut Frame, area: Rect, selected_index: usize, in
         .style(if selected_index == 0 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
         ListItem::new(vec![
             Line::from(vec![Span::styled("  ☕ Java Settings", Style::default().fg(Color::White).bold())]),
-            Line::from(vec![Span::raw("    Configure Java options")]),
+            Line::from(vec![Span::raw("    Edit memory allocation (Xmx)")]),
         ])
         .style(if selected_index == 1 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
         ListItem::new(vec![
@@ -355,4 +361,86 @@ fn render_instance_settings(f: &mut Frame, area: Rect, selected_index: usize, in
 
     let settings_list = List::new(settings_items).block(settings_block).highlight_symbol("  ");
     f.render_widget(settings_list, area);
+}
+
+fn render_instance_java_settings(f: &mut Frame, area: Rect, app: &App, instance: &Instance) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(format!(" Java Settings — {} ", instance.name))
+        .title_style(Style::default().fg(Color::White).bold())
+        .border_style(Style::default().fg(Color::Blue));
+
+    let items = vec![
+        // 0: Java executable override
+        ListItem::new(vec![
+            Line::from(Span::styled("  Custom Java executable (full path)", Style::default().fg(Color::White).bold())),
+            Line::from(Span::raw("    (placeholder)")),
+        ])
+            .style(if app.instance_settings_selected == 0 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+
+        // 1: Java args interaction mode
+        ListItem::new(vec![
+            Line::from(Span::styled("  Interaction with global Java arguments (mode)", Style::default().fg(Color::White).bold())),
+            Line::from(Span::raw("    (placeholder)")),
+        ])
+            .style(if app.instance_settings_selected == 1 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+
+        // 2: Java arguments list
+        ListItem::new(vec![
+            Line::from(Span::styled("  Java arguments", Style::default().fg(Color::White).bold())),
+            Line::from(Span::raw("    (placeholder)")),
+        ])
+            .style(if app.instance_settings_selected == 2 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+
+        // 3: Game arguments list
+        ListItem::new(vec![
+            Line::from(Span::styled("  Game arguments", Style::default().fg(Color::White).bold())),
+            Line::from(Span::raw("    (placeholder)")),
+        ])
+            .style(if app.instance_settings_selected == 3 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+
+        // 4: Pre-launch prefix mode
+        ListItem::new(vec![
+            Line::from(Span::styled("  Pre-launch prefix mode", Style::default().fg(Color::White).bold())),
+            Line::from(Span::raw("    (placeholder)")),
+        ])
+            .style(if app.instance_settings_selected == 4 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+
+        // 5: Pre-launch prefix commands (global)
+        ListItem::new(vec![
+            Line::from(Span::styled("  Pre-launch prefix commands (global)", Style::default().fg(Color::White).bold())),
+            Line::from(Span::raw("    (placeholder)")),
+        ])
+            .style(if app.instance_settings_selected == 5 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+
+        // 6: Memory allocation
+        ListItem::new(vec![
+            Line::from(Span::styled("  Memory allocation (Xmx)", Style::default().fg(Color::Green).bold())),
+            Line::from(Span::raw(format!("    Current: {} MB", app.memory_edit_mb)))
+        ])
+            .style(if app.instance_settings_selected == 6 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+    ];
+
+    let list = List::new(items)
+        .block(block)
+        .highlight_symbol("▶ ");
+    f.render_widget(list, area);
+}
+
+fn render_instance_launch_settings(f: &mut Frame, area: Rect, _app: &App, instance: &Instance) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(format!(" Launch Options — {} ", instance.name))
+        .title_style(Style::default().fg(Color::White).bold())
+        .border_style(Style::default().fg(Color::Blue));
+
+    let para = Paragraph::new(vec![
+        Line::from(""),
+        Line::from("Configure launch arguments (coming soon)"),
+        Line::from(""),
+        Line::from("Esc to go back"),
+    ])
+    .block(block)
+    .wrap(Wrap { trim: true });
+    f.render_widget(para, area);
 }
