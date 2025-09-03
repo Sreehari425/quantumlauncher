@@ -44,6 +44,11 @@ pub fn render(f: &mut Frame, app: &mut App) {
     if app.show_delete_confirm {
         render_delete_confirm_popup(f, app);
     }
+
+    // Rename popup overlay
+    if app.is_renaming_instance {
+        render_rename_popup(f, app);
+    }
 }
 
 /// Render the header with tabs
@@ -193,6 +198,34 @@ fn render_delete_confirm_popup(f: &mut Frame, _app: &App) {
 
     f.render_widget(Clear, popup_area);
     f.render_widget(para, popup_area);
+}
+
+/// Render rename instance popup
+fn render_rename_popup(f: &mut Frame, app: &App) {
+    let area = centered_rect(60, 30, f.area());
+    f.render_widget(Clear, area);
+
+    let title = if app.is_renaming_instance { " Rename Instance " } else { " Rename Instance " };
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Cyan).bold());
+
+    // Compose simple instructions and current buffer text
+    let mut lines = Vec::new();
+    lines.push(Line::from(""));
+    lines.push(Line::from(vec![Span::raw("Type new name and press "), Span::styled("Enter", Style::default().fg(Color::Yellow).bold()), Span::raw(" to rename instance")])) ;
+    lines.push(Line::from("Esc to cancel. Invalid characters will be removed."));
+    lines.push(Line::from(""));
+    lines.push(Line::from(vec![Span::styled("New name: ", Style::default().fg(Color::Green)), Span::raw(app.rename_input.clone())]));
+    lines.push(Line::from(""));
+
+    let para = Paragraph::new(lines)
+        .block(block)
+        .alignment(Alignment::Left)
+        .wrap(Wrap { trim: true });
+
+    f.render_widget(para, area);
 }
 
 /// Render help popup with contextual controls based on current tab and state
@@ -513,5 +546,10 @@ fn get_instance_settings_help(_app: &App) -> Vec<Line<'static>> {
         Line::from(""),
         Line::from("Other tabs show planned features."),
         Line::from(""),
+    Line::from("Rename popup:"),
+    Line::from("  Type/Backspace     Edit name"),
+    Line::from("  Enter              Apply"),
+    Line::from("  Esc                Cancel"),
+    Line::from(""),
     ]
 }

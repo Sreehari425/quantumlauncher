@@ -152,6 +152,9 @@ pub struct App {
 	pub instance_logs_offset: usize,        // number of lines scrolled up from bottom (0 = bottom)
 	pub instance_logs_visible_lines: usize, // lines that fit in viewport (set by renderer)
 	pub instance_logs_auto_follow: bool,    // follow new lines when at bottom
+	// Rename instance popup state
+	pub is_renaming_instance: bool, // whether rename popup is active
+	pub rename_input: String,       // buffer for new name while typing
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -235,6 +238,9 @@ impl App {
 			instance_logs_offset: 0,
 			instance_logs_visible_lines: 20,
 			instance_logs_auto_follow: true,
+			// Rename popup
+			is_renaming_instance: false,
+			rename_input: String::new(),
 		};
         
 		// Load instances and accounts on startup

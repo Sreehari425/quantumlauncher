@@ -131,6 +131,17 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
             if has_event {
                 match event::read()? {
                     Event::Key(key) if key.kind == KeyEventKind::Press => {
+                        // First, if rename popup is active, capture keys specifically
+                        if app.is_renaming_instance {
+                            match key.code {
+                                KeyCode::Esc => { app.cancel_rename_instance(); }
+                                KeyCode::Enter => { app.apply_rename_instance(); }
+                                KeyCode::Backspace => { app.rename_input.pop(); }
+                                KeyCode::Char(c) => { app.rename_input.push(c); }
+                                _ => {}
+                            }
+                            continue;
+                        }
                         // Handle delete confirmation popup
                         if app.show_delete_confirm {
                             match key.code {

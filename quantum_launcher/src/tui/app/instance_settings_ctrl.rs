@@ -57,8 +57,12 @@ impl App {
                     }
                     InstanceSettingsTab::Setting => match self.instance_settings_selected {
                         0 => {
-                            // Rename Instance
-                            self.status_message = "Rename instance feature coming soon".to_string();
+                            // Rename Instance -> open inline popup for renaming
+                            if let Some(idx) = self.instance_settings_instance {
+                                self.is_renaming_instance = true;
+                                self.rename_input = self.instances[idx].name.clone();
+                                self.status_message = "Editing instance name. Type new name and press Enter to apply, Esc to cancel.".to_string();
+                            }
                         }
                         1 => {
                             // Java Settings
@@ -95,6 +99,71 @@ impl App {
             self.instance_settings_selected =
                 (self.instance_settings_selected as i32 + direction).rem_euclid(max_items) as usize;
         }
+    }
+
+    /// Apply rename from popup buffer to disk and in-memory list
+    pub fn apply_rename_instance(&mut self) {
+        if !self.is_renaming_instance { return; }
+        let Some(idx) = self.instance_settings_instance else { return; };
+        let old_name = self.instances[idx].name.clone();
+        // Sanitize similar to iced implementation
+        let mut disallowed = vec!['/', '\\', ':', '*', '?', '"', '<', '>', '|', '\'', '\0', '\u{7F}'];
+        disallowed.extend('\u{1}'..='\u{1F}');
+
+        let mut new_name: String = self.rename_input.clone();
+        new_name.retain(|c| !disallowed.contains(&c));
+        let new_name = new_name.trim().to_string();
+
+        if new_name.is_empty() {
+            self.status_message = "❌ New name is empty or invalid".to_string();
+            return; // keep popup open for correction
+        }
+        if new_name == old_name { 
+            self.is_renaming_instance = false; 
+            self.status_message = "No changes to apply".to_string();
+            return; 
+        }
+
+        // Refuse rename if running
+        if self.client_processes.contains_key(&old_name) {
+            self.status_message = "❌ Cannot rename a running instance".to_string();
+            return;
+        }
+
+        match ql_core::file_utils::get_launcher_dir() {
+            Ok(launcher_dir) => {
+                let instances_dir = launcher_dir.join("instances");
+                let old_path = instances_dir.join(&old_name);
+                let new_path = instances_dir.join(&new_name);
+                if new_path.exists() {
+                    self.status_message = format!("❌ An instance named '{}' already exists", new_name);
+                    return;
+                }
+                match std::fs::rename(&old_path, &new_path) {
+                    Ok(_) => {
+                        // Update in-memory list
+                        if let Some(inst) = self.instances.get_mut(idx) { inst.name = new_name.clone(); }
+                        // Also update selected_instance if needed
+                        if self.selected_instance == idx { self.selected_instance = idx; }
+                        // Close popup
+                        self.is_renaming_instance = false;
+                        self.status_message = format!("✅ Renamed instance '{}' → '{}'", old_name, new_name);
+                    }
+                    Err(e) => {
+                        self.status_message = format!("❌ Failed to rename: {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                self.status_message = format!("❌ Failed to get launcher directory: {}", e);
+            }
+        }
+    }
+
+    /// Cancel rename flow
+    pub fn cancel_rename_instance(&mut self) {
+        self.is_renaming_instance = false;
+        self.status_message = "Rename cancelled".to_string();
     }
 
     /// Kill a running instance
