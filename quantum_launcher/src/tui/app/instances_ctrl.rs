@@ -146,7 +146,10 @@ impl App {
                             match self.args_edit_kind {
                                 ArgsEditKind::Java => cfg.java_args = Some(parsed_args),
                                 ArgsEditKind::Game => cfg.game_args = Some(parsed_args),
-                                ArgsEditKind::GlobalJava => {}
+                                ArgsEditKind::GlobalJava => {},
+                                ArgsEditKind::WindowSize => {},
+                                ArgsEditKind::PreLaunchPrefixInstance => {},
+                                ArgsEditKind::PreLaunchPrefixGlobal => {},
                             }
                             match serde_json::to_string_pretty(&cfg) {
                                 Ok(new_s) => match std::fs::write(&path, new_s) {
@@ -156,6 +159,9 @@ impl App {
                                             ArgsEditKind::Java => "✅ Saved Java arguments",
                                             ArgsEditKind::Game => "✅ Saved Game arguments",
                                             ArgsEditKind::GlobalJava => "",
+                                            ArgsEditKind::WindowSize => "",
+                                            ArgsEditKind::PreLaunchPrefixInstance => "",
+                                            ArgsEditKind::PreLaunchPrefixGlobal => "",
                                         }.to_string();
                                     }
                                     Err(e) => { self.status_message = format!("❌ Failed to write config: {}", e); }

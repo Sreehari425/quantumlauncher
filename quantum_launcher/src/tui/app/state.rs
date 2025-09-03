@@ -188,6 +188,9 @@ pub enum ArgsEditKind {
 	Java,
 	Game,
 	GlobalJava,
+	WindowSize,
+	PreLaunchPrefixInstance,
+	PreLaunchPrefixGlobal,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -275,6 +275,10 @@ fn render_args_edit_popup(f: &mut Frame, app: &App) {
         crate::tui::app::ArgsEditKind::Java => " Edit Java Arguments ",
         crate::tui::app::ArgsEditKind::Game => " Edit Game Arguments ",
         crate::tui::app::ArgsEditKind::GlobalJava => " Edit Global Java Arguments ",
+        crate::tui::app::ArgsEditKind::WindowSize => " Edit Window Size ",
+    // Pre-launch editors kept for enum completeness but not exposed in TUI
+    crate::tui::app::ArgsEditKind::PreLaunchPrefixInstance => " Edit Arguments ",
+    crate::tui::app::ArgsEditKind::PreLaunchPrefixGlobal => " Edit Arguments ",
     };
     let block = Block::default()
         .title(title)
@@ -283,8 +287,17 @@ fn render_args_edit_popup(f: &mut Frame, app: &App) {
 
     let mut lines = Vec::new();
     lines.push(Line::from(""));
-    lines.push(Line::from("Enter arguments as a single line, comma-separated. Use quotes for spaces or commas."));
-    lines.push(Line::from("Examples: --demo,--width 854,--height 480  or  -Xms512M,-Xmx2G"));
+    match app.args_edit_kind {
+        crate::tui::app::ArgsEditKind::WindowSize => {
+            lines.push(Line::from("Enter window size as WIDTH,HEIGHT (both integers)."));
+            lines.push(Line::from("Examples: 854,480  or  1920,1080"));
+            lines.push(Line::from("Leave empty to reset to default (auto size)."));
+        }
+        _ => {
+            lines.push(Line::from("Enter arguments as a single line, comma-separated. Use quotes for spaces or commas."));
+            lines.push(Line::from("Examples: --demo,--width 854,--height 480  or  -Xms512M,-Xmx2G"));
+        }
+    }
     lines.push(Line::from(""));
     lines.push(Line::from(vec![Span::styled("Args: ", Style::default().fg(Color::Green)), Span::raw(app.args_edit_input.clone())]));
     lines.push(Line::from(""));

@@ -160,6 +160,39 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                 KeyCode::Enter => {
                                     if app.args_edit_kind == app::ArgsEditKind::GlobalJava {
                                         app.apply_global_java_args_edit();
+                                    } else if app.args_edit_kind == app::ArgsEditKind::WindowSize {
+                                        // Save WIDTH,HEIGHT into instance global_settings
+                                        if let Some(idx) = app.instance_settings_instance {
+                                            if let Some(inst) = app.instances.get(idx) {
+                                                let instance_name = inst.name.clone();
+                                                if let Ok(dir) = ql_core::file_utils::get_launcher_dir() {
+                                                    let path = dir.join("instances").join(&instance_name).join("config.json");
+                                                    if let Ok(s) = std::fs::read_to_string(&path) {
+                                                        if let Ok(mut cfg) = serde_json::from_str::<ql_core::json::InstanceConfigJson>(&s) {
+                                                            let txt = app.args_edit_input.trim();
+                                                            if txt.is_empty() {
+                                                                if let Some(gs) = cfg.global_settings.as_mut() {
+                                                                    gs.window_width = None;
+                                                                    gs.window_height = None;
+                                                                }
+                                                            } else {
+                                                                let parts: Vec<&str> = txt.split([',', 'x', 'X']).collect();
+                                                                if parts.len() >= 2 {
+                                                                    let w = parts[0].trim().parse::<u32>().ok();
+                                                                    let h = parts[1].trim().parse::<u32>().ok();
+                                                                    let gs = cfg.global_settings.get_or_insert_with(Default::default);
+                                                                    gs.window_width = w;
+                                                                    gs.window_height = h;
+                                                                }
+                                                            }
+                                                            if let Ok(new_s) = serde_json::to_string_pretty(&cfg) { let _ = std::fs::write(&path, new_s); }
+                                                            app.is_editing_args = false;
+                                                            app.status_message = "✅ Saved window size".to_string();
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     } else {
                                         app.apply_args_edit();
                                     }

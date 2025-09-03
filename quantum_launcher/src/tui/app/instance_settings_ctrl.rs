@@ -110,10 +110,10 @@ impl App {
             InstanceSettingsTab::Mod => 1,
             InstanceSettingsTab::Setting => match self.instance_settings_page {
                 InstanceSettingsPage::List => 4,
-                // Java page items: 0..=5 (6 items total)
-                InstanceSettingsPage::Java => 6,
-                // Launch page items: 0..=4 (5 items total)
-                InstanceSettingsPage::Launch => 5,
+                // Java page items: 0..=3 (4 items total) — removed pre-launch items
+                InstanceSettingsPage::Java => 4,
+                // Launch page items: 0..=1 (2 items total) — removed debug logging and pre-launch items
+                InstanceSettingsPage::Launch => 2,
             },
             InstanceSettingsTab::Logs => 1,     // Logs message
         };
@@ -167,9 +167,7 @@ impl App {
                 }
             }
             2 => { self.open_java_args_edit(); }
-            3 => { self.status_message = "(placeholder) Pre-launch prefix mode".to_string(); }
-            4 => { self.status_message = "(placeholder) Pre-launch prefix commands (global)".to_string(); }
-            5 => { // Memory
+            3 => { // Memory
                 self.open_memory_edit();
             }
             _ => {}
@@ -180,6 +178,7 @@ impl App {
     pub fn select_in_launch_page(&mut self) {
         match self.instance_settings_selected {
             0 => { self.open_game_args_edit(); }
+            1 => { self.open_window_size_edit(); }
             _ => {}
         }
     }
@@ -228,6 +227,40 @@ impl App {
         self.args_edit_kind = if java { ArgsEditKind::Java } else { ArgsEditKind::Game };
         self.status_message = if java { "Editing Java arguments".to_string() } else { "Editing Game arguments".to_string() };
     }
+
+    // Removed: global pre-launch prefix editor in TUI
+
+    /// Open popup to edit per-instance window size as WIDTH,HEIGHT
+    pub fn open_window_size_edit(&mut self) {
+        use crate::tui::app::ArgsEditKind;
+        let Some(idx) = self.instance_settings_instance else { return; };
+        let Some(inst) = self.instances.get(idx) else { return; };
+        let instance_name = inst.name.clone();
+        let text = match ql_core::file_utils::get_launcher_dir() {
+            Ok(dir) => {
+                let path = dir.join("instances").join(&instance_name).join("config.json");
+                match std::fs::read_to_string(&path) {
+                    Ok(s) => match serde_json::from_str::<InstanceConfigJson>(&s) {
+                        Ok(cfg) => {
+                            let (w, h) = cfg.get_window_size(None);
+                            match (w, h) { (Some(w), Some(h)) => format!("{},{}", w, h), _ => String::new() }
+                        }
+                        Err(_) => String::new(),
+                    },
+                    Err(_) => String::new(),
+                }
+            }
+            Err(_) => String::new(),
+        };
+        self.is_editing_args = true;
+        self.args_edit_input = text;
+        self.args_edit_kind = ArgsEditKind::WindowSize;
+        self.status_message = "Editing window size (WIDTH,HEIGHT; empty to reset)".to_string();
+    }
+
+    // Removed: toggle_close_on_start — option no longer exposed in TUI
+
+    // Removed: toggle_enable_logger — debug logging option not exposed in TUI
 
     /// Apply rename from popup buffer to disk and in-memory list
     pub fn apply_rename_instance(&mut self) {
