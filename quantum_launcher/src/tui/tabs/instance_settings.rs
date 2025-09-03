@@ -388,37 +388,30 @@ fn render_instance_java_settings(f: &mut Frame, area: Rect, app: &App, instance:
         // 2: Java arguments list
         ListItem::new(vec![
             Line::from(Span::styled("  Java arguments", Style::default().fg(Color::White).bold())),
-            Line::from(Span::raw("    (placeholder)")),
+            Line::from(Span::raw("    Press Enter to edit as text")),
         ])
             .style(if app.instance_settings_selected == 2 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
 
-        // 3: Game arguments list
-        ListItem::new(vec![
-            Line::from(Span::styled("  Game arguments", Style::default().fg(Color::White).bold())),
-            Line::from(Span::raw("    (placeholder)")),
-        ])
-            .style(if app.instance_settings_selected == 3 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
-
-        // 4: Pre-launch prefix mode
+        // 3: Pre-launch prefix mode
         ListItem::new(vec![
             Line::from(Span::styled("  Pre-launch prefix mode", Style::default().fg(Color::White).bold())),
             Line::from(Span::raw("    (placeholder)")),
         ])
-            .style(if app.instance_settings_selected == 4 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+            .style(if app.instance_settings_selected == 3 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
 
-        // 5: Pre-launch prefix commands (global)
+        // 4: Pre-launch prefix commands (global)
         ListItem::new(vec![
             Line::from(Span::styled("  Pre-launch prefix commands (global)", Style::default().fg(Color::White).bold())),
             Line::from(Span::raw("    (placeholder)")),
         ])
-            .style(if app.instance_settings_selected == 5 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+            .style(if app.instance_settings_selected == 4 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
 
-        // 6: Memory allocation
+        // 5: Memory allocation
         ListItem::new(vec![
             Line::from(Span::styled("  Memory allocation (Xmx)", Style::default().fg(Color::Green).bold())),
             Line::from(Span::raw(format!("    Current: {} MB", app.memory_edit_mb)))
         ])
-            .style(if app.instance_settings_selected == 6 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+            .style(if app.instance_settings_selected == 5 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
     ];
 
     let list = List::new(items)
@@ -427,20 +420,49 @@ fn render_instance_java_settings(f: &mut Frame, area: Rect, app: &App, instance:
     f.render_widget(list, area);
 }
 
-fn render_instance_launch_settings(f: &mut Frame, area: Rect, _app: &App, instance: &Instance) {
+fn render_instance_launch_settings(f: &mut Frame, area: Rect, app: &App, instance: &Instance) {
     let block = Block::default()
         .borders(Borders::ALL)
         .title(format!(" Launch Options — {} ", instance.name))
         .title_style(Style::default().fg(Color::White).bold())
         .border_style(Style::default().fg(Color::Blue));
 
-    let para = Paragraph::new(vec![
-        Line::from(""),
-        Line::from("Configure launch arguments (coming soon)"),
-        Line::from(""),
-        Line::from("Esc to go back"),
-    ])
-    .block(block)
-    .wrap(Wrap { trim: true });
-    f.render_widget(para, area);
+    let items = vec![
+        ListItem::new(vec![
+            Line::from(Span::styled("  Game arguments", Style::default().fg(Color::White).bold())),
+            Line::from(Span::raw("    Press Enter to edit as text")),
+        ])
+            .style(if app.instance_settings_selected == 0 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+        // 1: Custom Game Window Size (px)
+        ListItem::new(vec![
+            Line::from(Span::styled("  Custom Game Window Size (px)", Style::default().fg(Color::White).bold())),
+            Line::from(Span::raw("    (placeholder) Leave empty for default")),
+            Line::from(Span::raw("    Width: 854   Height: 480")),
+            Line::from(Span::raw("    Common: 854x480, 1366x768, 1920x1080, 2560x1440, 3840x2160")),
+        ])
+            .style(if app.instance_settings_selected == 1 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+        // 2: Close launcher after game opens
+        ListItem::new(vec![
+            Line::from(Span::styled("  Close launcher after game opens", Style::default().fg(Color::White).bold())),
+            Line::from(Span::raw("    (placeholder toggle)")),
+        ])
+            .style(if app.instance_settings_selected == 2 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+        // 3: Debug logging
+        ListItem::new(vec![
+            Line::from(Span::styled("  DEBUG: Enable log system (recommended)", Style::default().fg(Color::White).bold())),
+            Line::from(Span::raw("    (placeholder toggle) Once disabled, logs will be printed in launcher STDOUT")),
+        ])
+            .style(if app.instance_settings_selected == 3 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+        // 4: Pre-launch prefix (global)
+        ListItem::new(vec![
+            Line::from(Span::styled("  Pre-launch prefix (global)", Style::default().fg(Color::White).bold())),
+            Line::from(Span::raw("    (placeholder) Configure commands run before launch")),
+        ])
+            .style(if app.instance_settings_selected == 4 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+    ];
+
+    let list = List::new(items)
+        .block(block)
+        .highlight_symbol("▶ ");
+    f.render_widget(list, area);
 }

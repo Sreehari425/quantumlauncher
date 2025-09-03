@@ -96,7 +96,7 @@ impl App {
         let max_items = match self.instance_settings_tab {
             InstanceSettingsTab::Overview => 3, // Play, Kill, and Open Folder buttons
             InstanceSettingsTab::Mod => 1,
-            InstanceSettingsTab::Setting => match self.instance_settings_page { InstanceSettingsPage::List => 4, InstanceSettingsPage::Java => 7, InstanceSettingsPage::Launch => 1 },
+            InstanceSettingsTab::Setting => match self.instance_settings_page { InstanceSettingsPage::List => 4, InstanceSettingsPage::Java => 6, InstanceSettingsPage::Launch => 5 },
             InstanceSettingsTab::Logs => 1,     // Logs message
         };
 
@@ -111,15 +111,69 @@ impl App {
         match self.instance_settings_selected {
             0 => { self.status_message = "(placeholder) Custom Java executable".to_string(); }
             1 => { self.status_message = "(placeholder) Java arguments mode".to_string(); }
-            2 => { self.status_message = "(placeholder) Java arguments list".to_string(); }
-            3 => { self.status_message = "(placeholder) Game arguments list".to_string(); }
-            4 => { self.status_message = "(placeholder) Pre-launch prefix mode".to_string(); }
-            5 => { self.status_message = "(placeholder) Pre-launch prefix commands (global)".to_string(); }
-            6 => { // Memory
+            2 => { self.open_java_args_edit(); }
+            3 => { self.status_message = "(placeholder) Pre-launch prefix mode".to_string(); }
+            4 => { self.status_message = "(placeholder) Pre-launch prefix commands (global)".to_string(); }
+            5 => { // Memory
                 self.open_memory_edit();
             }
             _ => {}
         }
+    }
+
+    /// Handle Enter inside Launch subpage list
+    pub fn select_in_launch_page(&mut self) {
+        match self.instance_settings_selected {
+            0 => { self.open_game_args_edit(); }
+            _ => {}
+        }
+    }
+
+    /// Open popup to edit Java arguments (text based)
+    pub fn open_java_args_edit(&mut self) {
+        self.open_args_edit(true);
+    }
+
+    /// Open popup to edit Game arguments (text based)
+    pub fn open_game_args_edit(&mut self) {
+        self.open_args_edit(false);
+    }
+
+    fn open_args_edit(&mut self, java: bool) {
+        use crate::tui::app::ArgsEditKind;
+        use ql_core::{file_utils, json::InstanceConfigJson};
+        use std::path::PathBuf;
+        let Some(idx) = self.instance_settings_instance else { return; };
+        let Some(inst) = self.instances.get(idx) else { return; };
+        let instance_name = inst.name.clone();
+        // Load current args from config.json
+        let text = match file_utils::get_launcher_dir() {
+            Ok(dir) => {
+                let mut p = PathBuf::from(dir);
+                p.push("instances");
+                p.push(&instance_name);
+                match std::fs::read_to_string(p.join("config.json")) {
+                    Ok(s) => match serde_json::from_str::<InstanceConfigJson>(&s) {
+                        Ok(cfg) => {
+                            let vec = if java { cfg.java_args.unwrap_or_default() } else { cfg.game_args.unwrap_or_default() };
+                            // Join with commas; quote if spaces or commas present
+                            vec.iter().map(|a| {
+                                if a.is_empty() { "\"\"".to_string() }
+                                else if a.chars().any(|c| c.is_whitespace() || c == ',') { format!("\"{}\"", a.replace('"', "\\\"")) }
+                                else { a.clone() }
+                            }).collect::<Vec<_>>().join(",")
+                        }
+                        Err(_) => String::new(),
+                    },
+                    Err(_) => String::new(),
+                }
+            }
+            Err(_) => String::new(),
+        };
+        self.is_editing_args = true;
+        self.args_edit_input = text;
+        self.args_edit_kind = if java { ArgsEditKind::Java } else { ArgsEditKind::Game };
+        self.status_message = if java { "Editing Java arguments".to_string() } else { "Editing Game arguments".to_string() };
     }
 
     /// Apply rename from popup buffer to disk and in-memory list

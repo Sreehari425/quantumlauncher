@@ -1,7 +1,7 @@
 // Instances controls: refresh (sync and async)
 
 use std::collections::HashSet;
-use crate::tui::app::{App, Instance};
+use crate::tui::app::{App, Instance, ArgsEditKind};
 use ql_core::json::InstanceConfigJson;
 use ql_core::file_utils;
 use std::path::PathBuf;
@@ -127,6 +127,51 @@ impl App {
         self.is_editing_memory = false;
         self.status_message = "Cancelled memory edit".to_string();
     }
+
+    /// Apply args edit (Java/Game) to config.json and close popup
+    pub fn apply_args_edit(&mut self) {
+        if !self.is_editing_args { return; }
+        let Some(idx) = self.instance_settings_instance else { return; };
+        let Some(inst) = self.instances.get(idx) else { return; };
+        let instance_name = inst.name.clone();
+
+        let parsed_args = parse_shell_like_args(self.args_edit_input.trim());
+
+        match ql_core::file_utils::get_launcher_dir() {
+            Ok(dir) => {
+                let path = dir.join("instances").join(&instance_name).join("config.json");
+                match std::fs::read_to_string(&path) {
+                    Ok(s) => match serde_json::from_str::<ql_core::json::InstanceConfigJson>(&s) {
+                        Ok(mut cfg) => {
+                            match self.args_edit_kind {
+                                ArgsEditKind::Java => cfg.java_args = Some(parsed_args),
+                                ArgsEditKind::Game => cfg.game_args = Some(parsed_args),
+                            }
+                            match serde_json::to_string_pretty(&cfg) {
+                                Ok(new_s) => match std::fs::write(&path, new_s) {
+                                    Ok(_) => {
+                                        self.is_editing_args = false;
+                                        self.status_message = match self.args_edit_kind { ArgsEditKind::Java => "✅ Saved Java arguments", ArgsEditKind::Game => "✅ Saved Game arguments" }.to_string();
+                                    }
+                                    Err(e) => { self.status_message = format!("❌ Failed to write config: {}", e); }
+                                },
+                                Err(e) => { self.status_message = format!("❌ Failed to serialize config: {}", e); }
+                            }
+                        }
+                        Err(e) => { self.status_message = format!("❌ Failed to parse config: {}", e); }
+                    },
+                    Err(e) => { self.status_message = format!("❌ Failed to read config: {}", e); }
+                }
+            }
+            Err(e) => { self.status_message = format!("❌ Failed to get launcher directory: {}", e); }
+        }
+    }
+
+    /// Cancel args edit popup
+    pub fn cancel_args_edit(&mut self) {
+        self.is_editing_args = false;
+        self.status_message = "Cancelled arguments edit".to_string();
+    }
     /// Start async refresh of instances
     pub fn start_refresh(&mut self) {
         if let Some(sender) = &self.auth_sender {
@@ -203,4 +248,33 @@ impl App {
 
         self.is_loading = false;
     }
+}
+
+/// Parse a shell-like string into arguments, supporting quotes and escapes
+fn parse_shell_like_args(input: &str) -> Vec<String> {
+    let mut args = Vec::new();
+    let mut cur = String::new();
+    let mut in_single = false;
+    let mut in_double = false;
+    let mut esc = false;
+    for ch in input.chars() {
+        if esc {
+            cur.push(match ch { 'n' => '\n', 't' => '\t', '"' => '"', '\'' => '\'', '\\' => '\\', other => other });
+            esc = false;
+            continue;
+        }
+        match ch {
+            '\\' if in_single => cur.push('\\'),
+            '\\' => { esc = true; }
+            '"' if !in_single => { in_double = !in_double; }
+            '\'' if !in_double => { in_single = !in_single; }
+            // Treat comma like a separator (like in the Iced UI), but only when not inside quotes
+            c if (c.is_whitespace() || c == ',') && !in_single && !in_double => {
+                if !cur.is_empty() { args.push(std::mem::take(&mut cur)); }
+            }
+            c => cur.push(c),
+        }
+    }
+    if !cur.is_empty() { args.push(cur); }
+    args
 }

@@ -54,6 +54,11 @@ pub fn render(f: &mut Frame, app: &mut App) {
     if app.is_editing_memory {
         render_memory_edit_popup(f, app);
     }
+
+    // Args editor popup
+    if app.is_editing_args {
+        render_args_edit_popup(f, app);
+    }
 }
 
 /// Render the header with tabs
@@ -250,6 +255,34 @@ fn render_memory_edit_popup(f: &mut Frame, app: &App) {
     lines.push(Line::from(""));
     lines.push(Line::from(vec![Span::styled("Current: ", Style::default().fg(Color::Green)), Span::raw(format!("{} MB", app.memory_edit_mb))]));
     lines.push(Line::from(vec![Span::styled("New value: ", Style::default().fg(Color::Green)), Span::raw(app.memory_edit_input.clone())]));
+    lines.push(Line::from(""));
+    lines.push(Line::from("Type to edit, Enter to save, Esc to cancel, Backspace to delete"));
+
+    let para = Paragraph::new(lines)
+        .block(block)
+        .wrap(Wrap { trim: true })
+        .alignment(Alignment::Left);
+
+    f.render_widget(para, area);
+}
+
+/// Render Java/Game arguments editor popup
+fn render_args_edit_popup(f: &mut Frame, app: &App) {
+    let area = centered_rect(70, 45, f.area());
+    f.render_widget(Clear, area);
+
+    let title = match app.args_edit_kind { crate::tui::app::ArgsEditKind::Java => " Edit Java Arguments ", crate::tui::app::ArgsEditKind::Game => " Edit Game Arguments " };
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Blue).bold());
+
+    let mut lines = Vec::new();
+    lines.push(Line::from(""));
+    lines.push(Line::from("Enter arguments as a single line, comma-separated. Use quotes for spaces or commas."));
+    lines.push(Line::from("Examples: --demo,--width 854,--height 480  or  -Xms512M,-Xmx2G"));
+    lines.push(Line::from(""));
+    lines.push(Line::from(vec![Span::styled("Args: ", Style::default().fg(Color::Green)), Span::raw(app.args_edit_input.clone())]));
     lines.push(Line::from(""));
     lines.push(Line::from("Type to edit, Enter to save, Esc to cancel, Backspace to delete"));
 

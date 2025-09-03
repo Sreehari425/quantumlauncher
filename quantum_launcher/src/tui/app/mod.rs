@@ -21,6 +21,7 @@ pub use state::{
     Instance,
     InstanceSettingsTab,
     InstanceSettingsPage,
+    ArgsEditKind,
     SettingsFocus,
     TabId,
     VersionCategory,

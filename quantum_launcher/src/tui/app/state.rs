@@ -160,6 +160,10 @@ pub struct App {
 	pub is_editing_memory: bool,    // whether memory edit popup is active
 	pub memory_edit_mb: usize,      // working value for RAM in MB
 	pub memory_edit_input: String,  // text buffer for manual entry
+	// Java/Game args edit popup state
+	pub is_editing_args: bool,      // whether args edit popup is active
+	pub args_edit_input: String,    // text buffer for args (space-separated, supports quotes)
+	pub args_edit_kind: ArgsEditKind, // which args are being edited
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -175,6 +179,12 @@ pub enum InstanceSettingsPage {
 	List,
 	Java,
 	Launch,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArgsEditKind {
+	Java,
+	Game,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -258,6 +268,10 @@ impl App {
 			is_editing_memory: false,
 			memory_edit_mb: 2048,
 			memory_edit_input: String::new(),
+			// Args popup
+			is_editing_args: false,
+			args_edit_input: String::new(),
+			args_edit_kind: ArgsEditKind::Java,
 		};
         
 		// Load instances and accounts on startup

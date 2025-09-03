@@ -153,6 +153,28 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                             }
                             continue;
                         }
+                        // Args edit popup handling
+                        if app.is_editing_args {
+                            match key.code {
+                                KeyCode::Esc => { app.cancel_args_edit(); }
+                                KeyCode::Enter => { app.apply_args_edit(); }
+                                KeyCode::Backspace => { app.args_edit_input.pop(); }
+                                KeyCode::Char(c) => { app.args_edit_input.push(c); }
+                                _ => {}
+                            }
+                            continue;
+                        }
+                        // Args edit popup handling
+                        if app.is_editing_args {
+                            match key.code {
+                                KeyCode::Esc => { app.cancel_args_edit(); }
+                                KeyCode::Enter => { app.apply_args_edit(); }
+                                KeyCode::Backspace => { app.args_edit_input.pop(); }
+                                KeyCode::Char(c) => { app.args_edit_input.push(c); }
+                                _ => {}
+                            }
+                            continue;
+                        }
                         // Handle delete confirmation popup
                         if app.show_delete_confirm {
                             match key.code {
@@ -330,9 +352,15 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                     continue;
                                 }
                                 KeyCode::Enter if app.current_tab == app::TabId::InstanceSettings => {
-                                    if app.instance_settings_tab == app::InstanceSettingsTab::Setting && app.instance_settings_page == app::InstanceSettingsPage::Java {
-                                        app.select_in_java_page();
-                                        continue;
+                                    if app.instance_settings_tab == app::InstanceSettingsTab::Setting {
+                                        if app.instance_settings_page == app::InstanceSettingsPage::Java {
+                                            app.select_in_java_page();
+                                            continue;
+                                        }
+                                        if app.instance_settings_page == app::InstanceSettingsPage::Launch {
+                                            app.select_in_launch_page();
+                                            continue;
+                                        }
                                     }
                                     app.select_instance_settings_item();
                                     continue;
