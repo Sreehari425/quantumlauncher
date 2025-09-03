@@ -152,6 +152,48 @@ impl App {
         }
     }
 
+    /// Start ElyBy authentication process
+    pub fn start_elyby_authentication(&mut self) {
+        if let Some(sender) = &self.auth_sender {
+            // Clear any previous errors
+            self.login_error = None;
+
+            // Prepare password with OTP if needed
+            let mut password = self.new_account_password.clone();
+            if let Some(ref otp) = self.new_account_otp {
+                if !otp.is_empty() {
+                    password.push(':');
+                    password.push_str(otp);
+                }
+            }
+
+            let username = self.new_account_username.clone();
+            let sender_clone = sender.clone();
+
+            // Send login started event
+            let _ = sender.send(crate::tui::AuthEvent::LoginStarted);
+
+            // Spawn authentication task
+            tokio::spawn(async move {
+                match ql_instances::auth::yggdrasil::login_new(
+                    username,
+                    password,
+                    ql_instances::auth::AccountType::ElyBy,
+                ).await {
+                    Ok(ql_instances::auth::yggdrasil::Account::Account(account_data)) => {
+                        let _ = sender_clone.send(crate::tui::AuthEvent::LoginSuccess { account_data });
+                    }
+                    Ok(ql_instances::auth::yggdrasil::Account::NeedsOTP) => {
+                        let _ = sender_clone.send(crate::tui::AuthEvent::LoginNeedsOtp);
+                    }
+                    Err(err) => {
+                        let _ = sender_clone.send(crate::tui::AuthEvent::LoginError { error: err.to_string() });
+                    }
+                }
+            });
+        }
+    }
+
     pub fn logout_account(&mut self) {
         if self.selected_account >= self.accounts.len() { self.status_message = "No account selected to logout".to_string(); return; }
         let account = &self.accounts[self.selected_account];

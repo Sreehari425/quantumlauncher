@@ -101,7 +101,7 @@ fn get_logs_file() -> Option<File> {
 pub static LOGGER: LazyLock<Option<Mutex<LoggingState>>> = LazyLock::new(LoggingState::create);
 
 // Global toggle to control whether logs are echoed to stdout/stderr.
-// Default: true (prints to console). TUI should disable this to avoid corrupting the UI.
+// Default: true (prints to console)
 use std::sync::atomic::{AtomicBool, Ordering};
 
 pub static LOG_TO_STDIO: AtomicBool = AtomicBool::new(true);

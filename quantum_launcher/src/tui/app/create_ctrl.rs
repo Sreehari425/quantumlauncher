@@ -107,5 +107,5 @@ impl App {
         self.download_assets = true;
     }
 
-    pub fn set_instance_name(&mut self, name: String) { self.new_instance_name = name; }
+    // set_instance_name removed; use direct mutation where needed in input handlers
 }

@@ -17,6 +17,17 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
 
     // Handle context-specific input with more specific conditions first
     match key.code {
+        // Create tab: Ctrl+N begins editing instance name
+        KeyCode::Char('n') if app.current_tab == TabId::Create && !app.is_editing_name && key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.is_editing_name = true;
+            app.status_message = "Editing instance name. Press Esc to finish editing.".to_string();
+            false
+        }
+        // Start add-account flow on Accounts tab
+        KeyCode::Char('n') | KeyCode::Char('N') if app.current_tab == TabId::Accounts && !app.is_add_account_mode => {
+            app.toggle_add_account_mode();
+            false
+        }
         // Account tab specific keys - must come first to override general patterns
         KeyCode::Esc if app.current_tab == TabId::Accounts && app.is_add_account_mode => {
             app.toggle_add_account_mode();
@@ -76,7 +87,8 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             app.next_item();
             false
         }
-        KeyCode::Left | KeyCode::Char('h') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
+    // Tab navigation: Left/Right arrows
+    KeyCode::Left if !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.previous_tab();
             false
         }
@@ -84,6 +96,9 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             app.next_tab();
             false
         }
+    // Tab navigation: Tab = next, Shift+Tab (BackTab) = previous
+    KeyCode::Tab if !(app.current_tab == TabId::Create && app.is_editing_name) => { app.next_tab(); false }
+    KeyCode::BackTab if !(app.current_tab == TabId::Create && app.is_editing_name) => { app.previous_tab(); false }
         KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
             // Shift+Enter: Launch the selected instance
             app.launch_selected_instance();
@@ -100,26 +115,7 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             app.status_message = "✅ Logs cleared".to_string();
             false
         }
-        KeyCode::Char('c') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
-            app.set_tab(TabId::Create);
-            false
-        }
-        KeyCode::Char('i') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
-            app.set_tab(TabId::Instances);
-            false
-        }
-        KeyCode::Char('s') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
-            app.set_tab(TabId::Settings);
-            false
-        }
-        KeyCode::Char('a') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
-            app.set_tab(TabId::Accounts);
-            false
-        }
-        KeyCode::Char('l') if app.current_tab != TabId::Accounts && !(app.current_tab == TabId::Create && app.is_editing_name) => {
-            app.set_tab(TabId::Logs);
-            false
-        }
+    // Removed old letter/number shortcuts for tab switching; use arrows and Tab/Shift+Tab instead
         KeyCode::Char('?') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.toggle_help_popup();
             false
@@ -149,15 +145,7 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             };
             false
         }
-        KeyCode::Tab if app.current_tab == TabId::Create && !app.is_editing_name => {
-            app.download_assets = !app.download_assets;
-            app.status_message = if app.download_assets {
-                "✅ Download assets enabled (sound/music will be available)".to_string()
-            } else {
-                "⚠️  Download assets disabled (faster creation, no sound/music)".to_string()
-            };
-            false
-        }
+    // Removed: Tab toggle for assets (conflicts with Tab for tab navigation)
     KeyCode::Enter if app.current_tab == TabId::Create && !app.is_editing_name => {
             if app.version_search_active {
                 app.create_instance();

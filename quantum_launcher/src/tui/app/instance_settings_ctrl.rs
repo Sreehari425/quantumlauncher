@@ -29,8 +29,8 @@ impl App {
     pub fn select_instance_settings_item(&mut self) {
         if let Some(instance_idx) = self.instance_settings_instance {
             if let Some(instance) = self.instances.get(instance_idx) {
-                let instance_name = instance.name.clone(); // Clone the name to avoid borrow issues
-                let instance_running = instance.is_running; // Clone the running status
+                let instance_name = instance.name.clone();
+                let instance_running = instance.is_running;
                 match self.instance_settings_tab {
                     InstanceSettingsTab::Overview => match self.instance_settings_selected {
                         0 => {
@@ -86,7 +86,7 @@ impl App {
     pub fn navigate_instance_settings(&mut self, direction: i32) {
         let max_items = match self.instance_settings_tab {
             InstanceSettingsTab::Overview => 3, // Play, Kill, and Open Folder buttons
-            InstanceSettingsTab::Mod => 1,      // WIP message
+        InstanceSettingsTab::Mod => 1,
             InstanceSettingsTab::Setting => 4,  // Rename, Java Settings, Launch Options, Delete
             InstanceSettingsTab::Logs => 1,     // Logs message
         };
@@ -108,7 +108,7 @@ impl App {
                 let instance_name_clone = instance_name.to_string();
 
                 tokio::spawn(async move {
-                    // Use the same logic as iced UI - only call start_kill
+                    // same logic as iced UI
                     let result = {
                         let mut child = process.child.lock().unwrap();
                         child.start_kill()
@@ -118,7 +118,7 @@ impl App {
                         eprintln!("Failed to kill process gracefully: {}", e);
                     }
 
-                    // Always send LaunchEnded to update the UI
+                    //send LaunchEnded to update the UI
                     let _ = sender_clone.send(crate::tui::AuthEvent::LaunchEnded(instance_name_clone));
                 });
             }
@@ -148,7 +148,7 @@ impl App {
 
     /// Delete an instance permanently
     pub fn delete_instance(&mut self, instance_name: &str) {
-        // First check if the instance is running and refuse deletion if it is
+        //check if the instance is running and refuse deletion if it is
         if self.client_processes.contains_key(instance_name) {
             self.status_message = format!(
                 "❌ Cannot delete '{}': instance is currently running. Stop it first.",
