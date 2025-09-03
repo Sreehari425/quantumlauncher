@@ -40,6 +40,11 @@ impl LoggingState {
     pub fn write_str(&mut self, s: &str, t: LogType) {
         self.write_to_storage(s, t);
 
+        // If migration is running, avoid initializing file-backed logging to not create logs dir
+        if std::env::var_os("QL_MIGRATING").is_some() {
+            return;
+        }
+
         if self.sender.is_none() {
             let (sender, receiver) = std::sync::mpsc::channel::<String>();
 
