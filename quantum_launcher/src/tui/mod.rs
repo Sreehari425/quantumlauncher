@@ -428,14 +428,15 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                     app.settings_focus = app::SettingsFocus::Left;
                                     continue;
                                 }
-                                // Settings -> Java: Enter opens global Java args editor (from either pane)
-                                KeyCode::Enter if app.current_tab == app::TabId::Settings && app.about_selected == 1 => {
-                                    app.open_global_java_args_edit();
-                                    continue;
-                                }
-                                // Settings -> General: Enter opens global window size editor (from either pane)
-                                KeyCode::Enter if app.current_tab == app::TabId::Settings && app.about_selected == 0 => {
-                                    app.open_global_window_size_edit();
+                                // Settings -> Java/General: Enter behavior depends on focus
+                                KeyCode::Enter if app.current_tab == app::TabId::Settings && (app.about_selected == 1 || app.about_selected == 0) => {
+                                    if app.settings_focus == app::SettingsFocus::Middle {
+                                        if app.about_selected == 1 { app.open_global_java_args_edit(); }
+                                        else { app.open_global_window_size_edit(); }
+                                    } else {
+                                        // From left pane, move focus to middle instead of opening popup
+                                        app.settings_focus = app::SettingsFocus::Middle;
+                                    }
                                     continue;
                                 }
                                 // F12: force redraw
