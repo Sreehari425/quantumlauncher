@@ -132,7 +132,7 @@ if sys.platform.startswith("win"):
         if not wins:
             return False
 
-        print(f"✅ Window found (PID: {pid}), sending WM_CLOSE")
+        print(f"\n✅ Window found!")
         for hwnd in wins:
             _attempt_to_close_window(hwnd)
         procs.kill_process(pid)
@@ -141,18 +141,19 @@ if sys.platform.startswith("win"):
 
 def _close_window_unix(result: bytes, pid: int) -> None:
     window_ids: list[str] = result.decode().strip().splitlines()
-    print(f"✅ Window found! {'(by name),' if len(window_ids) == 0 else ''} killing")
+    print(f"\n✅ Window found! {'(by name), ' if len(window_ids) == 0 else ''}")
     procs.kill_process(pid)
 
 
 def _wait_for_window(pid: PID, timeout: int, name: str) -> bool:
     start_time = time.time()
     check_interval = max(1, timeout // 30)
-    print(f"\n\nChecking {name} ({pid}) with interval {check_interval} seconds")
+    print(f"Checking {name} ({pid}).", end="")
+    sys.stdout.flush()
 
     while time.time() - start_time < timeout:
         if not _is_process_alive(pid):
-            print("Error: Game crashed!")
+            print("\nError: Game crashed!")
             return False
 
         if IS_WINDOWS:
@@ -172,19 +173,22 @@ def _wait_for_window(pid: PID, timeout: int, name: str) -> bool:
                 except subprocess.CalledProcessError:
                     pass  # No window yet
         else:
-            print("Wayland without XWayland detected — no xdotool support")
+            print("\nWayland without XWayland detected — no xdotool support")
 
         time.sleep(check_interval)
-        print("    ...checking")
+        print(".", end="")
+        sys.stdout.flush()
 
-    print("Error: Timeout waiting for window!")
+    print("\nError: Timeout waiting for window!")
     return False
 
 
 def test(name: Version, timeout: int) -> bool:
     pid: PID | None = _launch(name)
     if pid:
-        if not _wait_for_window(pid, timeout, name):
+        res = _wait_for_window(pid, timeout, name)
+        print()
+        if not res:
             print("Test failed (window)!")
             return False
     else:

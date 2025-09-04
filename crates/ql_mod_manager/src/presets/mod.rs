@@ -12,7 +12,13 @@ use ql_core::{
 use serde::{Deserialize, Serialize};
 use zip::ZipWriter;
 
-use crate::store::{ModConfig, ModError, ModIndex};
+use crate::store::{install_modpack, ModConfig, ModError, ModIndex};
+
+#[derive(Debug, Clone, Default)]
+pub struct PresetOutput {
+    pub local_files: Vec<String>,
+    pub to_install: Vec<ModId>,
+}
 
 /// A "Mod Preset"
 ///
@@ -43,7 +49,7 @@ use crate::store::{ModConfig, ModError, ModIndex};
 /// - All configuration files in a `config/` folder. This will be extracted
 ///   to the `.minecraft/config/` folder
 #[derive(Serialize, Deserialize)]
-pub struct PresetJson {
+pub struct Preset {
     pub launcher_version: String,
     pub minecraft_version: String,
     pub instance_type: String,
@@ -51,7 +57,7 @@ pub struct PresetJson {
     pub entries_local: Vec<String>,
 }
 
-impl PresetJson {
+impl Preset {
     /// Generates a "Mod Preset" from the mods
     /// installed in the `instance`.
     ///
@@ -143,6 +149,8 @@ impl PresetJson {
     /// - `zip: Vec<u8>`:
     ///   The `.qmp` file in binary form. Must be read from
     ///   disk earlier.
+    /// - `apply: bool`: Whether to actually install
+    ///   the preset or **just preview it**
     ///
     /// Returns a `Vec<String>` of mod id's to be installed
     /// to "complete" the installation. You pass this to
@@ -159,45 +167,57 @@ impl PresetJson {
     /// - couldn't be parsed into valid JSON
     /// ---
     /// - And many other things I probably forgot
-    pub async fn load(instance: InstanceSelection, zip: Vec<u8>) -> Result<Vec<ModId>, ModError> {
+    pub async fn load(
+        instance: InstanceSelection,
+        file: Vec<u8>,
+        apply: bool,
+    ) -> Result<PresetOutput, ModError> {
         info!("Importing mod preset");
 
         let main_dir = instance.get_dot_minecraft_path();
         let mods_dir = main_dir.join("mods");
 
-        let mut zip = zip::ZipArchive::new(Cursor::new(zip)).map_err(ModError::Zip)?;
-
-        let mut entries_downloaded = HashMap::new();
+        let mut zip = zip::ZipArchive::new(Cursor::new(&file)).map_err(ModError::Zip)?;
 
         let version_json = VersionDetails::load(&instance).await?;
-        let mut sideloads = Vec::new();
-        let mut should_sideload = true;
+        let mut local_files = Vec::new();
+
+        let index: Self = {
+            let Ok(mut index) = zip.by_name("index.json") else {
+                return match install_modpack(file.clone(), instance.clone(), None)
+                    .await
+                    .map_err(Box::new)?
+                {
+                    Some(n) => {
+                        if !n.is_empty() {
+                            let incompatible =
+                                n.iter().map(|n| n.name.as_str()).collect::<Vec<_>>();
+                            err!("Curseforge has blocked downloading these mods: {incompatible:?}\n\nPlease install them manually");
+                        }
+                        Ok(PresetOutput::default())
+                    }
+                    None => Err(ModError::NotValidPack),
+                };
+            };
+            let buf = std::io::read_to_string(&mut index)
+                .map_err(|n| ModError::ZipIoError(n, "index.json".to_owned()))?;
+            serde_json::from_str(&buf).json(buf)?
+        };
+
+        let instance_type = get_instance_type(&instance).await?;
+        // Only sideload mods if the version is the same
+        let should_sideload = index.minecraft_version == version_json.get_id()
+            && index.instance_type == instance_type;
 
         for i in 0..zip.len() {
             let mut file = zip.by_index(i).map_err(ModError::Zip)?;
             let name = file.name().to_owned();
 
             if name == "index.json" {
-                pt!("Mod index");
-                let buf = std::io::read_to_string(&mut file)
-                    .map_err(|n| ModError::ZipIoError(n, name.clone()))?;
-                let this: Self = serde_json::from_str(&buf).json(buf)?;
-
-                // Only sideload mods if the version is the same
-                let instance_type = get_instance_type(&instance).await?;
-
-                should_sideload = this.minecraft_version == version_json.get_id()
-                    && this.instance_type == instance_type;
-
-                // If sideloaded mods are of an incompatible version, remove them
-                if !should_sideload {
-                    for file in &sideloads {
-                        let path = mods_dir.join(file);
-                        tokio::fs::remove_file(&path).await.path(&path)?;
-                    }
-                }
-                entries_downloaded = this.entries_modrinth;
             } else if name.starts_with("config/") || name.starts_with("config\\") {
+                if !apply {
+                    continue;
+                }
                 pt!("Config file: {name}");
                 let path = main_dir.join(name.replace('\\', "/"));
 
@@ -218,9 +238,13 @@ impl PresetJson {
                 if !should_sideload {
                     continue;
                 }
+                local_files.push(name.clone());
+                if !apply {
+                    continue;
+                }
+
                 pt!("Local file: {name}");
                 let path = mods_dir.join(&name);
-                sideloads.push(name.clone());
                 let mut buf = Vec::new();
                 file.read_to_end(&mut buf)
                     .map_err(|n| ModError::ZipIoError(n, name))?;
@@ -228,12 +252,16 @@ impl PresetJson {
             }
         }
 
-        let mods = entries_downloaded
+        let to_install = index
+            .entries_modrinth
             .into_iter()
             .filter_map(|(k, n)| n.manually_installed.then_some(ModId::from_index_str(&k)))
             .collect();
 
-        Ok(mods)
+        Ok(PresetOutput {
+            local_files,
+            to_install,
+        })
     }
 }
 

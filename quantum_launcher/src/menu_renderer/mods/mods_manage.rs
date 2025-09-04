@@ -2,7 +2,7 @@ use iced::widget::tooltip::Position;
 use iced::{widget, Length};
 use ql_core::{InstanceSelection, SelectedMod};
 
-use crate::state::PRESET_INNER_RECOMMENDED;
+use crate::stylesheet::styles::{BORDER_RADIUS, BORDER_WIDTH};
 use crate::{
     icon_manager,
     menu_renderer::{back_button, back_to_launch_screen, button_with_icon, tooltip, Element},
@@ -28,39 +28,7 @@ impl MenuEditMods {
         }
 
         let menu_main = widget::row!(
-            widget::container(
-                widget::scrollable(
-                    widget::column!(
-                        widget::row![
-                            back_button().on_press(back_to_launch_screen(selected_instance, None)),
-                            button_with_icon(icon_manager::create_with_size(14), "Add File", 14)
-                                .on_press(Message::ManageMods(ManageModsMessage::AddFile))
-                        ]
-                        .spacing(7),
-                        self.get_mod_installer_buttons(selected_instance),
-                        widget::column!(
-                            button_with_icon(
-                                icon_manager::download_with_size(14),
-                                "Download Content",
-                                15
-                            )
-                            .on_press(Message::InstallMods(InstallModsMessage::Open)),
-                            button_with_icon(icon_manager::save(), "Mod Presets", 15)
-                                .on_press(Message::EditPresets(EditPresetsMessage::Open)),
-                            button_with_icon(icon_manager::jar_file(), "Jarmod Patches", 15)
-                                .on_press(Message::ManageJarMods(ManageJarModsMessage::Open))
-                        )
-                        .spacing(5),
-                        Self::open_mod_folder_button(selected_instance),
-                        self.get_mod_update_pane(tick_timer),
-                    )
-                    .padding(10)
-                    .spacing(10)
-                )
-                .style(LauncherTheme::style_scrollable_flat_dark)
-                .height(Length::Fill)
-            )
-            .style(|n| n.style_container_sharp_box(0.0, Color::Dark)),
+            self.get_sidebar(selected_instance, tick_timer),
             self.get_mod_list()
         );
 
@@ -72,9 +40,73 @@ impl MenuEditMods {
                 ))
             )
             .into()
+        } else if self.submenu1_shown {
+            let submenu = widget::column![
+                ctx_button("Export list as text")
+                    .on_press(Message::ManageMods(ManageModsMessage::ExportMenuOpen)),
+                ctx_button("Export QMP Preset")
+                    .on_press(Message::EditPresets(EditPresetsMessage::Open)),
+                widget::horizontal_rule(1)
+                    .style(|t: &LauncherTheme| t.style_rule(Color::SecondDark, 1)),
+                ctx_button("Import Modpack")
+                    .on_press(Message::ManageMods(ManageModsMessage::AddFile)),
+                ctx_button("See recommended mods").on_press(Message::RecommendedMods(
+                    crate::state::RecommendedModMessage::Open
+                )),
+            ]
+            .spacing(4);
+
+            widget::stack!(
+                menu_main,
+                widget::row![
+                    widget::horizontal_space(),
+                    widget::column![
+                        widget::Space::with_height(60),
+                        widget::container(submenu).padding(10).width(200).style(
+                            |t: &LauncherTheme| t.style_container_round_box(
+                                BORDER_WIDTH,
+                                Color::Dark,
+                                BORDER_RADIUS
+                            )
+                        )
+                    ]
+                ]
+            )
+            .into()
         } else {
             menu_main.into()
         }
+    }
+
+    fn get_sidebar<'a>(
+        &'a self,
+        selected_instance: &'a InstanceSelection,
+        tick_timer: usize,
+    ) -> widget::Scrollable<'a, Message, LauncherTheme> {
+        widget::scrollable(
+            widget::column!(
+                widget::row![
+                    back_button().on_press(back_to_launch_screen(selected_instance, None)),
+                    button_with_icon(icon_manager::create_with_size(14), "Add File", 14)
+                        .on_press(Message::ManageMods(ManageModsMessage::AddFile))
+                ]
+                .spacing(7),
+                self.get_mod_installer_buttons(selected_instance),
+                widget::column!(
+                    button_with_icon(icon_manager::download_with_size(14), "Download Content", 15)
+                        .on_press(Message::InstallMods(InstallModsMessage::Open)),
+                    button_with_icon(icon_manager::jar_file(), "Jarmod Patches", 15)
+                        .on_press(Message::ManageJarMods(ManageJarModsMessage::Open))
+                )
+                .spacing(5),
+                Self::open_mod_folder_button(selected_instance),
+                self.get_mod_update_pane(tick_timer),
+            )
+            .padding(10)
+            .spacing(10),
+        )
+        .style(LauncherTheme::style_scrollable_flat_dark)
+        .height(Length::Fill)
     }
 
     fn get_mod_update_pane(&'_ self, tick_timer: usize) -> Element<'_> {
@@ -258,14 +290,9 @@ impl MenuEditMods {
         if self.sorted_mods_list.is_empty() {
             return widget::column!(
                 "Download some mods to get started",
-                widget::button("View Recommended Mods").on_press_with(|| {
-                    Message::Multiple(vec![
-                        Message::EditPresets(EditPresetsMessage::Open),
-                        Message::EditPresets(EditPresetsMessage::TabChange(
-                            PRESET_INNER_RECOMMENDED.to_owned(),
-                        )),
-                    ])
-                })
+                widget::button("View Recommended Mods").on_press(Message::RecommendedMods(
+                    crate::state::RecommendedModMessage::Open
+                ))
             )
             .spacing(10)
             .padding(10)
@@ -304,8 +331,11 @@ impl MenuEditMods {
                                 13
                             )
                             .on_press(Message::ManageMods(ManageModsMessage::SelectAll)),
-                            button_with_icon(icon_manager::save_with_size(13), "Export text list", 13)
-                                .on_press(Message::ManageMods(ManageModsMessage::ExportMenuOpen)),
+                            widget::button(
+                                widget::row![icon_manager::three_lines_with_size(13)]
+                                    .align_y(iced::alignment::Vertical::Center)
+                                    .padding(3),
+                            ).on_press(Message::ManageMods(ManageModsMessage::ToggleSubmenu1)),
                         ]
                         .spacing(5)
                         .wrap()
@@ -409,6 +439,15 @@ impl MenuEditMods {
     }
 }
 
-fn install_ldr(fabric: &str) -> widget::Button<'_, Message, LauncherTheme, iced::Renderer> {
+fn install_ldr(fabric: &str) -> widget::Button<'_, Message, LauncherTheme> {
     widget::button(fabric).width(97)
+}
+
+fn ctx_button(e: &'_ str) -> widget::Button<'_, Message, LauncherTheme> {
+    widget::button(widget::text(e).size(13))
+        .width(Length::Fill)
+        .style(|t: &LauncherTheme, s| {
+            t.style_button(s, crate::stylesheet::widgets::StyleButton::FlatDark)
+        })
+        .padding(2)
 }

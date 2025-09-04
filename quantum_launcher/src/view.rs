@@ -104,7 +104,6 @@ impl Launcher {
                     .spacing(10)
                     .into()
             }
-            State::ManagePresets(menu) => menu.view(self.window_size),
             State::ChangeLog => {
                 let back_msg = Message::LaunchScreenOpen {
                     message: None,
@@ -147,6 +146,8 @@ impl Launcher {
             State::UpdateFound(menu) => menu.view(),
             State::InstallOptifine(menu) => menu.view(),
             State::ServerCreate(menu) => menu.view(),
+            State::ManagePresets(menu) => menu.view(),
+            State::RecommendedMods(menu) => menu.view(),
         }
     }
 }

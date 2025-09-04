@@ -270,13 +270,13 @@ impl MenuModsDownload {
                     back_button()
                         .on_press(Message::InstallMods(InstallModsMessage::BackToMainScreen)),
                     widget::tooltip(
-                        button_with_icon(icon_manager::globe(), "Open Mod Page", 16)
+                        button_with_icon(icon_manager::globe(), "Open Mod Page", 14)
                             .on_press(Message::CoreOpenLink(url.clone())),
                         widget::text(url),
                         widget::tooltip::Position::Bottom
                     )
                     .style(|n| n.style_container_sharp_box(0.0, Color::ExtraDark)),
-                    button_with_icon(icon_manager::save(), "Copy ID", 16)
+                    button_with_icon(icon_manager::save(), "Copy ID", 14)
                         .on_press(Message::CoreCopyText(hit.id.clone())),
                 )
                 .spacing(5),

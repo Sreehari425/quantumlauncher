@@ -198,7 +198,7 @@ pub async fn do_jobs_with_limit<T, E>(
 /// #     Ok("Hi".to_owned())
 /// # }
 /// # async fn download_something_important() -> Result<String, String> {
-/// retry(download_file("example.com/my_file")).await
+/// retry(|| download_file("example.com/my_file")).await
 /// # }
 /// ```
 ///

@@ -1,4 +1,5 @@
 use crate::state::MenuInstallOptifine;
+use crate::tick::sort_dependencies;
 use crate::{
     get_entries,
     state::{
@@ -187,80 +188,59 @@ impl Launcher {
         Ok(())
     }
 
-    pub fn go_to_edit_mods_menu_without_update_check(&mut self) -> Task<Message> {
-        async fn inner(this: &mut Launcher) -> Result<Task<Message>, JsonFileError> {
+    pub fn go_to_edit_mods_menu(&mut self, check_updates: bool) -> Task<Message> {
+        async fn inner(
+            this: &mut Launcher,
+            check_updates: bool,
+        ) -> Result<Task<Message>, JsonFileError> {
             let instance = this.selected_instance.as_ref().unwrap();
 
             let config_json = InstanceConfigJson::read(instance).await?;
             let version_json = Box::new(VersionDetails::load(instance).await?);
 
-            let idx = ModIndex::load(instance).await?;
-            let locally_installed_mods =
-                MenuEditMods::update_locally_installed_mods(&idx, instance);
+            let mods = ModIndex::load(instance).await?;
+            let update_local_mods_task =
+                MenuEditMods::update_locally_installed_mods(&mods, instance);
+
+            let locally_installed_mods = HashSet::new();
+            let sorted_mods_list = sort_dependencies(&mods.mods, &locally_installed_mods);
+
+            let (update_cmd, update_check_handle) =
+                if !check_updates || config_json.mod_type == "Vanilla" {
+                    (Task::none(), None)
+                } else {
+                    let (a, b) = Task::perform(
+                        ql_mod_manager::store::check_for_updates(instance.clone()),
+                        |n| Message::ManageMods(ManageModsMessage::UpdateCheckResult(n.strerr())),
+                    )
+                    .abortable();
+                    (a, Some(b.abort_on_drop()))
+                };
 
             this.state = State::EditMods(MenuEditMods {
                 config: config_json,
-                mods: idx,
+                mods,
                 selected_mods: HashSet::new(),
-                sorted_mods_list: Vec::new(),
+                sorted_mods_list,
                 selected_state: SelectedState::None,
                 available_updates: Vec::new(),
                 mod_update_progress: None,
-                locally_installed_mods: HashSet::new(),
+                locally_installed_mods,
                 drag_and_drop_hovered: false,
-                update_check_handle: None,
+                update_check_handle,
                 version_json,
+                submenu1_shown: false,
             });
 
-            Ok(locally_installed_mods)
+            Ok(Task::batch([update_local_mods_task, update_cmd]))
         }
-        match block_on(inner(self)) {
+        match block_on(inner(self, check_updates)) {
             Ok(n) => n,
             Err(err) => {
                 self.set_error(format!("While opening Mods screen:\n{err}"));
                 Task::none()
             }
         }
-    }
-
-    pub fn go_to_edit_mods_menu(&mut self) -> Result<Task<Message>, JsonFileError> {
-        let selected_instance = self.selected_instance.as_ref().unwrap();
-
-        let config_json = block_on(InstanceConfigJson::read(selected_instance))?;
-        let version_json = Box::new(block_on(VersionDetails::load(selected_instance))?);
-
-        let is_vanilla = config_json.mod_type == "Vanilla";
-
-        let idx = block_on(ModIndex::load(selected_instance))?;
-        let locally_installed_mods =
-            MenuEditMods::update_locally_installed_mods(&idx, selected_instance);
-
-        let (update_cmd, update_check_handle) = if is_vanilla {
-            (Task::none(), None)
-        } else {
-            let (a, b) = Task::perform(
-                ql_mod_manager::store::check_for_updates(selected_instance.clone()),
-                |n| Message::ManageMods(ManageModsMessage::UpdateCheckResult(n.strerr())),
-            )
-            .abortable();
-            (a, Some(b.abort_on_drop()))
-        };
-
-        self.state = State::EditMods(MenuEditMods {
-            config: config_json,
-            mods: idx,
-            selected_mods: HashSet::new(),
-            sorted_mods_list: Vec::new(),
-            selected_state: SelectedState::None,
-            available_updates: Vec::new(),
-            mod_update_progress: None,
-            locally_installed_mods: HashSet::new(),
-            drag_and_drop_hovered: false,
-            version_json,
-            update_check_handle,
-        });
-
-        Ok(Task::batch([locally_installed_mods, update_cmd]))
     }
 
     pub fn set_game_crashed(&mut self, status: ExitStatus, name: &str) {
@@ -462,18 +442,26 @@ impl Launcher {
                 return Task::none();
             }
         };
-        match tokio::runtime::Handle::current().block_on(ql_mod_manager::PresetJson::load(
+        match tokio::runtime::Handle::current().block_on(ql_mod_manager::Preset::load(
             self.selected_instance.clone().unwrap(),
             file,
+            true,
         )) {
             Ok(mods) => {
                 let (sender, receiver) = std::sync::mpsc::channel();
+                if let State::EditMods(_) = &self.state {
+                    self.go_to_edit_presets_menu();
+                }
                 if let State::ManagePresets(menu) = &mut self.state {
                     menu.progress = Some(ProgressBar::with_recv(receiver));
                 }
                 let instance_name = self.selected_instance.clone().unwrap();
                 Task::perform(
-                    ql_mod_manager::store::download_mods_bulk(mods, instance_name, Some(sender)),
+                    ql_mod_manager::store::download_mods_bulk(
+                        mods.to_install,
+                        instance_name,
+                        Some(sender),
+                    ),
                     |n| Message::EditPresets(EditPresetsMessage::LoadComplete(n.strerr())),
                 )
             }

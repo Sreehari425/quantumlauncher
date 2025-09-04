@@ -59,7 +59,8 @@ pub fn list_instances(cmds: &[PrintCmd], dirname: &str) {
                     let instance_dir = LAUNCHER_DIR.join(dirname).join(&instance);
 
                     let json = std::fs::read_to_string(instance_dir.join("details.json")).unwrap();
-                    let json: VersionDetails = serde_json::from_str(&json).unwrap();
+                    let mut json: VersionDetails = serde_json::from_str(&json).unwrap();
+                    json.fix();
 
                     print!("{}", json.id);
                 }

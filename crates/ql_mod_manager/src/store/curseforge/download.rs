@@ -103,7 +103,7 @@ impl<'a> ModDownloader<'a> {
             .get_file(
                 response.name.clone(),
                 id,
-                &self.version,
+                self.version.clone(),
                 self.loader.as_deref(),
                 query_type,
             )

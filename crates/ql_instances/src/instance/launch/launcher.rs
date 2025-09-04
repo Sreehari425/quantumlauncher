@@ -477,35 +477,29 @@ impl GameLauncher {
         Ok(())
     }
 
-    pub async fn setup_classpath_and_mainclass(
+    pub fn get_main_class(
         &self,
-        java_arguments: &mut Vec<String>,
-        fabric_json: Option<FabricJSON>,
-        forge_json: Option<forge::JsonDetails>,
+        fabric_json: Option<&FabricJSON>,
+        forge_json: Option<&forge::JsonDetails>,
         optifine_json: Option<&(JsonOptifine, PathBuf)>,
-    ) -> Result<(), GameLaunchError> {
-        java_arguments.push("-cp".to_owned());
-        java_arguments.push(
-            self.get_class_path(fabric_json.as_ref(), forge_json.as_ref(), optifine_json)
-                .await?,
-        );
-        java_arguments.push(if let Some(fabric_json) = fabric_json {
-            fabric_json.mainClass
+    ) -> String {
+        if let Some(fabric_json) = fabric_json {
+            fabric_json.mainClass.clone()
         } else if let Some(forge_json) = forge_json {
             forge_json.mainClass.clone()
         } else if let Some((optifine_json, _)) = &optifine_json {
             optifine_json.mainClass.clone()
         } else {
             self.version_json.mainClass.clone()
-        });
-        Ok(())
+        }
     }
 
-    async fn get_class_path(
+    pub async fn get_class_path(
         &self,
         fabric_json: Option<&FabricJSON>,
         forge_json: Option<&forge::JsonDetails>,
         optifine_json: Option<&(JsonOptifine, PathBuf)>,
+        main_class: &str,
     ) -> Result<String, GameLaunchError> {
         // `class_path` is the actual classpath argument
         // string that will be passed to Minecraft as a Java argument.
@@ -523,7 +517,7 @@ impl GameLauncher {
         self.classpath_fabric_and_quilt(fabric_json, &mut class_path, &mut classpath_entries)?;
 
         // Vanilla libraries, have to load after everything else
-        self.classpath_vanilla(&mut class_path, &mut classpath_entries)
+        self.classpath_vanilla(&mut class_path, &mut classpath_entries, main_class)
             .await?;
 
         // Sometimes mod loaders/core mods try to "override" their own
@@ -657,6 +651,7 @@ impl GameLauncher {
         &self,
         class_path: &mut String,
         classpath_entries: &mut HashSet<String>,
+        main_class: &str,
     ) -> Result<(), GameLaunchError> {
         let downloader = GameDownloader::with_existing_instance(
             self.version_json.clone(),
@@ -687,6 +682,7 @@ impl GameLauncher {
                 class_path,
                 &downloader,
                 library,
+                main_class,
             )
             .await?;
         }
@@ -701,6 +697,7 @@ impl GameLauncher {
         class_path: &mut String,
         downloader: &GameDownloader,
         library: &Library,
+        main_class: &str,
     ) -> Result<(), GameLaunchError> {
         if let Some(name) = remove_version_from_library(name) {
             if classpath_entries.contains(&name) {
@@ -723,6 +720,11 @@ impl GameLauncher {
         let Some(mut library_path) = library_path.to_str() else {
             return Err(GameLaunchError::PathBufToString(library_path));
         };
+        if main_class != "org.mcphackers.launchwrapper.Launch" && library_path.contains("20230311")
+        {
+            println!("  (skipping json-20230311.jar)");
+            return Ok(());
+        }
 
         #[cfg(target_os = "windows")]
         if library_path.starts_with(r"\\?\") {

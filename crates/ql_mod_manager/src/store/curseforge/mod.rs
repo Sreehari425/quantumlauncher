@@ -6,7 +6,9 @@ use std::{
 
 use chrono::DateTime;
 use download::ModDownloader;
-use ql_core::{pt, GenericProgress, IntoJsonError, JsonDownloadError, ModId, RequestError, CLIENT};
+use ql_core::{
+    err, pt, GenericProgress, IntoJsonError, JsonDownloadError, ModId, RequestError, CLIENT,
+};
 use reqwest::header::HeaderValue;
 use serde::Deserialize;
 
@@ -54,14 +56,39 @@ impl Mod {
         &self,
         title: String,
         id: &str,
-        version: &str,
+        version: String,
         loader: Option<&str>,
         query_type: QueryType,
     ) -> Result<(CurseforgeFileQuery, i32), ModError> {
-        let Some(file) = self.latestFilesIndexes.iter().find(|n| {
-            let is_loader_compatible = loader == n.modLoader.map(|n| n.to_string()).as_deref();
-            let is_version_compatible = n.gameVersion == version;
-            (query_type != QueryType::Mods) || (is_version_compatible && is_loader_compatible)
+        let Some(file) = (if let QueryType::Mods | QueryType::ModPacks = query_type {
+            if let (Some(loader), true) = (
+                loader,
+                self.iter_files(version.clone())
+                    .any(|n| n.modLoader.is_some()),
+            ) {
+                self.iter_files(version.clone())
+                    .find(|n| {
+                        if let Some(l) = n.modLoader.map(|n| n.to_string()) {
+                            l == loader
+                        } else {
+                            false
+                        }
+                    })
+                    .or_else(move || self.iter_files(version).next())
+            } else {
+                if loader.is_none() {
+                    err!("You haven't installed a valid mod loader!");
+                } else {
+                    err!("Can't find a version of this mod compatible with your mod loader!");
+                }
+                pt!("Installing an arbitrary version anyway...");
+                self.iter_files(version).next()
+            }
+        } else {
+            self.iter_files(version).next().or_else(|| {
+                err!("No exact compatible version found!\nPicking the closest one anyway");
+                self.latestFilesIndexes.first()
+            })
         }) else {
             return Err(ModError::NoCompatibleVersionFound(title));
         };
@@ -69,6 +96,12 @@ impl Mod {
         let file_query = CurseforgeFileQuery::load(id, file.fileId).await?;
 
         Ok((file_query, file.fileId))
+    }
+
+    fn iter_files<'a>(&'a self, version: String) -> impl Iterator<Item = &'a CurseforgeFileIdx> {
+        self.latestFilesIndexes
+            .iter()
+            .filter(move |n| n.gameVersion == version)
     }
 }
 
@@ -243,7 +276,13 @@ impl Backend for CurseforgeBackend {
         let query_type = get_query_type(response.data.classId).await?;
         let (file_query, _) = response
             .data
-            .get_file(response.data.name.clone(), id, version, loader, query_type)
+            .get_file(
+                response.data.name.clone(),
+                id,
+                version.to_owned(),
+                loader,
+                query_type,
+            )
             .await?;
 
         let download_version_time = DateTime::parse_from_rfc3339(&file_query.data.fileDate)?;

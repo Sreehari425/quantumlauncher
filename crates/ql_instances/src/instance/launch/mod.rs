@@ -65,14 +65,24 @@ pub async fn launch(
         .await?;
 
     game_launcher.setup_logging(&mut java_arguments)?;
-    game_launcher
-        .setup_classpath_and_mainclass(
-            &mut java_arguments,
-            fabric_json,
-            forge_json,
-            optifine_json.as_ref(),
-        )
-        .await?;
+    let main_class = game_launcher.get_main_class(
+        fabric_json.as_ref(),
+        forge_json.as_ref(),
+        optifine_json.as_ref(),
+    );
+
+    java_arguments.push("-cp".to_owned());
+    java_arguments.push(
+        game_launcher
+            .get_class_path(
+                fabric_json.as_ref(),
+                forge_json.as_ref(),
+                optifine_json.as_ref(),
+                &main_class,
+            )
+            .await?,
+    );
+    java_arguments.push(main_class);
 
     info!("Java args: {java_arguments:?}\n");
 

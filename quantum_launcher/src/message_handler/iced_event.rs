@@ -2,9 +2,9 @@ use super::{SIDEBAR_DRAG_LEEWAY, SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT};
 use crate::message_update::MSG_RESIZE;
 use crate::state::{
     Launcher, LauncherSettingsMessage, LauncherSettingsTab, MenuCreateInstance, MenuEditJarMods,
-    MenuEditMods, MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuLaunch,
-    MenuLauncherSettings, MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuServerCreate,
-    Message, State,
+    MenuEditMods, MenuEditPresets, MenuExportInstance, MenuInstallFabric, MenuInstallOptifine,
+    MenuLaunch, MenuLauncherSettings, MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS,
+    MenuRecommendedMods, MenuServerCreate, Message, State,
 };
 use iced::{
     keyboard::{key::Named, Key},
@@ -163,6 +163,9 @@ impl Launcher {
                         if difference > 0.0 && difference < SIDEBAR_DRAG_LEEWAY {
                             menu.sidebar_dragging = true;
                         }
+                    }
+                    if let iced::event::Status::Ignored = status {
+                        self.hide_submenu();
                     }
                 }
                 iced::mouse::Event::ButtonReleased(button) => {
@@ -331,7 +334,17 @@ impl Launcher {
             State::InstallOptifine(MenuInstallOptifine::Choosing { .. })
             | State::InstallFabric(MenuInstallFabric::Loaded { progress: None, .. })
             | State::EditJarMods(_)
-            | State::ExportMods(_) => {
+            | State::ExportMods(_)
+            | State::ManagePresets(MenuEditPresets {
+                is_building: false,
+                progress: None,
+                ..
+            })
+            | State::RecommendedMods(
+                MenuRecommendedMods::Loaded { .. }
+                | MenuRecommendedMods::InstallALoader
+                | MenuRecommendedMods::NotSupported,
+            ) => {
                 should_return_to_mods_screen = true;
             }
             State::ModsDownload(menu) if menu.opened_mod.is_some() => {
@@ -358,6 +371,7 @@ impl Launcher {
             | State::CurseforgeManualDownload(_)
             | State::LoginAlternate(_)
             | State::LogUploadResult { .. }
+            | State::RecommendedMods(MenuRecommendedMods::Loading { .. })
             | State::Launch(_) => {}
         }
 
@@ -366,7 +380,7 @@ impl Launcher {
                 return (true, self.go_to_launch_screen::<String>(None));
             }
             if should_return_to_mods_screen {
-                return (true, self.go_to_edit_mods_menu_without_update_check());
+                return (true, self.go_to_edit_mods_menu(false));
             }
             if should_return_to_download_screen {
                 if let State::ModsDownload(menu) = &mut self.state {
@@ -388,6 +402,12 @@ impl Launcher {
                 | should_return_to_download_screen,
             Task::none(),
         )
+    }
+
+    fn hide_submenu(&mut self) {
+        if let State::EditMods(menu) = &mut self.state {
+            menu.submenu1_shown = false;
+        }
     }
 
     fn key_change_selected_instance(&mut self, down: bool) -> Task<Message> {

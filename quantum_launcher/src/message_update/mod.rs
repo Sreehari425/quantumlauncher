@@ -17,6 +17,7 @@ mod create_instance;
 mod edit_instance;
 mod manage_mods;
 mod presets;
+mod recommended;
 
 use crate::{
     state::{
@@ -33,7 +34,7 @@ impl Launcher {
     pub fn update_install_fabric(&mut self, message: InstallFabricMessage) -> Task<Message> {
         match message {
             InstallFabricMessage::End(result) => match result {
-                Ok(()) => return self.go_to_edit_mods_menu_without_update_check(),
+                Ok(()) => return self.go_to_edit_mods_menu(false),
                 Err(err) => self.set_error(err),
             },
             InstallFabricMessage::VersionSelected(selection) => {
@@ -382,7 +383,7 @@ impl Launcher {
                 if let Err(err) = result {
                     self.set_error(err);
                 } else {
-                    return self.go_to_edit_mods_menu_without_update_check();
+                    return self.go_to_edit_mods_menu(false);
                 }
             }
         }

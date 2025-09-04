@@ -62,7 +62,7 @@ pub async fn add_files(
             }
             "qmp" => {
                 let file = tokio::fs::read(&path).await.path(&path)?;
-                presets::PresetJson::load(instance.clone(), file).await?;
+                presets::Preset::load(instance.clone(), file, true).await?;
             }
             extension => {
                 err!("While adding mod files: Unrecognized extension: .{extension}");

@@ -58,6 +58,7 @@ impl Launcher {
             Message::ManageMods(message) => return self.update_manage_mods(message),
             Message::ExportMods(message) => return self.update_export_mods(message),
             Message::ManageJarMods(message) => return self.update_manage_jar_mods(message),
+            Message::RecommendedMods(message) => return self.update_recommended_mods(message),
             Message::LaunchInstanceSelected { name, is_server } => {
                 self.selected_instance = Some(InstanceSelection::new(&name, is_server));
                 self.load_edit_instance(None);
@@ -145,7 +146,7 @@ impl Launcher {
                 return self.install_forge(is_neoforge);
             }
             Message::InstallForgeEnd(Ok(())) | Message::UninstallLoaderEnd(Ok(())) => {
-                return self.go_to_edit_mods_menu_without_update_check();
+                return self.go_to_edit_mods_menu(false);
             }
             Message::LaunchEndedLog(Ok((status, name))) => {
                 info!("Game exited with status: {status}");
@@ -352,7 +353,7 @@ impl Launcher {
                 if let Err(err) = result {
                     self.set_error(err);
                 } else {
-                    return self.go_to_edit_mods_menu_without_update_check();
+                    return self.go_to_edit_mods_menu(false);
                 }
             }
             Message::UninstallLoaderPaperStart => {

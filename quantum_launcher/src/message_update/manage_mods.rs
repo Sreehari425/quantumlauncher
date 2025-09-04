@@ -15,12 +15,9 @@ use crate::state::{
 impl Launcher {
     pub fn update_manage_mods(&mut self, msg: ManageModsMessage) -> Task<Message> {
         match msg {
-            ManageModsMessage::ScreenOpen => match self.go_to_edit_mods_menu() {
-                Ok(command) => return command,
-                Err(err) => self.set_error(err),
-            },
+            ManageModsMessage::ScreenOpen => return self.go_to_edit_mods_menu(true),
             ManageModsMessage::ScreenOpenWithoutUpdate => {
-                return self.go_to_edit_mods_menu_without_update_check();
+                return self.go_to_edit_mods_menu(false);
             }
 
             ManageModsMessage::ToggleCheckbox((name, id), enable) => {
@@ -69,7 +66,7 @@ impl Launcher {
                                 is_store: false,
                             });
                     }
-                    return self.go_to_edit_mods_menu_without_update_check();
+                    return self.go_to_edit_mods_menu(false);
                 }
                 Err(err) => self.set_error(err),
             },
@@ -144,6 +141,7 @@ impl Launcher {
                     let instance_name = self.selected_instance.clone().unwrap();
 
                     menu.selected_mods.clear();
+                    menu.selected_state = SelectedState::None;
                     /*menu.selected_mods.retain(|n| {
                         if let SelectedMod::Local { file_name } = n {
                             !ids_local.contains(file_name)
@@ -283,6 +281,11 @@ impl Launcher {
                             menu.selected_mods.clone()
                         },
                     });
+                }
+            }
+            ManageModsMessage::ToggleSubmenu1 => {
+                if let State::EditMods(menu) = &mut self.state {
+                    menu.submenu1_shown = !menu.submenu1_shown;
                 }
             }
         }

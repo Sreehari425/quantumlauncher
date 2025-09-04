@@ -1,4 +1,4 @@
-use std::num::ParseIntError;
+use std::{fmt::Display, num::ParseIntError};
 
 use ql_core::{impl_3_errs_jri, IoError, JsonError, RequestError};
 use thiserror::Error;
@@ -35,6 +35,33 @@ pub enum ModError {
     ParseInt(#[from] ParseIntError),
     #[error("{MOD_ERR_PREFIX}{0}")]
     Pack(#[from] Box<PackError>),
+    #[error("{MOD_ERR_PREFIX}not a valid modpack or QMP preset!")]
+    NotValidPack,
 }
 
 impl_3_errs_jri!(ModError, Json, RequestError, Io);
+
+#[derive(Debug)]
+pub struct GameExpectation {
+    pub expected: String,
+    pub got: String,
+}
+
+impl Display for GameExpectation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.got == "Vanilla" {
+            write!(
+                f,
+                "You don't have {exp} installed!\nPlease install {exp}",
+                exp = self.expected
+            )
+        } else {
+            write!(
+                f,
+                "Expected {expected}, got {got}\nPlease install {expected}",
+                expected = self.expected,
+                got = self.got
+            )
+        }
+    }
+}

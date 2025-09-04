@@ -22,7 +22,7 @@ mod update;
 pub use add_file::add_files;
 pub use curseforge::CurseforgeBackend;
 pub use delete::delete_mods;
-pub use error::ModError;
+pub use error::{GameExpectation, ModError};
 pub use image::{download_image, ImageResult};
 pub use local_json::{ModConfig, ModFile, ModIndex};
 pub use modpack::{install_modpack, PackError};

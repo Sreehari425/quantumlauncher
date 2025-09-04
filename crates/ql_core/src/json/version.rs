@@ -74,7 +74,8 @@ impl VersionDetails {
     pub async fn load_from_path(path: &Path) -> Result<Self, JsonFileError> {
         let path = path.join("details.json");
         let file = tokio::fs::read_to_string(&path).await.path(path)?;
-        let version_json: VersionDetails = serde_json::from_str(&file).json(file)?;
+        let mut version_json: VersionDetails = serde_json::from_str(&file).json(file)?;
+        version_json.fix();
 
         Ok(version_json)
     }
@@ -123,6 +124,13 @@ impl VersionDetails {
             self.libraries.extend(libraries);
         }
         // TODO: More fields in the future
+    }
+
+    pub fn fix(&mut self) {
+        if self.minimumLauncherVersion.is_none() {
+            self.minimumLauncherVersion = Some(3);
+        }
+        // More fixes in the future
     }
 
     #[must_use]

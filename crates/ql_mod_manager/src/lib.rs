@@ -28,5 +28,5 @@ mod presets;
 mod rate_limiter;
 /// Mod manager integrated with Modrinth and Curseforge.
 pub mod store;
-pub use presets::PresetJson;
+pub use presets::{Preset, PresetOutput};
 pub use store::add_files;

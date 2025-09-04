@@ -7,7 +7,7 @@ use std::{
 use ql_core::{
     err, info,
     json::{InstanceConfigJson, VersionDetails},
-    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError,
+    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError,
 };
 
 mod curseforge;
@@ -126,6 +126,8 @@ pub async fn install_modpack(
             err!("Unrecognised file: {name}");
         }
     }
+
+    pt!("Done!");
 
     Ok(Some(not_allowed))
 }

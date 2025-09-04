@@ -14,7 +14,7 @@ use thiserror::Error;
 use tokio::fs::DirEntry;
 use tokio_util::io::StreamReader;
 use walkdir::WalkDir;
-use zip::{write::FileOptions, ZipWriter};
+use zip::{write::FileOptions, ZipArchive, ZipWriter};
 
 use crate::{
     error::{DownloadFileError, IoError},
@@ -649,26 +649,35 @@ pub async fn find_item_in_dir<F: FnMut(&Path, &str) -> bool>(
 ///
 /// # Examples
 /// ```rust
-/// use std::io::Cursor;
-/// use ql_core::file_utils::extract_zip_archive;
-///
+/// # use ql_core::file_utils::extract_zip_archive;
+/// # use std::path::PathBuf;
+/// # async fn extract() -> Result<(), Box<dyn std::error::Error>> {
 /// let zip_data = vec![/* zip file bytes */];
-/// extract_zip_archive(Cursor::new(zip_data), "/path/to/extract", true)?;
+/// extract_zip_archive(std::io::Cursor::new(zip_data), &PathBuf::from("/path/to/extract"), true)?;
+/// # Ok(()) }
 /// ```
-pub fn extract_zip_archive<R: std::io::Read + std::io::Seek>(
+pub fn extract_zip_archive<R: std::io::Read + std::io::Seek, P: AsRef<Path>>(
     reader: R,
-    extract_to: &Path,
+    extract_to: P,
     strip_toplevel: bool,
 ) -> Result<(), zip::result::ZipError> {
-    use zip::ZipArchive;
-
     let mut archive = ZipArchive::new(reader)?;
 
     if strip_toplevel {
-        // Use the new extract_unwrapped_root_dir method when stripping top level
+        // Strip away the root directory.
+        // i.e:
+        //
+        // my_archive/test.txt
+        // my_archive/something/
+        // my_archive/something/e.png
+        //
+        // to
+        //
+        // test.txt
+        // something/
+        // something/e.png
         archive.extract_unwrapped_root_dir(extract_to, zip::read::root_dir_common_filter)?;
     } else {
-        // Use the standard extract method
         archive.extract(extract_to)?;
     }
 

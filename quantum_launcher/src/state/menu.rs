@@ -147,6 +147,7 @@ pub struct MenuEditMods {
     pub update_check_handle: Option<iced::task::Handle>,
     pub available_updates: Vec<(ModId, String, bool)>,
     pub drag_and_drop_hovered: bool,
+    pub submenu1_shown: bool,
 }
 
 impl MenuEditMods {
@@ -314,37 +315,26 @@ impl LauncherSettingsTab {
 }
 
 pub struct MenuEditPresets {
-    pub inner: MenuEditPresetsInner,
-    pub recommended_mods: Option<Vec<(bool, RecommendedMod)>>,
+    pub selected_mods: HashSet<SelectedMod>,
+    pub selected_state: SelectedState,
+    pub is_building: bool,
+
     pub progress: Option<ProgressBar<GenericProgress>>,
-    pub config: InstanceConfigJson,
     pub sorted_mods_list: Vec<ModListEntry>,
     pub drag_and_drop_hovered: bool,
 }
 
-pub enum MenuEditPresetsInner {
-    Build {
-        selected_mods: HashSet<SelectedMod>,
-        selected_state: SelectedState,
-        is_building: bool,
-    },
-    Recommended {
-        error: Option<String>,
+pub enum MenuRecommendedMods {
+    Loading {
         progress: ProgressBar<GenericProgress>,
+        config: InstanceConfigJson,
     },
-}
-
-pub const PRESET_INNER_BUILD: &str = "Create";
-pub const PRESET_INNER_RECOMMENDED: &str = "Recommended";
-
-impl MenuEditPresetsInner {
-    #[must_use]
-    pub const fn id(&self) -> &'static str {
-        match self {
-            MenuEditPresetsInner::Build { .. } => PRESET_INNER_BUILD,
-            MenuEditPresetsInner::Recommended { .. } => PRESET_INNER_RECOMMENDED,
-        }
-    }
+    Loaded {
+        mods: Vec<(bool, RecommendedMod)>,
+        config: InstanceConfigJson,
+    },
+    InstallALoader,
+    NotSupported,
 }
 
 pub enum MenuWelcome {
@@ -442,6 +432,7 @@ pub enum State {
     LauncherSettings(MenuLauncherSettings),
     ServerCreate(MenuServerCreate),
     ManagePresets(MenuEditPresets),
+    RecommendedMods(MenuRecommendedMods),
 
     LogUploadResult {
         url: String,

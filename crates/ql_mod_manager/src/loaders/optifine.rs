@@ -8,8 +8,8 @@ use std::{
 use ql_core::{
     file_utils, impl_3_errs_jri, info, jarmod,
     json::{optifine::JsonOptifine, VersionDetails},
-    no_window, pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError,
-    JsonError, Progress, RequestError, CLASSPATH_SEPARATOR, LAUNCHER_DIR,
+    no_window, pt, GenericProgress, InstanceSelection, IntoIoError, IoError, JsonError, Progress,
+    RequestError, CLASSPATH_SEPARATOR, LAUNCHER_DIR,
 };
 use ql_java_handler::{get_java_binary, JavaInstallError, JavaVersion, JAVA};
 use thiserror::Error;
@@ -306,17 +306,14 @@ async fn compile_hook(
 }
 
 async fn create_details_json(instance_path: &Path) -> Result<(), OptifineError> {
-    let details_path = instance_path.join("details.json");
-    let details = tokio::fs::read_to_string(&details_path)
-        .await
-        .path(&details_path)?;
-    let details: VersionDetails = serde_json::from_str(&details).json(details)?;
+    let details = VersionDetails::load_from_path(instance_path).await?;
 
     let new_details_path = instance_path
         .join(".minecraft/versions")
         .join(details.get_id())
         .join(format!("{}.json", details.get_id()));
 
+    let details_path = instance_path.join("details.json");
     tokio::fs::copy(&details_path, &new_details_path)
         .await
         .path(details_path)?;

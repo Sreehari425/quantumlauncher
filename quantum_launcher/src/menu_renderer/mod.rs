@@ -342,7 +342,7 @@ fn back_to_launch_screen(
 }
 
 impl<T: Progress> ProgressBar<T> {
-    pub fn view(&'_ self) -> Element<'_> {
+    pub fn view(&'_ self) -> widget::Column<'_, Message, LauncherTheme> {
         let total = T::total();
         if let Some(message) = &self.message {
             widget::column!(
@@ -353,7 +353,6 @@ impl<T: Progress> ProgressBar<T> {
             widget::column!(widget::progress_bar(0.0..=total, self.num),)
         }
         .spacing(10)
-        .into()
     }
 }
 
