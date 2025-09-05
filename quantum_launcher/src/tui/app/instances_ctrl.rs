@@ -4,7 +4,6 @@ use std::collections::HashSet;
 use crate::tui::app::{App, Instance, ArgsEditKind};
 use ql_core::json::InstanceConfigJson;
 use ql_core::file_utils;
-use std::path::PathBuf;
 
 impl App {
     /// Preload current memory value from config without opening popup
@@ -13,7 +12,7 @@ impl App {
         let instance_name = if let Some(i) = self.instances.get(idx) { i.name.clone() } else { return };
         let (mb, _err) = match file_utils::get_launcher_dir() {
             Ok(dir) => {
-                let mut p = PathBuf::from(dir);
+                let mut p = dir;
                 p.push("instances");
                 p.push(&instance_name);
                 match std::fs::read_to_string(p.join("config.json")) {
@@ -41,7 +40,7 @@ impl App {
         // Preload from disk
         let (last_mb, err) = match file_utils::get_launcher_dir() {
             Ok(dir) => {
-                let mut p = PathBuf::from(dir);
+                let mut p = dir;
                 p.push("instances");
                 p.push(&instance_name);
                 match std::fs::read_to_string(p.join("config.json")) {

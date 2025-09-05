@@ -166,14 +166,22 @@ impl App {
     fn get_clean_username_for_launch(&self, username: &str, nice_username: &str, account_type: &ql_instances::auth::AccountType) -> String {
         match account_type {
             ql_instances::auth::AccountType::ElyBy | ql_instances::auth::AccountType::LittleSkin => {
-                if nice_username.chars().all(|c| c.is_alphanumeric() || c == '_') && nice_username.len() <= 16 { nice_username.to_string() } else {
-                    if let Some(at_pos) = username.find('@') {
-                        let local_part = &username[..at_pos];
-                        let clean = local_part.chars().filter(|c| c.is_alphanumeric() || *c == '_').take(16).collect::<String>();
-                        if clean.is_empty() { format!("User_{}", &username.chars().filter(|c| c.is_alphanumeric()).take(8).collect::<String>()) } else { clean }
+                if nice_username.chars().all(|c| c.is_alphanumeric() || c == '_') && nice_username.len() <= 16 {
+                    nice_username.to_string()
+                } else if let Some(at_pos) = username.find('@') {
+                    let local_part = &username[..at_pos];
+                    let clean = local_part.chars().filter(|c| c.is_alphanumeric() || *c == '_').take(16).collect::<String>();
+                    if clean.is_empty() {
+                        format!("User_{}", username.chars().filter(|c| c.is_alphanumeric()).take(8).collect::<String>())
                     } else {
-                        let clean = username.chars().filter(|c| c.is_alphanumeric() || *c == '_').take(16).collect::<String>();
-                        if clean.is_empty() { "Player".to_string() } else { clean }
+                        clean
+                    }
+                } else {
+                    let clean = username.chars().filter(|c| c.is_alphanumeric() || *c == '_').take(16).collect::<String>();
+                    if clean.is_empty() {
+                        "Player".to_string()
+                    } else {
+                        clean
                     }
                 }
             }

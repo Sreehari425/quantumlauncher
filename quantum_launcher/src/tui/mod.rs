@@ -364,12 +364,10 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                 }
                                 // Esc in instance settings: back from subpage or to Instances
                                 KeyCode::Esc if app.current_tab == app::TabId::InstanceSettings => {
-                                    if app.instance_settings_tab == app::InstanceSettingsTab::Setting {
-                                        if app.instance_settings_page != app::InstanceSettingsPage::List {
-                                            app.instance_settings_page = app::InstanceSettingsPage::List;
-                                            app.status_message = "Back to Settings list".to_string();
-                                            continue;
-                                        }
+                                    if app.instance_settings_tab == app::InstanceSettingsTab::Setting && app.instance_settings_page != app::InstanceSettingsPage::List {
+                                        app.instance_settings_page = app::InstanceSettingsPage::List;
+                                        app.status_message = "Back to Settings list".to_string();
+                                        continue;
                                     }
                                     app.current_tab = app::TabId::Instances;
                                     app.status_message = "Returned to instances list".to_string();
@@ -393,15 +391,13 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                     continue;
                                 }
                                 KeyCode::Enter if app.current_tab == app::TabId::InstanceSettings => {
-                                    if app.instance_settings_tab == app::InstanceSettingsTab::Setting {
-                                        if app.instance_settings_page == app::InstanceSettingsPage::Java {
-                                            app.select_in_java_page();
-                                            continue;
-                                        }
-                                        if app.instance_settings_page == app::InstanceSettingsPage::Launch {
-                                            app.select_in_launch_page();
-                                            continue;
-                                        }
+                                    if app.instance_settings_tab == app::InstanceSettingsTab::Setting && app.instance_settings_page == app::InstanceSettingsPage::Java {
+                                        app.select_in_java_page();
+                                        continue;
+                                    }
+                                    if app.instance_settings_tab == app::InstanceSettingsTab::Setting && app.instance_settings_page == app::InstanceSettingsPage::Launch {
+                                        app.select_in_launch_page();
+                                        continue;
                                     }
                                     app.select_instance_settings_item();
                                     continue;

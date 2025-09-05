@@ -25,6 +25,12 @@ use tokio::process::Command;
 
 use super::{error::GameLaunchError, replace_var};
 
+// Group mutable classpath state to reduce parameter count in helper
+pub(crate) struct ClasspathCtx<'a> {
+    pub classpath_entries: &'a mut HashSet<String>,
+    pub class_path: &'a mut String,
+}
+
 pub struct GameLauncher {
     username: String,
     instance_name: String,
@@ -659,7 +665,7 @@ impl GameLauncher {
             None,
         );
 
-        for (library, name, artifact) in self
+    for (library, name, artifact) in self
             .version_json
             .libraries
             .iter()
@@ -675,35 +681,29 @@ impl GameLauncher {
                 _ => None,
             })
         {
-            self.add_entry_to_classpath(
-                name,
-                classpath_entries,
-                artifact,
-                class_path,
-                &downloader,
-                library,
-                main_class,
-            )
+            let mut ctx = ClasspathCtx { classpath_entries, class_path };
+            self.add_entry_to_classpath(name, &mut ctx, artifact, &downloader, library, main_class)
             .await?;
         }
         Ok(())
     }
 
+    
+
     async fn add_entry_to_classpath(
         &self,
         name: &str,
-        classpath_entries: &mut HashSet<String>,
+        ctx: &mut ClasspathCtx<'_>,
         artifact: &LibraryDownloadArtifact,
-        class_path: &mut String,
         downloader: &GameDownloader,
         library: &Library,
         main_class: &str,
     ) -> Result<(), GameLaunchError> {
         if let Some(name) = remove_version_from_library(name) {
-            if classpath_entries.contains(&name) {
+            if ctx.classpath_entries.contains(&name) {
                 return Ok(());
             }
-            classpath_entries.insert(name);
+            ctx.classpath_entries.insert(name);
         }
         let library_path = self
             .instance_dir
@@ -731,8 +731,8 @@ impl GameLauncher {
             library_path = &library_path[4..];
         }
 
-        class_path.push_str(library_path);
-        class_path.push(CLASSPATH_SEPARATOR);
+    ctx.class_path.push_str(library_path);
+    ctx.class_path.push(CLASSPATH_SEPARATOR);
         Ok(())
     }
 

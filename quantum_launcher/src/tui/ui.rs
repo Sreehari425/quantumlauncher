@@ -215,20 +215,28 @@ fn render_rename_popup(f: &mut Frame, app: &App) {
     let area = centered_rect(60, 30, f.area());
     f.render_widget(Clear, area);
 
-    let title = if app.is_renaming_instance { " Rename Instance " } else { " Rename Instance " };
+    let title = " Rename Instance ";
     let block = Block::default()
         .title(title)
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Cyan).bold());
 
     // Compose simple instructions and current buffer text
-    let mut lines = Vec::new();
-    lines.push(Line::from(""));
-    lines.push(Line::from(vec![Span::raw("Type new name and press "), Span::styled("Enter", Style::default().fg(Color::Yellow).bold()), Span::raw(" to rename instance")])) ;
-    lines.push(Line::from("Esc to cancel. Invalid characters will be removed."));
-    lines.push(Line::from(""));
-    lines.push(Line::from(vec![Span::styled("New name: ", Style::default().fg(Color::Green)), Span::raw(app.rename_input.clone())]));
-    lines.push(Line::from(""));
+    let lines = vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::raw("Type new name and press "),
+            Span::styled("Enter", Style::default().fg(Color::Yellow).bold()),
+            Span::raw(" to rename instance"),
+        ]),
+        Line::from("Esc to cancel. Invalid characters will be removed."),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("New name: ", Style::default().fg(Color::Green)),
+            Span::raw(app.rename_input.clone()),
+        ]),
+        Line::from(""),
+    ];
 
     let para = Paragraph::new(lines)
         .block(block)
@@ -248,15 +256,30 @@ fn render_memory_edit_popup(f: &mut Frame, app: &App) {
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Magenta).bold());
 
-    let mut lines = Vec::new();
-    lines.push(Line::from(""));
-    lines.push(Line::from(vec![Span::raw("Enter RAM in MB or GB (e.g., "), Span::styled("2048", Style::default().fg(Color::Yellow)), Span::raw(", "), Span::styled("2G", Style::default().fg(Color::Yellow)), Span::raw(", "), Span::styled("4GB", Style::default().fg(Color::Yellow)), Span::raw(")") ]));
-    lines.push(Line::from("Recommended: 2-3 GB for vanilla; 4-8 GB for heavy modpacks"));
-    lines.push(Line::from(""));
-    lines.push(Line::from(vec![Span::styled("Current: ", Style::default().fg(Color::Green)), Span::raw(format!("{} MB", app.memory_edit_mb))]));
-    lines.push(Line::from(vec![Span::styled("New value: ", Style::default().fg(Color::Green)), Span::raw(app.memory_edit_input.clone())]));
-    lines.push(Line::from(""));
-    lines.push(Line::from("Type to edit, Enter to save, Esc to cancel, Backspace to delete"));
+    let lines = vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::raw("Enter RAM in MB or GB (e.g., "),
+            Span::styled("2048", Style::default().fg(Color::Yellow)),
+            Span::raw(", "),
+            Span::styled("2G", Style::default().fg(Color::Yellow)),
+            Span::raw(", "),
+            Span::styled("4GB", Style::default().fg(Color::Yellow)),
+            Span::raw(")"),
+        ]),
+        Line::from("Recommended: 2-3 GB for vanilla; 4-8 GB for heavy modpacks"),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Current: ", Style::default().fg(Color::Green)),
+            Span::raw(format!("{} MB", app.memory_edit_mb)),
+        ]),
+        Line::from(vec![
+            Span::styled("New value: ", Style::default().fg(Color::Green)),
+            Span::raw(app.memory_edit_input.clone()),
+        ]),
+        Line::from(""),
+        Line::from("Type to edit, Enter to save, Esc to cancel, Backspace to delete"),
+    ];
 
     let para = Paragraph::new(lines)
         .block(block)
@@ -286,8 +309,7 @@ fn render_args_edit_popup(f: &mut Frame, app: &App) {
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Blue).bold());
 
-    let mut lines = Vec::new();
-    lines.push(Line::from(""));
+    let mut lines = vec![Line::from("")];
     match app.args_edit_kind {
         crate::tui::app::ArgsEditKind::WindowSize => {
             lines.push(Line::from("Enter window size as WIDTH,HEIGHT (both integers)."));

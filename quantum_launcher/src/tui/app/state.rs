@@ -184,6 +184,7 @@ pub enum InstanceSettingsPage {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum ArgsEditKind {
 	Java,
 	Game,
