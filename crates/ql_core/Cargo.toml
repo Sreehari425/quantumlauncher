@@ -8,7 +8,7 @@ edition = "2021"
 chrono = { workspace = true }
 dirs = "6"
 futures = { workspace = true }
-colored = { workspace = true }
+owo-colors = { workspace = true }
 
 zip = { workspace = true }
 walkdir = { workspace = true }

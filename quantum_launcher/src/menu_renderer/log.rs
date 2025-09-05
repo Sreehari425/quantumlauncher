@@ -69,25 +69,35 @@ impl Launcher {
     ///   called when scrolling **absolute**.
     ///
     /// Returns the `Elemeent` containing the log viewer.
-    pub fn view_launcher_log<'a>(
-        text: Vec<String>,
+    pub fn view_launcher_log<'a, T>(
+        text: Vec<T>,
         text_size: f32,
         scroll: isize,
 
-        msg: impl Fn(isize) -> Message + Clone + 'a,
-        msg_absolute: impl Fn(isize) -> Message + Clone + 'a,
-    ) -> Element<'a> {
+        fn_scroll: impl Fn(isize) -> Message + Clone + 'a,
+        fn_scroll_absolute: impl Fn(isize) -> Message + Clone + 'a,
+
+        render: impl Fn(&T) -> Element<'a> + Clone + 'a,
+        stringify: impl Fn(&T) -> String + Clone + 'a,
+    ) -> Element<'a>
+    where
+        T: Clone + 'a,
+    {
         widget::responsive(move |size| {
-            let msg = msg.clone();
-            let msg_absolute = msg_absolute.clone();
+            let msg = fn_scroll.clone();
+            let msg_absolute = fn_scroll_absolute.clone();
             let text = text.clone();
 
-            let (text_len, column) = log_inner(&text, text_size, scroll, size.height);
+            let render = render.clone();
+            let stringify = stringify.clone();
+
+            let (text_len, column) =
+                log_inner(&text, text_size, scroll, size.height, render, stringify);
             let text_len = text_len as f64;
 
             widget::mouse_area(
                 widget::container(widget::row![
-                    widget::column!(column).height(Length::Fill),
+                    column.height(Length::Fill),
                     widget::vertical_slider(0.0..=text_len, text_len - scroll as f64, move |val| {
                         msg_absolute(text_len as isize - val as isize)
                     })
@@ -107,12 +117,14 @@ impl Launcher {
     }
 }
 
-fn log_inner<'a>(
-    text: &[String],
+fn log_inner<'a, T: Clone>(
+    text: &[T],
     text_size: f32,
     scroll: isize,
     height_limit: f32,
-) -> (usize, Element<'a>) {
+    render: impl Fn(&T) -> Element<'a>,
+    stringify: impl Fn(&T) -> String,
+) -> (usize, widget::Column<'a, Message, LauncherTheme>) {
     let len = text.len();
 
     let start_pos = scroll as usize;
@@ -127,19 +139,14 @@ fn log_inner<'a>(
     let screen_len = text.len();
 
     let column = widget::column(text.into_iter().map(|msg| {
-        widget::button(
-            widget::text(msg.clone())
-                .font(iced::Font::with_name("JetBrains Mono"))
-                .size(text_size)
-                .width(Length::Fill),
-        )
-        .padding(0)
-        .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatExtraDark))
-        .on_press(Message::CoreCopyText(msg))
-        .into()
+        widget::button(render(&msg))
+            .padding(0)
+            .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatExtraDark))
+            .on_press(Message::CoreCopyText(stringify(&msg)))
+            .into()
     }))
     .push(widget::horizontal_space())
     .spacing(4);
 
-    (len.checked_sub(screen_len).unwrap_or(len), column.into())
+    (len.checked_sub(screen_len).unwrap_or(len), column)
 }

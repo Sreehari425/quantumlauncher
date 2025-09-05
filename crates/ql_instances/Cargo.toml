@@ -26,7 +26,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 quick-xml = { version = "0.37", features = ["encoding", "serialize"] }
 
-colored = { workspace = true }
+owo-colors = { workspace = true }
 indicatif = "0.17"
 thiserror = { workspace = true }
 

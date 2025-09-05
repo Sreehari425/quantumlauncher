@@ -10,7 +10,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-colored = { workspace = true }
+owo-colors = { workspace = true }
 
 # Avengers assemble
 flate2 = "1"

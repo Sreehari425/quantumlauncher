@@ -1,4 +1,4 @@
-use colored::Colorize;
+use owo_colors::OwoColorize;
 use ql_core::{
     err, info,
     json::{InstanceConfigJson, VersionDetails},

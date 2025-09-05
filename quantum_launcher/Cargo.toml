@@ -63,7 +63,7 @@ rfd = { workspace = true }
 
 # Terminal
 terminal_size = "0.4"
-colored = { workspace = true }
+owo-colors = { workspace = true }
 clap = { version = "4", features = ["help"] }
 
 # TUI

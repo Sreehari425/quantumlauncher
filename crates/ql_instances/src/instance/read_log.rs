@@ -5,7 +5,7 @@ use std::{
     sync::{mpsc::Sender, Arc, Mutex},
 };
 
-use colored::Colorize;
+use owo_colors::OwoColorize;
 use serde::Deserialize;
 use thiserror::Error;
 use tokio::{
@@ -293,7 +293,8 @@ impl LogEvent {
     pub fn print_color(&self) -> String {
         let date = self.get_time().unwrap_or_else(|| self.timestamp.clone());
 
-        let level = self.level.bright_black().underline();
+        let bright_black = self.level.bright_black();
+        let level = bright_black.underline();
         // let thread = self.thread.bright_black().underline();
         // let class = self.logger.bright_black().underline();
 

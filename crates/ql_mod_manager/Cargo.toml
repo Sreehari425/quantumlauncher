@@ -19,7 +19,7 @@ zip = { workspace = true }
 tokio = { workspace = true }
 futures = { workspace = true }
 
-colored = { workspace = true }
+owo-colors = { workspace = true }
 thiserror = { workspace = true }
 
 image = { workspace = true }

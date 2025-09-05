@@ -587,15 +587,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
 
 [[package]]
-name = "colored"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fde0e0ec90c9dfb3b4b1a0891a7dcd0e2bffde2f7efed5fe7c9bb00e5bfb915e"
-dependencies = [
- "windows-sys 0.59.0",
-]
-
-[[package]]
 name = "com"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3285,6 +3276,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "owo-colors"
+version = "3.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1b04fb49957986fdce4d6ee7a65027d55d4b6d2265e5848bbb507b58ccfdb6f"
+
+[[package]]
 name = "palette"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3581,9 +3578,9 @@ name = "ql_core"
 version = "0.0.0"
 dependencies = [
  "chrono",
- "colored",
  "dirs",
  "futures",
+ "owo-colors",
  "regex",
  "reqwest",
  "serde",
@@ -3601,9 +3598,9 @@ version = "0.0.0"
 dependencies = [
  "any_ascii",
  "chrono",
- "colored",
  "indicatif",
  "keyring",
+ "owo-colors",
  "ql_core",
  "ql_java_handler",
  "quick-xml",
@@ -3621,9 +3618,9 @@ dependencies = [
 name = "ql_java_handler"
 version = "0.0.0"
 dependencies = [
- "colored",
  "flate2",
  "lzma-rs",
+ "owo-colors",
  "ql_core",
  "serde",
  "serde_json",
@@ -3638,9 +3635,9 @@ name = "ql_mod_manager"
 version = "0.0.0"
 dependencies = [
  "chrono",
- "colored",
  "futures",
  "image",
+ "owo-colors",
  "ql_core",
  "ql_java_handler",
  "regex",
@@ -3656,7 +3653,7 @@ dependencies = [
 name = "ql_packager"
 version = "0.0.0"
 dependencies = [
- "colored",
+ "owo-colors",
  "ql_core",
  "ql_instances",
  "ql_mod_manager",
@@ -3675,7 +3672,7 @@ name = "ql_servers"
 version = "0.0.0"
 dependencies = [
  "chrono",
- "colored",
+ "owo-colors",
  "ql_core",
  "ql_java_handler",
  "serde",
@@ -3700,7 +3697,6 @@ version = "0.4.2"
 dependencies = [
  "chrono",
  "clap",
- "colored",
  "comrak",
  "crossterm",
  "embed-resource",
@@ -3708,6 +3704,7 @@ dependencies = [
  "iced",
  "image",
  "markup5ever_rcdom",
+ "owo-colors",
  "paste",
  "ql_core",
  "ql_instances",

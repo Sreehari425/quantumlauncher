@@ -1,5 +1,5 @@
 use clap::{Arg, ArgAction, Command};
-use colored::Colorize;
+use owo_colors::OwoColorize;
 use ql_core::{err, LAUNCHER_VERSION_NAME};
 use std::io::Write;
 

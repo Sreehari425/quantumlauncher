@@ -317,8 +317,8 @@ pub enum Message {
     ExportInstanceFinished(Res<Vec<u8>>),
     ExportInstanceLoaded(Res<Vec<DirItem>>),
 
-    CoreErrorCopy,
-    CoreErrorCopyLog,
+    CoreCopyError,
+    CoreCopyLog,
     CoreOpenLink(String),
     CoreOpenPath(PathBuf),
     CoreCopyText(String),

@@ -1,10 +1,12 @@
 use std::{
+    fmt::Display,
     fs::{File, OpenOptions},
     io::{BufWriter, Write},
     sync::{LazyLock, Mutex},
 };
 
 use chrono::{Datelike, Timelike};
+use regex::Regex;
 
 use crate::file_utils;
 
@@ -13,6 +15,20 @@ pub enum LogType {
     Info,
     Error,
     Point,
+}
+
+impl Display for LogType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                LogType::Info => "[info]",
+                LogType::Error => "[error]",
+                LogType::Point => "-",
+            }
+        )
+    }
 }
 
 pub struct LoggingState {
@@ -182,12 +198,10 @@ pub fn get_logs_lines(limit: Option<usize>) -> Vec<String> {
 #[macro_export]
 macro_rules! info {
     ($($arg:tt)*) => {{
-        let plain_text = format!("[info] {}\n", format_args!($($arg)*));
+
+        let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
         if $crate::print::is_stdio_logging_enabled() {
-            #[cfg(target_os = "windows")]
-            println!("{plain_text}");
-            #[cfg(not(target_os = "windows"))]
-            println!("{} {}", colored::Colorize::yellow("[info]"), format_args!($($arg)*));
+            println!("{} {}", owo_colors::OwoColorize::yellow(&"[info]"), format_args!($($arg)*));
         }
         $crate::print::print_to_file(&plain_text, $crate::print::LogType::Info);
     }};
@@ -198,12 +212,9 @@ macro_rules! info {
 #[macro_export]
 macro_rules! info_no_log {
     ($($arg:tt)*) => {{
-        let plain_text = format!("[info] {}\n", format_args!($($arg)*));
+        let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
         if $crate::print::is_stdio_logging_enabled() {
-            #[cfg(target_os = "windows")]
-            println!("{plain_text}");
-            #[cfg(not(target_os = "windows"))]
-            println!("{} {}", colored::Colorize::yellow("[info]"), format_args!($($arg)*));
+            println!("{} {}", owo_colors::OwoColorize::yellow(&"[info]"), format_args!($($arg)*));
         }
         $crate::print::print_to_storage(&plain_text, $crate::print::LogType::Info);
     }};
@@ -214,13 +225,11 @@ macro_rules! info_no_log {
 #[macro_export]
 macro_rules! err_no_log {
     ($($arg:tt)*) => {{
-        let plain_text = format!("[error] {}\n", format_args!($($arg)*));
+        let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
         if $crate::print::is_stdio_logging_enabled() {
-            #[cfg(target_os = "windows")]
-            eprintln!("{plain_text}");
-            #[cfg(not(target_os = "windows"))]
-            eprintln!("{} {}", colored::Colorize::red("[error]"), format_args!($($arg)*));
+            eprintln!("{} {}", owo_colors::OwoColorize::red(&"[error]"), format_args!($($arg)*));
         }
+
         $crate::print::print_to_storage(&plain_text, $crate::print::LogType::Error);
     }};
 }
@@ -230,12 +239,9 @@ macro_rules! err_no_log {
 #[macro_export]
 macro_rules! err {
     ($($arg:tt)*) => {{
-        let plain_text = format!("[error] {}\n", format_args!($($arg)*));
+        let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
         if $crate::print::is_stdio_logging_enabled() {
-            #[cfg(target_os = "windows")]
-            eprintln!("{plain_text}");
-            #[cfg(not(target_os = "windows"))]
-            eprintln!("{} {}", colored::Colorize::red("[error]"), format_args!($($arg)*));
+            eprintln!("{} {}", owo_colors::OwoColorize::red(&"[error]"), format_args!($($arg)*));
         }
         $crate::print::print_to_file(&plain_text, $crate::print::LogType::Error);
     }};
@@ -246,13 +252,18 @@ macro_rules! err {
 #[macro_export]
 macro_rules! pt {
     ($($arg:tt)*) => {{
-        let plain_text = format!("- {}\n", format_args!($($arg)*));
+        let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
         if $crate::print::is_stdio_logging_enabled() {
-            #[cfg(target_os = "windows")]
-            println!("{plain_text}");
-            #[cfg(not(target_os = "windows"))]
-            println!("{} {}", colored::Colorize::bold("-"), format_args!($($arg)*));
+            println!("{} {}", owo_colors::OwoColorize::bold(&"-"), format_args!($($arg)*));
         }
         $crate::print::print_to_file(&plain_text, $crate::print::LogType::Point);
     }};
+}
+
+/// Removes ANSI escape codes (colors, formatting, cursor moves) from a string.
+pub fn strip_ansi_codes(input: &str) -> String {
+    // Regex: ESC [ ... letters
+    // ESC = \x1B or \u{1b}
+    let re = Regex::new(r"\x1B\[[0-9;]*[A-Za-z]").unwrap();
+    re.replace_all(input, "").to_string()
 }

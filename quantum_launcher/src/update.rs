@@ -5,7 +5,7 @@ use ql_core::{
 };
 use ql_instances::UpdateCheckInfo;
 use ql_mod_manager::loaders;
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Write};
 use tokio::io::AsyncWriteExt;
 
 use crate::state::{
@@ -88,12 +88,12 @@ impl Launcher {
             Message::InstallFabric(message) => return self.update_install_fabric(message),
             Message::CoreOpenLink(dir) => open_file_explorer(&dir),
             Message::CoreOpenPath(dir) => open_file_explorer(&dir),
-            Message::CoreErrorCopy => {
+            Message::CoreCopyError => {
                 if let State::Error { error } = &self.state {
                     return iced::clipboard::write(format!("(QuantumLauncher): {error}"));
                 }
             }
-            Message::CoreErrorCopyLog => {
+            Message::CoreCopyLog => {
                 let text = {
                     if let Some(logger) = LOGGER.as_ref() {
                         let logger = logger.lock().unwrap();
@@ -104,8 +104,8 @@ impl Launcher {
                 };
 
                 let mut log = String::new();
-                for (line, _) in text {
-                    log.push_str(&line);
+                for (line, kind) in text {
+                    _ = writeln!(log, "{kind} {line}");
                 }
                 return iced::clipboard::write(format!("QuantumLauncher Log:\n{log}"));
             }

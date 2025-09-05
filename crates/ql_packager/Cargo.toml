@@ -10,7 +10,7 @@ ql_servers = { path = "../ql_servers" }
 ql_mod_manager = { path = "../ql_mod_manager" }
 
 thiserror = { workspace = true }
-colored = { workspace = true }
+owo-colors = { workspace = true }
 
 tokio = { workspace = true }
 serde = { workspace = true }

@@ -525,8 +525,8 @@ pub fn view_error(error: &'_ str) -> Element<'_> {
                     message: None,
                     clear_selection: true
                 }),
-                widget::button("Copy Error").on_press(Message::CoreErrorCopy),
-                widget::button("Copy Error + Log").on_press(Message::CoreErrorCopyLog),
+                widget::button("Copy Error").on_press(Message::CoreCopyError),
+                widget::button("Copy Error + Log").on_press(Message::CoreCopyLog),
                 widget::button("Join Discord for help")
                     .on_press(Message::CoreOpenLink(DISCORD.to_owned()))
             ]

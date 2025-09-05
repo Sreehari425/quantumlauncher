@@ -177,6 +177,14 @@ impl Launcher {
                 scroll,
                 Message::LaunchLogScroll,
                 Message::LaunchLogScrollAbsolute,
+                |msg| {
+                    widget::text(msg.clone())
+                        .font(iced::Font::with_name("JetBrains Mono"))
+                        .size(TEXT_SIZE)
+                        .width(Length::Fill)
+                        .into()
+                },
+                |msg| msg.clone(),
             );
 
             widget::column![widget::row!(

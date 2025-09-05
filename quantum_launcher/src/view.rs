@@ -4,40 +4,49 @@ use ql_core::LOGGER;
 use crate::{
     icon_manager,
     menu_renderer::{
-        button_with_icon, changelog, view_account_login, view_confirm, view_error,
-        view_log_upload_result, Element,
+        button_with_icon, changelog, tooltip, view_account_login, view_confirm, view_error,
+        view_log_upload_result, Element, FONT_MONO,
     },
     state::{Launcher, Message, State},
-    stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
+    stylesheet::{styles::LauncherTheme, widgets::StyleButton},
     DEBUG_LOG_BUTTON_HEIGHT,
 };
 
 impl Launcher {
     pub fn view(&'_ self) -> Element<'_> {
+        let toggler = tooltip(
+            widget::button(widget::row![
+                widget::horizontal_space(),
+                widget::text(if self.is_log_open { "v" } else { "^" }).size(10),
+                widget::horizontal_space()
+            ])
+            .padding(0)
+            .height(DEBUG_LOG_BUTTON_HEIGHT)
+            .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatDark))
+            .on_press(Message::CoreLogToggle),
+            widget::text(if self.is_log_open {
+                "Close launcher log"
+            } else {
+                "Open launcher debug log (troubleshooting)"
+            })
+            .size(12),
+            widget::tooltip::Position::Top,
+        );
+
         widget::column![
             widget::column![self.view_menu()].height(
                 (self.window_size.1 / if self.is_log_open { 2.0 } else { 1.0 })
                     - DEBUG_LOG_BUTTON_HEIGHT
             ),
-            widget::tooltip(
-                widget::button(widget::row![
-                    widget::horizontal_space(),
-                    widget::text(if self.is_log_open { "v" } else { "^" }).size(10),
-                    widget::horizontal_space()
-                ])
-                .padding(0)
-                .height(DEBUG_LOG_BUTTON_HEIGHT)
-                .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatDark))
-                .on_press(Message::CoreLogToggle),
-                widget::text(if self.is_log_open {
-                    "Close launcher log"
-                } else {
-                    "Open launcher debug log (troubleshooting)"
-                })
-                .size(12),
-                widget::tooltip::Position::Top
-            )
-            .style(|n| n.style_container_sharp_box(0.0, Color::ExtraDark)),
+            widget::row![toggler].push_maybe(self.is_log_open.then(|| {
+                widget::button(widget::text("Copy Log").size(10))
+                    .padding(0)
+                    .height(DEBUG_LOG_BUTTON_HEIGHT)
+                    .style(|n: &LauncherTheme, status| {
+                        n.style_button(status, StyleButton::FlatDark)
+                    })
+                    .on_press(Message::CoreCopyLog)
+            })),
         ]
         .push_maybe(self.is_log_open.then(|| {
             const TEXT_SIZE: f32 = 12.0;
@@ -45,7 +54,7 @@ impl Launcher {
             let text = {
                 if let Some(logger) = LOGGER.as_ref() {
                     let logger = logger.lock().unwrap();
-                    logger.text.iter().cloned().map(|n| n.0).collect()
+                    logger.text.clone()
                 } else {
                     Vec::new()
                 }
@@ -57,6 +66,21 @@ impl Launcher {
                 self.log_scroll,
                 Message::CoreLogScroll,
                 Message::CoreLogScrollAbsolute,
+                |(msg, kind)| {
+                    widget::row![
+                        widget::rich_text![widget::span(kind.to_string()).color(match kind {
+                            ql_core::LogType::Info => iced::Color::from_rgb8(0xf9, 0xe2, 0xaf),
+                            ql_core::LogType::Error => iced::Color::from_rgb8(0xe3, 0x44, 0x59),
+                            ql_core::LogType::Point => iced::Color::from_rgb8(128, 128, 128),
+                        })]
+                        .size(12)
+                        .font(FONT_MONO),
+                        widget::text!(" {msg}").font(FONT_MONO).size(12)
+                    ]
+                    .width(Length::Fill)
+                    .into()
+                },
+                |(msg, kind)| format!("{kind} {msg}"),
             )
         }))
         .into()
