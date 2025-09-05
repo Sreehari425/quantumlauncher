@@ -24,11 +24,12 @@ use std::{
 use tokio::process::Command;
 
 use super::{error::GameLaunchError, replace_var};
+use std::mem;
 
 // Group mutable classpath state to reduce parameter count in helper
-pub(crate) struct ClasspathCtx<'a> {
-    pub classpath_entries: &'a mut HashSet<String>,
-    pub class_path: &'a mut String,
+pub(crate) struct ClasspathCtx {
+    pub classpath_entries: HashSet<String>,
+    pub class_path: String,
 }
 
 pub struct GameLauncher {
@@ -681,29 +682,34 @@ impl GameLauncher {
                 _ => None,
             })
         {
-            let mut ctx = ClasspathCtx { classpath_entries, class_path };
+            let mut ctx = ClasspathCtx {
+                classpath_entries: mem::take(classpath_entries),
+                class_path: mem::take(class_path),
+            };
             self.add_entry_to_classpath(name, &mut ctx, artifact, &downloader, library, main_class)
             .await?;
+            mem::swap(classpath_entries, &mut ctx.classpath_entries);
+            mem::swap(class_path, &mut ctx.class_path);
         }
         Ok(())
     }
 
     
 
-    async fn add_entry_to_classpath(
-        &self,
-        name: &str,
-        ctx: &mut ClasspathCtx<'_>,
+        async fn add_entry_to_classpath(
+            &self,
+            name: &str,
+            ctx: &mut ClasspathCtx,
         artifact: &LibraryDownloadArtifact,
         downloader: &GameDownloader,
         library: &Library,
         main_class: &str,
     ) -> Result<(), GameLaunchError> {
-        if let Some(name) = remove_version_from_library(name) {
-            if ctx.classpath_entries.contains(&name) {
+        if let Some(libname) = remove_version_from_library(name) {
+            if ctx.classpath_entries.contains(&libname) {
                 return Ok(());
             }
-            ctx.classpath_entries.insert(name);
+            ctx.classpath_entries.insert(libname);
         }
         let library_path = self
             .instance_dir
