@@ -369,7 +369,7 @@ fn render_help_popup(f: &mut Frame, app: &App) {
 }
 
 /// Generate contextual help content based on current tab and state
-fn get_contextual_help(app: &App) -> Vec<Line> {
+fn get_contextual_help(app: &App) -> Vec<Line<'_>> {
     let mut help_text = vec![
         Line::from(vec![
             Span::styled("QuantumLauncher TUI Controls", Style::default().fg(Color::Yellow).bold())
@@ -414,7 +414,7 @@ fn get_contextual_help(app: &App) -> Vec<Line> {
 // About help removed; integrated into Settings help
 
 /// Help for Instances tab
-fn get_instances_help(_app: &App) -> Vec<Line> {
+fn get_instances_help(_app: &App) -> Vec<Line<'_>> {
     vec![
         Line::from(vec![
             Span::styled("═══ INSTANCES TAB ═══", Style::default().fg(Color::Cyan).bold())
@@ -434,7 +434,7 @@ fn get_instances_help(_app: &App) -> Vec<Line> {
 }
 
 /// Help for Create tab
-fn get_create_help(app: &App) -> Vec<Line> {
+fn get_create_help(app: &App) -> Vec<Line<'_>> {
     let mut help = vec![
         Line::from(vec![
             Span::styled("═══ CREATE INSTANCE TAB ═══", Style::default().fg(Color::Green).bold())
