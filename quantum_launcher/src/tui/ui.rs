@@ -300,6 +300,7 @@ fn render_args_edit_popup(f: &mut Frame, app: &App) {
         crate::tui::app::ArgsEditKind::GlobalJava => " Edit Global Java Arguments ",
         crate::tui::app::ArgsEditKind::WindowSize => " Edit Window Size ",
     crate::tui::app::ArgsEditKind::GlobalWindowSize => " Edit Global Window Size ",
+    crate::tui::app::ArgsEditKind::GlobalTuiRefreshInterval => " Edit TUI Refresh Interval (ms) ",
     // Pre-launch editors kept for enum completeness but not exposed in TUI
     crate::tui::app::ArgsEditKind::PreLaunchPrefixInstance => " Edit Arguments ",
     crate::tui::app::ArgsEditKind::PreLaunchPrefixGlobal => " Edit Arguments ",
@@ -321,6 +322,12 @@ fn render_args_edit_popup(f: &mut Frame, app: &App) {
             lines.push(Line::from("Instances without local size will use this."));
             lines.push(Line::from("Examples: 854,480  or  1920,1080"));
             lines.push(Line::from("Leave empty to clear (use Minecraft default)."));
+        }
+        crate::tui::app::ArgsEditKind::GlobalTuiRefreshInterval => {
+            lines.push(Line::from("Enter number of milliseconds between forced TUI redraws."));
+            lines.push(Line::from("Lower = more frequent refresh (snappier), higher = less CPU."));
+            lines.push(Line::from("Examples: 250  |  500  |  1000"));
+            lines.push(Line::from("Leave empty to reset to default (500)."));
         }
         _ => {
             lines.push(Line::from("Enter arguments as a single line, comma-separated. Use quotes for spaces or commas."));

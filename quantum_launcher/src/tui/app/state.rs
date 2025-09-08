@@ -147,6 +147,8 @@ pub struct App {
 	// Settings → Licenses submenu state
 	pub settings_focus: SettingsFocus, // Which pane is focused in Settings
 	pub license_selected: usize,       // Selected license in the Licenses submenu
+	// Settings → General submenu selection (e.g., which item in middle pane)
+	pub general_selected: usize,
 	// Per-instance logs (instance name -> recent lines)
 	pub instance_logs: HashMap<String, Vec<String>>,
 	// Per-instance logs view state
@@ -166,6 +168,8 @@ pub struct App {
 	pub args_edit_kind: ArgsEditKind, // which args are being edited
 	// Current Java args mode (for display and quick changes)
 	pub java_args_mode_current: ql_core::json::JavaArgsMode,
+	// Configurable TUI refresh interval (ms); None => use default
+	pub tui_refresh_interval_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -191,6 +195,7 @@ pub enum ArgsEditKind {
 	GlobalJava,
 	WindowSize,
 	GlobalWindowSize,
+	GlobalTuiRefreshInterval,
 	PreLaunchPrefixInstance,
 	PreLaunchPrefixGlobal,
 }
@@ -265,6 +270,7 @@ impl App {
 			about_scroll: 0,
 			settings_focus: SettingsFocus::Left,
 			license_selected: 0,
+			general_selected: 0,
 			instance_logs: HashMap::new(),
 			instance_logs_offset: 0,
 			instance_logs_visible_lines: 20,
@@ -281,11 +287,19 @@ impl App {
 			args_edit_input: String::new(),
 			args_edit_kind: ArgsEditKind::Java,
 			java_args_mode_current: ql_core::json::JavaArgsMode::Combine,
+			tui_refresh_interval_ms: None,
 		};
         
 		// Load instances and accounts on startup
 		app.refresh();
 		app.load_accounts();
+		// Load refresh interval from global config if present
+		if let Ok(cfg) = crate::config::LauncherConfig::load_s() {
+			app.tui_refresh_interval_ms = cfg
+				.global_settings
+				.as_ref()
+				.and_then(|gs| gs.tui_refresh_interval_ms);
+		}
 		app
 	}
 

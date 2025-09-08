@@ -12,8 +12,8 @@ use ratatui::{
 };
 use tokio::sync::mpsc;
 
-// Configuration constants
-const TUI_REFRESH_INTERVAL_MS: u64 = 500; // Periodic refresh to override stdout/stderr interference
+// Default configuration
+const DEFAULT_TUI_REFRESH_INTERVAL_MS: u64 = 500; // Fallback periodic refresh
 
 // Use the refactored app module
 #[path = "app/mod.rs"]
@@ -113,8 +113,9 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
         // Check if we need a forced refresh (e.g., after launch events that might spam stdout)
         let needs_forced_refresh = app.check_and_reset_forced_refresh();
         
-        // Check if it's time for periodic refresh
-        let needs_periodic_refresh = last_refresh.elapsed().as_millis() >= TUI_REFRESH_INTERVAL_MS as u128;
+    // Check if it's time for periodic refresh (use configured value with default fallback)
+    let interval_ms = app.tui_refresh_interval_ms.unwrap_or(DEFAULT_TUI_REFRESH_INTERVAL_MS);
+    let needs_periodic_refresh = last_refresh.elapsed().as_millis() >= interval_ms as u128;
         
         if needs_forced_refresh || needs_periodic_refresh {
             // Clear terminal and force a complete redraw to overwrite any stdout spam
@@ -195,6 +196,8 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                         }
                                     } else if app.args_edit_kind == app::ArgsEditKind::GlobalWindowSize {
                                         app.apply_global_window_size_edit();
+                                    } else if app.args_edit_kind == app::ArgsEditKind::GlobalTuiRefreshInterval {
+                                        app.apply_tui_refresh_interval_edit();
                                     } else {
                                         app.apply_args_edit();
                                     }
@@ -427,14 +430,25 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
                                 // Settings -> Java/General: Enter behavior depends on focus
                                 KeyCode::Enter if app.current_tab == app::TabId::Settings && (app.about_selected == 1 || app.about_selected == 0) => {
                                     if app.settings_focus == app::SettingsFocus::Middle {
-                                        if app.about_selected == 1 { app.open_global_java_args_edit(); }
-                                        else { app.open_global_window_size_edit(); }
+                                        if app.about_selected == 1 { 
+                                            app.open_global_java_args_edit(); 
+                                        } else { 
+                                            // General submenu has multiple items; open based on selection
+                                            match app.general_selected { 
+                                                0 => app.open_global_window_size_edit(),
+                                                1 => app.open_tui_refresh_interval_edit(),
+                                                _ => {}
+                                            }
+                                        }
                                     } else {
                                         // From left pane, move focus to middle instead of opening popup
                                         app.settings_focus = app::SettingsFocus::Middle;
                                     }
                                     continue;
                                 }
+                                // Settings -> General submenu navigation (Up/Down)
+                                KeyCode::Up if app.current_tab == app::TabId::Settings && app.about_selected == 0 && app.settings_focus == app::SettingsFocus::Middle => { app.general_selected = app.general_selected.saturating_sub(1); continue; }
+                                KeyCode::Down if app.current_tab == app::TabId::Settings && app.about_selected == 0 && app.settings_focus == app::SettingsFocus::Middle => { app.general_selected = (app.general_selected + 1).min(1); continue; }
                                 // F12: force redraw
                                 KeyCode::F(12) => {
                                     terminal.clear()?;

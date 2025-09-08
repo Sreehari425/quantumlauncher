@@ -148,6 +148,7 @@ impl App {
                                 ArgsEditKind::GlobalJava => {},
                                 ArgsEditKind::WindowSize => {},
                                 ArgsEditKind::GlobalWindowSize => {},
+                                ArgsEditKind::GlobalTuiRefreshInterval => {},
                                 ArgsEditKind::PreLaunchPrefixInstance => {},
                                 ArgsEditKind::PreLaunchPrefixGlobal => {},
                             }
@@ -161,6 +162,7 @@ impl App {
                                             ArgsEditKind::GlobalJava => "",
                                             ArgsEditKind::WindowSize => "",
                                             ArgsEditKind::GlobalWindowSize => "",
+                                            ArgsEditKind::GlobalTuiRefreshInterval => "",
                                             ArgsEditKind::PreLaunchPrefixInstance => "",
                                             ArgsEditKind::PreLaunchPrefixGlobal => "",
                                         }.to_string();

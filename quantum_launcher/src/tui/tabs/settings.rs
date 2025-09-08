@@ -66,18 +66,24 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
     } else {
         // Show contextual submenu entries for certain sections
         if app.about_selected == 0 {
-            // General: submenu item for Global Game Window Size
+            // General: submenu items for Global Game Window Size and TUI Refresh Interval
             let items = vec![
                 ListItem::new(vec![
                     Line::from(Span::styled("  Global Game Window Size", Style::default().fg(Color::White).bold())),
                     Line::from(Span::raw("    Press Enter to edit as WIDTH,HEIGHT (empty to clear)")),
-                ])
-                .style(if app.settings_focus == SettingsFocus::Middle { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+                ]),
+                ListItem::new(vec![
+                    Line::from(Span::styled("  TUI Refresh Interval (ms)", Style::default().fg(Color::White).bold())),
+                    Line::from(Span::raw("    Press Enter to edit number of milliseconds (e.g., 500)")),
+                ]),
             ];
+            let mut mid_state = ListState::default();
+            mid_state.select(Some(app.general_selected));
             let list = List::new(items)
                 .block(middle_block)
+                .highlight_style(Style::default().bg(Color::DarkGray).fg(Color::White))
                 .highlight_symbol("▶ ");
-            f.render_widget(list, chunks[1]);
+            f.render_stateful_widget(list, chunks[1], &mut mid_state);
         } else if app.about_selected == 1 {
             // Java: show a single entry for Global Java Arguments
             let items = vec![
@@ -102,15 +108,32 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
     // Right content based on selected section
     let right = match app.about_selected {
         0 => {
-            let lines = vec![
-                Line::from(Span::styled("General Settings", Style::default().fg(Color::Cyan).bold())),
-                Line::from(""),
-                Line::from(Span::styled("Global Game Window Size", Style::default().fg(Color::White).bold())),
-                Line::from("Set a default WIDTH,HEIGHT for game window. Instances with no local size will use this."),
-                Line::from("Press Enter to edit as WIDTH,HEIGHT (empty to clear)."),
-                Line::from(""),
-                Line::from("Examples: 854,480  |  1366,768  |  1920,1080"),
-            ];
+            // General right pane: default overview if Left-focused; detailed help per selected item when Middle-focused
+            let lines: Vec<Line> = if app.settings_focus == SettingsFocus::Middle {
+                match app.general_selected {
+                    0 => vec![
+                        Line::from(Span::styled("Global Game Window Size", Style::default().fg(Color::White).bold())),
+                        Line::from("Set a default WIDTH,HEIGHT for game window. Instances with no local size will use this."),
+                        Line::from("Press Enter to edit as WIDTH,HEIGHT (empty to clear)."),
+                        Line::from(""),
+                        Line::from("Examples: 854,480  |  1366,768  |  1920,1080"),
+                    ],
+                    1 => vec![
+                        Line::from(Span::styled("TUI Refresh Interval (ms)", Style::default().fg(Color::White).bold())),
+                        Line::from("Controls how often the TUI forces a redraw to prevent stdout spam artifacts."),
+                        Line::from("Lower = snappier updates, higher = lower CPU usage."),
+                        Line::from("Default: 500 ms. Press Enter to edit; empty resets to default."),
+                    ],
+                    _ => vec![Line::from("Select an option in the middle pane.")],
+                }
+            } else {
+                vec![
+                    Line::from(Span::styled("General settings for TUI", Style::default().fg(Color::Cyan).bold())),
+                    Line::from(""),
+                    Line::from("Use Right to focus the Submenu, Up/Down to choose an option, Enter to edit."),
+                    Line::from("Press '?' for help."),
+                ]
+            };
             Paragraph::new(lines)
                 .block(Block::default().borders(Borders::ALL).title(" General "))
                 .wrap(Wrap { trim: true })

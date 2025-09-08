@@ -10,7 +10,6 @@ impl App {
             Ok(dir) => dir.join("config.json"),
             Err(e) => return Err(format!("Failed to get launcher directory: {}", e)),
         };
-
         let config_str = match serde_json::to_string_pretty(config) {
             Ok(str) => str,
             Err(e) => return Err(format!("Failed to serialize config: {}", e)),
@@ -19,6 +18,55 @@ impl App {
         match std::fs::write(&config_path, config_str) {
             Ok(_) => Ok(()),
             Err(e) => Err(format!("Failed to write config: {}", e)),
+        }
+    }
+
+    /// Open popup to edit global TUI refresh interval (ms)
+    pub fn open_tui_refresh_interval_edit(&mut self) {
+        use crate::tui::app::ArgsEditKind;
+        let cfg = match LauncherConfig::load_s() {
+            Ok(c) => c,
+            Err(e) => { self.status_message = format!("❌ Failed to load global config: {}", e); return; }
+        };
+        let val = cfg
+            .global_settings
+            .as_ref()
+            .and_then(|gs| gs.tui_refresh_interval_ms)
+            .map(|n| n.to_string())
+            .unwrap_or_default();
+        self.is_editing_args = true;
+        self.args_edit_input = val;
+        self.args_edit_kind = ArgsEditKind::GlobalTuiRefreshInterval;
+        self.status_message = "Editing TUI refresh interval (ms; empty for default)".to_string();
+    }
+
+    /// Save popup buffer into global TUI refresh interval
+    pub fn apply_tui_refresh_interval_edit(&mut self) {
+        use crate::tui::app::ArgsEditKind;
+        if !self.is_editing_args { return; }
+        if self.args_edit_kind != ArgsEditKind::GlobalTuiRefreshInterval { return; }
+        let mut cfg = match LauncherConfig::load_s() {
+            Ok(c) => c,
+            Err(e) => { self.status_message = format!("❌ Failed to load global config: {}", e); return; }
+        };
+        let txt = self.args_edit_input.trim();
+        if txt.is_empty() {
+            if let Some(gs) = cfg.global_settings.as_mut() { gs.tui_refresh_interval_ms = None; }
+            self.tui_refresh_interval_ms = None;
+        } else {
+            match txt.parse::<u64>() {
+                Ok(n) => {
+                    let n = n.max(50); // clamp to sensible minimum to avoid busy loop
+                    let gs = cfg.global_settings.get_or_insert_with(Default::default);
+                    gs.tui_refresh_interval_ms = Some(n);
+                    self.tui_refresh_interval_ms = Some(n);
+                }
+                Err(_) => { self.status_message = "❌ Invalid number; please enter an integer in milliseconds.".to_string(); return; }
+            }
+        }
+        match self.save_config_sync(&cfg) {
+            Ok(_) => { self.is_editing_args = false; self.status_message = "✅ Saved TUI refresh interval".to_string(); }
+            Err(e) => { self.status_message = format!("❌ Failed to save global config: {}", e); }
         }
     }
 
