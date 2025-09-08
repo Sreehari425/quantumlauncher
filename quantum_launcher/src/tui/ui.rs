@@ -4,18 +4,16 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},
     text::{Line, Span},
-    widgets::{
-        Block, Borders, Clear, Gauge, Paragraph, Tabs, Wrap,
-    },
+    widgets::{Block, Borders, Clear, Gauge, Paragraph, Tabs, Wrap},
     Frame,
 };
 
 use crate::tui::app::{App, TabId};
-use crate::tui::tabs::logs::render_logs_tab;
+use crate::tui::tabs::accounts::render_accounts_tab;
+use crate::tui::tabs::create::render_create_tab;
 use crate::tui::tabs::instance_settings::render_instance_settings_tab;
 use crate::tui::tabs::instances::render_instances_tab;
-use crate::tui::tabs::create::render_create_tab;
-use crate::tui::tabs::accounts::render_accounts_tab;
+use crate::tui::tabs::logs::render_logs_tab;
 use crate::tui::tabs::settings::render_settings_tab;
 
 /// Main rendering function
@@ -81,7 +79,11 @@ fn render_header(f: &mut Frame, area: Rect, app: &App) {
     };
 
     let tabs_widget = Tabs::new(tabs)
-        .block(Block::default().borders(Borders::ALL).title(" QuantumLauncher "))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" QuantumLauncher "),
+        )
         .highlight_style(Style::default().fg(Color::Yellow))
         .select(selected_tab);
     f.render_widget(tabs_widget, area);
@@ -95,7 +97,7 @@ fn render_main_content(f: &mut Frame, area: Rect, app: &mut App) {
         TabId::Settings => render_settings_tab(f, area, app),
         TabId::Accounts => render_accounts_tab(f, area, app),
         TabId::Logs => render_logs_tab(f, area, app),
-    TabId::InstanceSettings => render_instance_settings_tab(f, area, app),
+        TabId::InstanceSettings => render_instance_settings_tab(f, area, app),
     }
 }
 
@@ -103,7 +105,11 @@ fn render_main_content(f: &mut Frame, area: Rect, app: &mut App) {
 fn render_footer(f: &mut Frame, area: Rect, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(0), Constraint::Length(35), Constraint::Length(20)])
+        .constraints([
+            Constraint::Min(0),
+            Constraint::Length(35),
+            Constraint::Length(20),
+        ])
         .split(area);
 
     let status = Paragraph::new(app.status_message.clone())
@@ -154,7 +160,12 @@ fn render_loading_popup(f: &mut Frame) {
 
     f.render_widget(loading_text, area);
 
-    let progress_area = Rect { x: area.x + 2, y: area.y + 3, width: area.width - 4, height: 1 };
+    let progress_area = Rect {
+        x: area.x + 2,
+        y: area.y + 3,
+        width: area.width - 4,
+        height: 1,
+    };
     let gauge = Gauge::default()
         .block(Block::default())
         .gauge_style(Style::default().fg(Color::Yellow))
@@ -299,11 +310,13 @@ fn render_args_edit_popup(f: &mut Frame, app: &App) {
         crate::tui::app::ArgsEditKind::Game => " Edit Game Arguments ",
         crate::tui::app::ArgsEditKind::GlobalJava => " Edit Global Java Arguments ",
         crate::tui::app::ArgsEditKind::WindowSize => " Edit Window Size ",
-    crate::tui::app::ArgsEditKind::GlobalWindowSize => " Edit Global Window Size ",
-    crate::tui::app::ArgsEditKind::GlobalTuiRefreshInterval => " Edit TUI Refresh Interval (ms) ",
-    // Pre-launch editors kept for enum completeness but not exposed in TUI
-    crate::tui::app::ArgsEditKind::PreLaunchPrefixInstance => " Edit Arguments ",
-    crate::tui::app::ArgsEditKind::PreLaunchPrefixGlobal => " Edit Arguments ",
+        crate::tui::app::ArgsEditKind::GlobalWindowSize => " Edit Global Window Size ",
+        crate::tui::app::ArgsEditKind::GlobalTuiRefreshInterval => {
+            " Edit TUI Refresh Interval (ms) "
+        }
+        // Pre-launch editors kept for enum completeness but not exposed in TUI
+        crate::tui::app::ArgsEditKind::PreLaunchPrefixInstance => " Edit Arguments ",
+        crate::tui::app::ArgsEditKind::PreLaunchPrefixGlobal => " Edit Arguments ",
     };
     let block = Block::default()
         .title(title)
@@ -313,31 +326,46 @@ fn render_args_edit_popup(f: &mut Frame, app: &App) {
     let mut lines = vec![Line::from("")];
     match app.args_edit_kind {
         crate::tui::app::ArgsEditKind::WindowSize => {
-            lines.push(Line::from("Enter window size as WIDTH,HEIGHT (both integers)."));
+            lines.push(Line::from(
+                "Enter window size as WIDTH,HEIGHT (both integers).",
+            ));
             lines.push(Line::from("Examples: 854,480  or  1920,1080"));
             lines.push(Line::from("Leave empty to reset to default (auto size)."));
         }
         crate::tui::app::ArgsEditKind::GlobalWindowSize => {
-            lines.push(Line::from("Enter GLOBAL window size as WIDTH,HEIGHT (both integers)."));
+            lines.push(Line::from(
+                "Enter GLOBAL window size as WIDTH,HEIGHT (both integers).",
+            ));
             lines.push(Line::from("Instances without local size will use this."));
             lines.push(Line::from("Examples: 854,480  or  1920,1080"));
             lines.push(Line::from("Leave empty to clear (use Minecraft default)."));
         }
         crate::tui::app::ArgsEditKind::GlobalTuiRefreshInterval => {
-            lines.push(Line::from("Enter number of milliseconds between forced TUI redraws."));
-            lines.push(Line::from("Lower = more frequent refresh (snappier), higher = less CPU."));
+            lines.push(Line::from(
+                "Enter number of milliseconds between forced TUI redraws.",
+            ));
+            lines.push(Line::from(
+                "Lower = more frequent refresh (snappier), higher = less CPU.",
+            ));
             lines.push(Line::from("Examples: 250  |  500  |  1000"));
             lines.push(Line::from("Leave empty to reset to default (500)."));
         }
         _ => {
             lines.push(Line::from("Enter arguments as a single line, comma-separated. Use quotes for spaces or commas."));
-            lines.push(Line::from("Examples: --demo,--width 854,--height 480  or  -Xms512M,-Xmx2G"));
+            lines.push(Line::from(
+                "Examples: --demo,--width 854,--height 480  or  -Xms512M,-Xmx2G",
+            ));
         }
     }
     lines.push(Line::from(""));
-    lines.push(Line::from(vec![Span::styled("Args: ", Style::default().fg(Color::Green)), Span::raw(app.args_edit_input.clone())]));
+    lines.push(Line::from(vec![
+        Span::styled("Args: ", Style::default().fg(Color::Green)),
+        Span::raw(app.args_edit_input.clone()),
+    ]));
     lines.push(Line::from(""));
-    lines.push(Line::from("Type to edit, Enter to save, Esc to cancel, Backspace to delete"));
+    lines.push(Line::from(
+        "Type to edit, Enter to save, Esc to cancel, Backspace to delete",
+    ));
 
     let para = Paragraph::new(lines)
         .block(block)
@@ -371,9 +399,10 @@ fn render_help_popup(f: &mut Frame, app: &App) {
 /// Generate contextual help content based on current tab and state
 fn get_contextual_help(app: &App) -> Vec<Line<'_>> {
     let mut help_text = vec![
-        Line::from(vec![
-            Span::styled("QuantumLauncher TUI Controls", Style::default().fg(Color::Yellow).bold())
-        ]),
+        Line::from(vec![Span::styled(
+            "QuantumLauncher TUI Controls",
+            Style::default().fg(Color::Yellow).bold(),
+        )]),
         Line::from(""),
     ];
 
@@ -403,9 +432,10 @@ fn get_contextual_help(app: &App) -> Vec<Line<'_>> {
     help_text.extend(get_global_help());
 
     help_text.push(Line::from(""));
-    help_text.push(Line::from(vec![
-        Span::styled("Press '?' or Esc to close this help", Style::default().fg(Color::Green).italic())
-    ]));
+    help_text.push(Line::from(vec![Span::styled(
+        "Press '?' or Esc to close this help",
+        Style::default().fg(Color::Green).italic(),
+    )]));
 
     help_text
 }
@@ -416,9 +446,10 @@ fn get_contextual_help(app: &App) -> Vec<Line<'_>> {
 /// Help for Instances tab
 fn get_instances_help(_app: &App) -> Vec<Line<'_>> {
     vec![
-        Line::from(vec![
-            Span::styled("═══ INSTANCES TAB ═══", Style::default().fg(Color::Cyan).bold())
-        ]),
+        Line::from(vec![Span::styled(
+            "═══ INSTANCES TAB ═══",
+            Style::default().fg(Color::Cyan).bold(),
+        )]),
         Line::from("↑/↓ or j/k         Navigate instance list"),
         Line::from("Shift+Enter        Launch selected instance"),
         Line::from("e                  Edit selected instance (coming soon)"),
@@ -427,7 +458,9 @@ fn get_instances_help(_app: &App) -> Vec<Line<'_>> {
         Line::from(""),
         Line::from(vec![
             Span::styled("Tip: ", Style::default().fg(Color::Yellow)),
-            Span::raw("Select an instance and press Enter for launch info (use CLI for actual launching)")
+            Span::raw(
+                "Select an instance and press Enter for launch info (use CLI for actual launching)",
+            ),
         ]),
         Line::from(""),
     ]
@@ -435,17 +468,17 @@ fn get_instances_help(_app: &App) -> Vec<Line<'_>> {
 
 /// Help for Create tab
 fn get_create_help(app: &App) -> Vec<Line<'_>> {
-    let mut help = vec![
-        Line::from(vec![
-            Span::styled("═══ CREATE INSTANCE TAB ═══", Style::default().fg(Color::Green).bold())
-        ]),
-    ];
+    let mut help = vec![Line::from(vec![Span::styled(
+        "═══ CREATE INSTANCE TAB ═══",
+        Style::default().fg(Color::Green).bold(),
+    )])];
 
     if app.is_editing_name {
         help.extend(vec![
-            Line::from(vec![
-                Span::styled("Currently editing instance name", Style::default().fg(Color::Yellow).italic())
-            ]),
+            Line::from(vec![Span::styled(
+                "Currently editing instance name",
+                Style::default().fg(Color::Yellow).italic(),
+            )]),
             Line::from("Type               Enter instance name"),
             Line::from("Backspace          Delete character"),
             Line::from("Esc                Finish editing name"),
@@ -462,9 +495,10 @@ fn get_create_help(app: &App) -> Vec<Line<'_>> {
 
     // Version search controls
     help.extend(vec![
-        Line::from(vec![
-            Span::styled("Version search:", Style::default().fg(Color::Yellow)),
-        ]),
+        Line::from(vec![Span::styled(
+            "Version search:",
+            Style::default().fg(Color::Yellow),
+        )]),
         Line::from("Ctrl+S             Toggle search mode for versions"),
         Line::from("Type               Filter versions while search is active"),
         Line::from("Backspace          Delete character (search mode)"),
@@ -475,9 +509,10 @@ fn get_create_help(app: &App) -> Vec<Line<'_>> {
 
     // Version type filters
     help.extend(vec![
-        Line::from(vec![
-            Span::styled("Version filters:", Style::default().fg(Color::Yellow)),
-        ]),
+        Line::from(vec![Span::styled(
+            "Version filters:",
+            Style::default().fg(Color::Yellow),
+        )]),
         Line::from("F6                 Toggle Release"),
         Line::from("F7                 Toggle Snapshot"),
         Line::from("F8                 Toggle Beta"),
@@ -487,19 +522,21 @@ fn get_create_help(app: &App) -> Vec<Line<'_>> {
     ]);
 
     help.extend(vec![
-        Line::from(vec![
-            Span::styled("Create Instance Guide:", Style::default().fg(Color::Yellow)),
-        ]),
-    Line::from("1. Press Ctrl+N to edit instance name"),
-    Line::from("2. Select Minecraft version (↑/↓)"), 
-    Line::from("3. Toggle asset download (Ctrl+D)"),
+        Line::from(vec![Span::styled(
+            "Create Instance Guide:",
+            Style::default().fg(Color::Yellow),
+        )]),
+        Line::from("1. Press Ctrl+N to edit instance name"),
+        Line::from("2. Select Minecraft version (↑/↓)"),
+        Line::from("3. Toggle asset download (Ctrl+D)"),
         Line::from("   ☑ Enabled: Slower download, with sound/music"),
         Line::from("   ☐ Disabled: Faster download, no sound/music"),
         Line::from("4. Press Enter to create"),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("Filters:", Style::default().fg(Color::Yellow)),
-        ]),
+        Line::from(vec![Span::styled(
+            "Filters:",
+            Style::default().fg(Color::Yellow),
+        )]),
         Line::from("Ctrl+R             Toggle Release"),
         Line::from("Ctrl+P             Toggle Snapshot"),
         Line::from("Ctrl+B             Toggle Beta"),
@@ -508,7 +545,7 @@ fn get_create_help(app: &App) -> Vec<Line<'_>> {
         Line::from(""),
         Line::from(vec![
             Span::styled("Tip: ", Style::default().fg(Color::Cyan)),
-            Span::raw("Simple controls: Ctrl+N to edit/create, Ctrl+D to toggle assets")
+            Span::raw("Simple controls: Ctrl+N to edit/create, Ctrl+D to toggle assets"),
         ]),
         Line::from(""),
     ]);
@@ -519,9 +556,10 @@ fn get_create_help(app: &App) -> Vec<Line<'_>> {
 /// Help for Settings tab
 fn get_settings_help() -> Vec<Line<'static>> {
     vec![
-        Line::from(vec![
-            Span::styled("═══ SETTINGS TAB ═══", Style::default().fg(Color::Magenta).bold())
-        ]),
+        Line::from(vec![Span::styled(
+            "═══ SETTINGS TAB ═══",
+            Style::default().fg(Color::Magenta).bold(),
+        )]),
         Line::from("↑/↓ or j/k         Navigate left menu / license list"),
         Line::from("→ / Enter          Focus middle pane when on 'Licenses'"),
         Line::from("← / Esc            Return focus to left pane"),
@@ -532,7 +570,7 @@ fn get_settings_help() -> Vec<Line<'static>> {
         Line::from(""),
         Line::from(vec![
             Span::styled("Tip: ", Style::default().fg(Color::Yellow)),
-            Span::raw("Licenses page: left = category, middle = license, right = text")
+            Span::raw("Licenses page: left = category, middle = license, right = text"),
         ]),
         Line::from(""),
     ]
@@ -540,17 +578,17 @@ fn get_settings_help() -> Vec<Line<'static>> {
 
 /// Help for Accounts tab
 fn get_accounts_help(app: &App) -> Vec<Line<'static>> {
-    let mut help = vec![
-        Line::from(vec![
-            Span::styled("═══ ACCOUNTS TAB ═══", Style::default().fg(Color::Blue).bold())
-        ]),
-    ];
+    let mut help = vec![Line::from(vec![Span::styled(
+        "═══ ACCOUNTS TAB ═══",
+        Style::default().fg(Color::Blue).bold(),
+    )])];
 
     if app.is_add_account_mode {
         help.extend(vec![
-            Line::from(vec![
-                Span::styled("Currently adding new account", Style::default().fg(Color::Yellow).italic())
-            ]),
+            Line::from(vec![Span::styled(
+                "Currently adding new account",
+                Style::default().fg(Color::Yellow).italic(),
+            )]),
             Line::from("↑/↓ or j/k         Select account type"),
             Line::from("Tab                Switch between fields"),
             Line::from("Type               Enter credentials"),
@@ -576,18 +614,20 @@ fn get_accounts_help(app: &App) -> Vec<Line<'static>> {
     }
 
     help.extend(vec![
-        Line::from(vec![
-            Span::styled("Account Status:", Style::default().fg(Color::Yellow)),
-        ]),
+        Line::from(vec![Span::styled(
+            "Account Status:",
+            Style::default().fg(Color::Yellow),
+        )]),
         Line::from("Green          - Currently logged in"),
         Line::from("Red            - Not logged in"),
         Line::from("Yellow         - Login in progress"),
         Line::from("*              - Default account (used for launching)"),
         Line::from("Blue           - Offline account (ready for launching)"),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("ElyBy Support:", Style::default().fg(Color::Cyan)),
-        ]),
+        Line::from(vec![Span::styled(
+            "ElyBy Support:",
+            Style::default().fg(Color::Cyan),
+        )]),
         Line::from("• Full username/password authentication"),
         Line::from("• Two-factor authentication (OTP) support"),
         Line::from("• Password visibility toggle"),
@@ -601,12 +641,13 @@ fn get_accounts_help(app: &App) -> Vec<Line<'static>> {
 /// Global help that applies to all tabs
 fn get_global_help() -> Vec<Line<'static>> {
     vec![
-        Line::from(vec![
-            Span::styled("═══ GLOBAL CONTROLS ═══", Style::default().fg(Color::White).bold())
-        ]),
-    Line::from("←/→                Switch between tabs"),
-    Line::from("Tab                Next tab"),
-    Line::from("Shift+Tab          Previous tab"),
+        Line::from(vec![Span::styled(
+            "═══ GLOBAL CONTROLS ═══",
+            Style::default().fg(Color::White).bold(),
+        )]),
+        Line::from("←/→                Switch between tabs"),
+        Line::from("Tab                Next tab"),
+        Line::from("Shift+Tab          Previous tab"),
         Line::from("?                  Show/hide this help popup"),
         Line::from("q                  Quit application"),
         Line::from("F5                 Refresh current data"),
@@ -624,9 +665,10 @@ fn get_global_help() -> Vec<Line<'static>> {
 /// Help for Logs tab
 fn get_logs_help() -> Vec<Line<'static>> {
     vec![
-        Line::from(vec![
-            Span::styled("═══ LOGS TAB ═══", Style::default().fg(Color::Magenta).bold())
-        ]),
+        Line::from(vec![Span::styled(
+            "═══ LOGS TAB ═══",
+            Style::default().fg(Color::Magenta).bold(),
+        )]),
         Line::from("↑/↓ or j/k         Scroll by one line"),
         Line::from("PageUp/PageDown    Scroll by one page"),
         Line::from("Home/End or g/G    Jump to top/bottom"),
@@ -635,7 +677,7 @@ fn get_logs_help() -> Vec<Line<'static>> {
         Line::from(""),
         Line::from(vec![
             Span::styled("Tip: ", Style::default().fg(Color::Yellow)),
-            Span::raw("Logs auto-follow at bottom; scroll up to pause follow")
+            Span::raw("Logs auto-follow at bottom; scroll up to pause follow"),
         ]),
         Line::from(""),
     ]
@@ -649,9 +691,10 @@ fn get_logs_help() -> Vec<Line<'static>> {
 /// Get help text for instance settings
 fn get_instance_settings_help(_app: &App) -> Vec<Line<'static>> {
     vec![
-        Line::from(vec![
-            Span::styled("═══ INSTANCE SETTINGS ═══", Style::default().fg(Color::Cyan).bold())
-        ]),
+        Line::from(vec![Span::styled(
+            "═══ INSTANCE SETTINGS ═══",
+            Style::default().fg(Color::Cyan).bold(),
+        )]),
         Line::from("Left/Right or h/l   Switch between sub-tabs"),
         Line::from("Up/Down or j/k      Navigate items/actions"),
         Line::from("Enter               Select action/item"),
@@ -665,10 +708,10 @@ fn get_instance_settings_help(_app: &App) -> Vec<Line<'static>> {
         Line::from(""),
         Line::from("Other tabs show planned features."),
         Line::from(""),
-    Line::from("Rename popup:"),
-    Line::from("  Type/Backspace     Edit name"),
-    Line::from("  Enter              Apply"),
-    Line::from("  Esc                Cancel"),
-    Line::from(""),
+        Line::from("Rename popup:"),
+        Line::from("  Type/Backspace     Edit name"),
+        Line::from("  Enter              Apply"),
+        Line::from("  Esc                Cancel"),
+        Line::from(""),
     ]
 }
