@@ -15,7 +15,7 @@ use std::io;
 use tokio::sync::mpsc;
 
 // Default configuration
-const DEFAULT_TUI_REFRESH_INTERVAL_MS: u64 = 500; // Fallback periodic refresh
+const DEFAULT_TUI_REFRESH_INTERVAL_MS: u64 = 10000; // Fallback periodic refresh
 
 // Use the refactored app module
 #[path = "app/mod.rs"]
