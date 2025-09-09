@@ -50,13 +50,14 @@ impl App {
             Err(e) => { self.status_message = format!("❌ Failed to load global config: {}", e); return; }
         };
         let txt = self.args_edit_input.trim();
-        if txt.is_empty() {
+    if txt.is_empty() {
             if let Some(gs) = cfg.global_settings.as_mut() { gs.tui_refresh_interval_ms = None; }
             self.tui_refresh_interval_ms = None;
         } else {
             match txt.parse::<u64>() {
                 Ok(n) => {
-                    let n = n.max(50); // clamp to sensible minimum to avoid busy loop
+            // 0 disables periodic refresh; otherwise clamp to sensible minimum
+            let n = if n == 0 { 0 } else { n.max(50) };
                     let gs = cfg.global_settings.get_or_insert_with(Default::default);
                     gs.tui_refresh_interval_ms = Some(n);
                     self.tui_refresh_interval_ms = Some(n);

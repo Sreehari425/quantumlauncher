@@ -139,7 +139,9 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> AppRes
         let interval_ms = app
             .tui_refresh_interval_ms
             .unwrap_or(DEFAULT_TUI_REFRESH_INTERVAL_MS);
-        let needs_periodic_refresh = last_refresh.elapsed().as_millis() >= interval_ms as u128;
+        // Allow disabling periodic refresh by setting interval to 0 ms
+        let needs_periodic_refresh =
+            interval_ms != 0 && last_refresh.elapsed().as_millis() >= interval_ms as u128;
 
         if needs_forced_refresh || needs_periodic_refresh {
             // Clear terminal and force a complete redraw to overwrite any stdout spam

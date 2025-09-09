@@ -345,9 +345,9 @@ fn render_args_edit_popup(f: &mut Frame, app: &App) {
                 "Enter number of milliseconds between forced TUI redraws.",
             ));
             lines.push(Line::from(
-                "Lower = more frequent refresh (snappier), higher = less CPU.",
+                "0 disables periodic refresh; lower = snappier, higher = lower CPU.",
             ));
-            lines.push(Line::from("Examples: 250  |  500  |  1000"));
+            lines.push(Line::from("Examples: 0  |  250  |  500  |  1000"));
             lines.push(Line::from("Leave empty to reset to default (500)."));
         }
         _ => {

@@ -121,7 +121,7 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
                     1 => vec![
                         Line::from(Span::styled("TUI Refresh Interval (ms)", Style::default().fg(Color::White).bold())),
                         Line::from("Controls how often the TUI forces a redraw to prevent stdout spam artifacts."),
-                        Line::from("Lower = snappier updates, higher = lower CPU usage."),
+                        Line::from("0 disables periodic refresh; lower = snappier updates, higher = lower CPU."),
                         Line::from("Default: 500 ms. Press Enter to edit; empty resets to default."),
                     ],
                     _ => vec![Line::from("Select an option in the middle pane.")],
