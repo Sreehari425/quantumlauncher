@@ -1,7 +1,7 @@
 // Account management and authentication helpers
 
+use crate::config::{ConfigAccount, LauncherConfig};
 use crate::tui::app::App;
-use crate::config::{LauncherConfig, ConfigAccount};
 
 impl App {
     // Load accounts from config on startup
@@ -9,44 +9,65 @@ impl App {
         match LauncherConfig::load_s() {
             Ok(config) => {
                 if let Some(config_accounts) = config.accounts {
-                    self.accounts = config_accounts.iter().map(|(username_key, config_account)| {
-                        let account_type = config_account.account_type.clone().unwrap_or_else(|| "Microsoft".to_string());
+                    self.accounts = config_accounts
+                        .iter()
+                        .map(|(username_key, config_account)| {
+                            let account_type = config_account
+                                .account_type
+                                .clone()
+                                .unwrap_or_else(|| "Microsoft".to_string());
 
-                        let is_logged_in = if account_type == "Offline" {
-                            true
-                        } else {
-                            let keyring_username = if let Some(keyring_id) = &config_account.keyring_identifier {
-                                keyring_id.clone()
+                            let is_logged_in = if account_type == "Offline" {
+                                true
                             } else {
-                                match account_type.as_str() {
-                                    "ElyBy" => username_key.strip_suffix(" (elyby)").unwrap_or(username_key).to_string(),
-                                    "LittleSkin" => username_key.strip_suffix(" (littleskin)").unwrap_or(username_key).to_string(),
-                                    _ => username_key.clone(),
-                                }
+                                let keyring_username =
+                                    if let Some(keyring_id) = &config_account.keyring_identifier {
+                                        keyring_id.clone()
+                                    } else {
+                                        match account_type.as_str() {
+                                            "ElyBy" => username_key
+                                                .strip_suffix(" (elyby)")
+                                                .unwrap_or(username_key)
+                                                .to_string(),
+                                            "LittleSkin" => username_key
+                                                .strip_suffix(" (littleskin)")
+                                                .unwrap_or(username_key)
+                                                .to_string(),
+                                            _ => username_key.clone(),
+                                        }
+                                    };
+
+                                let auth_account_type = match account_type.as_str() {
+                                    "ElyBy" => ql_instances::auth::AccountType::ElyBy,
+                                    "LittleSkin" => ql_instances::auth::AccountType::LittleSkin,
+                                    _ => ql_instances::auth::AccountType::Microsoft,
+                                };
+                                ql_instances::auth::read_refresh_token(
+                                    &keyring_username,
+                                    auth_account_type,
+                                )
+                                .is_ok()
                             };
 
-                            let auth_account_type = match account_type.as_str() {
-                                "ElyBy" => ql_instances::auth::AccountType::ElyBy,
-                                "LittleSkin" => ql_instances::auth::AccountType::LittleSkin,
-                                _ => ql_instances::auth::AccountType::Microsoft,
-                            };
-                            ql_instances::auth::read_refresh_token(&keyring_username, auth_account_type).is_ok()
-                        };
-
-                        super::state::Account {
-                            username: username_key.clone(),
-                            account_type,
-                            uuid: config_account.uuid.clone(),
-                            is_logged_in,
-                        }
-                    }).collect();
+                            super::state::Account {
+                                username: username_key.clone(),
+                                account_type,
+                                uuid: config_account.uuid.clone(),
+                                is_logged_in,
+                            }
+                        })
+                        .collect();
                     if let Some(selected_account) = config.account_selected {
                         self.current_account = Some(selected_account);
                     }
                     if self.accounts.is_empty() {
                         self.status_message += " (No accounts configured)";
                     } else {
-                        self.status_message = format!("Loaded {} instances and {} accounts", self.instances.len(), self.accounts.len());
+                        self.status_message = format!(
+                            "Loaded {} instances and {} accounts",
+                            self.instances.len(),
+                            self.accounts.len()
+                        );
                     }
                 } else {
                     self.status_message += " (No accounts configured)";
@@ -100,55 +121,117 @@ impl App {
     }
 
     pub fn next_add_account_field(&mut self) {
-        use super::state::AddAccountFieldFocus as F;
         use super::state::AccountType as T;
-        if self.new_account_type != T::ElyBy && self.new_account_type != T::LittleSkin { return; }
+        use super::state::AddAccountFieldFocus as F;
+        if self.new_account_type != T::ElyBy && self.new_account_type != T::LittleSkin {
+            return;
+        }
         self.add_account_field_focus = match self.add_account_field_focus {
             F::Username => F::Password,
-            F::Password => { if self.needs_otp { F::Otp } else { F::Username } },
+            F::Password => {
+                if self.needs_otp {
+                    F::Otp
+                } else {
+                    F::Username
+                }
+            }
             F::Otp => F::Username,
         };
-        let field_name = match self.add_account_field_focus { F::Username => "username/email", F::Password => "password", F::Otp => "OTP code" };
+        let field_name = match self.add_account_field_focus {
+            F::Username => "username/email",
+            F::Password => "password",
+            F::Otp => "OTP code",
+        };
         self.status_message = format!("Now editing: {}", field_name);
     }
 
     pub fn add_char_to_add_account_field(&mut self, c: char) {
-        use super::state::AddAccountFieldFocus as F;
         use super::state::AccountType as T;
-        if self.new_account_type != T::ElyBy && self.new_account_type != T::LittleSkin { self.new_account_username.push(c); return; }
+        use super::state::AddAccountFieldFocus as F;
+        if self.new_account_type != T::ElyBy && self.new_account_type != T::LittleSkin {
+            self.new_account_username.push(c);
+            return;
+        }
         match self.add_account_field_focus {
             F::Username => self.new_account_username.push(c),
             F::Password => self.new_account_password.push(c),
-            F::Otp => { if let Some(ref mut otp) = self.new_account_otp { otp.push(c); } },
+            F::Otp => {
+                if let Some(ref mut otp) = self.new_account_otp {
+                    otp.push(c);
+                }
+            }
         }
     }
 
     pub fn remove_char_from_add_account_field(&mut self) {
-        use super::state::AddAccountFieldFocus as F;
         use super::state::AccountType as T;
-        if self.new_account_type != T::ElyBy && self.new_account_type != T::LittleSkin { self.new_account_username.pop(); return; }
+        use super::state::AddAccountFieldFocus as F;
+        if self.new_account_type != T::ElyBy && self.new_account_type != T::LittleSkin {
+            self.new_account_username.pop();
+            return;
+        }
         match self.add_account_field_focus {
-            F::Username => { self.new_account_username.pop(); }
-            F::Password => { self.new_account_password.pop(); }
-            F::Otp => { if let Some(ref mut otp) = self.new_account_otp { otp.pop(); } }
+            F::Username => {
+                self.new_account_username.pop();
+            }
+            F::Password => {
+                self.new_account_password.pop();
+            }
+            F::Otp => {
+                if let Some(ref mut otp) = self.new_account_otp {
+                    otp.pop();
+                }
+            }
         }
     }
 
-    pub fn toggle_password_visibility(&mut self) { self.show_password = !self.show_password; }
+    pub fn toggle_password_visibility(&mut self) {
+        self.show_password = !self.show_password;
+    }
 
     pub fn add_new_account(&mut self) {
         use super::state::AccountType as T;
-        if self.new_account_username.is_empty() { self.status_message = "Please enter a username".to_string(); return; }
+        if self.new_account_username.is_empty() {
+            self.status_message = "Please enter a username".to_string();
+            return;
+        }
         match self.new_account_type {
-            T::Microsoft => { self.status_message = "Microsoft accounts are not implemented yet - coming soon!".to_string(); self.login_error = Some("Microsoft authentication not yet available".to_string()); }
-            T::LittleSkin => { self.status_message = "LittleSkin accounts are not implemented yet - coming soon!".to_string(); self.login_error = Some("LittleSkin authentication not yet available".to_string()); }
+            T::Microsoft => {
+                self.status_message =
+                    "Microsoft accounts are not implemented yet - coming soon!".to_string();
+                self.login_error = Some("Microsoft authentication not yet available".to_string());
+            }
+            T::LittleSkin => {
+                self.status_message =
+                    "LittleSkin accounts are not implemented yet - coming soon!".to_string();
+                self.login_error = Some("LittleSkin authentication not yet available".to_string());
+            }
             T::Offline => {
-                let new_account = super::state::Account { username: self.new_account_username.clone(), account_type: self.new_account_type.to_string(), uuid: "00000000-0000-0000-0000-000000000000".to_string(), is_logged_in: true };
-                if let Err(err) = self.save_offline_account(&new_account) { self.status_message = format!("Warning: Failed to save offline account to config: {}", err); } else { self.status_message = format!("Added offline account: {} (ready for launching)", self.new_account_username); }
+                let new_account = super::state::Account {
+                    username: self.new_account_username.clone(),
+                    account_type: self.new_account_type.to_string(),
+                    uuid: "00000000-0000-0000-0000-000000000000".to_string(),
+                    is_logged_in: true,
+                };
+                if let Err(err) = self.save_offline_account(&new_account) {
+                    self.status_message =
+                        format!("Warning: Failed to save offline account to config: {}", err);
+                } else {
+                    self.status_message = format!(
+                        "Added offline account: {} (ready for launching)",
+                        self.new_account_username
+                    );
+                }
                 self.accounts.push(new_account);
                 self.toggle_add_account_mode();
             }
-            T::ElyBy => { if self.new_account_password.is_empty() { self.login_error = Some("Password is required for ElyBy accounts".to_string()); return; } self.start_elyby_authentication(); }
+            T::ElyBy => {
+                if self.new_account_password.is_empty() {
+                    self.login_error = Some("Password is required for ElyBy accounts".to_string());
+                    return;
+                }
+                self.start_elyby_authentication();
+            }
         }
     }
 
@@ -179,15 +262,20 @@ impl App {
                     username,
                     password,
                     ql_instances::auth::AccountType::ElyBy,
-                ).await {
+                )
+                .await
+                {
                     Ok(ql_instances::auth::yggdrasil::Account::Account(account_data)) => {
-                        let _ = sender_clone.send(crate::tui::AuthEvent::LoginSuccess { account_data });
+                        let _ =
+                            sender_clone.send(crate::tui::AuthEvent::LoginSuccess { account_data });
                     }
                     Ok(ql_instances::auth::yggdrasil::Account::NeedsOTP) => {
                         let _ = sender_clone.send(crate::tui::AuthEvent::LoginNeedsOtp);
                     }
                     Err(err) => {
-                        let _ = sender_clone.send(crate::tui::AuthEvent::LoginError { error: err.to_string() });
+                        let _ = sender_clone.send(crate::tui::AuthEvent::LoginError {
+                            error: err.to_string(),
+                        });
                     }
                 }
             });
@@ -195,27 +283,71 @@ impl App {
     }
 
     pub fn logout_account(&mut self) {
-        if self.selected_account >= self.accounts.len() { self.status_message = "No account selected to logout".to_string(); return; }
+        if self.selected_account >= self.accounts.len() {
+            self.status_message = "No account selected to logout".to_string();
+            return;
+        }
         let account = &self.accounts[self.selected_account];
-        if account.account_type == "Offline" { self.status_message = "Cannot logout offline accounts - they are always ready to use".to_string(); return; }
+        if account.account_type == "Offline" {
+            self.status_message =
+                "Cannot logout offline accounts - they are always ready to use".to_string();
+            return;
+        }
         let username = account.username.clone();
         let account_type_str = account.account_type.clone();
-        let account_type = match account_type_str.as_str() { "ElyBy" => ql_instances::auth::AccountType::ElyBy, "LittleSkin" => ql_instances::auth::AccountType::LittleSkin, _ => ql_instances::auth::AccountType::Microsoft };
-        let keyring_username = match account_type { ql_instances::auth::AccountType::ElyBy => username.strip_suffix(" (elyby)").unwrap_or(&username).to_string(), ql_instances::auth::AccountType::LittleSkin => username.strip_suffix(" (littleskin)").unwrap_or(&username).to_string(), ql_instances::auth::AccountType::Microsoft => username.clone(), };
-        if let Err(err) = ql_instances::auth::logout(&keyring_username, account_type) { self.status_message = format!("Failed to logout keyring for {}: {}", keyring_username, err); } else { self.status_message = format!("Successfully logged out: {}", account.username); }
-        if let Err(err) = self.remove_account_from_config(&username) { self.status_message = format!("Warning: Failed to remove account from config: {}", err); }
+        let account_type = match account_type_str.as_str() {
+            "ElyBy" => ql_instances::auth::AccountType::ElyBy,
+            "LittleSkin" => ql_instances::auth::AccountType::LittleSkin,
+            _ => ql_instances::auth::AccountType::Microsoft,
+        };
+        let keyring_username = match account_type {
+            ql_instances::auth::AccountType::ElyBy => username
+                .strip_suffix(" (elyby)")
+                .unwrap_or(&username)
+                .to_string(),
+            ql_instances::auth::AccountType::LittleSkin => username
+                .strip_suffix(" (littleskin)")
+                .unwrap_or(&username)
+                .to_string(),
+            ql_instances::auth::AccountType::Microsoft => username.clone(),
+        };
+        if let Err(err) = ql_instances::auth::logout(&keyring_username, account_type) {
+            self.status_message =
+                format!("Failed to logout keyring for {}: {}", keyring_username, err);
+        } else {
+            self.status_message = format!("Successfully logged out: {}", account.username);
+        }
+        if let Err(err) = self.remove_account_from_config(&username) {
+            self.status_message = format!("Warning: Failed to remove account from config: {}", err);
+        }
         self.accounts.remove(self.selected_account);
-        if let Some(ref current) = self.current_account { if current == &username { self.current_account = None; } }
-        if self.selected_account >= self.accounts.len() && !self.accounts.is_empty() { self.selected_account = self.accounts.len() - 1; }
-        if self.accounts.is_empty() { self.selected_account = 0; }
+        if let Some(ref current) = self.current_account {
+            if current == &username {
+                self.current_account = None;
+            }
+        }
+        if self.selected_account >= self.accounts.len() && !self.accounts.is_empty() {
+            self.selected_account = self.accounts.len() - 1;
+        }
+        if self.accounts.is_empty() {
+            self.selected_account = 0;
+        }
     }
 
     pub fn set_default_account(&mut self) {
-        if self.accounts.is_empty() { self.status_message = "No accounts available to set as default.".to_string(); return; }
+        if self.accounts.is_empty() {
+            self.status_message = "No accounts available to set as default.".to_string();
+            return;
+        }
         let selected_account = &self.accounts[self.selected_account];
         let default_key = selected_account.username.clone();
         self.current_account = Some(default_key.clone());
-        if let Err(err) = self.save_default_account_to_config(&default_key) { self.status_message = format!("❌ Failed to save default account: {}", err); } else { self.status_message = format!("✅ Set {} as default account", selected_account.username); }
+        if let Err(err) = self.save_default_account_to_config(&default_key) {
+            self.status_message = format!("❌ Failed to save default account: {}", err);
+        } else {
+            self.status_message =
+                format!("✅ Set {} as default account", selected_account.username);
+        }
     }
 
     fn save_default_account_to_config(&self, default_key: &str) -> Result<(), String> {
@@ -224,13 +356,22 @@ impl App {
         self.save_config_sync(&config)
     }
 
-    pub(crate) fn save_authenticated_account(&mut self, account_data: &ql_instances::auth::AccountData) -> Result<(), String> {
+    pub(crate) fn save_authenticated_account(
+        &mut self,
+        account_data: &ql_instances::auth::AccountData,
+    ) -> Result<(), String> {
         let mut config = LauncherConfig::load_s().unwrap_or_default();
         let accounts = config.accounts.get_or_insert_with(Default::default);
         let username_modified = account_data.get_username_modified();
         accounts.insert(
             username_modified.clone(),
-            ConfigAccount { uuid: account_data.uuid.clone(), skin: None, account_type: Some(account_data.account_type.to_string()), keyring_identifier: Some(account_data.username.clone()), username_nice: Some(account_data.nice_username.clone()), },
+            ConfigAccount {
+                uuid: account_data.uuid.clone(),
+                skin: None,
+                account_type: Some(account_data.account_type.to_string()),
+                keyring_identifier: Some(account_data.username.clone()),
+                username_nice: Some(account_data.nice_username.clone()),
+            },
         );
         config.account_selected = Some(username_modified);
         self.save_config_sync(&config)?;
@@ -239,8 +380,12 @@ impl App {
 
     fn remove_account_from_config(&self, username: &str) -> Result<(), String> {
         let mut config = LauncherConfig::load_s().unwrap_or_default();
-        if let Some(accounts) = &mut config.accounts { accounts.remove(username); }
-        if config.account_selected.as_deref() == Some(username) { config.account_selected = None; }
+        if let Some(accounts) = &mut config.accounts {
+            accounts.remove(username);
+        }
+        if config.account_selected.as_deref() == Some(username) {
+            config.account_selected = None;
+        }
         self.save_config_sync(&config)
     }
 
@@ -250,9 +395,18 @@ impl App {
         let username = account.username.clone();
         accounts.insert(
             username.clone(),
-            ConfigAccount { uuid: account.uuid.clone(), skin: None, account_type: Some("Offline".to_string()), keyring_identifier: None, username_nice: Some(username.clone()), },
+            ConfigAccount {
+                uuid: account.uuid.clone(),
+                skin: None,
+                account_type: Some("Offline".to_string()),
+                keyring_identifier: None,
+                username_nice: Some(username.clone()),
+            },
         );
-        if self.accounts.is_empty() { config.account_selected = Some(username); }
-        self.save_config_sync(&config).map_err(|e| format!("Failed to save config: {}", e))
+        if self.accounts.is_empty() {
+            config.account_selected = Some(username);
+        }
+        self.save_config_sync(&config)
+            .map_err(|e| format!("Failed to save config: {}", e))
     }
 }

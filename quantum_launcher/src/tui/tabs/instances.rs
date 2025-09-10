@@ -42,8 +42,16 @@ pub fn render_instances_tab(f: &mut Frame, area: Rect, app: &mut App) {
                     Span::styled(&instance.loader, Style::default().fg(Color::Green)),
                     Span::raw(" | Status: "),
                     Span::styled(
-                        if instance.is_running { "running" } else { "stopped" },
-                        Style::default().fg(if instance.is_running { Color::Red } else { Color::Gray }),
+                        if instance.is_running {
+                            "running"
+                        } else {
+                            "stopped"
+                        },
+                        Style::default().fg(if instance.is_running {
+                            Color::Red
+                        } else {
+                            Color::Gray
+                        }),
                     ),
                 ]),
             ])

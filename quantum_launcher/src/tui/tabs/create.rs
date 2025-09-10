@@ -2,8 +2,8 @@
 
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
     style::Stylize,
+    style::{Color, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
     Frame,
@@ -44,7 +44,11 @@ pub fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
     .block(
         Block::default()
             .borders(Borders::ALL)
-            .title(if app.is_editing_name { " Instance Name (Editing - press Esc to finish) " } else { " Instance Name (press Ctrl+N to edit) " }),
+            .title(if app.is_editing_name {
+                " Instance Name (Editing - press Esc to finish) "
+            } else {
+                " Instance Name (press Ctrl+N to edit) "
+            }),
     );
     f.render_widget(name_input, chunks[0]);
 
@@ -56,7 +60,11 @@ pub fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
     };
     let checkbox = Paragraph::new(checkbox_text)
         .style(Style::default().fg(Color::Green))
-        .block(Block::default().borders(Borders::ALL).title(" Options (press Ctrl+D to toggle) "));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Options (press Ctrl+D to toggle) "),
+        );
     f.render_widget(checkbox, chunks[1]);
 
     // Create button and status
@@ -82,7 +90,11 @@ pub fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
     let create_button = Paragraph::new(button_text)
         .style(button_style)
         .alignment(Alignment::Center)
-        .block(Block::default().borders(Borders::ALL).title(" Create Instance "));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Create Instance "),
+        );
     f.render_widget(create_button, chunks[2]);
 
     // Version list - enhanced with better styling and live search
@@ -123,15 +135,21 @@ pub fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
                     crate::tui::app::VersionCategory::Release => ("Release", Color::Green),
                 };
 
-                ListItem::new(vec![
-                    Line::from(vec![
-                        if is_selected { Span::styled("▶ ", Style::default().fg(Color::Yellow).bold()) } else { Span::raw("  ") },
-                        Span::styled(&version.name, Style::default().fg(Color::Cyan).bold()),
-                        Span::raw(" "),
-                        Span::styled(format!("[{}]", type_label), Style::default().fg(type_color)),
-                        if version.is_classic_server { Span::styled(" (Server)", Style::default().fg(Color::Blue)) } else { Span::raw("") },
-                    ])
-                ])
+                ListItem::new(vec![Line::from(vec![
+                    if is_selected {
+                        Span::styled("▶ ", Style::default().fg(Color::Yellow).bold())
+                    } else {
+                        Span::raw("  ")
+                    },
+                    Span::styled(&version.name, Style::default().fg(Color::Cyan).bold()),
+                    Span::raw(" "),
+                    Span::styled(format!("[{}]", type_label), Style::default().fg(type_color)),
+                    if version.is_classic_server {
+                        Span::styled(" (Server)", Style::default().fg(Color::Blue))
+                    } else {
+                        Span::raw("")
+                    },
+                ])])
             })
             .collect();
 
@@ -162,16 +180,26 @@ pub fn render_create_tab(f: &mut Frame, area: Rect, app: &mut App) {
             .highlight_symbol("");
 
         // Draw filter toggles above the list as a small hint/status row
-        let filter_line = Paragraph::new(vec![
-            Line::from(vec![
-                Span::styled("Filters: ", Style::default().fg(Color::Cyan)),
-                Span::styled(format!("[R:{}] ", if app.filter_release { "on" } else { "off" }), Style::default().fg(Color::Green)),
-                Span::styled(format!("[S:{}] ", if app.filter_snapshot { "on" } else { "off" }), Style::default().fg(Color::Yellow)),
-                Span::styled(format!("[B:{}] ", if app.filter_beta { "on" } else { "off" }), Style::default().fg(Color::Magenta)),
-                Span::styled(format!("[A:{}] ", if app.filter_alpha { "on" } else { "off" }), Style::default().fg(Color::LightMagenta)),
-                Span::raw("  (F6:R, F7:S, F8:B, F9:A, F10:Reset)"),
-            ])
-        ])
+        let filter_line = Paragraph::new(vec![Line::from(vec![
+            Span::styled("Filters: ", Style::default().fg(Color::Cyan)),
+            Span::styled(
+                format!("[R:{}] ", if app.filter_release { "on" } else { "off" }),
+                Style::default().fg(Color::Green),
+            ),
+            Span::styled(
+                format!("[S:{}] ", if app.filter_snapshot { "on" } else { "off" }),
+                Style::default().fg(Color::Yellow),
+            ),
+            Span::styled(
+                format!("[B:{}] ", if app.filter_beta { "on" } else { "off" }),
+                Style::default().fg(Color::Magenta),
+            ),
+            Span::styled(
+                format!("[A:{}] ", if app.filter_alpha { "on" } else { "off" }),
+                Style::default().fg(Color::LightMagenta),
+            ),
+            Span::raw("  (F6:R, F7:S, F8:B, F9:A, F10:Reset)"),
+        ])])
         .block(Block::default().borders(Borders::ALL).title(" Filters "))
         .style(Style::default().fg(Color::White));
 

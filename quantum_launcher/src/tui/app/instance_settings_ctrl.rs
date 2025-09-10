@@ -1,9 +1,9 @@
 // Instance Settings controls and actions (navigation, play/kill/open/delete)
 
-use crate::tui::app::{App, InstanceSettingsTab, TabId};
 use crate::tui::app::InstanceSettingsPage;
-use ql_core::json::{InstanceConfigJson, JavaArgsMode};
+use crate::tui::app::{App, InstanceSettingsTab, TabId};
 use ql_core::file_utils;
+use ql_core::json::{InstanceConfigJson, JavaArgsMode};
 
 impl App {
     /// Navigate to next instance settings tab
@@ -30,7 +30,9 @@ impl App {
 
     /// Select item in instance settings
     pub fn select_instance_settings_item(&mut self) {
-        let Some(instance_idx) = self.instance_settings_instance else { return; };
+        let Some(instance_idx) = self.instance_settings_instance else {
+            return;
+        };
         let (instance_name, instance_running) = match self.instances.get(instance_idx) {
             Some(i) => (i.name.clone(), i.is_running),
             None => return,
@@ -41,7 +43,8 @@ impl App {
                 0 => {
                     // Play button
                     if instance_running {
-                        self.status_message = format!("❌ Instance '{}' is already running", instance_name);
+                        self.status_message =
+                            format!("❌ Instance '{}' is already running", instance_name);
                     } else {
                         self.launch_instance(&instance_name);
                         self.current_tab = TabId::Instances; // Return to instances after launching
@@ -75,10 +78,14 @@ impl App {
 
                     // Load current JavaArgsMode from config for display
                     if let Ok(dir) = file_utils::get_launcher_dir() {
-                        let path = dir.join("instances").join(&instance_name).join("config.json");
+                        let path = dir
+                            .join("instances")
+                            .join(&instance_name)
+                            .join("config.json");
                         if let Ok(s) = std::fs::read_to_string(&path) {
                             if let Ok(cfg) = serde_json::from_str::<InstanceConfigJson>(&s) {
-                                self.java_args_mode_current = cfg.java_args_mode.unwrap_or(JavaArgsMode::Combine);
+                                self.java_args_mode_current =
+                                    cfg.java_args_mode.unwrap_or(JavaArgsMode::Combine);
                             }
                         }
                     }
@@ -114,7 +121,7 @@ impl App {
                 // Launch page items: 0..=1 (2 items total) — removed debug logging and pre-launch items
                 InstanceSettingsPage::Launch => 2,
             },
-            InstanceSettingsTab::Logs => 1,     // Logs message
+            InstanceSettingsTab::Logs => 1, // Logs message
         };
 
         if max_items > 1 {
@@ -126,11 +133,17 @@ impl App {
     /// Handle Enter inside Java subpage list
     pub fn select_in_java_page(&mut self) {
         match self.instance_settings_selected {
-            0 => { self.status_message = "(placeholder) Custom Java executable".to_string(); }
+            0 => {
+                self.status_message = "(placeholder) Custom Java executable".to_string();
+            }
             1 => {
                 // Cycle JavaArgsMode and persist to config
-                let Some(idx) = self.instance_settings_instance else { return; };
-                let Some(inst) = self.instances.get(idx) else { return; };
+                let Some(idx) = self.instance_settings_instance else {
+                    return;
+                };
+                let Some(inst) = self.instances.get(idx) else {
+                    return;
+                };
                 let instance_name = inst.name.clone();
 
                 // Compute next mode
@@ -141,7 +154,10 @@ impl App {
 
                 match file_utils::get_launcher_dir() {
                     Ok(dir) => {
-                        let path = dir.join("instances").join(&instance_name).join("config.json");
+                        let path = dir
+                            .join("instances")
+                            .join(&instance_name)
+                            .join("config.json");
                         match std::fs::read_to_string(&path) {
                             Ok(s) => match serde_json::from_str::<InstanceConfigJson>(&s) {
                                 Ok(mut cfg) => {
@@ -150,23 +166,40 @@ impl App {
                                         Ok(new_s) => match std::fs::write(&path, new_s) {
                                             Ok(_) => {
                                                 self.java_args_mode_current = next;
-                                                self.status_message = format!("✅ Java arguments mode: {}", next);
+                                                self.status_message =
+                                                    format!("✅ Java arguments mode: {}", next);
                                             }
-                                            Err(e) => { self.status_message = format!("❌ Failed to write config: {}", e); }
+                                            Err(e) => {
+                                                self.status_message =
+                                                    format!("❌ Failed to write config: {}", e);
+                                            }
                                         },
-                                        Err(e) => { self.status_message = format!("❌ Failed to serialize config: {}", e); }
+                                        Err(e) => {
+                                            self.status_message =
+                                                format!("❌ Failed to serialize config: {}", e);
+                                        }
                                     }
                                 }
-                                Err(e) => { self.status_message = format!("❌ Failed to parse config: {}", e); }
+                                Err(e) => {
+                                    self.status_message =
+                                        format!("❌ Failed to parse config: {}", e);
+                                }
                             },
-                            Err(e) => { self.status_message = format!("❌ Failed to read config: {}", e); }
+                            Err(e) => {
+                                self.status_message = format!("❌ Failed to read config: {}", e);
+                            }
                         }
                     }
-                    Err(e) => { self.status_message = format!("❌ Failed to get launcher directory: {}", e); }
+                    Err(e) => {
+                        self.status_message = format!("❌ Failed to get launcher directory: {}", e);
+                    }
                 }
             }
-            2 => { self.open_java_args_edit(); }
-            3 => { // Memory
+            2 => {
+                self.open_java_args_edit();
+            }
+            3 => {
+                // Memory
                 self.open_memory_edit();
             }
             _ => {}
@@ -176,8 +209,12 @@ impl App {
     /// Handle Enter inside Launch subpage list
     pub fn select_in_launch_page(&mut self) {
         match self.instance_settings_selected {
-            0 => { self.open_game_args_edit(); }
-            1 => { self.open_window_size_edit(); }
+            0 => {
+                self.open_game_args_edit();
+            }
+            1 => {
+                self.open_window_size_edit();
+            }
             _ => {}
         }
     }
@@ -194,25 +231,40 @@ impl App {
 
     fn open_args_edit(&mut self, java: bool) {
         use crate::tui::app::ArgsEditKind;
-        let Some(idx) = self.instance_settings_instance else { return; };
-        let Some(inst) = self.instances.get(idx) else { return; };
+        let Some(idx) = self.instance_settings_instance else {
+            return;
+        };
+        let Some(inst) = self.instances.get(idx) else {
+            return;
+        };
         let instance_name = inst.name.clone();
         // Load current args from config.json
         let text = match file_utils::get_launcher_dir() {
             Ok(dir) => {
-            let mut p = dir;
+                let mut p = dir;
                 p.push("instances");
                 p.push(&instance_name);
                 match std::fs::read_to_string(p.join("config.json")) {
                     Ok(s) => match serde_json::from_str::<InstanceConfigJson>(&s) {
                         Ok(cfg) => {
-                            let vec = if java { cfg.java_args.unwrap_or_default() } else { cfg.game_args.unwrap_or_default() };
+                            let vec = if java {
+                                cfg.java_args.unwrap_or_default()
+                            } else {
+                                cfg.game_args.unwrap_or_default()
+                            };
                             // Join with commas; quote if spaces or commas present
-                            vec.iter().map(|a| {
-                                if a.is_empty() { "\"\"".to_string() }
-                                else if a.chars().any(|c| c.is_whitespace() || c == ',') { format!("\"{}\"", a.replace('"', "\\\"")) }
-                                else { a.clone() }
-                            }).collect::<Vec<_>>().join(",")
+                            vec.iter()
+                                .map(|a| {
+                                    if a.is_empty() {
+                                        "\"\"".to_string()
+                                    } else if a.chars().any(|c| c.is_whitespace() || c == ',') {
+                                        format!("\"{}\"", a.replace('"', "\\\""))
+                                    } else {
+                                        a.clone()
+                                    }
+                                })
+                                .collect::<Vec<_>>()
+                                .join(",")
                         }
                         Err(_) => String::new(),
                     },
@@ -223,8 +275,16 @@ impl App {
         };
         self.is_editing_args = true;
         self.args_edit_input = text;
-        self.args_edit_kind = if java { ArgsEditKind::Java } else { ArgsEditKind::Game };
-        self.status_message = if java { "Editing Java arguments".to_string() } else { "Editing Game arguments".to_string() };
+        self.args_edit_kind = if java {
+            ArgsEditKind::Java
+        } else {
+            ArgsEditKind::Game
+        };
+        self.status_message = if java {
+            "Editing Java arguments".to_string()
+        } else {
+            "Editing Game arguments".to_string()
+        };
     }
 
     // Removed: global pre-launch prefix editor in TUI
@@ -232,17 +292,27 @@ impl App {
     /// Open popup to edit per-instance window size as WIDTH,HEIGHT
     pub fn open_window_size_edit(&mut self) {
         use crate::tui::app::ArgsEditKind;
-        let Some(idx) = self.instance_settings_instance else { return; };
-        let Some(inst) = self.instances.get(idx) else { return; };
+        let Some(idx) = self.instance_settings_instance else {
+            return;
+        };
+        let Some(inst) = self.instances.get(idx) else {
+            return;
+        };
         let instance_name = inst.name.clone();
         let text = match ql_core::file_utils::get_launcher_dir() {
             Ok(dir) => {
-                let path = dir.join("instances").join(&instance_name).join("config.json");
+                let path = dir
+                    .join("instances")
+                    .join(&instance_name)
+                    .join("config.json");
                 match std::fs::read_to_string(&path) {
                     Ok(s) => match serde_json::from_str::<InstanceConfigJson>(&s) {
                         Ok(cfg) => {
                             let (w, h) = cfg.get_window_size(None);
-                            match (w, h) { (Some(w), Some(h)) => format!("{},{}", w, h), _ => String::new() }
+                            match (w, h) {
+                                (Some(w), Some(h)) => format!("{},{}", w, h),
+                                _ => String::new(),
+                            }
                         }
                         Err(_) => String::new(),
                     },
@@ -263,11 +333,17 @@ impl App {
 
     /// Apply rename from popup buffer to disk and in-memory list
     pub fn apply_rename_instance(&mut self) {
-        if !self.is_renaming_instance { return; }
-        let Some(idx) = self.instance_settings_instance else { return; };
+        if !self.is_renaming_instance {
+            return;
+        }
+        let Some(idx) = self.instance_settings_instance else {
+            return;
+        };
         let old_name = self.instances[idx].name.clone();
         // Sanitize similar to iced implementation
-        let mut disallowed = vec!['/', '\\', ':', '*', '?', '"', '<', '>', '|', '\'', '\0', '\u{7F}'];
+        let mut disallowed = vec![
+            '/', '\\', ':', '*', '?', '"', '<', '>', '|', '\'', '\0', '\u{7F}',
+        ];
         disallowed.extend('\u{1}'..='\u{1F}');
 
         let mut new_name: String = self.rename_input.clone();
@@ -278,10 +354,10 @@ impl App {
             self.status_message = "❌ New name is empty or invalid".to_string();
             return; // keep popup open for correction
         }
-        if new_name == old_name { 
-            self.is_renaming_instance = false; 
+        if new_name == old_name {
+            self.is_renaming_instance = false;
             self.status_message = "No changes to apply".to_string();
-            return; 
+            return;
         }
 
         // Refuse rename if running
@@ -296,18 +372,24 @@ impl App {
                 let old_path = instances_dir.join(&old_name);
                 let new_path = instances_dir.join(&new_name);
                 if new_path.exists() {
-                    self.status_message = format!("❌ An instance named '{}' already exists", new_name);
+                    self.status_message =
+                        format!("❌ An instance named '{}' already exists", new_name);
                     return;
                 }
                 match std::fs::rename(&old_path, &new_path) {
                     Ok(_) => {
                         // Update in-memory list
-                        if let Some(inst) = self.instances.get_mut(idx) { inst.name = new_name.clone(); }
+                        if let Some(inst) = self.instances.get_mut(idx) {
+                            inst.name = new_name.clone();
+                        }
                         // Also update selected_instance if needed
-                        if self.selected_instance == idx { self.selected_instance = idx; }
+                        if self.selected_instance == idx {
+                            self.selected_instance = idx;
+                        }
                         // Close popup
                         self.is_renaming_instance = false;
-                        self.status_message = format!("✅ Renamed instance '{}' → '{}'", old_name, new_name);
+                        self.status_message =
+                            format!("✅ Renamed instance '{}' → '{}'", old_name, new_name);
                     }
                     Err(e) => {
                         self.status_message = format!("❌ Failed to rename: {}", e);
@@ -348,7 +430,8 @@ impl App {
                     }
 
                     //send LaunchEnded to update the UI
-                    let _ = sender_clone.send(crate::tui::AuthEvent::LaunchEnded(instance_name_clone));
+                    let _ =
+                        sender_clone.send(crate::tui::AuthEvent::LaunchEnded(instance_name_clone));
                 });
             }
         } else {
@@ -363,10 +446,12 @@ impl App {
                 let instance_path = launcher_dir.join("instances").join(instance_name);
 
                 if instance_path.exists() {
-                    self.status_message = format!("📂 Opening folder for instance: {}", instance_name);
+                    self.status_message =
+                        format!("📂 Opening folder for instance: {}", instance_name);
                     ql_core::open_file_explorer(&instance_path);
                 } else {
-                    self.status_message = format!("❌ Instance folder not found: {}", instance_name);
+                    self.status_message =
+                        format!("❌ Instance folder not found: {}", instance_name);
                 }
             }
             Err(e) => {
@@ -397,10 +482,13 @@ impl App {
                             format!("❌ Failed to delete instance '{}': {}", instance_name, e);
                     } else {
                         // Remove the instance from the list
-                        self.instances.retain(|instance| instance.name != instance_name);
+                        self.instances
+                            .retain(|instance| instance.name != instance_name);
 
                         // Reset selection if needed
-                        if self.selected_instance >= self.instances.len() && !self.instances.is_empty() {
+                        if self.selected_instance >= self.instances.len()
+                            && !self.instances.is_empty()
+                        {
                             self.selected_instance = self.instances.len() - 1;
                         } else if self.instances.is_empty() {
                             self.selected_instance = 0;

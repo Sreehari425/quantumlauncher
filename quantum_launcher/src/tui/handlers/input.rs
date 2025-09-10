@@ -1,7 +1,7 @@
 // QuantumLauncher TUI - Input Event Handler
 
+use crate::tui::app::{AccountType, App, TabId};
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use crate::tui::app::{App, TabId, AccountType};
 
 /// Handle keyboard input events
 pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
@@ -18,13 +18,19 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
     // Handle context-specific input with more specific conditions first
     match key.code {
         // Create tab: Ctrl+N begins editing instance name
-        KeyCode::Char('n') if app.current_tab == TabId::Create && !app.is_editing_name && key.modifiers.contains(KeyModifiers::CONTROL) => {
+        KeyCode::Char('n')
+            if app.current_tab == TabId::Create
+                && !app.is_editing_name
+                && key.modifiers.contains(KeyModifiers::CONTROL) =>
+        {
             app.is_editing_name = true;
             app.status_message = "Editing instance name. Press Esc to finish editing.".to_string();
             false
         }
         // Start add-account flow on Accounts tab
-        KeyCode::Char('n') | KeyCode::Char('N') if app.current_tab == TabId::Accounts && !app.is_add_account_mode => {
+        KeyCode::Char('n') | KeyCode::Char('N')
+            if app.current_tab == TabId::Accounts && !app.is_add_account_mode =>
+        {
             app.toggle_add_account_mode();
             false
         }
@@ -71,7 +77,9 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
         }
         // General key handling - but NOT when editing instance name
         // If Esc pressed during version search, exit search instead of quitting
-        KeyCode::Char('q') | KeyCode::Esc if !(app.current_tab == TabId::Create && app.is_editing_name) => {
+        KeyCode::Char('q') | KeyCode::Esc
+            if !(app.current_tab == TabId::Create && app.is_editing_name) =>
+        {
             if app.current_tab == TabId::Create && app.version_search_active {
                 app.exit_version_search();
                 false
@@ -79,26 +87,36 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
                 true
             }
         }
-        KeyCode::Up | KeyCode::Char('k') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
+        KeyCode::Up | KeyCode::Char('k')
+            if !(app.current_tab == TabId::Create && app.is_editing_name) =>
+        {
             app.prev_item();
             false
         }
-        KeyCode::Down | KeyCode::Char('j') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
+        KeyCode::Down | KeyCode::Char('j')
+            if !(app.current_tab == TabId::Create && app.is_editing_name) =>
+        {
             app.next_item();
             false
         }
-    // Tab navigation: Left/Right arrows
-    KeyCode::Left if !(app.current_tab == TabId::Create && app.is_editing_name) => {
+        // Tab navigation: Left/Right arrows
+        KeyCode::Left if !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.previous_tab();
             false
         }
-    KeyCode::Right if !(app.current_tab == TabId::Create && app.is_editing_name) => {
+        KeyCode::Right if !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.next_tab();
             false
         }
-    // Tab navigation: Tab = next, Shift+Tab (BackTab) = previous
-    KeyCode::Tab if !(app.current_tab == TabId::Create && app.is_editing_name) => { app.next_tab(); false }
-    KeyCode::BackTab if !(app.current_tab == TabId::Create && app.is_editing_name) => { app.previous_tab(); false }
+        // Tab navigation: Tab = next, Shift+Tab (BackTab) = previous
+        KeyCode::Tab if !(app.current_tab == TabId::Create && app.is_editing_name) => {
+            app.next_tab();
+            false
+        }
+        KeyCode::BackTab if !(app.current_tab == TabId::Create && app.is_editing_name) => {
+            app.previous_tab();
+            false
+        }
         KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
             // Shift+Enter: Launch the selected instance
             app.launch_selected_instance();
@@ -115,12 +133,12 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             app.status_message = "✅ Logs cleared".to_string();
             false
         }
-    // Removed old letter/number shortcuts for tab switching; use arrows and Tab/Shift+Tab instead
+        // Removed old letter/number shortcuts for tab switching; use arrows and Tab/Shift+Tab instead
         KeyCode::Char('?') if !(app.current_tab == TabId::Create && app.is_editing_name) => {
             app.toggle_help_popup();
             false
         }
-    // F5 is handled in the main TUI loop for async refresh
+        // F5 is handled in the main TUI loop for async refresh
         // Create tab editing mode - handle character input first when editing
         KeyCode::Backspace if app.current_tab == TabId::Create && app.is_editing_name => {
             app.new_instance_name.pop();
@@ -136,7 +154,11 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             false
         }
         // Create tab commands (only when NOT editing)
-        KeyCode::Char('d') if app.current_tab == TabId::Create && !app.is_editing_name && key.modifiers.contains(KeyModifiers::CONTROL) => {
+        KeyCode::Char('d')
+            if app.current_tab == TabId::Create
+                && !app.is_editing_name
+                && key.modifiers.contains(KeyModifiers::CONTROL) =>
+        {
             app.download_assets = !app.download_assets;
             app.status_message = if app.download_assets {
                 "✅ Download assets enabled (sound/music will be available)".to_string()
@@ -145,8 +167,8 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             };
             false
         }
-    // Removed: Tab toggle for assets (conflicts with Tab for tab navigation)
-    KeyCode::Enter if app.current_tab == TabId::Create && !app.is_editing_name => {
+        // Removed: Tab toggle for assets (conflicts with Tab for tab navigation)
+        KeyCode::Enter if app.current_tab == TabId::Create && !app.is_editing_name => {
             if app.version_search_active {
                 app.create_instance();
                 return false;
@@ -154,7 +176,8 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             if app.new_instance_name.is_empty() {
                 // If no name entered, start editing the name
                 app.is_editing_name = true;
-                app.status_message = "Editing instance name. Press Esc to finish editing.".to_string();
+                app.status_message =
+                    "Editing instance name. Press Esc to finish editing.".to_string();
             } else if !app.available_versions.is_empty() && !app.is_loading {
                 // If name is entered and versions available, create instance
                 app.create_instance();
@@ -171,13 +194,24 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             false
         }
         // Only accept characters when search is active
-        KeyCode::Char(c) if app.current_tab == TabId::Create && !app.is_editing_name && app.version_search_active => {
+        KeyCode::Char(c)
+            if app.current_tab == TabId::Create
+                && !app.is_editing_name
+                && app.version_search_active =>
+        {
             app.add_char_to_version_search(c);
             false
         }
         // Ctrl+S toggles search mode
-        KeyCode::Char('s') if app.current_tab == TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
-            if app.version_search_active { app.exit_version_search(); } else { app.start_version_search(); }
+        KeyCode::Char('s')
+            if app.current_tab == TabId::Create
+                && key.modifiers.contains(KeyModifiers::CONTROL) =>
+        {
+            if app.version_search_active {
+                app.exit_version_search();
+            } else {
+                app.start_version_search();
+            }
             false
         }
         // Version type filters (Create tab)
@@ -202,23 +236,38 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             false
         }
         // Filter toggles in Create tab
-        KeyCode::Char('r') if app.current_tab == TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+        KeyCode::Char('r')
+            if app.current_tab == TabId::Create
+                && key.modifiers.contains(KeyModifiers::CONTROL) =>
+        {
             app.toggle_filter_release();
             false
         }
-        KeyCode::Char('b') if app.current_tab == TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+        KeyCode::Char('b')
+            if app.current_tab == TabId::Create
+                && key.modifiers.contains(KeyModifiers::CONTROL) =>
+        {
             app.toggle_filter_beta();
             false
         }
-        KeyCode::Char('a') if app.current_tab == TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+        KeyCode::Char('a')
+            if app.current_tab == TabId::Create
+                && key.modifiers.contains(KeyModifiers::CONTROL) =>
+        {
             app.toggle_filter_alpha();
             false
         }
-        KeyCode::Char('p') if app.current_tab == TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+        KeyCode::Char('p')
+            if app.current_tab == TabId::Create
+                && key.modifiers.contains(KeyModifiers::CONTROL) =>
+        {
             app.toggle_filter_snapshot();
             false
         }
-        KeyCode::Char('0') if app.current_tab == TabId::Create && key.modifiers.contains(KeyModifiers::CONTROL) => {
+        KeyCode::Char('0')
+            if app.current_tab == TabId::Create
+                && key.modifiers.contains(KeyModifiers::CONTROL) =>
+        {
             app.reset_all_filters();
             false
         }
@@ -236,7 +285,7 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> bool {
             app.set_default_account();
             false
         }
-        _ => false
+        _ => false,
     }
 }
 
@@ -249,5 +298,3 @@ fn handle_help_popup_input(app: &mut App, key_code: KeyCode) {
         _ => {}
     }
 }
-
-

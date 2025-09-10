@@ -8,7 +8,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::tui::app::{App, InstanceSettingsTab, Instance, InstanceSettingsPage};
+use crate::tui::app::{App, Instance, InstanceSettingsPage, InstanceSettingsTab};
 use crate::tui::tabs::logs::render_instance_logs;
 
 pub fn render_instance_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
@@ -44,20 +44,34 @@ pub fn render_instance_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
                         .title(" Instance Management ")
                         .title_style(Style::default().fg(Color::Cyan).bold()),
                 )
-                .highlight_style(Style::default().fg(Color::Yellow).bold().bg(Color::DarkGray))
+                .highlight_style(
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .bold()
+                        .bg(Color::DarkGray),
+                )
                 .select(selected_sub_tab);
             f.render_widget(sub_tabs_widget, chunks[1]);
 
             match app.instance_settings_tab {
-                InstanceSettingsTab::Overview => render_instance_overview(f, chunks[2], app.instance_settings_selected, instance),
-                InstanceSettingsTab::Mod => render_instance_mods(f, chunks[2], &instance.name),
-                InstanceSettingsTab::Setting => {
-                    match app.instance_settings_page {
-                        InstanceSettingsPage::List => render_instance_settings(f, chunks[2], app.instance_settings_selected, instance),
-                        InstanceSettingsPage::Java => render_instance_java_settings(f, chunks[2], app, instance),
-                        InstanceSettingsPage::Launch => render_instance_launch_settings(f, chunks[2], app, instance),
-                    }
+                InstanceSettingsTab::Overview => {
+                    render_instance_overview(f, chunks[2], app.instance_settings_selected, instance)
                 }
+                InstanceSettingsTab::Mod => render_instance_mods(f, chunks[2], &instance.name),
+                InstanceSettingsTab::Setting => match app.instance_settings_page {
+                    InstanceSettingsPage::List => render_instance_settings(
+                        f,
+                        chunks[2],
+                        app.instance_settings_selected,
+                        instance,
+                    ),
+                    InstanceSettingsPage::Java => {
+                        render_instance_java_settings(f, chunks[2], app, instance)
+                    }
+                    InstanceSettingsPage::Launch => {
+                        render_instance_launch_settings(f, chunks[2], app, instance)
+                    }
+                },
                 InstanceSettingsTab::Logs => {
                     let instance_name = instance.name.clone();
                     render_instance_logs(f, chunks[2], app, &instance_name)
@@ -68,8 +82,16 @@ pub fn render_instance_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
 }
 
 fn render_instance_info_card(f: &mut Frame, area: Rect, instance: &Instance) {
-    let status_color = if instance.is_running { Color::Green } else { Color::Gray };
-    let status_text = if instance.is_running { "● RUNNING" } else { "○ STOPPED" };
+    let status_color = if instance.is_running {
+        Color::Green
+    } else {
+        Color::Gray
+    };
+    let status_text = if instance.is_running {
+        "● RUNNING"
+    } else {
+        "○ STOPPED"
+    };
 
     let card_chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -90,50 +112,40 @@ fn render_instance_info_card(f: &mut Frame, area: Rect, instance: &Instance) {
         .title_style(Style::default().fg(Color::Cyan).bold())
         .border_style(Style::default().fg(Color::Blue));
 
-    let name_text = Paragraph::new(
-        Line::from(vec![
-            Span::styled("▶ ", Style::default().fg(Color::Yellow)),
-            Span::styled(&instance.name, Style::default().fg(Color::Cyan).bold()),
-        ]),
-    )
+    let name_text = Paragraph::new(Line::from(vec![
+        Span::styled("▶ ", Style::default().fg(Color::Yellow)),
+        Span::styled(&instance.name, Style::default().fg(Color::Cyan).bold()),
+    ]))
     .alignment(ratatui::layout::Alignment::Left);
 
-    let version_text = Paragraph::new(
-        Line::from(vec![
-            Span::raw("  Minecraft Version: "),
-            Span::styled(&instance.version, Style::default().fg(Color::Green).bold()),
-        ]),
-    )
+    let version_text = Paragraph::new(Line::from(vec![
+        Span::raw("  Minecraft Version: "),
+        Span::styled(&instance.version, Style::default().fg(Color::Green).bold()),
+    ]))
     .alignment(ratatui::layout::Alignment::Left);
 
-    let loader_text = Paragraph::new(
-        Line::from(vec![
-            Span::raw("  Mod Loader: "),
-            Span::styled(&instance.loader, Style::default().fg(Color::Yellow).bold()),
-        ]),
-    )
+    let loader_text = Paragraph::new(Line::from(vec![
+        Span::raw("  Mod Loader: "),
+        Span::styled(&instance.loader, Style::default().fg(Color::Yellow).bold()),
+    ]))
     .alignment(ratatui::layout::Alignment::Left);
 
-    let status_text_widget = Paragraph::new(
-        Line::from(vec![
-            Span::raw("  Status: "),
-            Span::styled(status_text, Style::default().fg(status_color).bold()),
-        ]),
-    )
+    let status_text_widget = Paragraph::new(Line::from(vec![
+        Span::raw("  Status: "),
+        Span::styled(status_text, Style::default().fg(status_color).bold()),
+    ]))
     .alignment(ratatui::layout::Alignment::Left);
 
-    let help_text = Paragraph::new(
-        Line::from(vec![
-            Span::styled("  ← → ", Style::default().fg(Color::Gray)),
-            Span::raw("Switch tabs   "),
-            Span::styled("↑ ↓ ", Style::default().fg(Color::Gray)),
-            Span::raw("Navigate   "),
-            Span::styled("Enter ", Style::default().fg(Color::Gray)),
-            Span::raw("Select   "),
-            Span::styled("Esc ", Style::default().fg(Color::Gray)),
-            Span::raw("Back"),
-        ]),
-    )
+    let help_text = Paragraph::new(Line::from(vec![
+        Span::styled("  ← → ", Style::default().fg(Color::Gray)),
+        Span::raw("Switch tabs   "),
+        Span::styled("↑ ↓ ", Style::default().fg(Color::Gray)),
+        Span::raw("Navigate   "),
+        Span::styled("Enter ", Style::default().fg(Color::Gray)),
+        Span::raw("Select   "),
+        Span::styled("Esc ", Style::default().fg(Color::Gray)),
+        Span::raw("Back"),
+    ]))
     .alignment(ratatui::layout::Alignment::Left);
 
     f.render_widget(block, area);
@@ -166,53 +178,97 @@ fn render_instance_actions(f: &mut Frame, area: Rect, selected_index: usize, ins
             Line::from(vec![
                 Span::styled(
                     "  ▶ ",
-                    if instance.is_running { Style::default().fg(Color::DarkGray).bold() } else { Style::default().fg(Color::Green).bold() },
+                    if instance.is_running {
+                        Style::default().fg(Color::DarkGray).bold()
+                    } else {
+                        Style::default().fg(Color::Green).bold()
+                    },
                 ),
                 Span::styled(
                     "Launch Instance",
-                    if instance.is_running { Style::default().fg(Color::DarkGray) } else { Style::default().fg(Color::White).bold() },
+                    if instance.is_running {
+                        Style::default().fg(Color::DarkGray)
+                    } else {
+                        Style::default().fg(Color::White).bold()
+                    },
                 ),
             ]),
             Line::from(vec![
                 Span::raw("    "),
                 Span::styled(
-                    if instance.is_running { "Instance is already running" } else { "Start playing this instance" },
+                    if instance.is_running {
+                        "Instance is already running"
+                    } else {
+                        "Start playing this instance"
+                    },
                     Style::default().fg(Color::Gray),
                 ),
             ]),
         ])
-        .style(if selected_index == 0 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+        .style(if selected_index == 0 {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        } else {
+            Style::default()
+        }),
         ListItem::new(vec![
             Line::from(vec![
                 Span::styled(
                     "  ⏹ ",
-                    if instance.is_running { Style::default().fg(Color::Red).bold() } else { Style::default().fg(Color::DarkGray).bold() },
+                    if instance.is_running {
+                        Style::default().fg(Color::Red).bold()
+                    } else {
+                        Style::default().fg(Color::DarkGray).bold()
+                    },
                 ),
                 Span::styled(
                     "Force Stop",
-                    if instance.is_running { Style::default().fg(Color::White).bold() } else { Style::default().fg(Color::DarkGray) },
+                    if instance.is_running {
+                        Style::default().fg(Color::White).bold()
+                    } else {
+                        Style::default().fg(Color::DarkGray)
+                    },
                 ),
             ]),
             Line::from(vec![
                 Span::raw("    "),
                 Span::styled(
-                    if instance.is_running { "Kill running instance process" } else { "Instance not running" },
+                    if instance.is_running {
+                        "Kill running instance process"
+                    } else {
+                        "Instance not running"
+                    },
                     Style::default().fg(Color::Gray),
                 ),
             ]),
         ])
-        .style(if selected_index == 1 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+        .style(if selected_index == 1 {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        } else {
+            Style::default()
+        }),
         ListItem::new(vec![
             Line::from(vec![
                 Span::styled("  Folder ", Style::default().fg(Color::Blue).bold()),
                 Span::styled("Open Folder", Style::default().fg(Color::White).bold()),
             ]),
-            Line::from(vec![Span::raw("    "), Span::styled("Browse instance directory", Style::default().fg(Color::Gray))]),
+            Line::from(vec![
+                Span::raw("    "),
+                Span::styled(
+                    "Browse instance directory",
+                    Style::default().fg(Color::Gray),
+                ),
+            ]),
         ])
-        .style(if selected_index == 2 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+        .style(if selected_index == 2 {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        } else {
+            Style::default()
+        }),
     ];
 
-    let actions_list = List::new(actions_items).block(actions_block).highlight_symbol("  ");
+    let actions_list = List::new(actions_items)
+        .block(actions_block)
+        .highlight_symbol("  ");
     f.render_widget(actions_list, area);
 }
 
@@ -230,7 +286,10 @@ fn render_instance_info_panel(f: &mut Frame, area: Rect) {
 
     let stats_content = Paragraph::new(vec![
         Line::from(vec![
-            Span::styled("Stats: Total Playtime: ", Style::default().fg(Color::Yellow)),
+            Span::styled(
+                "Stats: Total Playtime: ",
+                Style::default().fg(Color::Yellow),
+            ),
             Span::styled("2h 45m", Style::default().fg(Color::White).bold()),
         ]),
         Line::from(""),
@@ -262,7 +321,10 @@ fn render_instance_info_panel(f: &mut Frame, area: Rect) {
 
     let activity_content = Paragraph::new(vec![
         Line::from(vec![
-            Span::styled("Performance: Performance: ", Style::default().fg(Color::Green)),
+            Span::styled(
+                "Performance: Performance: ",
+                Style::default().fg(Color::Green),
+            ),
             Span::styled("Optimized", Style::default().fg(Color::Green).bold()),
         ]),
         Line::from(""),
@@ -342,36 +404,66 @@ fn render_instance_settings(f: &mut Frame, area: Rect, selected_index: usize, in
                 Span::styled("  [R] ", Style::default().fg(Color::Green).bold()),
                 Span::styled("Rename Instance", Style::default().fg(Color::White)),
             ]),
-            Line::from(vec![Span::styled("    Change the name of this instance", Style::default().fg(Color::Gray))]),
+            Line::from(vec![Span::styled(
+                "    Change the name of this instance",
+                Style::default().fg(Color::Gray),
+            )]),
         ])
-        .style(if selected_index == 0 { Style::default().bg(Color::DarkGray) } else { Style::default() }),
+        .style(if selected_index == 0 {
+            Style::default().bg(Color::DarkGray)
+        } else {
+            Style::default()
+        }),
         ListItem::new(vec![
             Line::from(vec![
                 Span::styled("  [J] ", Style::default().fg(Color::Blue).bold()),
                 Span::styled("Java Settings", Style::default().fg(Color::White)),
             ]),
-            Line::from(vec![Span::styled("    Configure JVM and memory", Style::default().fg(Color::Gray))]),
+            Line::from(vec![Span::styled(
+                "    Configure JVM and memory",
+                Style::default().fg(Color::Gray),
+            )]),
         ])
-        .style(if selected_index == 1 { Style::default().bg(Color::DarkGray) } else { Style::default() }),
+        .style(if selected_index == 1 {
+            Style::default().bg(Color::DarkGray)
+        } else {
+            Style::default()
+        }),
         ListItem::new(vec![
             Line::from(vec![
                 Span::styled("  [L] ", Style::default().fg(Color::Cyan).bold()),
                 Span::styled("Launch Options", Style::default().fg(Color::White)),
             ]),
-            Line::from(vec![Span::styled("    Game arguments and JVM flags", Style::default().fg(Color::Gray))]),
+            Line::from(vec![Span::styled(
+                "    Game arguments and JVM flags",
+                Style::default().fg(Color::Gray),
+            )]),
         ])
-        .style(if selected_index == 2 { Style::default().bg(Color::DarkGray) } else { Style::default() }),
+        .style(if selected_index == 2 {
+            Style::default().bg(Color::DarkGray)
+        } else {
+            Style::default()
+        }),
         ListItem::new(vec![
             Line::from(vec![
                 Span::styled("  🗑 ", Style::default().fg(Color::Red).bold()),
                 Span::styled("Delete Instance", Style::default().fg(Color::Red).bold()),
             ]),
-            Line::from(vec![Span::styled("    Permanently remove this instance", Style::default().fg(Color::Gray))]),
+            Line::from(vec![Span::styled(
+                "    Permanently remove this instance",
+                Style::default().fg(Color::Gray),
+            )]),
         ])
-        .style(if selected_index == 3 { Style::default().bg(Color::DarkGray) } else { Style::default() }),
+        .style(if selected_index == 3 {
+            Style::default().bg(Color::DarkGray)
+        } else {
+            Style::default()
+        }),
     ];
 
-    let settings_list = List::new(settings_items).block(settings_block).highlight_symbol("  ");
+    let settings_list = List::new(settings_items)
+        .block(settings_block)
+        .highlight_symbol("  ");
     f.render_widget(settings_list, area);
 }
 
@@ -385,37 +477,75 @@ fn render_instance_java_settings(f: &mut Frame, area: Rect, app: &App, instance:
     let items = vec![
         // 0: Java executable override
         ListItem::new(vec![
-            Line::from(Span::styled("  Custom Java executable (full path)", Style::default().fg(Color::Gray).bold())),
-            Line::from(Span::styled("    (placeholder)", Style::default().fg(Color::Gray))),
+            Line::from(Span::styled(
+                "  Custom Java executable (full path)",
+                Style::default().fg(Color::Gray).bold(),
+            )),
+            Line::from(Span::styled(
+                "    (placeholder)",
+                Style::default().fg(Color::Gray),
+            )),
         ])
-            .style(if app.instance_settings_selected == 0 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
-
+        .style(if app.instance_settings_selected == 0 {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        } else {
+            Style::default()
+        }),
         // 1: Java args interaction mode
         ListItem::new(vec![
-            Line::from(Span::styled("  Interaction with global Java arguments (mode)", Style::default().fg(Color::Green).bold())),
-            Line::from(Span::styled(format!("    {}", app.java_args_mode_current), Style::default().fg(Color::Green))),
-            Line::from(Span::styled(format!("    {}", app.java_args_mode_current.get_description()), Style::default().fg(Color::Green))),
+            Line::from(Span::styled(
+                "  Interaction with global Java arguments (mode)",
+                Style::default().fg(Color::Green).bold(),
+            )),
+            Line::from(Span::styled(
+                format!("    {}", app.java_args_mode_current),
+                Style::default().fg(Color::Green),
+            )),
+            Line::from(Span::styled(
+                format!("    {}", app.java_args_mode_current.get_description()),
+                Style::default().fg(Color::Green),
+            )),
         ])
-            .style(if app.instance_settings_selected == 1 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
-
+        .style(if app.instance_settings_selected == 1 {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        } else {
+            Style::default()
+        }),
         // 2: Java arguments list
         ListItem::new(vec![
-            Line::from(Span::styled("  Java arguments", Style::default().fg(Color::Green).bold())),
-            Line::from(Span::styled("    Press Enter to edit as text", Style::default().fg(Color::Green))),
+            Line::from(Span::styled(
+                "  Java arguments",
+                Style::default().fg(Color::Green).bold(),
+            )),
+            Line::from(Span::styled(
+                "    Press Enter to edit as text",
+                Style::default().fg(Color::Green),
+            )),
         ])
-            .style(if app.instance_settings_selected == 2 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
-
+        .style(if app.instance_settings_selected == 2 {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        } else {
+            Style::default()
+        }),
         // 3: Memory allocation
         ListItem::new(vec![
-            Line::from(Span::styled("  Memory allocation (Xmx)", Style::default().fg(Color::Green).bold())),
-            Line::from(Span::styled(format!("    Current: {} MB", app.memory_edit_mb), Style::default().fg(Color::Green)))
+            Line::from(Span::styled(
+                "  Memory allocation (Xmx)",
+                Style::default().fg(Color::Green).bold(),
+            )),
+            Line::from(Span::styled(
+                format!("    Current: {} MB", app.memory_edit_mb),
+                Style::default().fg(Color::Green),
+            )),
         ])
-            .style(if app.instance_settings_selected == 3 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+        .style(if app.instance_settings_selected == 3 {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        } else {
+            Style::default()
+        }),
     ];
 
-    let list = List::new(items)
-        .block(block)
-        .highlight_symbol("▶ ");
+    let list = List::new(items).block(block).highlight_symbol("▶ ");
     f.render_widget(list, area);
 }
 
@@ -428,21 +558,42 @@ fn render_instance_launch_settings(f: &mut Frame, area: Rect, app: &App, instanc
 
     let items = vec![
         ListItem::new(vec![
-            Line::from(Span::styled("  Game arguments", Style::default().fg(Color::Green).bold())),
-            Line::from(Span::styled("    Press Enter to edit as text", Style::default().fg(Color::Green))),
+            Line::from(Span::styled(
+                "  Game arguments",
+                Style::default().fg(Color::Green).bold(),
+            )),
+            Line::from(Span::styled(
+                "    Press Enter to edit as text",
+                Style::default().fg(Color::Green),
+            )),
         ])
-            .style(if app.instance_settings_selected == 0 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+        .style(if app.instance_settings_selected == 0 {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        } else {
+            Style::default()
+        }),
         // 1: Custom Game Window Size (px)
         ListItem::new(vec![
-            Line::from(Span::styled("  Custom Game Window Size (px)", Style::default().fg(Color::Green).bold())),
-            Line::from(Span::styled("    Press Enter to set as WIDTH,HEIGHT (empty to reset)", Style::default().fg(Color::Green))),
-            Line::from(Span::styled("    Common: 854x480, 1366x768, 1920x1080, 2560x1440, 3840x2160", Style::default().fg(Color::Green))),
+            Line::from(Span::styled(
+                "  Custom Game Window Size (px)",
+                Style::default().fg(Color::Green).bold(),
+            )),
+            Line::from(Span::styled(
+                "    Press Enter to set as WIDTH,HEIGHT (empty to reset)",
+                Style::default().fg(Color::Green),
+            )),
+            Line::from(Span::styled(
+                "    Common: 854x480, 1366x768, 1920x1080, 2560x1440, 3840x2160",
+                Style::default().fg(Color::Green),
+            )),
         ])
-            .style(if app.instance_settings_selected == 1 { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
+        .style(if app.instance_settings_selected == 1 {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        } else {
+            Style::default()
+        }),
     ];
 
-    let list = List::new(items)
-        .block(block)
-        .highlight_symbol("▶ ");
+    let list = List::new(items).block(block).highlight_symbol("▶ ");
     f.render_widget(list, area);
 }

@@ -37,8 +37,6 @@ use tokio::io::AsyncWriteExt;
 
 /// The CLI interface of the launcher.
 mod cli;
-/// The TUI interface of the launcher.
-mod tui;
 /// Launcher configuration (global).
 mod config;
 /// Definitions of certain icons (like Download,
@@ -46,6 +44,8 @@ mod config;
 mod icon_manager;
 /// All the main structs and enums used in the launcher.
 mod state;
+/// The TUI interface of the launcher.
+mod tui;
 
 /// Code to handle all [`Message`]'s coming from
 /// user interaction.

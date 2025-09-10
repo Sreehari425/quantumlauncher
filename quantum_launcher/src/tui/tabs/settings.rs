@@ -2,8 +2,8 @@
 
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
     style::Stylize,
+    style::{Color, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
     Frame,
@@ -16,7 +16,11 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
     // Triple-pane layout: Left (categories), Middle (submenu for Licenses), Right (details)
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(32), Constraint::Length(42), Constraint::Min(0)])
+        .constraints([
+            Constraint::Length(32),
+            Constraint::Length(42),
+            Constraint::Min(0),
+        ])
         .split(area);
 
     // Left categories with combined About & Licenses
@@ -29,7 +33,10 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
     ];
     let mut left_state = ListState::default();
     left_state.select(Some(app.about_selected));
-    let left_block = Block::default().borders(Borders::ALL).title(" Settings ").border_style(Style::default().fg(Color::Cyan));
+    let left_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Settings ")
+        .border_style(Style::default().fg(Color::Cyan));
     let left_list = List::new(left_items)
         .block(left_block)
         .highlight_style(Style::default().bg(Color::Blue).fg(Color::Black).bold())
@@ -41,19 +48,27 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
     let middle_block = Block::default()
         .borders(Borders::ALL)
         .title(" Submenu ")
-        .border_style(if app.settings_focus == SettingsFocus::Middle { Style::default().fg(Color::Yellow) } else { Style::default() });
+        .border_style(if app.settings_focus == SettingsFocus::Middle {
+            Style::default().fg(Color::Yellow)
+        } else {
+            Style::default()
+        });
     if is_licenses {
         let mut items: Vec<ListItem> = Vec::new();
         // First entry: About
         let mut about_entry = String::from("  About");
-        if app.license_selected == 0 { about_entry.push_str("  ←"); }
+        if app.license_selected == 0 {
+            about_entry.push_str("  ←");
+        }
         items.push(ListItem::new(about_entry));
         // Then license entries
         for (i, (name, _)) in App::licenses().iter().enumerate() {
             let mut s = String::new();
             s.push_str("  ");
             s.push_str(name);
-            if i + 1 == app.license_selected { s.push_str("  ←"); }
+            if i + 1 == app.license_selected {
+                s.push_str("  ←");
+            }
             items.push(ListItem::new(s));
         }
         let mut mid_state = ListState::default();
@@ -69,12 +84,22 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
             // General: submenu items for Global Game Window Size and TUI Refresh Interval
             let items = vec![
                 ListItem::new(vec![
-                    Line::from(Span::styled("  Global Game Window Size", Style::default().fg(Color::White).bold())),
-                    Line::from(Span::raw("    Press Enter to edit as WIDTH,HEIGHT (empty to clear)")),
+                    Line::from(Span::styled(
+                        "  Global Game Window Size",
+                        Style::default().fg(Color::White).bold(),
+                    )),
+                    Line::from(Span::raw(
+                        "    Press Enter to edit as WIDTH,HEIGHT (empty to clear)",
+                    )),
                 ]),
                 ListItem::new(vec![
-                    Line::from(Span::styled("  TUI Refresh Interval (ms)", Style::default().fg(Color::White).bold())),
-                    Line::from(Span::raw("    Press Enter to edit number of milliseconds (e.g., 500)")),
+                    Line::from(Span::styled(
+                        "  TUI Refresh Interval (ms)",
+                        Style::default().fg(Color::White).bold(),
+                    )),
+                    Line::from(Span::raw(
+                        "    Press Enter to edit number of milliseconds (e.g., 500)",
+                    )),
                 ]),
             ];
             let mut mid_state = ListState::default();
@@ -86,16 +111,21 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
             f.render_stateful_widget(list, chunks[1], &mut mid_state);
         } else if app.about_selected == 1 {
             // Java: show a single entry for Global Java Arguments
-            let items = vec![
-                ListItem::new(vec![
-                    Line::from(Span::styled("  Global Java arguments", Style::default().fg(Color::White).bold())),
-                    Line::from(Span::raw("    Press Enter to edit as text (comma-separated)")),
-                ])
-                .style(if app.settings_focus == SettingsFocus::Middle { Style::default().bg(Color::DarkGray).fg(Color::White) } else { Style::default() }),
-            ];
-            let list = List::new(items)
-                .block(middle_block)
-                .highlight_symbol("▶ ");
+            let items = vec![ListItem::new(vec![
+                Line::from(Span::styled(
+                    "  Global Java arguments",
+                    Style::default().fg(Color::White).bold(),
+                )),
+                Line::from(Span::raw(
+                    "    Press Enter to edit as text (comma-separated)",
+                )),
+            ])
+            .style(if app.settings_focus == SettingsFocus::Middle {
+                Style::default().bg(Color::DarkGray).fg(Color::White)
+            } else {
+                Style::default()
+            })];
+            let list = List::new(items).block(middle_block).highlight_symbol("▶ ");
             f.render_widget(list, chunks[1]);
         } else {
             let para = Paragraph::new("Select an option on the left. Licenses will appear here.")
@@ -153,22 +183,35 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
                 .block(Block::default().borders(Borders::ALL).title(" Java "))
                 .wrap(Wrap { trim: true })
         }
-        2 => Paragraph::new(vec![Line::from("UI / Theme settings coming soon!"), Line::from("")])
-            .block(Block::default().borders(Borders::ALL).title(" UI / Theme "))
-            .wrap(Wrap { trim: true }),
-        3 => Paragraph::new(vec![Line::from("Launch options coming soon!"), Line::from("")])
-            .block(Block::default().borders(Borders::ALL).title(" Launch "))
-            .wrap(Wrap { trim: true }),
+        2 => Paragraph::new(vec![
+            Line::from("UI / Theme settings coming soon!"),
+            Line::from(""),
+        ])
+        .block(Block::default().borders(Borders::ALL).title(" UI / Theme "))
+        .wrap(Wrap { trim: true }),
+        3 => Paragraph::new(vec![
+            Line::from("Launch options coming soon!"),
+            Line::from(""),
+        ])
+        .block(Block::default().borders(Borders::ALL).title(" Launch "))
+        .wrap(Wrap { trim: true }),
         4 => {
             if app.settings_focus == SettingsFocus::Left {
                 let overview = vec![
-                    Line::from(Span::styled("About & Licenses", Style::default().fg(Color::Yellow).bold())),
+                    Line::from(Span::styled(
+                        "About & Licenses",
+                        Style::default().fg(Color::Yellow).bold(),
+                    )),
                     Line::from("Select 'About' or one of the licenses from the middle pane."),
                     Line::from(""),
                     Line::from("Project License: GNU GPL v3 (see LICENSE)"),
                 ];
                 Paragraph::new(overview)
-                    .block(Block::default().borders(Borders::ALL).title(" About & Licenses "))
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title(" About & Licenses "),
+                    )
                     .wrap(Wrap { trim: true })
             } else if app.license_selected == 0 {
                 let about_lines: Vec<Line> = vec![
@@ -226,14 +269,21 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
                 }
 
                 let mut lines = vec![
-                    Line::from(Span::styled(name.to_string(), Style::default().fg(Color::Green).bold())),
-                    Line::from("")
+                    Line::from(Span::styled(
+                        name.to_string(),
+                        Style::default().fg(Color::Green).bold(),
+                    )),
+                    Line::from(""),
                 ];
                 for line in content.lines() {
                     lines.push(Line::from(line.to_string()));
                 }
                 Paragraph::new(lines)
-                    .block(Block::default().borders(Borders::ALL).title(format!(" {} ", name)))
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title(format!(" {} ", name)),
+                    )
                     .wrap(Wrap { trim: true })
                     .scroll((app.about_scroll, 0))
             }
@@ -241,7 +291,9 @@ pub fn render_settings_tab(f: &mut Frame, area: Rect, app: &mut App) {
         _ => Paragraph::new("").block(Block::default()),
     };
 
-    let drew_about_stacked = app.about_selected == 4 && app.settings_focus == SettingsFocus::Middle && app.license_selected == 0;
+    let drew_about_stacked = app.about_selected == 4
+        && app.settings_focus == SettingsFocus::Middle
+        && app.license_selected == 0;
     if !drew_about_stacked {
         f.render_widget(right, chunks[2]);
     }

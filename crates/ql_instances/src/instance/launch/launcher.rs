@@ -666,7 +666,7 @@ impl GameLauncher {
             None,
         );
 
-    for (library, name, artifact) in self
+        for (library, name, artifact) in self
             .version_json
             .libraries
             .iter()
@@ -687,19 +687,17 @@ impl GameLauncher {
                 class_path: mem::take(class_path),
             };
             self.add_entry_to_classpath(name, &mut ctx, artifact, &downloader, library, main_class)
-            .await?;
+                .await?;
             mem::swap(classpath_entries, &mut ctx.classpath_entries);
             mem::swap(class_path, &mut ctx.class_path);
         }
         Ok(())
     }
 
-    
-
-        async fn add_entry_to_classpath(
-            &self,
-            name: &str,
-            ctx: &mut ClasspathCtx,
+    async fn add_entry_to_classpath(
+        &self,
+        name: &str,
+        ctx: &mut ClasspathCtx,
         artifact: &LibraryDownloadArtifact,
         downloader: &GameDownloader,
         library: &Library,
@@ -737,8 +735,8 @@ impl GameLauncher {
             library_path = &library_path[4..];
         }
 
-    ctx.class_path.push_str(library_path);
-    ctx.class_path.push(CLASSPATH_SEPARATOR);
+        ctx.class_path.push_str(library_path);
+        ctx.class_path.push(CLASSPATH_SEPARATOR);
         Ok(())
     }
 

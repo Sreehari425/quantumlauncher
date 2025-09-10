@@ -98,7 +98,7 @@ impl Mod {
         Ok((file_query, file.fileId))
     }
 
-    fn iter_files(& self, version: String) -> impl Iterator<Item =  &CurseforgeFileIdx> {
+    fn iter_files(&self, version: String) -> impl Iterator<Item = &CurseforgeFileIdx> {
         self.latestFilesIndexes
             .iter()
             .filter(move |n| n.gameVersion == version)
