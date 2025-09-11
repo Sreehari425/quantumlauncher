@@ -9,9 +9,9 @@ use std::{collections::HashMap, fmt::Write};
 use tokio::io::AsyncWriteExt;
 
 use crate::state::{
-    InstanceLog, LaunchTabId, Launcher, ManageModsMessage, MenuExportInstance, MenuLaunch,
-    MenuLauncherUpdate, MenuLicense, MenuServerCreate, MenuWelcome, Message, ProgressBar,
-    ServerProcess, State,
+    CustomJarState, InstanceLog, LaunchTabId, Launcher, ManageModsMessage, MenuExportInstance,
+    MenuLaunch, MenuLauncherUpdate, MenuLicense, MenuServerCreate, MenuWelcome, Message,
+    ProgressBar, ServerProcess, State,
 };
 
 impl Launcher {
@@ -111,10 +111,20 @@ impl Launcher {
             }
             Message::CoreTick => {
                 self.tick_timer = self.tick_timer.wrapping_add(1);
-                let mut commands = self.get_imgs_to_load();
+                let mut tasks = self.get_imgs_to_load();
                 let command = self.tick();
-                commands.push(command);
-                return Task::batch(commands);
+                tasks.push(command);
+
+                if self
+                    .custom_jar
+                    .as_ref()
+                    .and_then(|n| n.recv.try_recv().ok())
+                    .is_some()
+                {
+                    tasks.push(CustomJarState::load());
+                }
+
+                return Task::batch(tasks);
             }
             Message::UninstallLoaderForgeStart => {
                 let instance = self.selected_instance.clone().unwrap();
@@ -435,7 +445,7 @@ impl Launcher {
                     progress: None,
                 });
                 return Task::perform(
-                    ql_core::file_utils::read_filenames_from_dir_ext(
+                    ql_core::file_utils::read_filenames_from_dir(
                         self.selected_instance
                             .clone()
                             .unwrap()
