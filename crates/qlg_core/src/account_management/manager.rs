@@ -63,7 +63,10 @@ impl CredentialStore for KeyringCredentialStore {
     }
 
     async fn get_refresh_token(&self, username: &str, provider: AccountProvider) -> Result<String> {
-        // Offline accounts don't have refresh tokens
+        // Get stored authentication token from keyring.
+        // Note: Despite the method name, this returns access tokens for Yggdrasil providers
+        // and refresh tokens for Microsoft (as per ql_instances auth implementation).
+        // Offline accounts don't have tokens
         if matches!(provider, AccountProvider::Offline) {
             return Err(AccountError::AccountNotFound);
         }
@@ -339,11 +342,11 @@ impl AccountManagerTrait for AccountManager {
             }
         };
 
-        // Try to get the stored refresh token (for non-offline accounts)
+        // Try to get the stored token (access token for Yggdrasil providers, refresh token for Microsoft)
         let access_token = if matches!(provider, AccountProvider::Offline) {
             None // Offline accounts don't have tokens
         } else {
-            // Try to get the refresh token from keyring
+            // Try to get the token from keyring
             match self
                 .credential_store
                 .get_refresh_token(username, provider)

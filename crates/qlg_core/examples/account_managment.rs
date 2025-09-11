@@ -1,6 +1,49 @@
 //! # QLG Core Usage Examples
 //!
 //! This file demonstrates how to use the QLG Core account management system.
+//!
+//! ## 🚪 **Logout Function Parameters Guide**
+//!
+//! The logout function requires two parameters: `username` and `account_type`
+//!
+//! ### Function Signature:
+//! ```rust
+//! manager.logout(username: &str, provider: AccountProvider).await?;
+//! ```
+//!
+//! ### Parameter Requirements by Provider:
+//!
+//! #### 🔵 **ElyBy Accounts**
+//! - **Username**: Your ElyBy username (not email)
+//! - **Provider**: `AccountProvider::ElyBy`
+//! - **Example**: `manager.logout("MyElyByUser", AccountProvider::ElyBy).await?;`
+//!
+//! #### 🟢 **Microsoft Accounts**  
+//! - **Username**: Your Microsoft email address or username
+//! - **Provider**: `AccountProvider::Microsoft`
+//! - **Example**: `manager.logout("player@outlook.com", AccountProvider::Microsoft).await?;`
+//!
+//! #### 🟡 **LittleSkin Accounts**
+//! - **Username**: Your LittleSkin username
+//! - **Provider**: `AccountProvider::LittleSkin`
+//! - **Example**: `manager.logout("MyLittleSkinUser", AccountProvider::LittleSkin).await?;`
+//!
+//! #### ⚫ **Offline Accounts**
+//! - **Username**: Any username you created the offline account with
+//! - **Provider**: `AccountProvider::Offline`
+//! - **Example**: `manager.logout("TestPlayer", AccountProvider::Offline).await?;`
+//!
+//! ### 📋 **How to Find the Correct Username:**
+//! 1. Use `manager.get_accounts().await?` to list all stored accounts
+//! 2. Check `account.display_username()` for the exact string to use
+//! 3. Use that exact string in the logout function
+//!
+//! ### ⚠️ **Important Notes:**
+//! - Logout removes stored tokens from the system keyring
+//! - Users will need to login again after logout
+//! - Microsoft accounts will need to complete OAuth flow again
+//! - ElyBy/LittleSkin accounts will need to enter credentials again
+//! - Offline accounts can be recreated anytime (no stored tokens)
 
 //! Tip: dont commit you actual username and password (happend to me)
 
@@ -17,7 +60,16 @@ const TEST_LITTLESKIN_CREDS: bool = false; // Set to true and add credentials to
 const TEST_LITTLESKIN_OAUTH: bool = false; // Set to true to test OAuth flow
 const TEST_OFFLINE_LOGIN: bool = true; // Safe to keep enabled
 
+//  Advanced Examples: Enable to test logout and token refresh
+const TEST_LOGOUT_EXAMPLES: bool = true; // Test logout functionality
+const TEST_TOKEN_REFRESH: bool = true; // Test token refresh functionality
+
 /// Example: Test keyring storage functionality
+///
+/// Note: The keyring stores different token types depending on the provider:
+/// - ElyBy & LittleSkin: Access tokens (used directly for authentication)
+/// - Microsoft: Refresh tokens (used to get fresh access tokens)
+/// - Offline: No tokens (UUID-only authentication)
 pub async fn example_keyring_storage() -> Result<(), Box<dyn std::error::Error>> {
     let mut manager = AccountManager::new();
 
@@ -565,13 +617,381 @@ pub async fn example_offline_login() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Example: Logout
+/// Example: Logout functionality
+///
+/// Demonstrates how to logout accounts and remove stored tokens.
+/// This function shows the proper way to logout accounts by account type and username.
+///
+/// ## Parameters Required for Logout:
+/// - `username`: The exact username as stored in the keyring
+/// - `account_type`: The provider type (Microsoft, ElyBy, LittleSkin, Offline)
+///
+/// ## Important Notes:
+/// - For **Microsoft** accounts: Use the email address or Microsoft username
+/// - For **ElyBy** accounts: Use the ElyBy username (not email)
+/// - For **LittleSkin** accounts: Use the LittleSkin username  
+/// - For **Offline** accounts: Use any username you created the account with
+///
+/// ## Finding the Correct Username:
+/// 1. Check `manager.get_accounts()` to see stored usernames
+/// 2. Look at your launcher's account list
+/// 3. Use the exact string shown in `account.display_username()`
 pub async fn example_logout() -> Result<(), Box<dyn std::error::Error>> {
     let mut manager = AccountManager::new();
 
-    // Logout a specific account
-    manager.logout("username", AccountProvider::ElyBy).await?;
-    println!("Account logged out successfully");
+    println!("🔐 Testing Logout Functionality...");
+    println!();
+
+    // First, let's see what accounts are available
+    let accounts = manager.get_accounts().await?;
+
+    if accounts.is_empty() {
+        println!("   ℹ️  No accounts found in keyring to logout");
+        println!("   💡 Try logging in with real credentials first to test logout");
+        return Ok(());
+    }
+
+    println!("   📋 Found {} accounts before logout:", accounts.len());
+    for account in &accounts {
+        println!(
+            "     - {} ({})",
+            account.display_username(),
+            account.provider
+        );
+    }
+    println!();
+
+    // Test creating and then logging out a test account
+    println!("   🔧 Creating test offline account for logout demo...");
+    let test_result = manager.quick_offline_login("LogoutTestUser").await?;
+    let _test_account = match test_result {
+        AuthResult::Success(account) => {
+            println!(
+                "     ✅ Created: {} ({})",
+                account.display_username(),
+                account.provider
+            );
+            account
+        }
+        _ => return Err("Failed to create test account".into()),
+    };
+
+    // Now logout the test account
+    println!("   🚪 Logging out test account...");
+    manager
+        .logout("LogoutTestUser", AccountProvider::Offline)
+        .await?;
+    println!("     ✅ Test account logged out successfully");
+
+    // Verify it's removed
+    let accounts_after = manager.get_accounts().await?;
+    println!(
+        "   📋 Found {} accounts after logout:",
+        accounts_after.len()
+    );
+
+    // Demonstrate the interactive logout function
+    println!();
+    println!("   🔧 Testing Interactive Logout Function...");
+
+    // Create another test account to demonstrate interactive logout
+    println!("   📝 Creating another test account for interactive demo...");
+    let interactive_test = manager.quick_offline_login("TestUser2").await?;
+    if let AuthResult::Success(account) = interactive_test {
+        println!(
+            "     ✅ Created: {} ({})",
+            account.display_username(),
+            account.provider
+        );
+
+        // Test the interactive logout (without confirmation for demo)
+        let logout_success = interactive_logout_account(
+            &mut manager,
+            "TestUser2",
+            AccountProvider::Offline,
+            false, // Skip confirmation for demo
+        )
+        .await?;
+
+        if logout_success {
+            println!("   ✅ Interactive logout completed successfully");
+        }
+    }
+
+    // Demonstrate how to get the correct username for real accounts
+    println!();
+    println!("   📋 **Real Account Username Reference**:");
+    let real_accounts = manager.get_accounts().await?;
+    if !real_accounts.is_empty() {
+        println!("   ℹ️  For your stored accounts, use these usernames:");
+        for acc in real_accounts {
+            println!(
+                "      - Provider: {} | Username for logout: \"{}\"",
+                acc.provider, acc.username
+            );
+            println!(
+                "        Example: manager.logout(\"{}\", AccountProvider::{}).await?;",
+                acc.username, acc.provider
+            );
+        }
+    } else {
+        println!(
+            "   ℹ️  No stored accounts found. After logging in, check this section for examples."
+        );
+    }
+
+    // Example of logging out real accounts (commented for safety)
+    println!();
+    println!("   💡 How to logout specific accounts:");
+    println!();
+
+    // Show how to logout each type with real examples
+    demonstration_logout_examples().await?;
+
+    println!();
+    println!("   ⚠️  Warning: This will remove stored tokens from keyring!");
+    println!("   ⚠️  Users will need to login again after logout!");
+
+    Ok(())
+}
+
+/// Demonstrates the correct way to logout accounts with different providers
+/// This function shows the exact parameters needed for each account type
+async fn demonstration_logout_examples() -> Result<(), Box<dyn std::error::Error>> {
+    let manager = AccountManager::new();
+
+    // Get current accounts to show real examples
+    let accounts = manager.get_accounts().await?;
+
+    println!("   📖 Logout Examples by Account Type:");
+    println!();
+
+    // Show examples for each provider type
+    println!("   🔵 **ElyBy Accounts**:");
+    println!("      manager.logout(\"username\", AccountProvider::ElyBy).await?;");
+    if let Some(elyby_account) = accounts
+        .iter()
+        .find(|a| matches!(a.provider, AccountProvider::ElyBy))
+    {
+        println!(
+            "      // Real example: manager.logout(\"{}\", AccountProvider::ElyBy).await?;",
+            elyby_account.username
+        );
+    }
+    println!();
+
+    println!("   🟢 **Microsoft Accounts**:");
+    println!("      manager.logout(\"email@example.com\", AccountProvider::Microsoft).await?;");
+    if let Some(ms_account) = accounts
+        .iter()
+        .find(|a| matches!(a.provider, AccountProvider::Microsoft))
+    {
+        println!(
+            "      // Real example: manager.logout(\"{}\", AccountProvider::Microsoft).await?;",
+            ms_account.username
+        );
+    } else {
+        println!("      // Example: manager.logout(\"player@outlook.com\", AccountProvider::Microsoft).await?;");
+    }
+    println!();
+
+    println!("   🟡 **LittleSkin Accounts**:");
+    println!("      manager.logout(\"username\", AccountProvider::LittleSkin).await?;");
+    if let Some(ls_account) = accounts
+        .iter()
+        .find(|a| matches!(a.provider, AccountProvider::LittleSkin))
+    {
+        println!(
+            "      // Real example: manager.logout(\"{}\", AccountProvider::LittleSkin).await?;",
+            ls_account.username
+        );
+    }
+    println!();
+
+    println!("   ⚫ **Offline Accounts**:");
+    println!("      manager.logout(\"TestPlayer\", AccountProvider::Offline).await?;");
+    println!("      // Note: Offline accounts don't store tokens, logout just removes from memory");
+    println!();
+
+    // Interactive logout example (commented for safety)
+    println!("   🔧 **Interactive Logout Function**:");
+    println!("      Use `interactive_logout_account()` to safely logout with user confirmation");
+
+    Ok(())
+}
+
+/// Interactive logout function with safety checks and user confirmation
+/// This is the recommended way to implement logout in real applications
+pub async fn interactive_logout_account(
+    manager: &mut AccountManager,
+    username: &str,
+    provider: AccountProvider,
+    confirm_logout: bool, // Set to false for testing, true for real usage
+) -> Result<bool, Box<dyn std::error::Error>> {
+    println!("🚪 **Interactive Logout: {} ({})**", username, provider);
+
+    // Step 1: Verify the account exists
+    let accounts = manager.get_accounts().await?;
+    let account_exists = accounts
+        .iter()
+        .any(|acc| acc.username == username && acc.provider == provider);
+
+    if !account_exists {
+        println!("   ❌ Account not found: {} ({})", username, provider);
+        println!("   💡 Available accounts:");
+        for acc in accounts {
+            println!(
+                "      - {} ({}) [username: \"{}\"]",
+                acc.display_username(),
+                acc.provider,
+                acc.username
+            );
+        }
+        return Ok(false);
+    }
+
+    // Step 2: Show what will be removed
+    println!("   ℹ️  Account found: {} ({})", username, provider);
+    match provider {
+        AccountProvider::Microsoft => {
+            println!("   🔑 This will remove: Refresh token (used to get new access tokens)");
+            println!("   ⚠️  You'll need to complete OAuth flow again to re-login");
+        }
+        AccountProvider::ElyBy | AccountProvider::LittleSkin => {
+            println!("   🔑 This will remove: Access token (used for authentication)");
+            println!("   ⚠️  You'll need to enter credentials again to re-login");
+        }
+        AccountProvider::Offline => {
+            println!("   📝 This will remove: Account from memory (no tokens stored)");
+            println!("   ℹ️  You can create offline accounts again anytime");
+        }
+    }
+
+    // Step 3: Confirmation (in real apps, ask user)
+    if confirm_logout {
+        println!("   ❓ Are you sure you want to logout? (This is where you'd ask user)");
+        // In real implementation: get user input here
+        println!("   ✅ User confirmed logout (simulated)");
+    } else {
+        println!("   ⚠️  Skipping confirmation for demo (confirm_logout = false)");
+    }
+
+    // Step 4: Perform logout
+    println!("   🔄 Logging out...");
+    match manager.logout(username, provider).await {
+        Ok(()) => {
+            println!("   ✅ Successfully logged out: {} ({})", username, provider);
+            println!("   🧹 Tokens removed from keyring");
+            Ok(true)
+        }
+        Err(e) => {
+            println!("   ❌ Logout failed: {}", e);
+            println!("   💡 This might mean the account was already logged out");
+            Err(e.into())
+        }
+    }
+}
+
+/// Example: Token refresh functionality
+/// Demonstrates how to check and refresh expired tokens
+pub async fn example_token_refresh() -> Result<(), Box<dyn std::error::Error>> {
+    let mut manager = AccountManager::new();
+
+    println!("🔄 Testing Token Refresh Functionality...");
+    println!();
+
+    // Get existing accounts
+    let accounts = manager.get_accounts().await?;
+
+    if accounts.is_empty() {
+        println!("   ℹ️  No accounts with tokens found for refresh testing");
+        println!("   💡 This example works best with real logged-in accounts");
+
+        // Demonstrate with offline account (which doesn't need refresh)
+        println!();
+        println!("   🔧 Creating offline account to demonstrate API...");
+        let offline_result = manager.quick_offline_login("RefreshTestUser").await?;
+        let offline_account = match offline_result {
+            AuthResult::Success(account) => account,
+            _ => return Err("Failed to create offline account".into()),
+        };
+
+        println!("   🔍 Checking if token needs refresh...");
+        let refreshed = manager.ensure_valid_token(&offline_account).await?;
+
+        if refreshed.needs_refresh {
+            println!("     ⚠️  Token needs refresh");
+        } else {
+            println!("     ✅ Token is valid (offline accounts don't need refresh)");
+        }
+
+        // Clean up
+        manager
+            .logout("RefreshTestUser", AccountProvider::Offline)
+            .await?;
+        return Ok(());
+    }
+
+    println!(
+        "   📋 Testing token refresh for {} accounts:",
+        accounts.len()
+    );
+    println!();
+
+    for account in accounts {
+        println!(
+            "   🔍 Testing: {} ({})",
+            account.display_username(),
+            account.provider
+        );
+
+        // Check current token status
+        if account.access_token.is_some() {
+            println!("     🔑 Has stored token");
+        } else {
+            println!("     🔓 No token stored");
+        }
+
+        if account.needs_refresh {
+            println!("     ⚠️  Token marked as needing refresh");
+        } else {
+            println!("     ✅ Token appears valid");
+        }
+
+        // Use ensure_valid_token to refresh if needed
+        println!("     🔄 Ensuring token is valid...");
+        match manager.ensure_valid_token(&account).await {
+            Ok(refreshed_account) => {
+                if refreshed_account.access_token.is_some() {
+                    println!("     ✅ Token is valid/refreshed");
+
+                    // Show token info (first few chars only for security)
+                    if let Some(token) = &refreshed_account.access_token {
+                        let preview = if token.len() > 8 {
+                            format!("{}...", &token[..8])
+                        } else {
+                            "***".to_string()
+                        };
+                        println!("     🔑 Token preview: {}", preview);
+                    }
+                } else {
+                    println!("     ❌ No valid token available");
+                }
+            }
+            Err(e) => {
+                println!("     ❌ Token refresh failed: {}", e);
+                println!("     💡 This might mean the refresh token is expired");
+                println!("     💡 User may need to login again");
+            }
+        }
+        println!();
+    }
+
+    println!("   💡 Token Refresh Tips:");
+    println!("     - Microsoft accounts: Refresh tokens are used to get new access tokens");
+    println!("     - ElyBy/LittleSkin: Access tokens are used directly (may not need refresh)");
+    println!("     - Offline accounts: No tokens needed");
+    println!("     - Failed refresh usually means user needs to login again");
 
     Ok(())
 }
@@ -661,10 +1081,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!();
     }
 
+    if TEST_LOGOUT_EXAMPLES {
+        println!("🚪 Testing Logout Functionality...");
+        example_logout().await?;
+        println!();
+    }
+
+    if TEST_TOKEN_REFRESH {
+        println!("🔄 Testing Token Refresh...");
+        example_token_refresh().await?;
+        println!();
+    }
+
     // 🔧 Other examples (uncomment to test)
     // example_convenience_methods().await?;
     // example_account_management().await?;
-    // example_logout().await?;
 
     println!("✅ Examples completed!");
     println!();
@@ -672,6 +1103,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   - Edit the constants at the top to enable/disable tests");
     println!("   - Set ENABLE_KEYRING_STORAGE = true to test credential storage");
     println!("   - Set TEST_* flags = true and add real credentials to test providers");
+    println!("   - Set TEST_LOGOUT_EXAMPLES = true to test logout functionality");
+    println!("   - Set TEST_TOKEN_REFRESH = true to test token refresh with real accounts");
     println!("   - Keyring storage works automatically when you login with real accounts!");
     Ok(())
 }
