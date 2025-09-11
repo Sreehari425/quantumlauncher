@@ -63,6 +63,11 @@ impl AuthProvider for LittleSkinProvider {
         }
     }
     
+    async fn login_with_username(&self, _username: &str) -> Result<AuthResult> {
+        // LittleSkin doesn't support username-only login
+        Err(AccountError::UnsupportedProvider)
+    }
+    
     async fn start_oauth_flow(&self) -> Result<OAuthFlow> {
         // Start LittleSkin OAuth flow
         let oauth_data = yggdrasil::oauth::request_device_code()
@@ -153,5 +158,9 @@ impl AuthProvider for LittleSkinProvider {
     
     fn supports_oauth_auth(&self) -> bool {
         true
+    }
+    
+    fn supports_username_only_auth(&self) -> bool {
+        false
     }
 }

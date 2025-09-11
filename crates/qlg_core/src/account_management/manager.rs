@@ -16,6 +16,11 @@ pub struct KeyringCredentialStore;
 #[async_trait]
 impl CredentialStore for KeyringCredentialStore {
     async fn store_refresh_token(&self, username: &str, provider: AccountProvider, token: &str) -> Result<()> {
+        // Offline accounts don't store tokens
+        if matches!(provider, AccountProvider::Offline) {
+            return Ok(());
+        }
+        
         // We need to access the keyring entry differently since get_keyring_entry is private
         // For now, we'll use the keyring directly with the same format as the original code
         let keyring_name = format!(
@@ -25,6 +30,7 @@ impl CredentialStore for KeyringCredentialStore {
                 AccountProvider::Microsoft => "",
                 AccountProvider::ElyBy => "#elyby", 
                 AccountProvider::LittleSkin => "#littleskin",
+                AccountProvider::Offline => unreachable!(), // Handled above
             }
         );
         
@@ -38,10 +44,16 @@ impl CredentialStore for KeyringCredentialStore {
     }
     
     async fn get_refresh_token(&self, username: &str, provider: AccountProvider) -> Result<String> {
+        // Offline accounts don't have refresh tokens
+        if matches!(provider, AccountProvider::Offline) {
+            return Err(AccountError::AccountNotFound);
+        }
+        
         let account_type = match provider {
             AccountProvider::Microsoft => ql_instances::auth::AccountType::Microsoft,
             AccountProvider::ElyBy => ql_instances::auth::AccountType::ElyBy,
             AccountProvider::LittleSkin => ql_instances::auth::AccountType::LittleSkin,
+            AccountProvider::Offline => unreachable!(), // Handled above
         };
         
         ql_instances::auth::read_refresh_token(username, account_type)
@@ -49,10 +61,16 @@ impl CredentialStore for KeyringCredentialStore {
     }
     
     async fn remove_credentials(&self, username: &str, provider: AccountProvider) -> Result<()> {
+        // Offline accounts don't have stored credentials to remove
+        if matches!(provider, AccountProvider::Offline) {
+            return Ok(());
+        }
+        
         let account_type = match provider {
             AccountProvider::Microsoft => ql_instances::auth::AccountType::Microsoft,
             AccountProvider::ElyBy => ql_instances::auth::AccountType::ElyBy,
             AccountProvider::LittleSkin => ql_instances::auth::AccountType::LittleSkin,
+            AccountProvider::Offline => unreachable!(), // Handled above
         };
         
         ql_instances::auth::logout(username, account_type)
@@ -62,6 +80,11 @@ impl CredentialStore for KeyringCredentialStore {
     }
     
     async fn has_credentials(&self, username: &str, provider: AccountProvider) -> Result<bool> {
+        // Offline accounts don't have stored credentials
+        if matches!(provider, AccountProvider::Offline) {
+            return Ok(false);
+        }
+        
         match self.get_refresh_token(username, provider).await {
             Ok(_) => Ok(true),
             Err(AccountError::Keyring(_)) => Ok(false),
@@ -100,6 +123,10 @@ impl AccountManager {
             AccountProvider::LittleSkin,
             Arc::new(LittleSkinProvider::new()),
         );
+        providers.insert(
+            AccountProvider::Offline,
+            Arc::new(OfflineProvider::new()),
+        );
         
         Self {
             providers,
@@ -122,6 +149,10 @@ impl AccountManager {
         providers.insert(
             AccountProvider::LittleSkin,
             Arc::new(LittleSkinProvider::new()),
+        );
+        providers.insert(
+            AccountProvider::Offline,
+            Arc::new(OfflineProvider::new()),
         );
         
         Self {
@@ -154,6 +185,16 @@ impl AccountManagerTrait for AccountManager {
         }
         
         provider_impl.login_with_credentials(credentials).await
+    }
+    
+    async fn login_username_only(&mut self, provider: AccountProvider, username: &str) -> Result<AuthResult> {
+        let provider_impl = self.get_provider(provider)?;
+        
+        if !provider_impl.supports_username_only_auth() {
+            return Err(AccountError::UnsupportedProvider);
+        }
+        
+        provider_impl.login_with_username(username).await
     }
     
     async fn start_oauth_login(&mut self, provider: AccountProvider) -> Result<OAuthFlow> {
@@ -253,17 +294,24 @@ impl AccountManager {
         self.login(provider, &credentials).await
     }
     
+    /// Quick offline login with just username (for cracked accounts)
+    pub async fn quick_offline_login(&mut self, username: &str) -> Result<AuthResult> {
+        self.login_username_only(AccountProvider::Offline, username).await
+    }
+    
     /// Get list of supported providers
     pub fn supported_providers(&self) -> Vec<AccountProvider> {
         self.providers.keys().copied().collect()
     }
     
     /// Check what authentication methods a provider supports
-    pub fn provider_capabilities(&self, provider: AccountProvider) -> Result<(bool, bool)> {
+    /// Returns (credentials_auth, oauth_auth, username_only_auth)
+    pub fn provider_capabilities(&self, provider: AccountProvider) -> Result<(bool, bool, bool)> {
         let provider_impl = self.get_provider(provider)?;
         Ok((
             provider_impl.supports_credentials_auth(),
             provider_impl.supports_oauth_auth(),
+            provider_impl.supports_username_only_auth(),
         ))
     }
 }

@@ -31,6 +31,11 @@ impl AuthProvider for MicrosoftProvider {
         Err(AccountError::UnsupportedProvider)
     }
     
+    async fn login_with_username(&self, _username: &str) -> Result<AuthResult> {
+        // Microsoft doesn't support username-only login
+        Err(AccountError::UnsupportedProvider)
+    }
+    
     async fn start_oauth_flow(&self) -> Result<OAuthFlow> {
         let auth_response = ms::login_1_link()
             .await
@@ -114,5 +119,9 @@ impl AuthProvider for MicrosoftProvider {
     
     fn supports_oauth_auth(&self) -> bool {
         true
+    }
+    
+    fn supports_username_only_auth(&self) -> bool {
+        false
     }
 }

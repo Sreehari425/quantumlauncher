@@ -12,6 +12,8 @@ pub enum AccountProvider {
     ElyBy,
     /// LittleSkin alternative authentication server
     LittleSkin,
+    /// Offline/Cracked accounts (username only, no authentication)
+    Offline,
 }
 
 impl Display for AccountProvider {
@@ -20,6 +22,7 @@ impl Display for AccountProvider {
             AccountProvider::Microsoft => write!(f, "Microsoft"),
             AccountProvider::ElyBy => write!(f, "ElyBy"),
             AccountProvider::LittleSkin => write!(f, "LittleSkin"),
+            AccountProvider::Offline => write!(f, "Offline"),
         }
     }
 }
@@ -31,6 +34,7 @@ impl AccountProvider {
             AccountProvider::Microsoft => "Microsoft",
             AccountProvider::ElyBy => "ElyBy",
             AccountProvider::LittleSkin => "LittleSkin",
+            AccountProvider::Offline => "Offline",
         }
     }
 
@@ -50,6 +54,11 @@ impl AccountProvider {
     /// Check if this provider supports username/password authentication
     pub fn supports_credentials(&self) -> bool {
         matches!(self, AccountProvider::ElyBy | AccountProvider::LittleSkin)
+    }
+
+    /// Check if this provider supports username-only authentication (offline)
+    pub fn supports_username_only(&self) -> bool {
+        matches!(self, AccountProvider::Offline)
     }
 }
 
@@ -77,6 +86,7 @@ impl Account {
             AccountProvider::Microsoft => "",
             AccountProvider::ElyBy => " (ElyBy)",
             AccountProvider::LittleSkin => " (LittleSkin)",
+            AccountProvider::Offline => " (Offline)",
         };
         format!("{}{}", self.display_name, suffix)
     }
@@ -87,6 +97,7 @@ impl Account {
             AccountProvider::Microsoft => None,
             AccountProvider::ElyBy => Some("ely.by"),
             AccountProvider::LittleSkin => Some("https://littleskin.cn/api/yggdrasil"),
+            AccountProvider::Offline => None,
         }
     }
 }

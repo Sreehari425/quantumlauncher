@@ -63,6 +63,11 @@ impl AuthProvider for ElyByProvider {
         }
     }
     
+    async fn login_with_username(&self, _username: &str) -> Result<AuthResult> {
+        // ElyBy doesn't support username-only login
+        Err(AccountError::UnsupportedProvider)
+    }
+    
     async fn start_oauth_flow(&self) -> Result<OAuthFlow> {
         // ElyBy doesn't support OAuth flow
         Err(AccountError::UnsupportedProvider)
@@ -114,6 +119,10 @@ impl AuthProvider for ElyByProvider {
     }
     
     fn supports_oauth_auth(&self) -> bool {
+        false
+    }
+    
+    fn supports_username_only_auth(&self) -> bool {
         false
     }
 }

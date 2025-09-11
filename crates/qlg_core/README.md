@@ -11,11 +11,12 @@ A clean, trait-based interface for account management in Quantum Launcher. This 
 
 ## Supported Account Types
 
-| Provider   | Credentials Auth | OAuth Auth | Premium Required |
-| ---------- | ---------------- | ---------- | ---------------- |
-| Microsoft  | ❌               | ✅         | ✅               |
-| ElyBy      | ✅               | ❌         | ❌               |
-| LittleSkin | ✅               | ✅         | ❌               |
+| Provider   | Credentials Auth | OAuth Auth | Username Only | Premium Required |
+| ---------- | ---------------- | ---------- | ------------- | ---------------- |
+| Microsoft  | ❌               | ✅         | ❌            | ✅               |
+| ElyBy      | ✅               | ❌         | ❌            | ❌               |
+| LittleSkin | ✅               | ✅         | ❌            | ❌               |
+| Offline    | ❌               | ❌         | ✅            | ❌               |
 
 ## Quick Start
 
@@ -60,7 +61,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### Microsoft OAuth Login
+### Offline Login (Username Only)
+
+````rust
+use qlg_core::{AccountManager, AccountProvider, AuthResult};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut manager = AccountManager::new();
+
+    // Simple offline login for cracked accounts
+    let result = manager.quick_offline_login("TestPlayer").await?;
+
+    match result {
+        AuthResult::Success(account) => {
+            println!("Offline account created: {}", account.display_username());
+            println!("UUID: {}", account.uuid);
+        }
+        AuthResult::Failed(error) => {
+            println!("Invalid username: {}", error);
+        }
+        _ => unreachable!("Offline accounts don't use 2FA"),
+    }
+
+    Ok(())
+}
+```### Microsoft OAuth Login
 
 ```rust
 use qlg_core::{AccountManager, AccountProvider};
@@ -87,7 +113,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-```
+````
 
 ### Account Management
 

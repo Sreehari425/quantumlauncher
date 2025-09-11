@@ -1,9 +1,11 @@
 //! Authentication provider implementations
 
-mod microsoft;
 mod elyby;
 mod littleskin;
+mod microsoft;
+mod offline;
 
-pub use microsoft::MicrosoftProvider;
 pub use elyby::ElyByProvider;
 pub use littleskin::LittleSkinProvider;
+pub use microsoft::MicrosoftProvider;
+pub use offline::OfflineProvider;
