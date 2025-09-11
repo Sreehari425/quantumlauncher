@@ -97,7 +97,7 @@ impl CredentialStore for KeyringCredentialStore {
         };
 
         ql_instances::auth::logout(username, account_type)
-            .map_err(|e| AccountError::AuthenticationFailed(e))?;
+            .map_err(AccountError::AuthenticationFailed)?;
 
         Ok(())
     }
@@ -348,14 +348,11 @@ impl AccountManagerTrait for AccountManager {
             None // Offline accounts don't have tokens
         } else {
             // Try to get the token from keyring
-            match self
+            (self
                 .credential_store
                 .get_refresh_token(username, provider)
-                .await
-            {
-                Ok(token) => Some(token),
-                Err(_) => None, // Token might be expired or not available
-            }
+                .await)
+                .ok()
         };
 
         let needs_refresh = access_token.is_none() && !matches!(provider, AccountProvider::Offline);

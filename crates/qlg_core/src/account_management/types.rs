@@ -260,7 +260,7 @@ impl Account {
 
     /// Get the access token as a type-safe wrapper
     pub fn access_token_typed(&self) -> Option<AccessToken> {
-        self.access_token.as_ref().map(|t| AccessToken::new(t))
+        self.access_token.as_ref().map(AccessToken::new)
     }
 
     /// Get a modified username for display purposes
