@@ -1,6 +1,76 @@
 //! Integration tests for QLG Core
 
-use qlg_core::{AccountManager, AccountProvider, AccountManagerTrait, AuthResult};
+use qlg_core::{AccountManager, AccountProvider, AccountManagerTrait, AuthResult, Username, AccessToken, AccountUuid};
+
+#[tokio::test]
+async fn test_type_safe_wrappers() {
+    // Test Username validation
+    let valid_username = Username::new("TestUser123").unwrap();
+    assert_eq!(valid_username.as_str(), "TestUser123");
+    
+    // Test invalid usernames
+    assert!(Username::new("").is_err()); // Empty
+    assert!(Username::new("ab").is_err()); // Too short
+    assert!(Username::new("a".repeat(51)).is_err()); // Too long
+    
+    // Test AccessToken
+    let token = AccessToken::new("test_token_123");
+    assert_eq!(token.as_str(), "test_token_123");
+    assert!(!token.is_empty());
+    assert_eq!(token.preview(), "test_tok...");
+    
+    let empty_token = AccessToken::new("");
+    assert!(empty_token.is_empty());
+    
+    // Test AccountUuid
+    let uuid = AccountUuid::new("123e4567-e89b-12d3-a456-426614174000");
+    assert_eq!(uuid.as_str(), "123e4567-e89b-12d3-a456-426614174000");
+    
+    let offline_uuid = AccountUuid::offline();
+    assert_eq!(offline_uuid.as_str(), "00000000-0000-0000-0000-000000000000");
+}
+
+#[tokio::test]
+async fn test_enhanced_offline_validation() {
+    let mut manager = AccountManager::new();
+    
+    // Test valid offline usernames
+    let result = manager.quick_offline_login("TestUser").await.unwrap();
+    if let AuthResult::Success(account) = result {
+        assert_eq!(account.username, "TestUser");
+        assert_eq!(account.provider, AccountProvider::Offline);
+    } else {
+        panic!("Expected successful offline login");
+    }
+    
+    // Test invalid usernames
+    let result = manager.quick_offline_login("ab").await; // Too short
+    assert!(result.is_err());
+    
+    let result = manager.quick_offline_login("toolongusernamehere").await; // Too long
+    assert!(result.is_err());
+    
+    let result = manager.quick_offline_login("user@domain.com").await; // Invalid chars
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_account_type_safety() {
+    let mut manager = AccountManager::new();
+    
+    let result = manager.quick_offline_login("TestUser").await.unwrap();
+    if let AuthResult::Success(account) = result {
+        // Test type-safe accessors
+        let uuid_typed = account.uuid_typed();
+        assert_eq!(uuid_typed.as_str(), "00000000-0000-0000-0000-000000000000");
+        
+        let username_typed = account.username_typed();
+        assert_eq!(username_typed.as_str(), "TestUser");
+        
+        let token_typed = account.access_token_typed();
+        assert!(token_typed.is_none()); // Offline accounts don't have tokens
+    }
+}
 
 #[tokio::test]
 async fn test_account_manager_creation() {

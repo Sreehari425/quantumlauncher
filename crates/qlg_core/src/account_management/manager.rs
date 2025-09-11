@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::account_management::{
+    errors::*,
     providers::*,
     traits::{AccountManager as AccountManagerTrait, AuthProvider, CredentialStore},
     types::*,
@@ -142,7 +143,7 @@ impl KeyringCredentialStore {
         }
 
         // Read and parse the config file
-        let config_content = match std::fs::read_to_string(&config_path) {
+        let config_content = match tokio::fs::read_to_string(&config_path).await {
             Ok(content) => content,
             Err(_) => return Ok(vec![]), // Can't read config
         };

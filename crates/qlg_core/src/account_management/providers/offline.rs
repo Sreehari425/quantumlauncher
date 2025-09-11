@@ -1,6 +1,6 @@
 //! Offline account provider for username-only authentication
 
-use crate::account_management::{traits::AuthProvider, types::*};
+use crate::account_management::{errors::*, traits::AuthProvider, types::*};
 use async_trait::async_trait;
 
 /// Offline account provider for username-only authentication (cracked accounts)
@@ -38,34 +38,35 @@ impl AuthProvider for OfflineProvider {
     }
 
     async fn login_with_username(&self, username: &str) -> Result<AuthResult> {
-        if username.trim().is_empty() {
-            return Err(AccountError::AuthenticationFailed(
-                "Username cannot be empty".to_string(),
-            ));
-        }
-
-        // Validate username format (basic Minecraft username rules)
-        if username.len() < 3 || username.len() > 16 {
-            return Err(AccountError::AuthenticationFailed(
-                "Username must be between 3 and 16 characters".to_string(),
-            ));
-        }
-
-        if !username.chars().all(|c| c.is_alphanumeric() || c == '_') {
-            return Err(AccountError::AuthenticationFailed(
-                "Username can only contain letters, numbers, and underscores".to_string(),
-            ));
-        }
-
-        // Create offline account
-        let account = Account {
-            uuid: Self::generate_offline_uuid(username),
-            username: username.to_string(),
-            display_name: username.to_string(),
-            provider: AccountProvider::Offline,
-            access_token: None,   // Offline accounts don't have access tokens
-            needs_refresh: false, // No tokens to refresh
+        // Validate username using the new type-safe wrapper
+        let validated_username = match Username::new(username) {
+            Ok(u) => u,
+            Err(e) => return Err(AccountError::InvalidInput(e)),
         };
+
+        // Validate offline-specific username format (basic Minecraft username rules)
+        let username_str = validated_username.as_str();
+        if username_str.len() < 3 || username_str.len() > 16 {
+            return Err(AccountError::InvalidInput(
+                "Offline username must be between 3 and 16 characters".to_string(),
+            ));
+        }
+
+        // Check for invalid characters (Minecraft usernames should be alphanumeric + underscore)
+        if !username_str.chars().all(|c| c.is_alphanumeric() || c == '_') {
+            return Err(AccountError::InvalidInput(
+                "Offline username can only contain letters, numbers, and underscores".to_string(),
+            ));
+        }
+
+        let account = Account::new(
+            Self::generate_offline_uuid(username_str),
+            username_str,
+            username_str, // For offline accounts, display name = username
+            AccountProvider::Offline,
+            None, // No access token for offline accounts
+            false, // Offline accounts don't need refresh
+        );
 
         Ok(AuthResult::Success(account))
     }

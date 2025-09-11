@@ -3,7 +3,7 @@
 use async_trait::async_trait;
 use ql_instances::auth::yggdrasil;
 use ql_instances::auth::AccountType;
-use crate::account_management::{traits::AuthProvider, types::*};
+use crate::account_management::{errors::*, traits::AuthProvider, types::*};
 
 /// LittleSkin account authentication provider
 pub struct LittleSkinProvider;

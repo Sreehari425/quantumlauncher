@@ -1,6 +1,6 @@
 //! Core traits for account management
 
-use super::types::*;
+use super::{errors::*, types::*};
 use async_trait::async_trait;
 
 /// Core trait for account authentication providers
