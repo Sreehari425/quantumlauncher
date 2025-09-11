@@ -7,6 +7,7 @@ members = [
     "crates/ql_servers",
     "crates/ql_java_handler",
     "crates/ql_packager",
+    "crates/qlg_core",
 ]
 resolver = "2"
 

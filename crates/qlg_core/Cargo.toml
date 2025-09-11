@@ -1,0 +1,22 @@
+[package]
+name = "qlg_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Core dependencies
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+
+# Existing quantum launcher dependencies
+ql_core = { path = "../ql_core" }
+ql_instances = { path = "../ql_instances" }
+
+# Keyring for secure storage
+keyring = "3"
+
+# Async traits
+async-trait = "0.1"
