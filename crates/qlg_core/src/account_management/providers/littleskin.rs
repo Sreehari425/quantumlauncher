@@ -27,19 +27,13 @@ impl AuthProvider for LittleSkinProvider {
     }
     
     async fn login_with_credentials(&self, credentials: &LoginCredentials) -> Result<AuthResult> {
-        // Prepare password with TOTP if provided
-        let mut password = credentials.password.clone();
-        if let Some(ref totp) = credentials.totp_code {
-            if !totp.is_empty() {
-                password.push(':');
-                password.push_str(totp);
-            }
-        }
+        // Get the combined password with TOTP (securely)
+        let combined_password = credentials.get_combined_password();
         
         // Attempt login
         let result = yggdrasil::login_new(
             credentials.username.clone(),
-            password,
+            combined_password,
             AccountType::LittleSkin,
         )
         .await

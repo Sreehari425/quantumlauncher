@@ -389,11 +389,7 @@ impl AccountManager {
         username: &str,
         password: &str,
     ) -> Result<AuthResult> {
-        let credentials = LoginCredentials {
-            username: username.to_string(),
-            password: password.to_string(),
-            totp_code: None,
-        };
+        let credentials = LoginCredentials::new(username, password, None);
 
         self.login(provider, &credentials).await
     }
@@ -406,11 +402,7 @@ impl AccountManager {
         password: &str,
         totp: &str,
     ) -> Result<AuthResult> {
-        let credentials = LoginCredentials {
-            username: username.to_string(),
-            password: password.to_string(),
-            totp_code: Some(totp.to_string()),
-        };
+        let credentials = LoginCredentials::new(username, password, Some(totp.to_string()));
 
         self.login(provider, &credentials).await
     }

@@ -2,6 +2,91 @@
 
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use zeroize::{Zeroize, ZeroizeOnDrop};
+
+/// Secure wrapper for sensitive strings that automatically zeroizes on drop
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
+pub struct SecureString {
+    inner: Vec<u8>,
+}
+
+impl SecureString {
+    /// Create a new secure string
+    pub fn new(value: impl Into<String>) -> Self {
+        Self {
+            inner: value.into().into_bytes(),
+        }
+    }
+
+    /// Get the string value (use sparingly and clear result when done)
+    pub fn expose_secret(&self) -> String {
+        // This is intentionally unsafe to use - consumers should be careful
+        String::from_utf8_lossy(&self.inner).to_string()
+    }
+
+    /// Get the length of the string
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+
+    /// Check if the string is empty
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    /// Append another string (for TOTP concatenation)
+    pub fn push_str(&mut self, s: &str) {
+        self.inner.extend_from_slice(s.as_bytes());
+    }
+
+    /// Push a single character
+    pub fn push(&mut self, ch: char) {
+        let mut buf = [0; 4];
+        let s = ch.encode_utf8(&mut buf);
+        self.inner.extend_from_slice(s.as_bytes());
+    }
+}
+
+impl std::fmt::Debug for SecureString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SecureString")
+            .field("len", &self.len())
+            .finish_non_exhaustive()
+    }
+}
+
+impl From<String> for SecureString {
+    fn from(s: String) -> Self {
+        Self::new(s)
+    }
+}
+
+impl From<&str> for SecureString {
+    fn from(s: &str) -> Self {
+        Self::new(s)
+    }
+}
+
+impl Serialize for SecureString {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        // Serialize the exposed secret - this is intentionally dangerous
+        // and should only be used when absolutely necessary
+        serializer.serialize_str(&self.expose_secret())
+    }
+}
+
+impl<'de> Deserialize<'de> for SecureString {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(SecureString::new(s))
+    }
+}
 
 /// NewType wrapper for usernames to ensure type safety
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -60,18 +145,19 @@ impl From<String> for Username {
 }
 
 /// NewType wrapper for access tokens to ensure type safety
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AccessToken(String);
+/// Automatically zeroizes on drop to prevent token leaks
+#[derive(Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
+pub struct AccessToken(SecureString);
 
 impl AccessToken {
     /// Create a new access token
     pub fn new(token: impl Into<String>) -> Self {
-        Self(token.into())
+        Self(SecureString::new(token.into()))
     }
 
-    /// Get the token as a string slice
-    pub fn as_str(&self) -> &str {
-        &self.0
+    /// Get the token as a string slice (use carefully and clear result)
+    pub fn as_str(&self) -> String {
+        self.0.expose_secret()
     }
 
     /// Check if the token is empty
@@ -81,17 +167,26 @@ impl AccessToken {
 
     /// Get the first few characters for logging (security-safe)
     pub fn preview(&self) -> String {
-        if self.0.len() > 8 {
-            format!("{}...", &self.0[..8])
+        let token = self.0.expose_secret();
+        if token.len() > 8 {
+            format!("{}...", &token[..8])
         } else {
             "***".to_string()
         }
     }
 }
 
+impl std::fmt::Debug for AccessToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AccessToken")
+            .field("preview", &self.preview())
+            .finish()
+    }
+}
+
 impl From<AccessToken> for String {
     fn from(token: AccessToken) -> String {
-        token.0
+        token.0.expose_secret()
     }
 }
 
@@ -297,11 +392,64 @@ pub enum AuthResult {
 }
 
 /// Login credentials for username/password authentication
-#[derive(Debug, Clone)]
+/// Uses secure strings to prevent password leaks in memory
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct LoginCredentials {
-    pub username: String,
-    pub password: String,
-    pub totp_code: Option<String>,
+    pub username: String, // Username is not as sensitive, keep as String for compatibility
+    pub password: SecureString,
+    pub totp_code: Option<SecureString>,
+}
+
+impl LoginCredentials {
+    /// Create new login credentials with automatic security
+    pub fn new(
+        username: impl Into<String>,
+        password: impl Into<String>,
+        totp_code: Option<String>,
+    ) -> Self {
+        Self {
+            username: username.into(),
+            password: SecureString::new(password.into()),
+            totp_code: totp_code.map(SecureString::new),
+        }
+    }
+
+    /// Create credentials from strings (for backward compatibility)
+    pub fn from_strings(username: String, password: String, totp_code: Option<String>) -> Self {
+        Self::new(username, password, totp_code)
+    }
+
+    /// Get the password for authentication (use carefully and clear result)
+    pub fn get_password(&self) -> String {
+        self.password.expose_secret()
+    }
+
+    /// Get the TOTP code for authentication (use carefully and clear result)
+    pub fn get_totp_code(&self) -> Option<String> {
+        self.totp_code.as_ref().map(|totp| totp.expose_secret())
+    }
+
+    /// Get combined password with TOTP (for providers that concatenate them)
+    pub fn get_combined_password(&self) -> String {
+        let mut combined = self.password.expose_secret();
+        if let Some(totp) = &self.totp_code {
+            if !totp.is_empty() {
+                combined.push(':');
+                combined.push_str(&totp.expose_secret());
+            }
+        }
+        combined
+    }
+}
+
+impl std::fmt::Debug for LoginCredentials {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LoginCredentials")
+            .field("username", &self.username)
+            .field("password", &"<redacted>")
+            .field("totp_code", &self.totp_code.as_ref().map(|_| "<redacted>"))
+            .finish()
+    }
 }
 
 /// OAuth authentication flow data

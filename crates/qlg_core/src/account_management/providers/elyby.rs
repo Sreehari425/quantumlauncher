@@ -27,20 +27,17 @@ impl AuthProvider for ElyByProvider {
     }
 
     async fn login_with_credentials(&self, credentials: &LoginCredentials) -> Result<AuthResult> {
-        // Prepare password with TOTP if provided
-        let mut password = credentials.password.clone();
-        if let Some(ref totp) = credentials.totp_code {
-            if !totp.is_empty() {
-                password.push(':');
-                password.push_str(totp);
-            }
-        }
+        // Get the combined password with TOTP (securely)
+        let combined_password = credentials.get_combined_password();
 
         // Attempt login
-        let result =
-            yggdrasil::login_new(credentials.username.clone(), password, AccountType::ElyBy)
-                .await
-                .map_err(|e| AccountError::AuthenticationFailed(e.to_string()))?;
+        let result = yggdrasil::login_new(
+            credentials.username.clone(),
+            combined_password,
+            AccountType::ElyBy,
+        )
+        .await
+        .map_err(|e| AccountError::AuthenticationFailed(e.to_string()))?;
 
         match result {
             yggdrasil::Account::Account(account_data) => {

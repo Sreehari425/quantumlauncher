@@ -19,3 +19,6 @@ pub use account_management::*;
 
 // Ensure the trait is available for method calls
 pub use account_management::AccountManagerTrait;
+
+// Export security types for testing
+pub use account_management::SecureString;
