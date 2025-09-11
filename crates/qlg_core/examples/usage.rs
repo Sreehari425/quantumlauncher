@@ -6,6 +6,220 @@
 
 use qlg_core::{AccountManager, AccountManagerTrait, AccountProvider, AuthResult};
 
+//  Configuration: Set to true to test keyring storage
+const ENABLE_KEYRING_STORAGE: bool = true;
+const SHOW_STORED_ACCOUNTS: bool = true;
+
+//  Test Configuration: Enable specific provider tests
+const TEST_ELYBY_LOGIN: bool = false; // Set to true and add credentials to test
+const TEST_MICROSOFT_OAUTH: bool = false; // Set to true to test OAuth flow
+const TEST_LITTLESKIN_CREDS: bool = false; // Set to true and add credentials to test
+const TEST_LITTLESKIN_OAUTH: bool = false; // Set to true to test OAuth flow
+const TEST_OFFLINE_LOGIN: bool = true; // Safe to keep enabled
+
+/// Example: Test keyring storage functionality
+pub async fn example_keyring_storage() -> Result<(), Box<dyn std::error::Error>> {
+    let mut manager = AccountManager::new();
+
+    println!("🔐 Testing Keyring Storage Functionality...");
+    println!();
+
+    if !ENABLE_KEYRING_STORAGE {
+        println!("   ℹ️  Keyring storage testing disabled (ENABLE_KEYRING_STORAGE = false)");
+        println!();
+        return Ok(());
+    }
+
+    // First, create an offline account (safe to test with)
+    println!("1. Creating test offline account...");
+    let result = manager.quick_offline_login("KeyringTestUser").await?;
+
+    match result {
+        AuthResult::Success(account) => {
+            println!(
+                "   ✅ Created: {} (UUID: {})",
+                account.display_username(),
+                account.uuid
+            );
+
+            // Note: Offline accounts don't store refresh tokens since they don't have any
+            // But we can test retrieving accounts from keyring
+            println!("2. Testing keyring retrieval...");
+            match manager.get_accounts().await {
+                Ok(accounts) => {
+                    println!("   ✅ Retrieved {} accounts from keyring:", accounts.len());
+                    for stored_account in &accounts {
+                        println!(
+                            "     - {} ({}) - UUID: {}",
+                            stored_account.display_username(),
+                            stored_account.provider,
+                            stored_account.uuid
+                        );
+                        if stored_account.access_token.is_some() {
+                            println!("       🔑 Has access token (stored in keyring)");
+                        } else {
+                            println!("       🔓 No access token (offline account)");
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("   ❌ Failed to retrieve from keyring: {}", e);
+                    println!(
+                        "   💡 This might be normal if keyring is not available on this system"
+                    );
+                }
+            }
+
+            // Test checking specific account
+            println!("3. Testing specific account lookup...");
+            match manager
+                .get_account("KeyringTestUser", AccountProvider::Offline)
+                .await
+            {
+                Ok(Some(found_account)) => {
+                    println!(
+                        "   ✅ Found specific account: {}",
+                        found_account.display_username()
+                    );
+                }
+                Ok(None) => {
+                    println!("   ℹ️  Account not found in keyring (expected for offline accounts)");
+                }
+                Err(e) => {
+                    println!("   ❌ Error looking up account: {}", e);
+                }
+            }
+
+            // Test removing from keyring
+            println!("4. Testing keyring removal...");
+            match manager
+                .logout("KeyringTestUser", AccountProvider::Offline)
+                .await
+            {
+                Ok(()) => {
+                    println!("   ✅ Account logout completed!");
+                }
+                Err(e) => {
+                    println!("   ❌ Failed to logout: {}", e);
+                }
+            }
+
+            // Verify removal
+            println!("5. Verifying removal...");
+            match manager.get_accounts().await {
+                Ok(accounts) => {
+                    let remaining = accounts
+                        .iter()
+                        .filter(|acc| acc.display_username() == "KeyringTestUser")
+                        .count();
+                    if remaining == 0 {
+                        println!("   ✅ Account successfully removed from keyring");
+                    } else {
+                        println!(
+                            "   ⚠️  Account still found in keyring ({} instances)",
+                            remaining
+                        );
+                    }
+                }
+                Err(e) => {
+                    println!("   ❌ Failed to verify removal: {}", e);
+                }
+            }
+        }
+        _ => {
+            println!("   ❌ Failed to create test account");
+        }
+    }
+
+    println!();
+    Ok(())
+}
+
+/// Example: Test keyring storage with real authentication
+pub async fn example_keyring_with_real_auth() -> Result<(), Box<dyn std::error::Error>> {
+    let _manager = AccountManager::new();
+
+    if !ENABLE_KEYRING_STORAGE {
+        return Ok(());
+    }
+
+    println!("🔑 Testing Keyring with Real Authentication...");
+    println!("   💡 This example shows how accounts with tokens are stored");
+    println!();
+
+    // You can uncomment and test with real credentials to see token storage
+    println!("   ℹ️  To test with real credentials:");
+    println!("   1. Uncomment one of the login examples below");
+    println!("   2. Add real credentials");
+    println!("   3. Run the example to see token storage in action");
+    println!();
+
+    /*
+    // Example: Test with ElyBy credentials (stores refresh token)
+    match manager.quick_login(AccountProvider::ElyBy, "your_username", "your_password").await? {
+        AuthResult::Success(account) => {
+            println!("   ✅ ElyBy login successful - refresh token stored in keyring!");
+            println!("   🔑 Token: {}", account.access_token.as_ref().unwrap_or(&"None".to_string()));
+
+            // Show that it's now in stored accounts
+            let accounts = manager.get_accounts().await?;
+            println!("   📋 Total stored accounts: {}", accounts.len());
+        }
+        _ => {}
+    }
+    */
+
+    println!("   📝 Note: Offline accounts don't store tokens since they don't need them");
+    println!("   📝 Real accounts (ElyBy, Microsoft, LittleSkin) store refresh tokens securely");
+    println!();
+
+    Ok(())
+}
+
+/// Example: Show all stored accounts in keyring
+pub async fn example_show_stored_accounts() -> Result<(), Box<dyn std::error::Error>> {
+    let manager = AccountManager::new();
+
+    if !SHOW_STORED_ACCOUNTS {
+        return Ok(());
+    }
+
+    println!("📋 Checking Stored Accounts in Keyring...");
+
+    match manager.get_accounts().await {
+        Ok(accounts) => {
+            if accounts.is_empty() {
+                println!("   📭 No accounts found in keyring");
+            } else {
+                println!("   📬 Found {} stored accounts:", accounts.len());
+                for (i, account) in accounts.iter().enumerate() {
+                    println!(
+                        "   {}. {} ({}) - UUID: {}",
+                        i + 1,
+                        account.display_username(),
+                        account.provider,
+                        account.uuid
+                    );
+
+                    // Check if token is still valid
+                    if let Some(_token) = &account.access_token {
+                        println!("      🔑 Has access token");
+                    } else {
+                        println!("      🔓 No access token (offline account)");
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            println!("   ❌ Failed to access keyring: {}", e);
+            println!("   💡 This might be normal if keyring is not available on this system");
+        }
+    }
+
+    println!();
+    Ok(())
+}
+
 /// Example: ElyBy login with username and password
 pub async fn example_elyby_login() -> Result<(), Box<dyn std::error::Error>> {
     let mut manager = AccountManager::new();
@@ -369,31 +583,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     /*
-     HOW TO TEST EACH PROVIDER:
+    🔧 HOW TO TEST EACH PROVIDER:
 
-    1.  ElyBy (Credentials only):
-       - Uncomment example_elyby_login()
-       - Replace "your_elyby_username" and "your_elyby_password" with real credentials
+    1. 🔵 ElyBy (Credentials only):
+       - Set TEST_ELYBY_LOGIN = true at the top of this file
+       - Replace "your_email_or_username" and "your_password" in example_elyby_login()
 
-    2.  Microsoft (OAuth only):
-       - Uncomment example_microsoft_oauth()
-       - Follow the OAuth flow: visit URL, enter code, get authorization code
-       - Replace "AUTHORIZATION_CODE_HERE" with the actual code
+    2. 🟢 Microsoft (OAuth only):
+       - Set TEST_MICROSOFT_OAUTH = true at the top of this file
+       - Follow the OAuth flow when prompted
 
-    3.  LittleSkin (Both methods):
-       - For credentials: uncomment example_littleskin_credentials()
-       - Replace email/username and password with real LittleSkin credentials
-       - For OAuth: uncomment example_littleskin_oauth()
-       - Follow OAuth flow similar to Microsoft
+    3. 🟡 LittleSkin (Both methods):
+       - For credentials: Set TEST_LITTLESKIN_CREDS = true
+       - Replace credentials in example_littleskin_credentials()
+       - For OAuth: Set TEST_LITTLESKIN_OAUTH = true
 
-    4.  Offline (Username-only):
-       - Already enabled below - works with any valid username
-       - No credentials required, generates deterministic UUID
+    4. ⚫ Offline (Username-only):
+       - TEST_OFFLINE_LOGIN = true (enabled by default)
+       - No credentials required
+
+    🔐 KEYRING STORAGE:
+    - ENABLE_KEYRING_STORAGE = true (tests credential storage)
+    - SHOW_STORED_ACCOUNTS = true (shows accounts in keyring)
     */
 
     // Show all available provider capabilities first
     let manager = AccountManager::new();
-    println!(" Supported Providers and Their Capabilities:");
+    println!("📋 Supported Providers and Their Capabilities:");
     for provider in manager.supported_providers() {
         let (creds, oauth, username_only) = manager.provider_capabilities(provider)?;
         println!(
@@ -403,39 +619,59 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     println!();
 
-    // Uncomment the examples you want to try:
+    // Show current stored accounts (if any)
+    if SHOW_STORED_ACCOUNTS {
+        example_show_stored_accounts().await?;
+    }
 
-    //  ElyBy (Credentials only)
-    // println!(" Testing ElyBy Login...");
-    // example_elyby_login().await?;
-    // println!();
+    // Test keyring storage functionality
+    if ENABLE_KEYRING_STORAGE {
+        example_keyring_storage().await?;
+        example_keyring_with_real_auth().await?;
+    }
 
-    //  Microsoft (OAuth only)
-    // println!(" Testing Microsoft OAuth...");
-    // example_microsoft_oauth().await?;
-    // println!();
+    // Test each provider based on configuration
+    if TEST_ELYBY_LOGIN {
+        println!("🔵 Testing ElyBy Login...");
+        example_elyby_login().await?;
+        println!();
+    }
 
-    //  LittleSkin (Both credentials and OAuth)
-    // cred flow
-    // println!(" Testing LittleSkin Credential Login...");
-    // example_littleskin_credentials().await?;
-    // println!();
-    // Device code flow below
-    // println!(" Testing LittleSkin OAuth...");
-    // example_littleskin_oauth().await?;
-    // println!();
+    if TEST_MICROSOFT_OAUTH {
+        println!("🟢 Testing Microsoft OAuth...");
+        example_microsoft_oauth().await?;
+        println!();
+    }
 
-    //  Offline (Username-only) - No credentials needed!
-    println!(" Testing Offline Login...");
-    example_offline_login().await?;
-    println!();
+    if TEST_LITTLESKIN_CREDS {
+        println!("🟡 Testing LittleSkin Credential Login...");
+        example_littleskin_credentials().await?;
+        println!();
+    }
 
-    //  Other examples
+    if TEST_LITTLESKIN_OAUTH {
+        println!("🟡 Testing LittleSkin OAuth...");
+        example_littleskin_oauth().await?;
+        println!();
+    }
+
+    if TEST_OFFLINE_LOGIN {
+        println!("⚫ Testing Offline Login...");
+        example_offline_login().await?;
+        println!();
+    }
+
+    // 🔧 Other examples (uncomment to test)
     // example_convenience_methods().await?;
     // example_account_management().await?;
     // example_logout().await?;
 
-    println!(" Examples completed!");
-    println!(" Tip: Uncomment and configure the examples above to test with real credentials!");
+    println!("✅ Examples completed!");
+    println!();
+    println!("💡 Configuration Tips:");
+    println!("   - Edit the constants at the top to enable/disable tests");
+    println!("   - Set ENABLE_KEYRING_STORAGE = true to test credential storage");
+    println!("   - Set TEST_* flags = true and add real credentials to test providers");
+    println!("   - Keyring storage works automatically when you login with real accounts!");
     Ok(())
 }
