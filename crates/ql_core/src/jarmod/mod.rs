@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf, StripPrefixError};
 use crate::{
     file_utils::{extract_zip_archive, zip_directory_to_bytes},
     get_jar_path,
-    json::{InstanceConfigJson, JsonOptifine, VersionDetails},
+    json::{JsonOptifine, VersionDetails},
     pt, InstanceSelection, IntoIoError, IoError, JsonError, JsonFileError,
 };
 use thiserror::Error;
@@ -139,16 +139,11 @@ async fn get_original_jar(
 ) -> Result<PathBuf, JarModError> {
     let json = VersionDetails::load(instance).await?;
     let optifine = JsonOptifine::read(instance.get_name()).await.ok();
-    let config = InstanceConfigJson::read(instance).await.ok();
-    let custom_jar_path = config.and_then(|c| c.custom_jar).map(|c| c.name);
-
-    let path = get_jar_path(
+    Ok(get_jar_path(
         &json,
         instance_dir,
         optifine.as_ref().map(|n| n.1.as_path()),
-        custom_jar_path.as_deref(),
-    );
-    Ok(path)
+    ))
 }
 
 pub async fn is_dir_empty(path: &Path) -> bool {

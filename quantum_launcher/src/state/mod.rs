@@ -1,18 +1,13 @@
 use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
-    path::Path,
     str::FromStr,
-    sync::{
-        mpsc::{self, Receiver},
-        Arc, Mutex,
-    },
+    sync::{mpsc::Receiver, Arc, Mutex},
 };
 
 use iced::{widget::image::Handle, Task};
-use notify::Watcher;
 use ql_core::{
-    err, file_utils, GenericProgress, InstanceSelection, IntoIoError, IntoStringError, IoError,
+    err, file_utils, GenericProgress, InstanceSelection, IntoIoError, IntoStringError,
     JsonFileError, ListEntry, Progress, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
 };
 use ql_instances::{
@@ -34,10 +29,6 @@ pub use message::*;
 pub const OFFLINE_ACCOUNT_NAME: &str = "(Offline)";
 pub const NEW_ACCOUNT_NAME: &str = "+ Add Account";
 
-pub const ADD_JAR_NAME: &str = "+ Add JAR";
-pub const REMOVE_JAR_NAME: &str = "- Remove Selected";
-pub const NONE_JAR_NAME: &str = "(None)";
-
 type Res<T = ()> = Result<T, String>;
 
 pub struct InstanceLog {
@@ -56,10 +47,9 @@ pub struct Launcher {
     pub is_log_open: bool,
     pub log_scroll: isize,
     pub tick_timer: usize,
-    pub is_launching_game: bool,
 
     pub java_recv: Option<ProgressBar<GenericProgress>>,
-    pub custom_jar: Option<CustomJarState>,
+    pub is_launching_game: bool,
 
     pub accounts: HashMap<String, AccountData>,
     pub accounts_dropdown: Vec<String>,
@@ -77,20 +67,6 @@ pub struct Launcher {
     pub window_size: (f32, f32),
     pub mouse_pos: (f32, f32),
     pub keys_pressed: HashSet<iced::keyboard::Key>,
-}
-
-pub struct CustomJarState {
-    pub choices: Vec<String>,
-    pub recv: Receiver<notify::Event>,
-    pub _watcher: notify::RecommendedWatcher,
-}
-
-impl CustomJarState {
-    pub fn load() -> Task<Message> {
-        Task::perform(load_custom_jars(), |n| {
-            Message::EditInstance(EditInstanceMessage::CustomJarLoaded(n.strerr()))
-        })
-    }
 }
 
 #[derive(Default)]
@@ -212,7 +188,6 @@ impl Launcher {
             accounts_selected: Some(selected_account),
             keys_pressed: HashSet::new(),
             tick_timer: 0,
-            custom_jar: None,
         })
     }
 
@@ -267,7 +242,6 @@ impl Launcher {
             accounts_selected: Some(OFFLINE_ACCOUNT_NAME.to_owned()),
             keys_pressed: HashSet::new(),
             tick_timer: 0,
-            custom_jar: None,
         }
     }
 
@@ -287,7 +261,10 @@ impl Launcher {
             menu_launch.sidebar_width = width as u16;
         }
         self.state = State::Launch(menu_launch);
-        Task::perform(get_entries(false), Message::CoreListLoaded)
+        Task::perform(
+            get_entries("instances".to_owned(), false),
+            Message::CoreListLoaded,
+        )
     }
 }
 
@@ -415,12 +392,8 @@ fn get_theme(config: &LauncherConfig) -> LauncherTheme {
     LauncherTheme::from_vals(style, theme)
 }
 
-pub async fn get_entries(is_server: bool) -> Res<(Vec<String>, bool)> {
-    let dir_path = file_utils::get_launcher_dir().strerr()?.join(if is_server {
-        "servers"
-    } else {
-        "instances"
-    });
+pub async fn get_entries(path: String, is_server: bool) -> Res<(Vec<String>, bool)> {
+    let dir_path = file_utils::get_launcher_dir().strerr()?.join(path);
     if !dir_path.exists() {
         tokio::fs::create_dir_all(&dir_path)
             .await
@@ -432,11 +405,7 @@ pub async fn get_entries(is_server: bool) -> Res<(Vec<String>, bool)> {
     Ok((
         file_utils::read_filenames_from_dir(&dir_path)
             .await
-            .strerr()?
-            .into_iter()
-            .filter(|n| !n.is_file)
-            .map(|n| n.name)
-            .collect(),
+            .strerr()?,
         is_server,
     ))
 }
@@ -479,35 +448,4 @@ impl<T: Progress> ProgressBar<T> {
         }
         has_ticked
     }
-}
-
-pub async fn load_custom_jars() -> Result<Vec<String>, IoError> {
-    let names = file_utils::read_filenames_from_dir(LAUNCHER_DIR.join("custom_jars")).await?;
-    let mut list: Vec<String> = names
-        .into_iter()
-        .filter(|n| n.is_file)
-        .map(|n| n.name)
-        .collect();
-
-    list.insert(0, NONE_JAR_NAME.to_owned());
-    list.push(ADD_JAR_NAME.to_owned());
-    list.push(REMOVE_JAR_NAME.to_owned());
-
-    Ok(list)
-}
-
-pub fn dir_watch<P: AsRef<Path>>(
-    path: P,
-) -> notify::Result<(mpsc::Receiver<notify::Event>, notify::RecommendedWatcher)> {
-    let (tx, rx) = mpsc::channel();
-
-    // `notify` runs callbacks in its own thread.
-    let mut watcher: notify::RecommendedWatcher = notify::recommended_watcher(move |res| {
-        if let Ok(event) = res {
-            _ = tx.send(event);
-        }
-    })?;
-    watcher.watch(path.as_ref(), notify::RecursiveMode::NonRecursive)?;
-
-    Ok((rx, watcher))
 }

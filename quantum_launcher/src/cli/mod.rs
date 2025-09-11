@@ -257,12 +257,12 @@ pub fn start_cli(is_dir_err: bool) {
         match subcommand.0 {
             "list-instances" => {
                 let command = get_list_instance_subcommand(subcommand);
-                command::list_instances(&command, false);
+                command::list_instances(&command, "instances");
                 std::process::exit(0);
             }
             "list-servers" => {
                 let command = get_list_instance_subcommand(subcommand);
-                command::list_instances(&command, true);
+                command::list_instances(&command, "servers");
                 std::process::exit(0);
             }
             "list-available-versions" => {

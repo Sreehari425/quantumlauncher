@@ -30,11 +30,10 @@ pub fn list_available_versions() {
     }
 }
 
-pub fn list_instances(cmds: &[PrintCmd], is_server: bool) {
-    let dirname = if is_server { "servers" } else { "instances" };
+pub fn list_instances(cmds: &[PrintCmd], dirname: &str) {
     let instances = match tokio::runtime::Runtime::new()
         .unwrap()
-        .block_on(get_entries(is_server))
+        .block_on(get_entries(dirname.to_owned(), false))
         .strerr()
     {
         Ok(n) => n.0,

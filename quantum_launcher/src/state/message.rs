@@ -79,10 +79,6 @@ pub enum EditInstanceMessage {
     RenameApply,
     WindowWidthChanged(String),
     WindowHeightChanged(String),
-
-    CustomJarPathChanged(String),
-    CustomJarLoaded(Res<Vec<String>>),
-    AutoSetMainClassToggle(bool),
 }
 
 #[derive(Debug, Clone)]
@@ -259,6 +255,7 @@ pub enum LauncherSettingsMessage {
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    #[allow(unused)]
     Nothing,
     #[allow(unused)]
     Multiple(Vec<Message>),
