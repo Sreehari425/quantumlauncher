@@ -35,6 +35,8 @@ use ql_core::{err, err_no_log, file_utils, info_no_log, IntoStringError, JsonFil
 use ql_instances::OS_NAME;
 use tokio::io::AsyncWriteExt;
 
+use crate::state::CustomJarState;
+
 /// The CLI interface of the launcher.
 mod cli;
 /// Launcher configuration (global).
@@ -95,19 +97,19 @@ impl Launcher {
             async move { ql_instances::check_for_launcher_updates().await.strerr() },
             Message::UpdateCheckResult,
         );
-
-        let get_entries_command = Task::perform(
-            get_entries("instances".to_owned(), false),
-            Message::CoreListLoaded,
-        );
-
+        let get_entries_command = Task::perform(get_entries(false), Message::CoreListLoaded);
         let log_cmd = Task::perform(file_utils::clean_log_spam(), |n| {
             Message::CoreLogCleanComplete(n.strerr())
         });
 
         (
             Launcher::load_new(None, is_new_user, config).unwrap_or_else(Launcher::with_error),
-            Task::batch([check_for_updates_command, get_entries_command, log_cmd]),
+            Task::batch([
+                check_for_updates_command,
+                get_entries_command,
+                log_cmd,
+                CustomJarState::load(),
+            ]),
         )
     }
 
