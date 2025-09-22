@@ -252,7 +252,7 @@ impl App {
             let sender_clone = sender.clone();
             let _ = sender.send(crate::tui::AuthEvent::RefreshStarted);
             tokio::spawn(async move {
-                match crate::state::get_entries("instances".to_owned(), false).await {
+                match crate::state::get_entries(false).await {
                     Ok((instance_names, _)) => {
                         let mut instance_data = Vec::new();
                         for name in instance_names {
@@ -309,7 +309,7 @@ impl App {
 
         match tokio::runtime::Runtime::new() {
             Ok(rt) => {
-                match rt.block_on(get_entries("instances".to_owned(), false)) {
+                match rt.block_on(get_entries(false)) {
                     Ok((instance_names, _)) => {
                         self.instances.clear();
                         let launcher_dir = match file_utils::get_launcher_dir() {
