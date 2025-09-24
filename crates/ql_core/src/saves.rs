@@ -183,7 +183,7 @@ pub async fn read_saves_info(instance: &InstanceSelection) -> Result<Vec<Save>, 
 /// Gets the saves directory path for a given instance
 ///
 /// For client instances, this is `.minecraft/saves`
-/// For servers, checks common world folder locations
+/// For servers, uses the default "world" folder (can be configured via server.properties level-name)
 fn get_saves_directory(instance: &InstanceSelection) -> PathBuf {
     match instance {
         InstanceSelection::Instance(_) => {
@@ -191,23 +191,10 @@ fn get_saves_directory(instance: &InstanceSelection) -> PathBuf {
             instance.get_dot_minecraft_path().join("saves")
         }
         InstanceSelection::Server(_) => {
-            let base = instance.get_instance_path();
-
-            // Check common server world folder names
-            for world_name in ["world", "World", "world_nether", "world_the_end"] {
-                let world_path = base.join(world_name);
-                if world_path.exists() && world_path.is_dir() {
-                    pt!("Found server world folder: {:?}", world_path);
-                    // Return base directory so we can scan all world folders
-                    return base;
-                }
-            }
-
-            pt!(
-                "No standard world folders found, using server root: {:?}",
-                base
-            );
-            base
+            // Server world is typically "world" (default level-name in server.properties)
+            // TODO: Could read server.properties level-name in the future for custom world names
+            // For this implementation it will be using the default value "world"
+            instance.get_instance_path().join("world")
         }
     }
 }
