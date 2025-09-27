@@ -1,0 +1,13 @@
+<installer-gui-script minSpecVersion="1">
+    <title>Quantum Launcher</title>
+    <welcome file="welcome.html"/>
+    <license file="license.txt"/>
+    <pkg-ref id="com.mrmayman.quantum-launcher"/>
+    <options customize="never" require-scripts="false"/>
+    <choices-outline>
+        <line choice="default"/>
+    </choices-outline>
+    <choice id="default" visible="false" title="Quantum Launcher">
+        <pkg-ref id="com.mrmayman.quantum-launcher"/>
+    </choice>
+</installer-gui-script>

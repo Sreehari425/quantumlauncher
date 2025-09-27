@@ -1,0 +1,108 @@
+name: Build-macOS
+
+on:
+  workflow_dispatch: # allows manual triggering
+
+env:
+  BIN_NAME: quantum_launcher
+  PROJECT_NAME: quantum_launcher
+  REPO_NAME: Mrmayman/quantum-launcher
+  FINAL_NAME: quantum_launcher
+  CARGO_TERM_COLOR: always
+  MACOSX_DEPLOYMENT_TARGET: 10.15
+
+jobs:
+  dist:
+    name: Dist
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        build: [x86_64-macos, aarch64-macos]
+        include:
+          - build: x86_64-macos
+            os: macos-latest
+            rust: stable
+            target: x86_64-apple-darwin
+            cross: false
+            final_name: macos_x86_64
+          - build: aarch64-macos
+            os: macos-latest
+            rust: stable
+            target: aarch64-apple-darwin
+            cross: false
+            final_name: macos_aarch64
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install ${{ matrix.rust }} toolchain
+        shell: bash
+        run: |
+          rustup toolchain install ${{ matrix.rust }} --no-self-update
+          rustup default ${{ matrix.rust }}
+          rustup target add ${{ matrix.target }}
+          if [ "${{ matrix.cross }}" == "true" ]; then
+            cargo install cross --locked
+          fi
+
+      - name: Build release binary
+        shell: bash
+        run: |
+          if [ "${{ matrix.cross }}" == "true" ]; then
+            cross build --profile release-ql --target ${{ matrix.target }}
+          else
+            cargo build --profile release-ql --target ${{ matrix.target }}
+          fi
+
+      - name: Bundle into .app
+        shell: bash
+        run: |
+          mkdir -p build
+          APP_DIR="build/quantum-launcher.app"
+          MACOS_DIR="$APP_DIR/Contents/MacOS"
+          RESOURCES_DIR="$APP_DIR/Contents/Resources"
+
+          mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
+
+          cp "target/${{ matrix.target }}/release-ql/$BIN_NAME" "$MACOS_DIR/$BIN_NAME"
+          cp assets/freedesktop/Info.plist "$APP_DIR/Contents/Info.plist"
+
+          # Convert PNG to ICNS
+          sips -s format icns "assets/icon/ql_logo.png" --out "$RESOURCES_DIR/ql_logo.icns"
+
+      - name: Create DMG
+        shell: bash
+        run: |
+          mkdir -p dist
+          hdiutil create -volname "${{ env.BIN_NAME }}" -srcfolder "build/quantum-launcher.app" -ov -format UDZO "dist/${{ env.BIN_NAME }}.dmg"
+
+      - name: Create PKG
+        shell: bash
+        run: |
+          mkdir -p dist
+          APP_DIR="build/quantum-launcher.app"
+
+          # Component package
+          pkgbuild \
+            --install-location "/Applications/quantum-launcher.app" \
+            --component "$APP_DIR" \
+            --identifier "com.mrmayman.quantum-launcher" \
+            --version "1.0.0" \
+            build/quantum-launcher-component.pkg
+
+          # Distribution package with wizard UI
+          productbuild \
+            --distribution assets/macos/Installer.dist \
+            --resources assets/macos \
+            --package-path build \
+            dist/quantum-launcher.pkg
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{env.FINAL_NAME}}_${{ matrix.final_name }}
+          path: dist
