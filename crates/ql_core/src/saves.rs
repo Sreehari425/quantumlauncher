@@ -137,7 +137,6 @@ pub async fn read_saves_info(instance: &InstanceSelection) -> Result<Vec<Save>, 
         }
     }
 
-    // Process all saves in parallel for better performance
     let tasks = potential_saves.into_iter().map(|mut save| async move {
         // Gather metadata (icon + level files check)
         if let Err(e) = save.gather_metadata().await {
@@ -147,7 +146,6 @@ pub async fn read_saves_info(instance: &InstanceSelection) -> Result<Vec<Save>, 
         Ok(save)
     });
 
-    // Use ql_core's parallel job processor
     let processed_saves = do_jobs(tasks).await?;
 
     // Filter to only include valid worlds (have level.dat)
@@ -182,8 +180,6 @@ fn get_saves_directory(instance: &InstanceSelection) -> PathBuf {
     }
 }
 
-/// Recursively calculates the size of a directory
-/// Uses an efficient async approach with better error handling
 async fn calculate_directory_size(dir: &Path) -> Result<u64, IoError> {
     let mut total_size = 0u64;
     let mut stack = vec![dir.to_path_buf()];
@@ -216,6 +212,5 @@ async fn calculate_directory_size(dir: &Path) -> Result<u64, IoError> {
         }
     }
 
-    // Size calculation complete - keeping minimal logging
     Ok(total_size)
 }

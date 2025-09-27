@@ -592,7 +592,11 @@ impl Launcher {
             Message::SavesLoaded(instance_name, result) => {
                 match result {
                     Ok(saves) => {
-                        info!("Loaded {} saves for instance '{}'", saves.len(), instance_name);
+                        info!(
+                            "Loaded {} saves for instance '{}'",
+                            saves.len(),
+                            instance_name
+                        );
                         self.saves_cache.insert(instance_name, saves);
                     }
                     Err(err) => {
