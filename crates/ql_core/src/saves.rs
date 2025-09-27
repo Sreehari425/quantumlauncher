@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use tokio::fs;
 
-use crate::{do_jobs, info, pt, InstanceSelection, IntoIoError, IoError};
+use crate::{do_jobs, info, InstanceSelection, IntoIoError, IoError};
 
 /// Represents a Minecraft save/world
 #[derive(Debug, Clone)]
@@ -37,7 +37,6 @@ impl Save {
     pub async fn check_icon(&mut self) -> Result<(), IoError> {
         let icon_path = self.path.join("icon.png");
         if icon_path.exists() {
-            pt!("Found world icon for '{}': {:?}", self.name, icon_path);
             self.icon_path = Some(icon_path);
         }
         Ok(())
@@ -46,15 +45,7 @@ impl Save {
     /// Checks for the presence of level.dat file
     pub async fn check_level_files(&mut self) -> Result<(), IoError> {
         let level_dat = self.path.join("level.dat");
-
         self.has_level_dat = level_dat.exists();
-
-        if self.has_level_dat {
-            pt!("Valid world found: '{}'", self.name);
-        } else {
-            pt!("Invalid world (no level.dat): '{}'", self.name);
-        }
-
         Ok(())
     }
 
@@ -86,7 +77,6 @@ impl Save {
             return Ok(size);
         }
 
-        pt!("Calculating size for world: {} (first time)", self.name);
         let size = calculate_directory_size(&self.path).await?;
         self.size_bytes = Some(size);
         Ok(size)
@@ -132,7 +122,6 @@ pub async fn read_saves_info(instance: &InstanceSelection) -> Result<Vec<Save>, 
 
     // Check if saves directory exists
     if !saves_dir.exists() {
-        pt!("Saves directory doesn't exist: {:?}", saves_dir);
         return Ok(Vec::new());
     }
 
@@ -159,7 +148,6 @@ pub async fn read_saves_info(instance: &InstanceSelection) -> Result<Vec<Save>, 
     let tasks = potential_saves.into_iter().map(|mut save| async move {
         // Gather metadata (icon + level files check)
         if let Err(e) = save.gather_metadata().await {
-            pt!("Failed to gather metadata for '{}': {}", save.name, e);
             return Err(e);
         }
 
@@ -209,10 +197,7 @@ async fn calculate_directory_size(dir: &Path) -> Result<u64, IoError> {
     while let Some(current_dir) = stack.pop() {
         let mut entries = match fs::read_dir(&current_dir).await {
             Ok(entries) => entries,
-            Err(e) => {
-                pt!("Cannot read directory {:?}: {}", current_dir, e);
-                continue; // Skip directories we can't read
-            }
+            Err(_) => continue, // Skip directories we can't read
         };
 
         while let Ok(Some(entry)) = entries.next_entry().await {
@@ -221,15 +206,10 @@ async fn calculate_directory_size(dir: &Path) -> Result<u64, IoError> {
             if entry_path.is_dir() {
                 stack.push(entry_path);
             } else if entry_path.is_file() {
-                match entry.metadata().await {
-                    Ok(metadata) => {
-                        total_size += metadata.len();
-                    }
-                    Err(e) => {
-                        pt!("Cannot read file metadata for {:?}: {}", entry_path, e);
-                        // Continue processing other files
-                    }
+                if let Ok(metadata) = entry.metadata().await {
+                    total_size += metadata.len();
                 }
+                // Continue processing other files on error
             }
         }
 
@@ -241,10 +221,6 @@ async fn calculate_directory_size(dir: &Path) -> Result<u64, IoError> {
         }
     }
 
-    pt!(
-        "Calculated directory size: {} bytes ({:.2} MB)",
-        total_size,
-        total_size as f64 / 1_048_576.0
-    );
+    // Size calculation complete - keeping minimal logging
     Ok(total_size)
 }
