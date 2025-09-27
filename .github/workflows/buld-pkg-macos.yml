@@ -84,7 +84,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          APP_DIR="build/quantum-launcher.app"
+          APP_DIR="build/quantum-launcher.app/Contents"
 
           # Component package
           pkgbuild \
