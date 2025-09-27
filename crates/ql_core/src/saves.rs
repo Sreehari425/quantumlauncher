@@ -118,8 +118,6 @@ impl Save {
 pub async fn read_saves_info(instance: &InstanceSelection) -> Result<Vec<Save>, IoError> {
     let saves_dir = get_saves_directory(instance);
 
-    info!("Scanning saves directory: {:?}", saves_dir);
-
     // Check if saves directory exists
     if !saves_dir.exists() {
         return Ok(Vec::new());
@@ -138,11 +136,6 @@ pub async fn read_saves_info(instance: &InstanceSelection) -> Result<Vec<Save>, 
             potential_saves.push(Save::new(save_name, entry_path));
         }
     }
-
-    info!(
-        "Found {} potential worlds to process",
-        potential_saves.len()
-    );
 
     // Process all saves in parallel for better performance
     let tasks = potential_saves.into_iter().map(|mut save| async move {
@@ -163,7 +156,9 @@ pub async fn read_saves_info(instance: &InstanceSelection) -> Result<Vec<Save>, 
         .filter(|save| save.has_level_dat)
         .collect();
 
-    info!("Found {} valid Minecraft worlds", valid_saves.len());
+    if !valid_saves.is_empty() {
+        info!("Found {} valid Minecraft worlds", valid_saves.len());
+    }
 
     Ok(valid_saves)
 }

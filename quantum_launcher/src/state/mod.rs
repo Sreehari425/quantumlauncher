@@ -73,6 +73,7 @@ pub struct Launcher {
     pub server_processes: HashMap<String, ServerProcess>,
     pub client_logs: HashMap<String, InstanceLog>,
     pub server_logs: HashMap<String, InstanceLog>,
+    pub saves_cache: HashMap<String, Vec<ql_core::saves::Save>>,
 
     pub window_size: (f32, f32),
     pub mouse_pos: (f32, f32),
@@ -204,6 +205,7 @@ impl Launcher {
             server_version_list_cache: None,
             server_processes: HashMap::new(),
             server_logs: HashMap::new(),
+            saves_cache: HashMap::new(),
             mouse_pos: (0.0, 0.0),
             window_size: (window_width, window_height),
             accounts,
@@ -258,6 +260,7 @@ impl Launcher {
             client_version_list_cache: None,
             server_processes: HashMap::new(),
             server_logs: HashMap::new(),
+            saves_cache: HashMap::new(),
             server_version_list_cache: None,
             mouse_pos: (0.0, 0.0),
             window_size: (window_width, window_height),
