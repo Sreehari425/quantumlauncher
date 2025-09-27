@@ -94,13 +94,12 @@ jobs:
             --version "1.0.0" \
             build/quantum-launcher-component.pkg
 
-          # Distribution package with wizard UI
+          # Distribution package with GUI screens
           productbuild \
             --distribution assets/macos/Installer.dist \
             --resources assets/macos \
             --package-path build \
             dist/quantum-launcher.pkg
-
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
