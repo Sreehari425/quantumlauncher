@@ -2,7 +2,9 @@
     <title>Quantum Launcher</title>
     <welcome file="welcome.html"/>
     <license file="license.txt"/>
-    <pkg-ref id="com.mrmayman.quantum-launcher"/>
+
+    <pkg-ref id="com.mrmayman.quantum-launcher" installKBytes="0" version="1.0.0">#quantum-launcher-component.pkg</pkg-ref>
+
     <options customize="never" require-scripts="false"/>
     <choices-outline>
         <line choice="default"/>
