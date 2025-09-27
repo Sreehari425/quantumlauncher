@@ -1,4 +1,4 @@
-name: Build-macOS
+name: Build-macOS-TEST
 
 on:
   workflow_dispatch: # allows manual triggering
