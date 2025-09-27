@@ -155,7 +155,11 @@ pub async fn read_saves_info(instance: &InstanceSelection) -> Result<Vec<Save>, 
         .collect();
 
     if !valid_saves.is_empty() {
-        info!("Found {} valid Minecraft worlds", valid_saves.len());
+        info!(
+            "Loaded {} saves for instance {} ",
+            valid_saves.len(),
+            instance.get_name()
+        );
     }
 
     Ok(valid_saves)
