@@ -484,7 +484,7 @@ impl Launcher {
             *drag_and_drop_hovered = is_hovered;
         }
     }
-
+    #[cfg(feature = "auto_update")]
     pub fn update_download_start(&mut self) -> Task<Message> {
         if let State::UpdateFound(MenuLauncherUpdate { url, progress, .. }) = &mut self.state {
             let (sender, update_receiver) = std::sync::mpsc::channel();
