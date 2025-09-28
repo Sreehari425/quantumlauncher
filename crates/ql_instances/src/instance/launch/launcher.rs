@@ -740,8 +740,15 @@ impl GameLauncher {
                 classpath_entries: mem::take(classpath_entries),
                 class_path: mem::take(class_path),
             };
-            self.add_entry_to_classpath(name, &mut ctx, &artifact, &downloader, library, main_class)
-                .await?;
+            self.add_entry_to_classpath(
+                name,
+                &mut ctx,
+                &artifact,
+                &downloader,
+                library,
+                main_class,
+            )
+            .await?;
             mem::swap(classpath_entries, &mut ctx.classpath_entries);
             mem::swap(class_path, &mut ctx.class_path);
         }
