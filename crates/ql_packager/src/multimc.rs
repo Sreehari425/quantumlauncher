@@ -1,12 +1,18 @@
+use chrono::DateTime;
+use ql_mod_manager::loaders::fabric::just_get_a_version;
 use std::{
     path::Path,
-    sync::{mpsc::Sender, Arc},
+    sync::{mpsc::Sender, Arc, Mutex},
 };
 
 use crate::{import::pipe_progress, import::OUT_OF, InstancePackageError};
 use ql_core::{
-    err, file_utils, info, json::InstanceConfigJson, GenericProgress, InstanceSelection,
-    IntoIoError, IntoJsonError, ListEntry,
+    do_jobs, err, file_utils, info,
+    json::{
+        FabricJSON, InstanceConfigJson, Manifest, VersionDetails, V_1_12_2,
+        V_OFFICIAL_FABRIC_SUPPORT,
+    },
+    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, ListEntry, Loader,
 };
 use serde::{Deserialize, Serialize};
 use tokio::fs;
@@ -23,18 +29,52 @@ pub struct MmcPackComponent {
     pub cachedVersion: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct InstanceRecipe {
+    is_lwjgl3: bool,
+    mc_version: String,
+    loader: Option<Loader>,
+    loader_version: Option<String>,
+}
+
+impl InstanceRecipe {
+    async fn setup_lwjgl3(&mut self) -> Result<(), InstancePackageError> {
+        async fn adjust_for_lwjgl3(mc_version: &str) -> Result<bool, InstancePackageError> {
+            let manifest = Manifest::download().await?;
+            if let Some(version) = manifest.find_name(mc_version) {
+                if let (Ok(look), Ok(expect)) = (
+                    DateTime::parse_from_rfc3339(&version.releaseTime),
+                    DateTime::parse_from_rfc3339(V_1_12_2),
+                ) {
+                    if look <= expect {
+                        return Ok(true);
+                    }
+                }
+            }
+            Ok(false)
+        }
+
+        if self.is_lwjgl3 && adjust_for_lwjgl3(&self.mc_version).await? {
+            self.mc_version.push_str("-lwjgl3");
+        }
+        Ok(())
+    }
+}
+
 pub async fn import(
     download_assets: bool,
     temp_dir: &Path,
-    mmc_pack: String,
+    mmc_pack: &str,
     sender: Option<Arc<Sender<GenericProgress>>>,
 ) -> Result<InstanceSelection, InstancePackageError> {
     info!("Importing MultiMC instance...");
-    let mmc_pack: MmcPack = serde_json::from_str(&mmc_pack).json(mmc_pack)?;
+    let mmc_pack: MmcPack = serde_json::from_str(mmc_pack).json(mmc_pack.to_owned())?;
 
-    let ini_path = temp_dir.join("instance.cfg");
-    let ini = fs::read_to_string(&ini_path).await.path(ini_path)?;
-    let ini = ini::Ini::load_from_str(&filter_bytearray(&ini))?;
+    let ini = {
+        let ini_path = temp_dir.join("instance.cfg");
+        let ini = fs::read_to_string(&ini_path).await.path(ini_path)?;
+        ini::Ini::load_from_str(&filter_bytearray(&ini))?
+    };
 
     let instance_name = ini
         .get_from(Some("General"), "name")
@@ -45,33 +85,75 @@ pub async fn import(
         .to_owned();
     let instance_selection = InstanceSelection::new(&instance_name, false);
 
+    let mut instance_recipe = InstanceRecipe {
+        is_lwjgl3: false,
+        mc_version: "(MultiMC) Couldn't find minecraft version".to_owned(),
+        loader: None,
+        loader_version: None,
+    };
+
     for component in &mmc_pack.components {
         match component.cachedName.as_str() {
             "Minecraft" => {
-                mmc_minecraft(download_assets, sender.clone(), &instance_name, component).await?;
+                instance_recipe.mc_version = component.cachedVersion.clone();
             }
 
-            name @ ("Forge" | "NeoForge") => {
+            "Forge" => {
+                instance_recipe.loader = Some(Loader::Forge);
+                instance_recipe.loader_version = Some(component.cachedVersion.clone());
+            }
+            "NeoForge" => {
+                instance_recipe.loader = Some(Loader::Forge);
+                instance_recipe.loader_version = Some(component.cachedVersion.clone());
+            }
+            "Fabric Loader" => {
+                instance_recipe.loader = Some(Loader::Fabric);
+                instance_recipe.loader_version = Some(component.cachedVersion.clone());
+            }
+            "Quilt Loader" => {
+                instance_recipe.loader = Some(Loader::Forge);
+                instance_recipe.loader_version = Some(component.cachedVersion.clone());
+            }
+
+            "LWJGL 3" => instance_recipe.is_lwjgl3 = true,
+
+            "LWJGL 2" | "Intermediary Mappings" => {}
+            name => err!("Unknown MultiMC Component: {name}"),
+        }
+    }
+
+    instance_recipe.setup_lwjgl3().await?;
+    mmc_minecraft(
+        download_assets,
+        sender.clone(),
+        &instance_name,
+        instance_recipe.mc_version.clone(),
+    )
+    .await?;
+
+    if let Some(loader) = instance_recipe.loader {
+        match loader {
+            n @ (Loader::Fabric | Loader::Quilt) => {
+                install_fabric(
+                    sender.as_deref(),
+                    &instance_selection,
+                    instance_recipe.loader_version.clone(),
+                    matches!(n, Loader::Quilt),
+                )
+                .await?;
+            }
+            n @ (Loader::Forge | Loader::Neoforge) => {
                 mmc_forge(
                     sender.clone(),
                     &instance_selection,
-                    component,
-                    name == "NeoForge",
+                    instance_recipe.loader_version.clone(),
+                    matches!(n, Loader::Neoforge),
                 )
                 .await?;
             }
-            name @ ("Fabric Loader" | "Quilt Loader") => {
-                ql_mod_manager::loaders::fabric::install(
-                    Some(component.cachedVersion.clone()),
-                    instance_selection.clone(),
-                    sender.as_deref(),
-                    name == "Quilt",
-                )
-                .await?;
+            loader => {
+                err!("Unimplemented MultiMC Component: {loader:?}")
             }
-
-            "Intermediary Mappings" | "LWJGL 2" | "LWJGL 3" => {}
-            name => err!("Unknown component (in MultiMC instance): {name}"),
         }
     }
 
@@ -86,6 +168,97 @@ pub async fn import(
     config.save(&instance_selection).await?;
     info!("Finished importing MultiMC instance");
     Ok(instance_selection)
+}
+
+async fn install_fabric(
+    sender: Option<&Sender<GenericProgress>>,
+    instance_selection: &InstanceSelection,
+    version: Option<String>,
+    is_quilt: bool,
+) -> Result<(), InstancePackageError> {
+    let version_json = VersionDetails::load(instance_selection).await?;
+    if !version_json.is_before_or_eq(V_OFFICIAL_FABRIC_SUPPORT) {
+        ql_mod_manager::loaders::fabric::install(
+            version,
+            instance_selection.clone(),
+            sender,
+            is_quilt,
+        )
+        .await?;
+        return Ok(());
+    }
+
+    // Hack for versions below 1.14
+    let url = format!(
+        "https://{}/versions/loader/1.14.4/{}/profile/json",
+        if is_quilt {
+            "meta.quiltmc.org/v3"
+        } else {
+            "meta.fabricmc.net/v2"
+        },
+        if let Some(version) = version.clone() {
+            version
+        } else {
+            just_get_a_version(instance_selection, is_quilt).await?
+        }
+    );
+    let fabric_json_text = file_utils::download_file_to_string(&url, false).await?;
+    let fabric_json: FabricJSON =
+        serde_json::from_str(&fabric_json_text).json(fabric_json_text.clone())?;
+
+    let instance_path = instance_selection.get_instance_path();
+    let libraries_dir = instance_path.join("libraries");
+
+    info!("Custom fabric implementation, installing libraries:");
+    let i = Mutex::new(0);
+    let len = fabric_json.libraries.len();
+    do_jobs(fabric_json.libraries.iter().map(|library| async {
+        if library.name.starts_with("net.fabricmc:intermediary") {
+            return Ok::<_, InstancePackageError>(());
+        }
+        let path_str = library.get_path();
+        let url = library.get_url();
+        let path = libraries_dir.join(&path_str);
+
+        let parent_dir = path
+            .parent()
+            .ok_or(InstancePackageError::PathBufParent(path.clone()))?;
+        tokio::fs::create_dir_all(parent_dir)
+            .await
+            .path(parent_dir)?;
+        file_utils::download_file_to_path(&url, false, &path).await?;
+
+        {
+            let mut i = i.lock().unwrap();
+            *i += 1;
+            pt!(
+                "({i}/{len}) {}\n    Path: {path_str}\n    Url: {url}",
+                library.name
+            );
+            if let Some(sender) = sender {
+                _ = sender.send(GenericProgress {
+                    done: *i,
+                    total: len,
+                    message: Some(format!("Installing fabric: library {}", library.name)),
+                    has_finished: false,
+                });
+            }
+        }
+
+        Ok(())
+    }))
+    .await?;
+
+    let mut config = InstanceConfigJson::read(instance_selection).await?;
+    config.main_class_override = Some(fabric_json.mainClass.clone());
+    config.mod_type = "Fabric".to_owned();
+    config.save(instance_selection).await?;
+
+    let fabric_json_path = instance_path.join("fabric.json");
+    tokio::fs::write(&fabric_json_path, &fabric_json_text)
+        .await
+        .path(&fabric_json_path)?;
+    Ok(())
 }
 
 async fn copy_files(
@@ -130,10 +303,10 @@ async fn mmc_minecraft(
     download_assets: bool,
     sender: Option<Arc<Sender<GenericProgress>>>,
     instance_name: &str,
-    component: &MmcPackComponent,
+    version: String,
 ) -> Result<(), InstancePackageError> {
     let version = ListEntry {
-        name: component.cachedVersion.clone(),
+        name: version,
         is_classic_server: false,
     };
     let (d_send, d_recv) = std::sync::mpsc::channel();
@@ -155,7 +328,7 @@ async fn mmc_minecraft(
 async fn mmc_forge(
     sender: Option<Arc<Sender<GenericProgress>>>,
     instance_selection: &InstanceSelection,
-    component: &MmcPackComponent,
+    version: Option<String>,
     is_neoforge: bool,
 ) -> Result<(), InstancePackageError> {
     let (f_send, f_recv) = std::sync::mpsc::channel();
@@ -166,7 +339,7 @@ async fn mmc_forge(
     }
     if is_neoforge {
         ql_mod_manager::loaders::neoforge::install(
-            Some(component.cachedVersion.clone()),
+            version,
             instance_selection.clone(),
             Some(f_send),
             None, // TODO: Java install progress
@@ -174,7 +347,7 @@ async fn mmc_forge(
         .await?;
     } else {
         ql_mod_manager::loaders::forge::install(
-            Some(component.cachedVersion.clone()),
+            version,
             instance_selection.clone(),
             Some(f_send),
             None, // TODO: Java install progress

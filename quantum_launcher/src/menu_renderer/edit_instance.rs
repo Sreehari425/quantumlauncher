@@ -24,29 +24,23 @@ impl MenuEditInstance {
         widget::scrollable(
             widget::column![
                 widget::container(
-                    widget::row![
+                    widget::column![
                         widget::text(selected_instance.get_name().to_owned()).size(20).font(FONT_MONO),
-                        widget::horizontal_space(),
-                        widget::text!("{} | {}  ",
+                        widget::text!("{} {}  ",
                             self.config.mod_type,
                             if selected_instance.is_server() {
                                 "Server"
                             } else {
                                 "Client"
                             }
-                        )
+                        ).style(|t: &LauncherTheme| t.style_text(Color::Mid)).size(14),
+                        widget::Space::with_height(1),
+                        widget::row!(
+                            widget::button("Rename").on_press(Message::EditInstance(EditInstanceMessage::RenameApply)),
+                            widget::text_input("Rename Instance", &self.instance_name).on_input(|n| Message::EditInstance(EditInstanceMessage::RenameEdit(n))),
+                        ).spacing(5),
                     ].padding(10).spacing(5),
                 )
-                .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::Dark)),
-
-                widget::container(widget::column!(
-                    widget::row!(
-                        widget::button("Rename").on_press(Message::EditInstance(EditInstanceMessage::RenameApply)),
-                        widget::text_input("Rename Instance", &self.instance_name).on_input(|n| Message::EditInstance(EditInstanceMessage::RenameEdit(n))),
-                    ).spacing(5),
-                )
-                .padding(10)
-                .spacing(10))
                 .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::Dark)),
 
                 widget::container(
@@ -54,7 +48,7 @@ impl MenuEditInstance {
                 ).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),
                 widget::container(
                     self.item_custom_jar(jar_choices)
-                ).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),
+                ).width(Length::Fill).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::Dark)),
                 widget::container(
                     self.item_mem_alloc(),
                 ).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),

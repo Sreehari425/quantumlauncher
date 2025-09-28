@@ -557,6 +557,12 @@ impl GameLauncher {
             .as_ref()
             .is_some_and(|n| n.autoset_main_class)
             .then_some(main_class.to_owned())
+            .or_else(|| {
+                self.config_json
+                    .main_class_override
+                    .clone()
+                    .filter(|n| !n.is_empty())
+            })
     }
 
     fn classpath_fabric_and_quilt(
@@ -568,6 +574,13 @@ impl GameLauncher {
         if let Some(fabric_json) = fabric_json {
             for library in &fabric_json.libraries {
                 if let Some(name) = remove_version_from_library(&library.name) {
+                    if self
+                        .version_json
+                        .q_patch_overrides
+                        .contains(&name.replace(':', "."))
+                    {
+                        continue;
+                    }
                     if !classpath_entries.insert(name) {
                         continue;
                     }
@@ -684,21 +697,42 @@ impl GameLauncher {
             .libraries
             .iter()
             .filter(|n| GameDownloader::download_libraries_library_is_allowed(n))
-            .filter_map(|n| match (&n.name, n.downloads.as_ref()) {
+            .filter_map(|n| match (&n.name, n.downloads.as_ref(), n.url.as_ref()) {
                 (
                     Some(name),
                     Some(LibraryDownloads {
                         artifact: Some(artifact),
                         ..
                     }),
-                ) => Some((n, name, artifact)),
+                    _,
+                ) => Some((n, name, artifact.clone())),
+                (Some(name), None, Some(url)) => {
+                    let flib = ql_core::json::fabric::Library {
+                        name: name.clone(),
+                        url: if url.ends_with('/') {
+                            url.clone()
+                        } else {
+                            format!("{url}/")
+                        },
+                    };
+                    Some((
+                        n,
+                        name,
+                        LibraryDownloadArtifact {
+                            path: Some(flib.get_path()),
+                            sha1: String::new(),
+                            size: serde_json::Number::from_u128(0).unwrap(),
+                            url: flib.get_url(),
+                        },
+                    ))
+                }
                 _ => None,
             })
         {
             self.add_entry_to_classpath(
                 name,
                 classpath_entries,
-                artifact,
+                &artifact,
                 class_path,
                 &downloader,
                 library,
@@ -732,8 +766,10 @@ impl GameLauncher {
 
         if !library_path.exists() {
             pt!("library {library_path:?} not found! Downloading...");
-            if let Err(err) = downloader.download_library(library).await {
+            if let Err(err) = downloader.download_library(library, Some(artifact)).await {
                 err!("Couldn't download library! Skipping...\n{err}");
+            } else if !library_path.exists() {
+                err!("Library still doesn't exist... failed?")
             }
         }
         #[allow(unused_mut)]

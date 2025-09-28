@@ -248,6 +248,7 @@ pub struct InstanceConfigJson {
     ///
     /// **Default: `None`** (use official Minecraft jar)
     pub custom_jar: Option<CustomJarConfig>,
+    pub main_class_override: Option<String>,
 }
 
 impl InstanceConfigJson {

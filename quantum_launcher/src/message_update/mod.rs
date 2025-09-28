@@ -2,10 +2,7 @@ use std::path::Path;
 use std::str::FromStr;
 
 use iced::futures::executor::block_on;
-use iced::{
-    widget::{image::Handle, scrollable::AbsoluteOffset},
-    Task,
-};
+use iced::{widget::scrollable::AbsoluteOffset, Task};
 use ql_core::{err, info, InstanceSelection, IntoStringError, ModId, OptifineUniqueVersion};
 use ql_mod_manager::{
     loaders,
@@ -175,14 +172,6 @@ impl Launcher {
                     return menu.search_store(is_server, 0);
                 }
             }
-            InstallModsMessage::ImageDownloaded(image) => match image {
-                Ok(image) => {
-                    self.insert_image(image);
-                }
-                Err(err) => {
-                    err!("Could not download image: {err}");
-                }
-            },
             InstallModsMessage::Click(i) => {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.opened_mod = Some(i);
@@ -217,9 +206,7 @@ impl Launcher {
                 }
             }
             InstallModsMessage::Download(index) => {
-                if let Some(value) = self.mod_download(index) {
-                    return value;
-                }
+                return self.mod_download(index);
             }
             InstallModsMessage::DownloadComplete(Ok((id, not_allowed))) => {
                 let task = if let State::ModsDownload(menu) = &mut self.state {
@@ -241,6 +228,7 @@ impl Launcher {
                 self.state = State::CurseforgeManualDownload(MenuCurseforgeManualDownload {
                     unsupported: not_allowed,
                     is_store: true,
+                    delete_mods: true,
                 });
             }
             InstallModsMessage::IndexUpdated(Ok(idx)) => {
@@ -270,6 +258,7 @@ impl Launcher {
                 self.state = State::ImportModpack(ProgressBar::with_recv(receiver));
 
                 let selected_instance = self.selected_instance.clone().unwrap();
+                self.mod_updates_checked.remove(&selected_instance);
 
                 return Task::perform(
                     async move {
@@ -284,29 +273,20 @@ impl Launcher {
         Task::none()
     }
 
-    fn insert_image(&mut self, image: ql_mod_manager::store::ImageResult) {
-        if image.is_svg {
-            let handle = iced::widget::svg::Handle::from_memory(image.image);
-            self.images.svg.insert(image.url, handle);
-        } else {
-            self.images
-                .bitmap
-                .insert(image.url, Handle::from_bytes(image.image));
-        }
-    }
-
-    fn mod_download(&mut self, index: usize) -> Option<Task<Message>> {
-        let selected_instance = self.selected_instance.clone()?;
+    fn mod_download(&mut self, index: usize) -> Task<Message> {
+        let Some(selected_instance) = self.selected_instance.clone() else {
+            return Task::none();
+        };
         let State::ModsDownload(menu) = &mut self.state else {
-            return None;
+            return Task::none();
         };
         let Some(results) = &menu.results else {
             err!("Couldn't download mod: Search results empty");
-            return None;
+            return Task::none();
         };
         let Some(hit) = results.mods.get(index) else {
             err!("Couldn't download mod: Not present in results");
-            return None;
+            return Task::none();
         };
 
         menu.mods_download_in_progress
@@ -324,16 +304,16 @@ impl Launcher {
                 yes: Message::InstallMods(InstallModsMessage::InstallModpack(id)),
                 no: Message::InstallMods(InstallModsMessage::Open),
             };
-            None
+            Task::none()
         } else {
-            Some(Task::perform(
+            Task::perform(
                 async move {
                     ql_mod_manager::store::download_mod(&id, &selected_instance, None)
                         .await
                         .map(|not_allowed| (ModId::Modrinth(project_id), not_allowed))
                 },
                 |n| Message::InstallMods(InstallModsMessage::DownloadComplete(n.strerr())),
-            ))
+            )
         }
     }
 
