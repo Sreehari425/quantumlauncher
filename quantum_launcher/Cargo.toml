@@ -20,9 +20,11 @@ build = "build.rs"
 embed-resource = "3"
 
 [features]
-default = ["wgpu", "tiny_skia"]
+default = ["wgpu", "tiny_skia", "auto_update"]
 wgpu = ["iced/wgpu"]
 tiny_skia = ["iced/tiny-skia"]
+# checking for updates, autoupdater
+auto_update = []
 
 debug = ["iced/debug"]
 simulate_linux_arm64 = ["ql_instances/simulate_linux_arm64"]
@@ -82,6 +84,7 @@ image = { workspace = true }
 html5ever = "0.27"
 markup5ever_rcdom = "0.3"
 notify = "8"
+itertools = "0.14.0"
 
 # iced::widget::markdown doesn't have inline
 # HTML support, so I made my own renderer.
