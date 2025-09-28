@@ -1,6 +1,6 @@
 use std::{collections::HashSet, path::PathBuf};
 
-use ql_core::{IoError, JsonError, JsonFileError};
+use ql_core::{impl_3_errs_jri, IoError, JsonError, RequestError};
 use ql_mod_manager::loaders::{fabric::FabricInstallError, forge::ForgeInstallError};
 use ql_servers::ServerError;
 use serde::{Deserialize, Serialize};
@@ -22,11 +22,15 @@ pub enum InstancePackageError {
     PathFileName(PathBuf),
     #[error("{PKG_ERR_PREFIX}path contains invalid unicode characters:\n{0:?}")]
     PathBufToStr(PathBuf),
+    #[error("{PKG_ERR_PREFIX}path doesn't have parent:\n{0:?}")]
+    PathBufParent(PathBuf),
 
     #[error("{PKG_ERR_PREFIX}{0}")]
     Io(#[from] IoError),
     #[error("{PKG_ERR_PREFIX}{0}")]
     Json(#[from] JsonError),
+    #[error("{PKG_ERR_PREFIX}{0}")]
+    Request(#[from] RequestError),
 
     #[error("{PKG_ERR_PREFIX}while creating base instance for import:\n{0}")]
     Download(#[from] DownloadError),
@@ -53,14 +57,7 @@ pub enum InstancePackageError {
     IniFieldMissing(String, String),
 }
 
-impl From<JsonFileError> for InstancePackageError {
-    fn from(value: JsonFileError) -> Self {
-        match value {
-            JsonFileError::SerdeError(err) => Self::Json(err),
-            JsonFileError::Io(err) => Self::Io(err),
-        }
-    }
-}
+impl_3_errs_jri!(InstancePackageError, Json, Request, Io);
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct InstanceInfo {

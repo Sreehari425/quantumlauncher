@@ -9,11 +9,11 @@ use std::{
     },
 };
 
-use iced::{widget::image::Handle, Task};
+use iced::Task;
 use notify::Watcher;
 use ql_core::{
     err, file_utils, GenericProgress, InstanceSelection, IntoIoError, IntoStringError, IoError,
-    JsonFileError, ListEntry, Progress, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
+    JsonFileError, ListEntry, ModId, Progress, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
 };
 use ql_instances::{
     auth::{ms::CLIENT_ID, AccountData, AccountType},
@@ -26,8 +26,10 @@ use crate::{
     stylesheet::styles::{LauncherTheme, LauncherThemeColor, LauncherThemeLightness},
 };
 
+mod images;
 mod menu;
 mod message;
+pub use images::ImageState;
 pub use menu::*;
 pub use message::*;
 
@@ -36,6 +38,7 @@ pub const NEW_ACCOUNT_NAME: &str = "+ Add Account";
 
 pub const ADD_JAR_NAME: &str = "+ Add JAR";
 pub const REMOVE_JAR_NAME: &str = "- Remove Selected";
+pub const OPEN_FOLDER_JAR_NAME: &str = "> Open Folder";
 pub const NONE_JAR_NAME: &str = "(None)";
 
 type Res<T = ()> = Result<T, String>;
@@ -60,6 +63,7 @@ pub struct Launcher {
 
     pub java_recv: Option<ProgressBar<GenericProgress>>,
     pub custom_jar: Option<CustomJarState>,
+    pub mod_updates_checked: HashMap<InstanceSelection, Vec<(ModId, String, bool)>>,
 
     pub accounts: HashMap<String, AccountData>,
     pub accounts_dropdown: Vec<String>,
@@ -76,7 +80,9 @@ pub struct Launcher {
 
     pub window_size: (f32, f32),
     pub mouse_pos: (f32, f32),
+
     pub keys_pressed: HashSet<iced::keyboard::Key>,
+    pub modifiers_pressed: iced::keyboard::Modifiers,
 }
 
 pub struct CustomJarState {
@@ -91,14 +97,6 @@ impl CustomJarState {
             Message::EditInstance(EditInstanceMessage::CustomJarLoaded(n.strerr()))
         })
     }
-}
-
-#[derive(Default)]
-pub struct ImageState {
-    pub bitmap: HashMap<String, Handle>,
-    pub svg: HashMap<String, iced::widget::svg::Handle>,
-    pub downloads_in_progress: HashSet<String>,
-    pub to_load: Mutex<HashSet<String>>,
 }
 
 pub struct ClientProcess {
@@ -187,31 +185,40 @@ impl Launcher {
         let (window_width, window_height) = config.read_window_size();
 
         Ok(Self {
+            state,
+            config,
+            theme,
+            accounts,
+            accounts_dropdown,
+
+            window_size: (window_width, window_height),
+            accounts_selected: Some(selected_account),
+
             client_list: None,
             server_list: None,
             java_recv: None,
-            is_log_open: false,
-            log_scroll: 0,
-            state,
-            client_processes: HashMap::new(),
-            config,
-            client_logs: HashMap::new(),
-            selected_instance: None,
-            images: ImageState::default(),
-            theme,
-            is_launching_game: false,
             client_version_list_cache: None,
             server_version_list_cache: None,
+            selected_instance: None,
+            custom_jar: None,
+
+            client_processes: HashMap::new(),
+            client_logs: HashMap::new(),
             server_processes: HashMap::new(),
             server_logs: HashMap::new(),
-            mouse_pos: (0.0, 0.0),
-            window_size: (window_width, window_height),
-            accounts,
-            accounts_dropdown,
-            accounts_selected: Some(selected_account),
+
             keys_pressed: HashSet::new(),
+            mod_updates_checked: HashMap::new(),
+
+            is_log_open: false,
+            is_launching_game: false,
+
+            log_scroll: 0,
             tick_timer: 0,
-            custom_jar: None,
+            mouse_pos: (0.0, 0.0),
+
+            images: ImageState::default(),
+            modifiers_pressed: iced::keyboard::Modifiers::empty(),
         })
     }
 
@@ -242,31 +249,39 @@ impl Launcher {
         let (window_width, window_height) = config.read_window_size();
 
         Self {
+            config,
+            theme,
+
             state: State::Error { error },
-            is_log_open: false,
-            log_scroll: 0,
+
             java_recv: None,
-            is_launching_game: false,
             client_list: None,
             server_list: None,
-            config,
+            client_version_list_cache: None,
+            selected_instance: None,
+            server_version_list_cache: None,
+            custom_jar: None,
+
+            is_log_open: false,
+            is_launching_game: false,
+
+            log_scroll: 0,
+            tick_timer: 0,
+            mouse_pos: (0.0, 0.0),
+
             client_processes: HashMap::new(),
             client_logs: HashMap::new(),
-            selected_instance: None,
-            images: ImageState::default(),
-            theme,
-            client_version_list_cache: None,
             server_processes: HashMap::new(),
             server_logs: HashMap::new(),
-            server_version_list_cache: None,
-            mouse_pos: (0.0, 0.0),
-            window_size: (window_width, window_height),
             accounts: HashMap::new(),
+            keys_pressed: HashSet::new(),
+            mod_updates_checked: HashMap::new(),
+
+            images: ImageState::default(),
+            window_size: (window_width, window_height),
             accounts_dropdown: vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()],
             accounts_selected: Some(OFFLINE_ACCOUNT_NAME.to_owned()),
-            keys_pressed: HashSet::new(),
-            tick_timer: 0,
-            custom_jar: None,
+            modifiers_pressed: iced::keyboard::Modifiers::empty(),
         }
     }
 
@@ -491,6 +506,7 @@ pub async fn load_custom_jars() -> Result<Vec<String>, IoError> {
     list.insert(0, NONE_JAR_NAME.to_owned());
     list.push(ADD_JAR_NAME.to_owned());
     list.push(REMOVE_JAR_NAME.to_owned());
+    list.push(OPEN_FOLDER_JAR_NAME.to_owned());
 
     Ok(list)
 }

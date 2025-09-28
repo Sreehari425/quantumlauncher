@@ -65,7 +65,7 @@ impl GameDownloader {
             return Ok(());
         }
 
-        self.download_library(library).await?;
+        self.download_library(library, None).await?;
 
         {
             let mut library_i = library_i.lock().unwrap();
@@ -94,7 +94,11 @@ impl GameDownloader {
         Ok(())
     }
 
-    pub async fn download_library(&self, library: &Library) -> Result<(), DownloadError> {
+    pub async fn download_library(
+        &self,
+        library: &Library,
+        artifact_fallback: Option<&LibraryDownloadArtifact>,
+    ) -> Result<(), DownloadError> {
         let libraries_dir = self.instance_dir.join("libraries");
 
         if let Some(LibraryDownloads {
@@ -103,33 +107,45 @@ impl GameDownloader {
             ..
         }) = library.downloads.as_ref()
         {
-            if let Some(artifact) = artifact {
-                if let Some(name) = &library.name {
-                    info!("Downloading {name}: {}", artifact.url);
-                } else {
-                    info!("Downloading {}", artifact.url);
-                }
-
-                let jar_file = self
-                    .download_library_normal(artifact, &libraries_dir)
-                    .await?;
-
-                let natives_path = self.instance_dir.join("libraries/natives");
-                extractlib_natives_field(
+            if let Some(artifact) = artifact.as_ref().or(artifact_fallback) {
+                self.download_library_artifact(
                     library,
-                    classifiers.as_ref(),
-                    &jar_file,
-                    &natives_path,
+                    &libraries_dir,
                     artifact,
+                    classifiers.as_ref(),
                 )
                 .await?;
-                extractlib_name_natives(library, artifact, natives_path).await?;
             }
             if let Some(classifiers) = classifiers {
                 self.download_library_native(classifiers, &libraries_dir, library.extract.as_ref())
                     .await?;
             }
+        } else if let Some(artifact) = artifact_fallback {
+            self.download_library_artifact(library, &libraries_dir, artifact, None)
+                .await?;
         }
+
+        Ok(())
+    }
+
+    async fn download_library_artifact(
+        &self,
+        library: &Library,
+        libraries_dir: &Path,
+        artifact: &LibraryDownloadArtifact,
+        classifiers: Option<&BTreeMap<String, LibraryClassifier>>,
+    ) -> Result<(), DownloadError> {
+        if let Some(name) = &library.name {
+            info!("Downloading {name}: {}", artifact.url);
+        } else {
+            info!("Downloading {}", artifact.url);
+        }
+        let jar_file = self
+            .download_library_normal(artifact, libraries_dir)
+            .await?;
+        let natives_path = self.instance_dir.join("libraries/natives");
+        extractlib_natives_field(library, classifiers, &jar_file, &natives_path, artifact).await?;
+        extractlib_name_natives(library, artifact, natives_path).await?;
         Ok(())
     }
 
@@ -261,6 +277,13 @@ impl GameDownloader {
             info!("Downloading natives (classifiers): {url}");
 
             let library = file_utils::download_file_to_bytes(url, false).await?;
+            if Some(library.len()) != download.size.as_u64().map(|n| n as usize) {
+                err!(
+                    "(download_library_native): Library size {} doesn't match expected size {}",
+                    library.len(),
+                    download.size
+                )
+            }
 
             file_utils::extract_zip_archive(Cursor::new(&library), &natives_dir, true)
                 .map_err(DownloadError::NativesExtractError)?;
@@ -439,7 +462,7 @@ async fn extractlib_natives_field(
         if let Some(natives) = classifiers.get(natives_name) {
             if natives.url == "https://github.com/MinecraftMachina/lwjgl/releases/download/2.9.4-20150209-mmachina.2/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.jar" {
                 // Updated fork, fixes crash on macOS aarch64 when resizing windows
-                "https://github.com/Dungeons-Guide/lwjgl/releases/download/2.9.4-20150209-mmachina.2-syeyoung.1/lwjgl-platform-2.9.4-nightly-20150209-natives-osx-arm64.jar".to_owned()
+                MACOS_ARM_LWJGL_294_2.to_owned()
             } else {
                 natives.url.clone()
             }

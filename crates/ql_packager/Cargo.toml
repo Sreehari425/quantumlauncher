@@ -18,5 +18,6 @@ serde_json = { workspace = true }
 
 tempfile = { workspace = true }
 
+chrono = { workspace = true }
 zip = { workspace = true }
 rust-ini = { version = "0.21", features = ["inline-comment"] }

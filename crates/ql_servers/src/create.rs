@@ -124,6 +124,7 @@ async fn write_config(
         java_args_mode: None,
         custom_jar: None,
         pre_launch_prefix_mode: None,
+        main_class_override: None,
     };
     let server_config_path = server_dir.join("config.json");
     tokio::fs::write(

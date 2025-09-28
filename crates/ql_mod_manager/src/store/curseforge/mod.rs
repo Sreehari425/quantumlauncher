@@ -98,7 +98,7 @@ impl Mod {
         Ok((file_query, file.fileId))
     }
 
-    fn iter_files<'a>(&'a self, version: String) -> impl Iterator<Item = &'a CurseforgeFileIdx> {
+    fn iter_files(&self, version: String) -> impl Iterator<Item = &CurseforgeFileIdx> {
         self.latestFilesIndexes
             .iter()
             .filter(move |n| n.gameVersion == version)
@@ -143,21 +143,21 @@ pub struct CurseforgeFile {
 #[derive(Deserialize, Clone, Debug)]
 #[allow(non_snake_case)]
 pub struct Dependency {
-    modId: usize,
+    pub modId: usize,
 }
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct Logo {
-    url: String,
+    pub url: String,
 }
 
 #[derive(Deserialize)]
-struct CFSearchResult {
-    data: Vec<Mod>,
+pub struct CFSearchResult {
+    pub data: Vec<Mod>,
 }
 
 impl CFSearchResult {
-    async fn get_from_ids(ids: &[String]) -> Result<Self, ModError> {
+    pub async fn get_from_ids(ids: &[String]) -> Result<Self, ModError> {
         if ids.is_empty() {
             return Ok(Self { data: Vec::new() });
         }
@@ -200,7 +200,7 @@ impl Backend for CurseforgeBackend {
     ) -> Result<SearchResult, ModError> {
         const TOTAL_DOWNLOADS: &str = "6";
 
-        let _lock = RATE_LIMITER.lock().await;
+        RATE_LIMITER.lock().await;
         let instant = Instant::now();
 
         let mut params = HashMap::from([

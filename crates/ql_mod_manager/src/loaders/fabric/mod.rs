@@ -275,13 +275,7 @@ pub async fn install(
     let loader_version = if let Some(n) = loader_version {
         n
     } else {
-        get_list_of_versions(instance.clone(), is_quilt)
-            .await?
-            .first()
-            .ok_or(FabricInstallError::NoVersionFound)?
-            .loader
-            .version
-            .clone()
+        just_get_a_version(&instance, is_quilt).await?
     };
     match instance {
         InstanceSelection::Instance(n) => {
@@ -289,6 +283,19 @@ pub async fn install(
         }
         InstanceSelection::Server(n) => install_server(loader_version, n, progress, is_quilt).await,
     }
+}
+
+pub async fn just_get_a_version(
+    instance: &InstanceSelection,
+    is_quilt: bool,
+) -> Result<String, FabricInstallError> {
+    Ok(get_list_of_versions(instance.clone(), is_quilt)
+        .await?
+        .first()
+        .ok_or(FabricInstallError::NoVersionFound)?
+        .loader
+        .version
+        .clone())
 }
 
 #[derive(Deserialize, Clone, Debug)]

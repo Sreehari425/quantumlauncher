@@ -205,31 +205,42 @@ impl Launcher {
             let locally_installed_mods = HashSet::new();
             let sorted_mods_list = sort_dependencies(&mods.mods, &locally_installed_mods);
 
-            let (update_cmd, update_check_handle) =
-                if !check_updates || config_json.mod_type == "Vanilla" {
-                    (Task::none(), None)
-                } else {
-                    let (a, b) = Task::perform(
-                        ql_mod_manager::store::check_for_updates(instance.clone()),
-                        |n| Message::ManageMods(ManageModsMessage::UpdateCheckResult(n.strerr())),
-                    )
-                    .abortable();
-                    (a, Some(b.abort_on_drop()))
-                };
+            let (update_cmd, update_check_handle) = if !check_updates
+                || this.mod_updates_checked.contains_key(instance)
+                || config_json.mod_type == "Vanilla"
+            {
+                (Task::none(), None)
+            } else {
+                let (a, b) = Task::perform(
+                    ql_mod_manager::store::check_for_updates(instance.clone()),
+                    |n| Message::ManageMods(ManageModsMessage::UpdateCheckResult(n.strerr())),
+                )
+                .abortable();
+                (a, Some(b.abort_on_drop()))
+            };
+
+            let available_updates = if let Some(updates) = this.mod_updates_checked.get(instance) {
+                updates.clone()
+            } else {
+                Vec::new()
+            };
 
             this.state = State::EditMods(MenuEditMods {
                 config: config_json,
                 mods,
                 selected_mods: HashSet::new(),
+                shift_selected_mods: HashSet::new(),
                 sorted_mods_list,
                 selected_state: SelectedState::None,
-                available_updates: Vec::new(),
+                available_updates,
                 mod_update_progress: None,
                 locally_installed_mods,
                 drag_and_drop_hovered: false,
                 update_check_handle,
                 version_json,
                 submenu1_shown: false,
+                width_name: 220.0,
+                list_shift_index: None,
             });
 
             Ok(Task::batch([update_local_mods_task, update_cmd]))
