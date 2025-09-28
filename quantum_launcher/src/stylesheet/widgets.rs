@@ -23,17 +23,37 @@ pub enum StyleButton {
     Flat,
     FlatDark,
     FlatExtraDark,
+    /// top right, top left,
+    /// bottom right, bottom left
+    SemiDark([bool; 4]),
 }
 
 pub trait IsFlat {
     fn is_flat(&self) -> bool;
+    fn get_4_sides(&self) -> [bool; 4] {
+        [false; 4]
+    }
 }
 
 impl IsFlat for StyleButton {
     fn is_flat(&self) -> bool {
         match self {
             StyleButton::Round | StyleButton::RoundDark => false,
-            StyleButton::Flat | StyleButton::FlatDark | StyleButton::FlatExtraDark => true,
+            StyleButton::Flat
+            | StyleButton::FlatDark
+            | StyleButton::FlatExtraDark
+            | StyleButton::SemiDark(_) => true,
+        }
+    }
+
+    fn get_4_sides(&self) -> [bool; 4] {
+        match self {
+            StyleButton::Round
+            | StyleButton::RoundDark
+            | StyleButton::Flat
+            | StyleButton::FlatDark
+            | StyleButton::FlatExtraDark => [false; 4],
+            StyleButton::SemiDark(n) => *n,
         }
     }
 }
@@ -369,7 +389,7 @@ impl widget::slider::Catalog for LauncherTheme {
 impl iced::application::DefaultStyle for LauncherTheme {
     fn default_style(&self) -> iced::application::Appearance {
         iced::application::Appearance {
-            background_color: self.get(Color::Dark, true),
+            background_color: iced::Color::TRANSPARENT,
             text_color: self.get(Color::Light, true),
         }
     }

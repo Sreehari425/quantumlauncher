@@ -99,10 +99,7 @@ impl Launcher {
         #[cfg(not(feature = "auto_update"))]
         let check_for_updates_command = Task::none();
 
-        let get_entries_command = Task::perform(
-            get_entries(false),
-            Message::CoreListLoaded,
-        );
+        let get_entries_command = Task::perform(get_entries(false), Message::CoreListLoaded);
 
         (
             Launcher::load_new(None, is_new_user, config).unwrap_or_else(Launcher::with_error),
@@ -118,7 +115,6 @@ impl Launcher {
                 CustomJarState::load(),
             ]),
         )
-
     }
 
     fn kill_selected_server(&mut self, server: &str) {
@@ -167,7 +163,7 @@ impl Launcher {
 
 const DEBUG_LOG_BUTTON_HEIGHT: f32 = 16.0;
 
-const WINDOW_HEIGHT: f32 = 400.0;
+const WINDOW_HEIGHT: f32 = 450.0;
 const WINDOW_WIDTH: f32 = 600.0;
 
 fn main() {
@@ -222,6 +218,8 @@ fn main() {
                 width: 420.0,
                 height: 300.0,
             }),
+            decorations: false,
+            transparent: true,
             ..Default::default()
         })
         .run_with(move || Launcher::new(is_new_user, config))

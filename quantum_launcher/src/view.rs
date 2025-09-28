@@ -22,7 +22,12 @@ impl Launcher {
             ])
             .padding(0)
             .height(DEBUG_LOG_BUTTON_HEIGHT)
-            .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatDark))
+            .style(|n: &LauncherTheme, status| {
+                n.style_button(
+                    status,
+                    StyleButton::SemiDark([false, false, !self.is_log_open, !self.is_log_open]),
+                )
+            })
             .on_press(Message::CoreLogToggle),
             widget::text(if self.is_log_open {
                 "Close launcher log"
@@ -33,7 +38,7 @@ impl Launcher {
             widget::tooltip::Position::Top,
         );
 
-        widget::column![
+        let view = widget::column![
             widget::column![self.view_menu()].height(
                 (self.window_size.1 / if self.is_log_open { 2.0 } else { 1.0 })
                     - DEBUG_LOG_BUTTON_HEIGHT
@@ -82,8 +87,9 @@ impl Launcher {
                 },
                 |(msg, kind)| format!("{kind} {msg}"),
             )
-        }))
-        .into()
+        }));
+
+        widget::container(view).padding(1).into()
     }
 
     fn view_menu(&'_ self) -> Element<'_> {

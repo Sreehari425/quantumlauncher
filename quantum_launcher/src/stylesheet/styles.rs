@@ -140,7 +140,17 @@ impl LauncherTheme {
     }
 
     fn get_border_style(&self, style: &impl IsFlat, color: Color, invert: bool) -> Border {
-        if style.is_flat() {
+        let sides = style.get_4_sides();
+        if sides.into_iter().any(|n| n) {
+            let mut b = self.get_border(color, invert);
+            b.radius = iced::border::Radius {
+                top_left: sides[0].then_some(BORDER_RADIUS).unwrap_or_default(),
+                top_right: sides[1].then_some(BORDER_RADIUS).unwrap_or_default(),
+                bottom_right: sides[2].then_some(BORDER_RADIUS).unwrap_or_default(),
+                bottom_left: sides[3].then_some(BORDER_RADIUS).unwrap_or_default(),
+            };
+            b
+        } else if style.is_flat() {
             self.get_border_sharp(color, invert)
         } else {
             self.get_border(color, invert)
@@ -301,8 +311,27 @@ impl LauncherTheme {
     pub fn style_container_selected_flat_button(&self) -> Style {
         Style {
             border: self.get_border_sharp(Color::Mid, true),
-            background: Some(self.get_bg(Color::SecondDark, true)),
-            text_color: Some(self.get(Color::White, true)),
+            background: Some(self.get_bg(Color::SecondDark, true).scale_alpha(0.6)),
+            text_color: None,
+            ..Default::default()
+        }
+    }
+
+    pub fn style_container_selected_flat_button_semi(
+        &self,
+        tl: bool,
+        tr: bool,
+        bl: bool,
+        br: bool,
+    ) -> Style {
+        Style {
+            border: iced::Border {
+                radius: get_radius_semi(tl, tr, bl, br),
+                width: 1.0,
+                color: self.get(Color::SecondDark, true),
+            },
+            background: Some(self.get_bg(Color::Dark, true)),
+            text_color: None,
             ..Default::default()
         }
     }
@@ -321,6 +350,41 @@ impl LauncherTheme {
                 }
             },
             background: Some(self.get_bg(color, true)),
+            ..Default::default()
+        }
+    }
+
+    pub fn style_container_bg_semiround(
+        &self,
+        tl: bool,
+        tr: bool,
+        bl: bool,
+        br: bool,
+        alpha: f32,
+    ) -> Style {
+        Style {
+            border: {
+                Border {
+                    color: self.get(Color::Mid, true),
+                    width: 0.0,
+                    radius: get_radius_semi(tl, tr, bl, br),
+                }
+            },
+            background: Some(self.get_bg(Color::ExtraDark, true).scale_alpha(alpha)),
+            ..Default::default()
+        }
+    }
+
+    pub fn style_container_bg(&self, radius: f32) -> Style {
+        Style {
+            border: {
+                Border {
+                    color: self.get(Color::Mid, true),
+                    width: 0.0,
+                    radius: radius.into(),
+                }
+            },
+            background: Some(self.get_bg(Color::ExtraDark, true).scale_alpha(0.8)),
             ..Default::default()
         }
     }
@@ -437,7 +501,9 @@ impl LauncherTheme {
             widget::button::Status::Active => {
                 let color = match style {
                     StyleButton::Round | StyleButton::Flat => Color::SecondDark,
-                    StyleButton::FlatDark | StyleButton::RoundDark => Color::Dark,
+                    StyleButton::FlatDark | StyleButton::RoundDark | StyleButton::SemiDark(_) => {
+                        Color::Dark
+                    }
                     StyleButton::FlatExtraDark => Color::ExtraDark,
                 };
                 widget::button::Style {
@@ -452,7 +518,8 @@ impl LauncherTheme {
                     StyleButton::Round
                     | StyleButton::RoundDark
                     | StyleButton::Flat
-                    | StyleButton::FlatDark => Color::Mid,
+                    | StyleButton::FlatDark
+                    | StyleButton::SemiDark(_) => Color::Mid,
                     StyleButton::FlatExtraDark => Color::Dark,
                 };
                 widget::button::Style {
@@ -461,6 +528,7 @@ impl LauncherTheme {
                         match style {
                             StyleButton::Round | StyleButton::Flat => Color::Dark,
                             StyleButton::FlatDark
+                            | StyleButton::SemiDark(_)
                             | StyleButton::RoundDark
                             | StyleButton::FlatExtraDark => Color::White,
                         },
@@ -479,7 +547,9 @@ impl LauncherTheme {
             widget::button::Status::Disabled => {
                 let color = match style {
                     StyleButton::Flat | StyleButton::Round | StyleButton::RoundDark => Color::Dark,
-                    StyleButton::FlatDark | StyleButton::FlatExtraDark => Color::ExtraDark,
+                    StyleButton::FlatDark
+                    | StyleButton::SemiDark(_)
+                    | StyleButton::FlatExtraDark => Color::ExtraDark,
                 };
                 widget::button::Style {
                     background: Some(self.get_bg(color, true)),
@@ -491,6 +561,7 @@ impl LauncherTheme {
                             StyleButton::RoundDark
                             | StyleButton::Flat
                             | StyleButton::FlatDark
+                            | StyleButton::SemiDark(_)
                             | StyleButton::FlatExtraDark => color,
                         },
                         true,
@@ -585,4 +656,12 @@ impl LauncherTheme {
             },
         }
     }
+}
+
+fn get_radius_semi(tl: bool, tr: bool, bl: bool, br: bool) -> iced::border::Radius {
+    iced::border::Radius::new(0.0)
+        .top_left(tl.then_some(BORDER_RADIUS).unwrap_or_default())
+        .top_right(tr.then_some(BORDER_RADIUS).unwrap_or_default())
+        .bottom_left(bl.then_some(BORDER_RADIUS).unwrap_or_default())
+        .bottom_right(br.then_some(BORDER_RADIUS).unwrap_or_default())
 }
