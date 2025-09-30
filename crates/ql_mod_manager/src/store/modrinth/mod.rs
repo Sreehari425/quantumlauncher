@@ -8,7 +8,7 @@ use versions::ModVersion;
 
 use crate::{
     rate_limiter::{MOD_DOWNLOAD_LOCK, RATE_LIMITER},
-    store::{SearchMod, StoreBackendType},
+    store::{Category, CategoryResult, SearchMod, StoreBackendType},
 };
 
 use super::{Backend, CurseforgeNotAllowed, ModError, Query, QueryType, SearchResult};
@@ -188,5 +188,17 @@ impl Backend for ModrinthBackend {
         }
 
         Ok(HashSet::new())
+    }
+}
+
+impl ModrinthBackend {
+    pub async fn get_categories() -> Result<CategoryResult, ModError> {
+        RATE_LIMITER.lock().await;
+        let url = "https://api.modrinth.com/v2/tag/category";
+
+        let categories: Vec<Category> =
+            ql_core::file_utils::download_file_to_json(url, false).await?;
+
+        Ok(CategoryResult { categories })
     }
 }

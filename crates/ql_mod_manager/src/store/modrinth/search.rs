@@ -32,6 +32,10 @@ pub async fn do_request(
         }
     }
 
+    if let Some(category) = &query.category {
+        filters.push(vec![format!("categories:'{}'", category)]);
+    }
+
     let filters = serde_json::to_string(&filters).json_to()?;
     params.insert("facets", filters);
 

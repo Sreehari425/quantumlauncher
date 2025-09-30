@@ -154,6 +154,8 @@ pub enum InstallModsMessage {
 
     ChangeBackend(StoreBackendType),
     ChangeQueryType(QueryType),
+    CategoriesLoaded(Res<Vec<ql_mod_manager::store::Category>>),
+    CategorySelected(Option<String>),
 }
 
 #[derive(Debug, Clone)]

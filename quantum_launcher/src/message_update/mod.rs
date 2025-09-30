@@ -253,6 +253,22 @@ impl Launcher {
                     return menu.search_store(is_server, 0);
                 }
             }
+            InstallModsMessage::CategoriesLoaded(Ok(categories)) => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    menu.available_categories = Some(categories);
+                }
+            }
+            InstallModsMessage::CategoriesLoaded(Err(err)) => {
+                self.set_error(err);
+            }
+            InstallModsMessage::CategorySelected(category) => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    menu.selected_category = category;
+                    menu.results = None;
+                    menu.scroll_offset = AbsoluteOffset::default();
+                    return menu.search_store(is_server, 0);
+                }
+            }
             InstallModsMessage::InstallModpack(id) => {
                 let (sender, receiver) = std::sync::mpsc::channel();
                 self.state = State::ImportModpack(ProgressBar::with_recv(receiver));

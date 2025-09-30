@@ -39,13 +39,18 @@ impl Launcher {
 
             backend: StoreBackendType::Modrinth,
             query_type: QueryType::Mods,
+            available_categories: None,
+            selected_category: None,
         };
-        let command = menu.search_store(
+        let search_command = menu.search_store(
             matches!(&self.selected_instance, Some(InstanceSelection::Server(_))),
             0,
         );
+        let categories_command = menu.load_categories();
         self.state = State::ModsDownload(menu);
-        Ok(command)
+
+        // Combine both tasks
+        Ok(Task::batch(vec![search_command, categories_command]))
     }
 }
 
@@ -58,12 +63,24 @@ impl MenuModsDownload {
             version: self.version_json.get_id().to_owned(),
             loader,
             server_side: is_server,
+            category: self.selected_category.clone(),
             // open_source: false, // TODO: Add Open Source filter
         };
         let backend = self.backend;
         Task::perform(
             ql_mod_manager::store::search(query, offset, backend, self.query_type),
             |n| Message::InstallMods(InstallModsMessage::SearchResult(n.strerr())),
+        )
+    }
+
+    pub fn load_categories(&self) -> Task<Message> {
+        let backend = self.backend;
+        Task::perform(
+            async move {
+                let result = ql_mod_manager::store::get_categories(backend).await;
+                result.map(|category_result| category_result.categories)
+            },
+            |n| Message::InstallMods(InstallModsMessage::CategoriesLoaded(n.strerr())),
         )
     }
 }

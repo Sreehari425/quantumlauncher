@@ -117,7 +117,67 @@ impl MenuModsDownload {
                 .size(14)
                 .into()
             }))
-            .spacing(5)
+            .spacing(5),
+            widget::Space::with_height(5),
+            widget::text("Category:").size(18),
+            {
+                let mut category_column = widget::column![
+                    {
+                        let is_all_selected = self.selected_category.is_none();
+                        let all_style = if is_all_selected { StyleButton::RoundDark } else { StyleButton::Flat };
+                        widget::button(widget::text(
+                            if is_all_selected { 
+                                "All Categories (Selected)" 
+                            } else { 
+                                "All Categories" 
+                            }
+                        ).size(14))
+                        .on_press(Message::InstallMods(InstallModsMessage::CategorySelected(None)))
+                        .style(move |theme: &LauncherTheme, status| { 
+                            theme.style_button(status, all_style)
+                        })
+                    }
+                ];
+
+                if let Some(categories) = &self.available_categories {
+                    // Filter categories for the current query type and backend
+                    let relevant_categories: Vec<_> = categories
+                        .iter()
+                        .filter(|cat| {
+                            if self.backend == StoreBackendType::Modrinth {
+                                match self.query_type {
+                                    QueryType::Mods => cat.project_type == "mod",
+                                    QueryType::ResourcePacks => cat.project_type == "resourcepack", 
+                                    QueryType::Shaders => cat.project_type == "shader",
+                                    QueryType::ModPacks => cat.project_type == "modpack",
+                                }
+                            } else {
+                                true // For other backends, show all categories
+                            }
+                        })
+                        .collect();
+
+                    for category in relevant_categories {
+                        let is_selected = self.selected_category.as_ref() == Some(&category.name);
+                        let selected_style = if is_selected { StyleButton::RoundDark } else { StyleButton::Flat };
+                        category_column = category_column.push(
+                            widget::button(widget::text(
+                                if is_selected {
+                                    format!("{} (Selected)", category.name)
+                                } else {
+                                    category.name.clone()
+                                }
+                            ).size(14))
+                            .on_press(Message::InstallMods(InstallModsMessage::CategorySelected(Some(category.name.clone()))))
+                            .style(move |theme: &LauncherTheme, status| {
+                                theme.style_button(status, selected_style)
+                            })
+                        );
+                    }
+                }
+                
+                category_column.spacing(5)
+            }
         )
         .spacing(5);
 

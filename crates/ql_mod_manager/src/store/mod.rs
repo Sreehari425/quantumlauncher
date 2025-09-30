@@ -92,6 +92,17 @@ pub async fn search(
     }
 }
 
+pub async fn get_categories(backend: StoreBackendType) -> Result<CategoryResult, ModError> {
+    match backend {
+        StoreBackendType::Modrinth => ModrinthBackend::get_categories().await,
+        StoreBackendType::Curseforge => {
+            // CurseForge doesn't have the same category API structure
+            // For now, return empty categories
+            Ok(CategoryResult { categories: vec![] })
+        }
+    }
+}
+
 pub async fn download_mod(
     id: &ModId,
     instance: &InstanceSelection,
@@ -234,6 +245,7 @@ pub struct Query {
     pub version: String,
     pub loader: Option<Loader>,
     pub server_side: bool,
+    pub category: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -254,6 +266,19 @@ pub struct SearchMod {
     pub project_type: String,
     pub id: String,
     pub icon_url: String,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct Category {
+    pub icon: String,
+    pub name: String,
+    pub project_type: String,
+    pub header: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct CategoryResult {
+    pub categories: Vec<Category>,
 }
 
 async fn get_loader(instance: &InstanceSelection) -> Result<Option<Loader>, ModError> {

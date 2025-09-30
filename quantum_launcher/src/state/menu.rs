@@ -311,6 +311,11 @@ pub struct MenuModsDownload {
     pub backend: StoreBackendType,
     pub query_type: QueryType,
 
+    /// Available categories for filtering
+    pub available_categories: Option<Vec<ql_mod_manager::store::Category>>,
+    /// Currently selected category for filtering
+    pub selected_category: Option<String>,
+
     /// This is for the loading of continuation of the search,
     /// i.e. when you scroll down and more stuff appears
     pub is_loading_continuation: bool,
