@@ -313,8 +313,8 @@ pub struct MenuModsDownload {
 
     /// Available categories for filtering
     pub available_categories: Option<Vec<ql_mod_manager::store::Category>>,
-    /// Currently selected category for filtering
-    pub selected_category: Option<String>,
+    /// Currently selected categories for filtering
+    pub selected_categories: std::collections::HashSet<String>,
 
     /// This is for the loading of continuation of the search,
     /// i.e. when you scroll down and more stuff appears

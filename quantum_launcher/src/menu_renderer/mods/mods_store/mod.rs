@@ -119,25 +119,9 @@ impl MenuModsDownload {
             }))
             .spacing(5),
             widget::Space::with_height(5),
-            widget::text("Category:").size(18),
+            widget::text("Categories:").size(18),
             {
-                let mut category_column = widget::column![
-                    {
-                        let is_all_selected = self.selected_category.is_none();
-                        let all_style = if is_all_selected { StyleButton::RoundDark } else { StyleButton::Flat };
-                        widget::button(widget::text(
-                            if is_all_selected { 
-                                "All Categories (Selected)" 
-                            } else { 
-                                "All Categories" 
-                            }
-                        ).size(14))
-                        .on_press(Message::InstallMods(InstallModsMessage::CategorySelected(None)))
-                        .style(move |theme: &LauncherTheme, status| { 
-                            theme.style_button(status, all_style)
-                        })
-                    }
-                ];
+                let mut category_column = widget::column![];
 
                 if let Some(categories) = &self.available_categories {
                     // Filter categories for the current query type and backend
@@ -157,21 +141,27 @@ impl MenuModsDownload {
                         })
                         .collect();
 
-                    for category in relevant_categories {
-                        let is_selected = self.selected_category.as_ref() == Some(&category.name);
-                        let selected_style = if is_selected { StyleButton::RoundDark } else { StyleButton::Flat };
+                    // Add "Clear All" button if any categories are selected
+                    if !self.selected_categories.is_empty() {
                         category_column = category_column.push(
-                            widget::button(widget::text(
-                                if is_selected {
-                                    format!("{} (Selected)", category.name)
-                                } else {
-                                    category.name.clone()
-                                }
-                            ).size(14))
-                            .on_press(Message::InstallMods(InstallModsMessage::CategorySelected(Some(category.name.clone()))))
-                            .style(move |theme: &LauncherTheme, status| {
-                                theme.style_button(status, selected_style)
-                            })
+                            widget::button(widget::text("Clear All").size(14))
+                                .on_press(Message::InstallMods(InstallModsMessage::CategoryToggled("".to_string(), false)))
+                                .style(|theme: &LauncherTheme, status| {
+                                    theme.style_button(status, StyleButton::FlatDark)
+                                })
+                        );
+                        category_column = category_column.push(widget::Space::with_height(5));
+                    }
+
+                    for category in relevant_categories {
+                        let is_selected = self.selected_categories.contains(&category.name);
+                        category_column = category_column.push(
+                            widget::checkbox(&category.name, is_selected)
+                                .on_toggle(|checked| {
+                                    Message::InstallMods(InstallModsMessage::CategoryToggled(category.name.clone(), checked))
+                                })
+                                .text_size(14)
+                                .size(14)
                         );
                     }
                 }

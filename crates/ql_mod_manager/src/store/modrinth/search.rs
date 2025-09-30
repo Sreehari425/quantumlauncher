@@ -32,11 +32,26 @@ pub async fn do_request(
         }
     }
 
-    if let Some(category) = &query.category {
-        filters.push(vec![format!("categories:'{}'", category)]);
+    // Add category filters if specified (AND logic - each category is a separate filter)
+    if !query.categories.is_empty() {
+        // Create separate AND filters for each category
+        for category in &query.categories {
+            filters.push(vec![format!("categories:'{}'", category)]);
+        }
+
+        // Debug: print what categories we're filtering by
+        println!(
+            "Debug: Filtering by categories (AND logic): {:?}",
+            query.categories
+        );
+        println!("Debug: Each category gets its own filter for AND logic");
     }
 
     let filters = serde_json::to_string(&filters).json_to()?;
+
+    // Debug: print the final filters being sent to Modrinth
+    println!("Debug: Final filters JSON: {}", filters);
+
     params.insert("facets", filters);
 
     let text = ql_core::CLIENT

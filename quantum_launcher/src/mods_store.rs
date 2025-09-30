@@ -40,7 +40,7 @@ impl Launcher {
             backend: StoreBackendType::Modrinth,
             query_type: QueryType::Mods,
             available_categories: None,
-            selected_category: None,
+            selected_categories: std::collections::HashSet::new(),
         };
         let search_command = menu.search_store(
             matches!(&self.selected_instance, Some(InstanceSelection::Server(_))),
@@ -63,7 +63,7 @@ impl MenuModsDownload {
             version: self.version_json.get_id().to_owned(),
             loader,
             server_side: is_server,
-            category: self.selected_category.clone(),
+            categories: self.selected_categories.clone(),
             // open_source: false, // TODO: Add Open Source filter
         };
         let backend = self.backend;

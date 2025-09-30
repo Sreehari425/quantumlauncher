@@ -261,9 +261,16 @@ impl Launcher {
             InstallModsMessage::CategoriesLoaded(Err(err)) => {
                 self.set_error(err);
             }
-            InstallModsMessage::CategorySelected(category) => {
+            InstallModsMessage::CategoryToggled(category, enabled) => {
                 if let State::ModsDownload(menu) = &mut self.state {
-                    menu.selected_category = category;
+                    if category.is_empty() {
+                        // Clear all categories when category is empty string
+                        menu.selected_categories.clear();
+                    } else if enabled {
+                        menu.selected_categories.insert(category);
+                    } else {
+                        menu.selected_categories.remove(&category);
+                    }
                     menu.results = None;
                     menu.scroll_offset = AbsoluteOffset::default();
                     return menu.search_store(is_server, 0);

@@ -245,7 +245,7 @@ pub struct Query {
     pub version: String,
     pub loader: Option<Loader>,
     pub server_side: bool,
-    pub category: Option<String>,
+    pub categories: std::collections::HashSet<String>,
 }
 
 #[derive(Debug, Clone)]
