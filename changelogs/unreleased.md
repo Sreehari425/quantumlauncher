@@ -30,3 +30,4 @@
   can now be installed
 - You can now open instances created in newer versions, in v0.4.1
 - Fixed crash with "Better Discord Rich Presence" mod
+- Fixed a launcher panic when launching the game
