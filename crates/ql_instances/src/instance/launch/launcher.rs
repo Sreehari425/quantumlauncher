@@ -1036,14 +1036,21 @@ fn deduplicate_game_args(arr1: &[String], arr2: &[String]) -> Vec<String> {
         let arr: Vec<String> = arr.iter().filter(|n| !n.is_empty()).cloned().collect();
         for i in (0..arr.len()).step_by(2) {
             let key = arr[i].clone();
-            let value = arr[i + 1].clone();
+            let value = arr.get(i + 1).cloned();
             if seen_keys.contains(&key) {
-                // Update value if the key already exists in result (i.e., in case of conflict, overwrite)
-                let pos = result.iter().position(|x| x == &key).unwrap();
-                result[pos + 1] = value; // Update the value for this key
+                if let Some(value) = value {
+                    // Update value if the key already exists in result (i.e., in case of conflict, overwrite)
+                    if let Some(pos) = result.iter().position(|x| x == &key) {
+                        if let Some(spot) = result.get_mut(pos + 1) {
+                            *spot = value; // Update the value for this key
+                        }
+                    }
+                }
             } else {
                 result.push(key.clone());
-                result.push(value.clone());
+                if let Some(value) = value {
+                    result.push(value.clone());
+                }
                 seen_keys.insert(key);
             }
         }
