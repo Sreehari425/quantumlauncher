@@ -32,7 +32,7 @@ pub struct PresetOutput {
 /// - Mod configuration
 ///
 /// # How to use this?
-/// See the [`PresetJson::generate`] and [`PresetJson::load`],
+/// See the [`Preset::generate`] and [`Preset::load`],
 ///
 /// # Format
 /// Mod presets consist of a `.qmp` file
@@ -40,7 +40,7 @@ pub struct PresetOutput {
 ///
 /// Inside this zip file, there will be:
 /// - An `index.json` file, essentially a `serde::Serialize`d
-///   version of [`PresetJson`] (the main struct through which
+///   version of [`Preset`] (the main struct through which
 ///   this API is used).
 /// - `.jar` files in the root of the zip (at the top level),
 ///   for any local, sideloaded mods from outside the mod store.

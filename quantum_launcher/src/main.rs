@@ -277,12 +277,22 @@ fn load_fonts() -> Vec<Cow<'static, [u8]>> {
     ]
 }
 
+/// This is the only `unsafe` Rust code in the entire launcher.
+/// It tweaks Windows terminal behaviour so that:
+///
+/// - If launcher is opened from terminal,
+///   it shows output in terminal
+/// - If it's opened normally from GUI,
+///   no terminal window pops up
+///
+/// Basically Linux-default behaviour.
 #[cfg(windows)]
 fn attach_to_console() {
     use windows::Win32::System::Console::AttachConsole;
     use windows::Win32::System::Console::ATTACH_PARENT_PROCESS;
 
     unsafe {
+        // No one cares if it fails. Ignore the `Result<()>`
         _ = AttachConsole(ATTACH_PARENT_PROCESS);
     }
 }
