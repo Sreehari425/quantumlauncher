@@ -84,6 +84,7 @@ impl MenuLaunch {
 /// The screen where you can edit an instance/server.
 pub struct MenuEditInstance {
     pub config: InstanceConfigJson,
+    pub is_editing_name: bool,
     pub instance_name: String,
     pub old_instance_name: String,
     pub slider_value: f32,

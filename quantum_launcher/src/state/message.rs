@@ -77,6 +77,7 @@ pub enum EditInstanceMessage {
     PreLaunchPrefixModeChanged(ql_core::json::instance_config::PreLaunchPrefixMode),
     RenameEdit(String),
     RenameApply,
+    RenameToggle,
     WindowWidthChanged(String),
     WindowHeightChanged(String),
 

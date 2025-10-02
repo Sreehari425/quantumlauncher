@@ -2,7 +2,7 @@ use crate::{
     icon_manager,
     menu_renderer::{button_with_icon, FONT_MONO},
     state::{CustomJarState, EditInstanceMessage, MenuEditInstance, Message, NONE_JAR_NAME},
-    stylesheet::{color::Color, styles::LauncherTheme},
+    stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
 use iced::{widget, Length};
 use ql_core::json::{
@@ -25,8 +25,19 @@ impl MenuEditInstance {
             widget::column![
                 widget::container(
                     widget::column![
-                        widget::text(selected_instance.get_name().to_owned()).size(20).font(FONT_MONO),
-                        widget::text!("{} {}  ",
+                        widget::row![
+                            widget::text(selected_instance.get_name().to_owned()).size(20).font(FONT_MONO),
+                        ].push_maybe((!self.is_editing_name).then_some(
+                            widget::button(
+                                icon_manager::edit_with_size(12)
+                                    .style(|t: &LauncherTheme| t.style_text(Color::Mid))
+                            ).style(|t: &LauncherTheme, s|
+                                t.style_button(s, StyleButton::FlatDark)
+                            )
+                            .on_press(Message::EditInstance(EditInstanceMessage::RenameToggle))
+                        )).spacing(5),
+
+                        widget::text!("{} {}",
                             self.config.mod_type,
                             if selected_instance.is_server() {
                                 "Server"
@@ -34,13 +45,15 @@ impl MenuEditInstance {
                                 "Client"
                             }
                         ).style(|t: &LauncherTheme| t.style_text(Color::Mid)).size(14),
+                    ].padding(10).spacing(5).push_maybe(self.is_editing_name.then_some(widget::column![
                         widget::Space::with_height(1),
-                        widget::row!(
-                            widget::button("Rename").on_press(Message::EditInstance(EditInstanceMessage::RenameApply)),
-                            widget::text_input("Rename Instance", &self.instance_name).on_input(|n| Message::EditInstance(EditInstanceMessage::RenameEdit(n))),
-                        ).spacing(5),
-                    ].padding(10).spacing(5),
-                )
+                        widget::text_input("Rename Instance", &self.instance_name).on_input(|n| Message::EditInstance(EditInstanceMessage::RenameEdit(n))),
+                        widget::row![
+                            widget::button(widget::text("Rename").size(12)).on_press(Message::EditInstance(EditInstanceMessage::RenameApply)),
+                            widget::button(widget::text("Cancel").size(12)).on_press(Message::EditInstance(EditInstanceMessage::RenameToggle))
+                        ].spacing(5)
+                    ].spacing(5))),
+                ).width(Length::Fill)
                 .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::Dark)),
 
                 widget::container(

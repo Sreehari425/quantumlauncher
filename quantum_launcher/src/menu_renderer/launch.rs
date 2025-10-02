@@ -142,10 +142,14 @@ impl Launcher {
                 }
             }
         } else {
-            widget::column!("Select an instance", last_parts)
-                .padding(10)
-                .spacing(10)
-                .into()
+            widget::column!(
+                widget::text("Select an instance")
+                    .style(|t: &LauncherTheme| t.style_text(Color::Mid)),
+                last_parts
+            )
+            .padding(10)
+            .spacing(10)
+            .into()
         };
 
         widget::column!(
@@ -570,7 +574,7 @@ impl MenuLaunch {
 fn get_no_logs_message<'a>() -> widget::Column<'a, Message, LauncherTheme> {
     const BASE_MESSAGE: &str = "No logs found";
 
-    widget::column!(BASE_MESSAGE)
+    widget::column!(widget::text(BASE_MESSAGE).style(|t: &LauncherTheme| t.style_text(Color::Mid)))
         // WARN: non x86_64
         .push_maybe(cfg!(not(target_arch = "x86_64")).then_some(widget::text(
             "Note: This version is experimental. If you want to get help join our discord",

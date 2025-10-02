@@ -181,6 +181,21 @@ impl Launcher {
                     *pre_launch_prefix_mode = Some(mode);
                 });
             }
+            EditInstanceMessage::RenameToggle => {
+                if let State::Launch(MenuLaunch {
+                    edit_instance: Some(menu),
+                    ..
+                }) = &mut self.state
+                {
+                    menu.instance_name = self
+                        .selected_instance
+                        .as_ref()
+                        .unwrap()
+                        .get_name()
+                        .to_owned();
+                    menu.is_editing_name = !menu.is_editing_name;
+                }
+            }
             EditInstanceMessage::RenameEdit(n) => {
                 if let State::Launch(MenuLaunch {
                     edit_instance: Some(menu),
