@@ -335,6 +335,7 @@ pub enum Message {
     CoreEvent(iced::Event, iced::event::Status),
     CoreCleanComplete(Res),
 
+    CoreTitlebarPressed,
     CoreImageDownloaded(Res<ImageResult>),
 
     CoreLogToggle,

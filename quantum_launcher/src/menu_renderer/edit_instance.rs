@@ -235,6 +235,7 @@ impl MenuEditInstance {
     fn item_java_override(&self) -> widget::Column<'_, Message, LauncherTheme> {
         widget::column![
             "Custom Java executable (full path)",
+            widget::text("Note: The launcher already sets up Java automatically,\nYou won't need this in most cases").size(12),
             widget::text_input(
                 "Leave blank if none",
                 self.config.java_override.as_deref().unwrap_or_default()

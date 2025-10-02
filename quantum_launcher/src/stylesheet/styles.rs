@@ -384,7 +384,7 @@ impl LauncherTheme {
                     radius: radius.into(),
                 }
             },
-            background: Some(self.get_bg(Color::ExtraDark, true).scale_alpha(0.8)),
+            background: Some(self.get_bg(Color::ExtraDark, true).scale_alpha(0.9)),
             ..Default::default()
         }
     }

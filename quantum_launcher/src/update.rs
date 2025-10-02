@@ -171,6 +171,9 @@ impl Launcher {
             Message::InstallForgeEnd(Ok(())) | Message::UninstallLoaderEnd(Ok(())) => {
                 return self.go_to_edit_mods_menu(false);
             }
+            Message::CoreTitlebarPressed => {
+                return iced::window::get_latest().and_then(|n| iced::window::drag(n));
+            }
             Message::LaunchEndedLog(Ok((status, name))) => {
                 info!("Game exited with status: {status}");
                 self.set_game_crashed(status, &name);
