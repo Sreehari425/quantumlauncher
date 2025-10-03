@@ -543,25 +543,25 @@ impl Launcher {
                 }
             }
             LauncherSettingsMessage::GlobalPreLaunchPrefixAdd => {
-                self.config.get_launch_prefix().push(String::new());
+                self.config.c_launch_prefix().push(String::new());
             }
             LauncherSettingsMessage::GlobalPreLaunchPrefixEdit(arg, idx) => {
-                add_to_arguments_list(arg, self.config.get_launch_prefix(), idx);
+                add_to_arguments_list(arg, self.config.c_launch_prefix(), idx);
             }
             LauncherSettingsMessage::GlobalPreLaunchPrefixDelete(idx) => {
-                let args = self.config.get_launch_prefix();
+                let args = self.config.c_launch_prefix();
                 if idx < args.len() {
                     args.remove(idx);
                 }
             }
             LauncherSettingsMessage::GlobalPreLaunchPrefixShiftUp(idx) => {
-                let args = self.config.get_launch_prefix();
+                let args = self.config.c_launch_prefix();
                 if idx > 0 && idx < args.len() {
                     args.swap(idx, idx - 1);
                 }
             }
             LauncherSettingsMessage::GlobalPreLaunchPrefixShiftDown(idx) => {
-                let args = self.config.get_launch_prefix();
+                let args = self.config.c_launch_prefix();
                 if idx + 1 < args.len() {
                     args.swap(idx, idx + 1);
                 }

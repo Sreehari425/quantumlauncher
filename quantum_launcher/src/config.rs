@@ -188,7 +188,7 @@ impl LauncherConfig {
         (window_width, window_height)
     }
 
-    pub fn get_launch_prefix(&mut self) -> &mut Vec<String> {
+    pub fn c_launch_prefix(&mut self) -> &mut Vec<String> {
         self.global_settings
             .get_or_insert_with(GlobalSettings::default)
             .pre_launch_prefix
