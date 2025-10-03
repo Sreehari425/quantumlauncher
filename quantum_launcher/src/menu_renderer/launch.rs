@@ -519,7 +519,7 @@ impl MenuLaunch {
                 icon_manager::settings_with_size(12),
                 widget::horizontal_space()
             ]
-            .width(tab_height(decor))
+            .width(tab_height(decor) + 4.0)
             .height(tab_height(decor) + 4.0)
             .align_y(iced::Alignment::Center),
         )

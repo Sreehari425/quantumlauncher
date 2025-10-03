@@ -1,4 +1,4 @@
-use iced::{widget, Length};
+use iced::{widget, Alignment, Length};
 use ql_core::{LAUNCHER_DIR, WEBSITE};
 
 use super::{
@@ -97,20 +97,17 @@ impl MenuLauncherSettings {
 
         widget::column!(
             widget::column![widget::text("User Interface").size(20)].padding(PADDING_NOT_BOTTOM),
-            widget::column!("Theme:", widget::row![light, dark].spacing(5))
-                .padding(iced::Padding {
-                    top: 0.0,
-                    bottom: 10.0,
-                    left: 10.0,
-                    right: 10.0,
-                })
-                .spacing(5),
-            widget::horizontal_rule(1),
-            widget::column!(
+            widget::column![
+                widget::row!["Theme: ", light, dark].spacing(5).align_y(Alignment::Center),
                 "Color scheme:",
                 widget::row(color_scheme_picker).spacing(5).wrap()
-            )
-            .padding(10)
+            ]
+            .padding(iced::Padding {
+                top: 0.0,
+                bottom: 10.0,
+                left: 10.0,
+                right: 10.0,
+            })
             .spacing(5),
             widget::horizontal_rule(1),
             widget::column![
