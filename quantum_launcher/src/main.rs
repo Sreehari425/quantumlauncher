@@ -163,7 +163,7 @@ impl Launcher {
 
 const DEBUG_LOG_BUTTON_HEIGHT: f32 = 16.0;
 
-const WINDOW_HEIGHT: f32 = 450.0;
+const WINDOW_HEIGHT: f32 = 400.0;
 const WINDOW_WIDTH: f32 = 600.0;
 
 fn main() {
@@ -186,15 +186,11 @@ fn main() {
     }
 
     let icon = load_icon();
-    let mut config = load_config(launcher_dir.is_some());
-    let scale = match &config {
-        Ok(cfg) => cfg.ui_scale.unwrap_or(1.0),
-        Err(_e) => 1.0,
-    } as f32;
-    let (width, height) = config.as_mut().ok().map_or(
-        (WINDOW_WIDTH * scale, WINDOW_HEIGHT * scale),
-        LauncherConfig::read_window_size,
-    );
+    let config = load_config(launcher_dir.is_some());
+
+    let c = config.as_ref().cloned().unwrap_or_default();
+    let decorations = c.c_window_decorations();
+    let (width, height) = c.c_window_size();
 
     iced::application("QuantumLauncher", Launcher::update, Launcher::view)
         .subscription(Launcher::subscription)
@@ -218,7 +214,7 @@ fn main() {
                 width: 420.0,
                 height: 300.0,
             }),
-            decorations: false,
+            decorations,
             transparent: true,
             ..Default::default()
         })

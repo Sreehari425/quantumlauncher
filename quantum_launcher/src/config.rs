@@ -174,17 +174,22 @@ impl LauncherConfig {
         Ok(config)
     }
 
-    pub fn read_window_size(&mut self) -> (f32, f32) {
-        let window = self.window.get_or_insert_with(Default::default);
+    pub fn c_window_size(&self) -> (f32, f32) {
+        let window = self.window.clone().unwrap_or_default();
         let scale = self.ui_scale.unwrap_or(1.0) as f32;
         let window_width = window
             .width
             .filter(|_| window.save_window_size)
             .unwrap_or(WINDOW_WIDTH * scale);
-        let window_height = window
-            .height
-            .filter(|_| window.save_window_size)
-            .unwrap_or(WINDOW_HEIGHT * scale);
+        let window_height = window.height.filter(|_| window.save_window_size).unwrap_or(
+            (WINDOW_HEIGHT
+                + if self.c_window_decorations() {
+                    0.0
+                } else {
+                    30.0
+                })
+                * scale,
+        );
         (window_width, window_height)
     }
 
@@ -193,6 +198,13 @@ impl LauncherConfig {
             .get_or_insert_with(GlobalSettings::default)
             .pre_launch_prefix
             .get_or_insert_with(Vec::new)
+    }
+
+    pub fn c_window_decorations(&self) -> bool {
+        self.ui
+            .as_ref()
+            .map(|n| n.use_window_decorations)
+            .unwrap_or(false)
     }
 }
 

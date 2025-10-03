@@ -182,7 +182,7 @@ impl Launcher {
                 .unwrap_or_else(|| OFFLINE_ACCOUNT_NAME.to_owned()),
         );
 
-        let (window_width, window_height) = config.read_window_size();
+        let (window_width, window_height) = config.c_window_size();
 
         Ok(Self {
             state,
@@ -230,7 +230,7 @@ impl Launcher {
             Some(LAUNCHER_DIR.clone())
         };
 
-        let (mut config, theme) = launcher_dir
+        let (config, theme) = launcher_dir
             .as_ref()
             .and_then(|_| {
                 match LauncherConfig::load_s().map(|n| {
@@ -246,7 +246,7 @@ impl Launcher {
             })
             .unwrap_or((LauncherConfig::default(), LauncherTheme::default()));
 
-        let (window_width, window_height) = config.read_window_size();
+        let (window_width, window_height) = config.c_window_size();
 
         Self {
             config,
