@@ -364,11 +364,8 @@ impl Launcher {
                     .width(menu.sidebar_width)
                     .height(tab_height(decor) + decorh(decor))
                     .style(|t: &LauncherTheme| t.style_container_bg_semiround(
-                        true,
-                        false,
-                        false,
-                        false,
-                        Some((Color::ExtraDark, 0.9))
+                        [true, false, false, false],
+                        Some((Color::ExtraDark, t.alpha))
                     ))
             )
             .on_press(Message::CoreTitlebarPressed),
@@ -540,10 +537,7 @@ impl MenuLaunch {
             .width(Length::Fill)
             .style(move |n| {
                 n.style_container_bg_semiround(
-                    false,
-                    !decor,
-                    false,
-                    false,
+                    [false, !decor, false, false],
                     Some((Color::ExtraDark, 1.0)),
                 )
             }),
@@ -560,7 +554,14 @@ impl MenuLaunch {
                 .spacing(10),
         )
         .style(move |n, status| {
-            n.style_button(status, StyleButton::SemiDark([!decor, false, false, false]))
+            n.style_button(
+                status,
+                if decor {
+                    StyleButton::FlatDark
+                } else {
+                    StyleButton::SemiDarkBorder([true, true, false, false])
+                },
+            )
         })
         .on_press(if self.is_viewing_server {
             Message::ServerCreateScreenOpen
@@ -589,7 +590,7 @@ impl MenuLaunch {
                     if decor {
                         t.style_container_selected_flat_button()
                     } else {
-                        t.style_container_selected_flat_button_semi(true, true, false, false)
+                        t.style_container_selected_flat_button_semi([true, true, false, false])
                     }
                 })
                 .padding(padding)

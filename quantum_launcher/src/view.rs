@@ -25,7 +25,10 @@ impl Launcher {
             .height(DEBUG_LOG_BUTTON_HEIGHT)
             .style(move |n: &LauncherTheme, status| {
                 let round = round && !self.is_log_open;
-                n.style_button(status, StyleButton::SemiDark([false, false, round, round]))
+                n.style_button(
+                    status,
+                    StyleButton::SemiExtraDark([false, false, round, round]),
+                )
             })
             .on_press(Message::CoreLogToggle),
             widget::text(if self.is_log_open {
@@ -190,9 +193,7 @@ impl Launcher {
         } else {
             let round = !self.config.c_window_decorations();
             widget::container(menu)
-                .style(move |t: &LauncherTheme| {
-                    t.style_container_bg_semiround(round, round, round, round, None)
-                })
+                .style(move |t: &LauncherTheme| t.style_container_bg_semiround([round; 4], None))
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .into()
