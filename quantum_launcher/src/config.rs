@@ -141,6 +141,8 @@ impl LauncherConfig {
             Ok(config) => config,
             Err(err) => {
                 err!("Invalid launcher config! This may be a sign of corruption! Please report if this happens to you.\nError: {err}");
+                let old_path = LAUNCHER_DIR.join("config.json.bak");
+                _ = std::fs::copy(&config_path, &old_path);
                 return LauncherConfig::create(&config_path);
             }
         };
