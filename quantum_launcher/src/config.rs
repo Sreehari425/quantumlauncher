@@ -193,6 +193,10 @@ impl LauncherConfig {
         (window_width, window_height)
     }
 
+    pub fn c_ui_opacity(&self) -> f32 {
+        self.ui.as_ref().map(|n| n.window_opacity).unwrap_or(0.9)
+    }
+
     pub fn c_launch_prefix(&mut self) -> &mut Vec<String> {
         self.global_settings
             .get_or_insert_with(GlobalSettings::default)
@@ -278,4 +282,14 @@ impl Default for WindowProperties {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UiSettings {
     pub use_window_decorations: bool,
+    pub window_opacity: f32,
+}
+
+impl Default for UiSettings {
+    fn default() -> Self {
+        Self {
+            use_window_decorations: false,
+            window_opacity: 0.9,
+        }
+    }
 }

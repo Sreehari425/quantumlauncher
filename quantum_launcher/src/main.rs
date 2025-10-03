@@ -157,7 +157,7 @@ impl Launcher {
     }
 
     fn scale_factor(&self) -> f64 {
-        self.config.ui_scale.unwrap_or(1.0).max(0.05)
+        self.config.ui_scale.unwrap_or(1.0).max(0.05) as f64
     }
 }
 

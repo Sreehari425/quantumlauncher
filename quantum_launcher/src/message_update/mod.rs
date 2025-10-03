@@ -16,6 +16,7 @@ mod manage_mods;
 mod presets;
 mod recommended;
 
+use crate::config::UiSettings;
 use crate::{
     state::{
         self, InstallFabricMessage, InstallModsMessage, InstallOptifineMessage, Launcher,
@@ -453,6 +454,13 @@ impl Launcher {
                 if let State::LauncherSettings(menu) = &mut self.state {
                     menu.temp_scale = scale;
                 }
+            }
+            LauncherSettingsMessage::UiOpacity(opacity) => {
+                self.config
+                    .ui
+                    .get_or_insert_with(UiSettings::default)
+                    .window_opacity = opacity;
+                self.theme.alpha = opacity;
             }
             LauncherSettingsMessage::UiScaleApply => {
                 if let State::LauncherSettings(menu) = &self.state {

@@ -79,11 +79,20 @@ pub enum LauncherThemeLightness {
 pub struct LauncherTheme {
     pub lightness: LauncherThemeLightness,
     pub color: LauncherThemeColor,
+    pub alpha: f32,
 }
 
 impl LauncherTheme {
-    pub fn from_vals(color: LauncherThemeColor, lightness: LauncherThemeLightness) -> Self {
-        Self { lightness, color }
+    pub fn from_vals(
+        color: LauncherThemeColor,
+        lightness: LauncherThemeLightness,
+        alpha: f32,
+    ) -> Self {
+        Self {
+            lightness,
+            color,
+            alpha,
+        }
     }
 
     pub fn get(&self, color: Color, invert: bool) -> iced::Color {

@@ -85,6 +85,7 @@ impl MenuLauncherSettings {
                     LauncherTheme {
                         lightness: theme.lightness,
                         color: *color,
+                        alpha: 1.0,
                     }
                     .style_button(s, StyleButton::Round)
                 })
@@ -138,6 +139,21 @@ impl MenuLauncherSettings {
             ]
             .padding(10)
             .spacing(5),
+
+            {
+                let ui_opacity = config.c_ui_opacity();
+                widget::column![
+                    widget::row![widget::text!("Window Opacity ({ui_opacity:.2}x)")],
+                    widget::slider(0.5..=1.0, ui_opacity, |n| Message::LauncherSettings(
+                        LauncherSettingsMessage::UiOpacity(n)
+                    ))
+                    .step(0.1),
+                    widget::text("Window background transparency\n0.5 (translucent) ..  1.0 (opaque)").size(12),
+                ]
+                .padding(10)
+                .spacing(5)
+            },
+
             widget::horizontal_rule(1),
             widget::column![
                 widget::checkbox("Antialiasing (UI)", config.antialiasing.unwrap_or(true))

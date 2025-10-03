@@ -236,6 +236,7 @@ pub enum LauncherSettingsMessage {
     ColorSchemePicked(String),
     UiScale(f64),
     UiScaleApply,
+    UiOpacity(f32),
     ClearJavaInstalls,
     ClearJavaInstallsConfirm,
     ChangeTab(LauncherSettingsTab),

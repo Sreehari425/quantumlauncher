@@ -426,7 +426,7 @@ fn get_theme(config: &LauncherConfig) -> LauncherTheme {
         .as_deref()
         .and_then(|n| LauncherThemeColor::from_str(n).ok())
         .unwrap_or_default();
-    LauncherTheme::from_vals(style, theme)
+    LauncherTheme::from_vals(style, theme, config.c_ui_opacity())
 }
 
 pub async fn get_entries(is_server: bool) -> Res<(Vec<String>, bool)> {
