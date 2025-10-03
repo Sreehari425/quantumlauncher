@@ -8,23 +8,18 @@ use std::{collections::HashMap, path::Path};
 
 pub const SIDEBAR_WIDTH_DEFAULT: u32 = 190;
 
-/// The global launcher configuration.
-///
-/// This is stored in the launcher directory
-/// (`QuantumLauncher/`) as `config.json`.
+/// Global launcher configuration stored in
+/// `QuantumLauncher/config.json`.
 ///
 /// For more info on the launcher directory see
 /// <https://mrmayman.github.io/quantumlauncher#files-location>
 ///
 /// # Why `Option`?
 ///
-/// Note: many fields here are `Option`s. This is for
-/// backwards-compatibility, as if you upgrade from an older
-/// version without these fields, `serde` will safely serialize
-/// them as `None`.
-///
-/// So generally `None` is interpreted as a default value
-/// put there when migrating from a version without the feature.
+/// Many fields are `Option`s for backwards compatibility.
+/// If upgrading from an older version,
+/// `serde` will deserialize missing fields as `None`,
+/// which is treated as a default value.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LauncherConfig {
     /// The offline username set by the player when playing Minecraft.
@@ -101,6 +96,7 @@ pub struct LauncherConfig {
     // Since: v0.4.2
     pub global_settings: Option<GlobalSettings>,
     pub extra_java_args: Option<Vec<String>>,
+    pub ui: Option<UiSettings>,
 }
 
 impl Default for LauncherConfig {
@@ -120,6 +116,7 @@ impl Default for LauncherConfig {
             window: None,
             global_settings: None,
             extra_java_args: None,
+            ui: None,
         }
     }
 }
@@ -264,4 +261,9 @@ impl Default for WindowProperties {
             height: None,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UiSettings {
+    pub use_window_decorations: bool,
 }
