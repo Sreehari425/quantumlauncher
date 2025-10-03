@@ -172,7 +172,7 @@ impl Launcher {
                 return self.go_to_edit_mods_menu(false);
             }
             Message::CoreTitlebarPressed => {
-                return iced::window::get_latest().and_then(|n| iced::window::drag(n));
+                return iced::window::get_latest().and_then(iced::window::drag);
             }
             Message::LaunchEndedLog(Ok((status, name))) => {
                 info!("Game exited with status: {status}");

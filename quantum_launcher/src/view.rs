@@ -14,6 +14,7 @@ use crate::{
 
 impl Launcher {
     pub fn view(&'_ self) -> Element<'_> {
+        let round = !self.config.c_window_decorations();
         let toggler = tooltip(
             widget::button(widget::row![
                 widget::horizontal_space(),
@@ -22,11 +23,9 @@ impl Launcher {
             ])
             .padding(0)
             .height(DEBUG_LOG_BUTTON_HEIGHT)
-            .style(|n: &LauncherTheme, status| {
-                n.style_button(
-                    status,
-                    StyleButton::SemiDark([false, false, !self.is_log_open, !self.is_log_open]),
-                )
+            .style(move |n: &LauncherTheme, status| {
+                let round = round && !self.is_log_open;
+                n.style_button(status, StyleButton::SemiDark([false, false, round, round]))
             })
             .on_press(Message::CoreLogToggle),
             widget::text(if self.is_log_open {
@@ -89,11 +88,15 @@ impl Launcher {
             )
         }));
 
-        widget::container(view).padding(1).into()
+        if self.config.c_window_decorations() {
+            view.into()
+        } else {
+            widget::container(view).padding(1).into()
+        }
     }
 
     fn view_menu(&'_ self) -> Element<'_> {
-        match &self.state {
+        let menu = match &self.state {
             State::Launch(menu) => self.view_main_menu(menu),
             State::AccountLoginProgress(progress) => widget::column![
                 widget::text("Logging into Microsoft account").size(20),
@@ -180,6 +183,19 @@ impl Launcher {
             State::ServerCreate(menu) => menu.view(),
             State::ManagePresets(menu) => menu.view(),
             State::RecommendedMods(menu) => menu.view(),
+        };
+
+        if let State::Launch(_) = &self.state {
+            menu
+        } else {
+            let round = !self.config.c_window_decorations();
+            widget::container(menu)
+                .style(move |t: &LauncherTheme| {
+                    t.style_container_bg_semiround(round, round, round, round, None)
+                })
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .into()
         }
     }
 }

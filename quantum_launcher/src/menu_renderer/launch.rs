@@ -20,9 +20,23 @@ use crate::{
 
 use super::{button_with_icon, shortcut_ctrl, tooltip, Element};
 
-pub const TAB_HEIGHT: f32 = 28.0;
 pub const TAB_BUTTON_WIDTH: f32 = 64.0;
-pub const REMAINING_TOP_HEIGHT: f32 = 28.0;
+
+const fn tab_height(decor: bool) -> f32 {
+    if decor {
+        31.0
+    } else {
+        28.0
+    }
+}
+
+const fn decorh(decor: bool) -> f32 {
+    if decor {
+        0.0
+    } else {
+        28.0
+    }
+}
 
 impl Launcher {
     pub fn view_main_menu<'element>(
@@ -54,6 +68,8 @@ impl Launcher {
         selected_instance_s: Option<&'a str>,
         menu: &'a MenuLaunch,
     ) -> Element<'a> {
+        let decor = self.config.c_window_decorations();
+
         let last_parts = widget::column![
             widget::horizontal_space(),
             widget::row![
@@ -93,23 +109,20 @@ impl Launcher {
                     .wrap();
 
                     widget::column!(
-                        widget::text(selected.get_name()).font(FONT_MONO).size(20),
+                        widget::row![widget::text(selected.get_name()).font(FONT_MONO).size(20),]
+                            .push_maybe({
+                                selected_instance_s.and_then(|n| {
+                                    self.is_process_running(menu, n).then_some(tooltip(
+                                        icon_manager::play_with_size(20),
+                                        "Running...",
+                                        Position::Right,
+                                    ))
+                                })
+                            })
+                            .spacing(10),
                         main_buttons,
-                        widget::horizontal_rule(10)
-                            .style(|n: &LauncherTheme| n.style_rule(Color::SecondDark, 2)),
                         // widget::button("Export Instance").on_press(Message::ExportInstanceOpen),
                     )
-                    .push_maybe({
-                        if let Some(selected_instance) = selected_instance_s {
-                            if self.is_process_running(menu, selected_instance) {
-                                Some(widget::text("Running...").size(20))
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        }
-                    })
                     .push(last_parts)
                     .padding(10)
                     .spacing(10)
@@ -144,6 +157,7 @@ impl Launcher {
         } else {
             widget::column!(
                 widget::text("Select an instance")
+                    .size(14)
                     .style(|t: &LauncherTheme| t.style_text(Color::Mid)),
                 last_parts
             )
@@ -152,11 +166,17 @@ impl Launcher {
             .into()
         };
 
-        widget::column!(
-            menu.get_tab_selector(),
-            widget::horizontal_rule(2).style(|t: &LauncherTheme| t.style_rule(Color::Dark, 5)),
-            widget::container(tab_body).style(|t: &LauncherTheme| t.style_container_bg(0.0))
-        )
+        widget::column![
+            widget::stack![widget::column![
+                menu.get_tab_selector(decor),
+                widget::Space::with_height(0.5)
+            ],]
+            .push_maybe((!decor).then_some(widget::column![
+                widget::vertical_space(),
+                widget::horizontal_rule(4).style(|t: &LauncherTheme| t.style_rule(Color::Dark, 4)),
+            ])),
+            widget::container(tab_body).style(|t: &LauncherTheme| t.style_container_bg(0.0, None))
+        ]
         .into()
     }
 
@@ -272,6 +292,8 @@ impl Launcher {
             self.client_list.as_deref()
         };
 
+        let decor = self.config.c_window_decorations();
+
         let is_hovered = difference < SIDEBAR_DRAG_LEEWAY
             && difference > 0.0
             && (!self.is_log_open || (self.mouse_pos.1 < self.window_size.1 / 2.0));
@@ -293,7 +315,7 @@ impl Launcher {
                         .size(15)
                         .style(|t: &LauncherTheme| t.style_text(Color::SecondLight));
 
-                    let selector: Element = if selected_instance_s == Some(name) {
+                    if selected_instance_s == Some(name) {
                         widget::container(widget::row!(widget::Space::with_width(5), text))
                             .style(LauncherTheme::style_container_selected_flat_button)
                             .width(Length::Fill)
@@ -313,9 +335,7 @@ impl Launcher {
                             Color::Dark,
                         )
                         .into()
-                    };
-
-                    selector.into()
+                    }
                 })))
                 .height(Length::Fill)
                 .style(LauncherTheme::style_scrollable_flat_extra_dark)
@@ -339,12 +359,17 @@ impl Launcher {
 
         widget::column![
             widget::mouse_area(
-                widget::container(menu.get_sidebar_new_button())
+                widget::container(menu.get_sidebar_new_button(decor))
                     .align_y(Alignment::End)
                     .width(menu.sidebar_width)
-                    .height(TAB_HEIGHT + REMAINING_TOP_HEIGHT)
-                    .style(|t: &LauncherTheme| t
-                        .style_container_bg_semiround(true, false, false, false, 0.9))
+                    .height(tab_height(decor) + decorh(decor))
+                    .style(|t: &LauncherTheme| t.style_container_bg_semiround(
+                        true,
+                        false,
+                        false,
+                        false,
+                        Some((Color::ExtraDark, 0.9))
+                    ))
             )
             .on_press(Message::CoreTitlebarPressed),
             widget::container(list).style(|n| n.style_container_sharp_box(0.0, Color::ExtraDark))
@@ -482,11 +507,11 @@ impl Launcher {
 }
 
 impl MenuLaunch {
-    fn get_tab_selector(&'_ self) -> Element<'_> {
+    fn get_tab_selector(&'_ self, decor: bool) -> Element<'_> {
         let tab_bar = widget::row(
             [LaunchTabId::Buttons, LaunchTabId::Edit, LaunchTabId::Log]
                 .into_iter()
-                .map(|n| self.render_tab_button(n)),
+                .map(|n| self.render_tab_button(n, decor)),
         )
         .align_y(Alignment::End)
         .wrap();
@@ -494,14 +519,14 @@ impl MenuLaunch {
         let settings_button = widget::button(
             widget::row![
                 widget::horizontal_space(),
-                icon_manager::settings_with_size(13),
+                icon_manager::settings_with_size(12),
                 widget::horizontal_space()
             ]
-            .height(Length::Fill)
+            .width(tab_height(decor))
+            .height(tab_height(decor) + 4.0)
             .align_y(iced::Alignment::Center),
         )
-        .width(TAB_HEIGHT)
-        .height(TAB_HEIGHT)
+        .padding(0)
         .style(|n, status| n.style_button(status, StyleButton::FlatExtraDark))
         .on_press(Message::LauncherSettings(LauncherSettingsMessage::Open));
 
@@ -509,24 +534,33 @@ impl MenuLaunch {
             widget::container(
                 widget::row!(settings_button, tab_bar, widget::horizontal_space())
                     // .push_maybe(window_handle_buttons)
-                    .height(TAB_HEIGHT + REMAINING_TOP_HEIGHT)
+                    .height(tab_height(decor) + decorh(decor))
                     .align_y(Alignment::End),
             )
-            .style(|n| n.style_container_bg_semiround(false, true, false, false, 1.0)),
+            .width(Length::Fill)
+            .style(move |n| {
+                n.style_container_bg_semiround(
+                    false,
+                    !decor,
+                    false,
+                    false,
+                    Some((Color::ExtraDark, 1.0)),
+                )
+            }),
         )
         .on_press(Message::CoreTitlebarPressed)
         .into()
     }
 
-    fn get_sidebar_new_button(&self) -> widget::Button<'_, Message, LauncherTheme> {
+    fn get_sidebar_new_button(&self, decor: bool) -> widget::Button<'_, Message, LauncherTheme> {
         widget::button(
             widget::row![icon_manager::create(), widget::text("New").size(15)]
                 .align_y(iced::alignment::Vertical::Center)
-                .height(TAB_HEIGHT - 6.0)
+                .height(tab_height(decor) - 6.0)
                 .spacing(10),
         )
-        .style(|n, status| {
-            n.style_button(status, StyleButton::SemiDark([true, true, false, false]))
+        .style(move |n, status| {
+            n.style_button(status, StyleButton::SemiDark([!decor, false, false, false]))
         })
         .on_press(if self.is_viewing_server {
             Message::ServerCreateScreenOpen
@@ -536,11 +570,11 @@ impl MenuLaunch {
         .width(self.sidebar_width)
     }
 
-    fn render_tab_button(&self, n: LaunchTabId) -> Element<'_> {
-        const PADDING: Padding = Padding {
+    fn render_tab_button(&self, n: LaunchTabId, decor: bool) -> Element<'_> {
+        let padding = Padding {
             top: 5.0,
             right: 5.0,
-            bottom: 7.0,
+            bottom: if decor { 5.0 } else { 7.0 },
             left: 5.0,
         };
 
@@ -551,22 +585,30 @@ impl MenuLaunch {
         );
         if self.tab == n {
             widget::container(txt)
-                .style(|t: &LauncherTheme| {
-                    t.style_container_selected_flat_button_semi(true, true, false, false)
+                .style(move |t: &LauncherTheme| {
+                    if decor {
+                        t.style_container_selected_flat_button()
+                    } else {
+                        t.style_container_selected_flat_button_semi(true, true, false, false)
+                    }
                 })
-                .padding(PADDING)
+                .padding(padding)
                 .width(TAB_BUTTON_WIDTH)
-                .height(TAB_HEIGHT + 4.0)
+                .height(tab_height(decor) + 4.0)
                 .align_y(Alignment::End)
                 .into()
         } else {
-            widget::button(txt)
-                .style(|n, status| n.style_button(status, StyleButton::FlatExtraDark))
-                .on_press(Message::LaunchChangeTab(n))
-                .width(TAB_BUTTON_WIDTH)
-                .height(TAB_HEIGHT + 4.0)
-                .padding(PADDING)
-                .into()
+            widget::button(
+                widget::row![txt]
+                    .width(TAB_BUTTON_WIDTH)
+                    .height(tab_height(decor) + 4.0)
+                    .padding(padding)
+                    .align_y(Alignment::End),
+            )
+            .style(|n, status| n.style_button(status, StyleButton::FlatExtraDark))
+            .on_press(Message::LaunchChangeTab(n))
+            .padding(0)
+            .into()
         }
     }
 }

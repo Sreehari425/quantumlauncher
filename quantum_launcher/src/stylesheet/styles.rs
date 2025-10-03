@@ -144,10 +144,10 @@ impl LauncherTheme {
         if sides.into_iter().any(|n| n) {
             let mut b = self.get_border(color, invert);
             b.radius = iced::border::Radius {
-                top_left: sides[0].then_some(BORDER_RADIUS).unwrap_or_default(),
-                top_right: sides[1].then_some(BORDER_RADIUS).unwrap_or_default(),
-                bottom_right: sides[2].then_some(BORDER_RADIUS).unwrap_or_default(),
-                bottom_left: sides[3].then_some(BORDER_RADIUS).unwrap_or_default(),
+                top_left: radius(sides[0]),
+                top_right: radius(sides[1]),
+                bottom_right: radius(sides[2]),
+                bottom_left: radius(sides[3]),
             };
             b
         } else if style.is_flat() {
@@ -360,7 +360,7 @@ impl LauncherTheme {
         tr: bool,
         bl: bool,
         br: bool,
-        alpha: f32,
+        color: Option<(Color, f32)>,
     ) -> Style {
         Style {
             border: {
@@ -370,12 +370,16 @@ impl LauncherTheme {
                     radius: get_radius_semi(tl, tr, bl, br),
                 }
             },
-            background: Some(self.get_bg(Color::ExtraDark, true).scale_alpha(alpha)),
+            background: Some(
+                color
+                    .map(|(c, a)| self.get_bg(c, true).scale_alpha(a))
+                    .unwrap_or(self.get_bg_color()),
+            ),
             ..Default::default()
         }
     }
 
-    pub fn style_container_bg(&self, radius: f32) -> Style {
+    pub fn style_container_bg(&self, radius: f32, color: Option<Color>) -> Style {
         Style {
             border: {
                 Border {
@@ -384,9 +388,23 @@ impl LauncherTheme {
                     radius: radius.into(),
                 }
             },
-            background: Some(self.get_bg(Color::ExtraDark, true).scale_alpha(0.9)),
+            background: Some(
+                color
+                    .map(|n| self.get_bg(n, true))
+                    .unwrap_or(self.get_bg_color()),
+            ),
             ..Default::default()
         }
+    }
+
+    fn get_bg_color(&self) -> iced::Background {
+        iced::Background::Color(
+            blend_colors(
+                self.get(Color::Dark, true),
+                self.get(Color::ExtraDark, true),
+            )
+            .scale_alpha(0.9),
+        )
     }
 
     pub fn style_scrollable_round(
@@ -660,8 +678,27 @@ impl LauncherTheme {
 
 fn get_radius_semi(tl: bool, tr: bool, bl: bool, br: bool) -> iced::border::Radius {
     iced::border::Radius::new(0.0)
-        .top_left(tl.then_some(BORDER_RADIUS).unwrap_or_default())
-        .top_right(tr.then_some(BORDER_RADIUS).unwrap_or_default())
-        .bottom_left(bl.then_some(BORDER_RADIUS).unwrap_or_default())
-        .bottom_right(br.then_some(BORDER_RADIUS).unwrap_or_default())
+        .top_left(radius(tl))
+        .top_right(radius(tr))
+        .bottom_left(radius(bl))
+        .bottom_right(radius(br))
+}
+
+fn radius(t: bool) -> f32 {
+    if t {
+        BORDER_RADIUS
+    } else {
+        0.0
+    }
+}
+
+fn blend_colors(color1: iced::Color, color2: iced::Color) -> iced::Color {
+    // Calculate the average of each RGBA component
+    let r = (color1.r + color2.r) / 2.0;
+    let g = (color1.g + color2.g) / 2.0;
+    let b = (color1.b + color2.b) / 2.0;
+    let a = (color1.a + color2.a) / 2.0;
+
+    // Return a new Color with the blended RGBA values
+    iced::Color::from_rgba(r, g, b, a)
 }
