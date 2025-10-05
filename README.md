@@ -90,125 +90,28 @@ What about the others? Well...
 
 <br>
 
-# To-do (in the future)
+# More info
 
-## Core
-
-- [x] Instance creation, deletion, renaming, launching
-- [x] Java/Game args editing
-- [x] Memory allocation editing
-- [x] Optional Microsoft login
-- [x] Integration with Omniarchive, old version support
-- [ ] Full controller, keyboard-navigation support in UI
-
-## Mods
-
-### Loaders
-
-- [x] Fabric
-- [x] Forge
-- [x] Optifine
-- [x] Quilt
-- [x] Neoforge
-- [ ] OptiForge
-- [ ] OptiFabric
-- [x] Jar Mods
-
-### Sources
-
-- [x] Modrinth mods
-- [x] Curseforge mods
-- [x] Modrinth modpacks
-- [x] Curseforge modpacks
-
-### Features
-
-- [x] Mod store
-- [x] Mod presets (packaging mods)
-- [x] Mod updater
-- [ ] Make mod updater incrementally load in (optimization)
-- [ ] UI/UX overhaul of preset system
-- [ ] Category Filters in Mod store
-
-## Instances
-
-- [ ] Import MultiMC/PrismLauncher instances
-- [ ] Migrate from other launchers
-- [ ] Package QuantumLauncher instances (in progress by @sreehari425)
-- [ ] Upgrading instances to a newer Minecraft version
-
-## Servers (disabled in GUI but can be enabled)
-
-- [x] Ability to create, delete and run Minecraft servers
-- [x] Editing basic server settings (RAM, Java, Args)
-- [ ] Editing `server.properties`
-- [ ] Editing any NBT config file
-- [ ] Plugin store
-- [ ] [playit.gg](https://playit.gg) integration
-
-### Loaders
-
-- [x] Paper
-- [ ] Spigot
-- [ ] Bukkit
-- [ ] Bungeecoord
-- [ ] The stuff from [MODS+PLUGINS.md](https://github.com/LeStegii/server-software/blob/master/java/MODS+PLUGINS.md)
-
-## Platforms
-
-(note: WIP means work-in-progress)
-
-- [x] Windows x86_64
-- [x] Linux x86_64
-- [x] macOS x86_64 (WIP)
-
-- [x] Windows Aarch64 (WIP)
-- [x] Linux Aarch64 (Almost ready)
-- [x] Linux ARM32 (WIP)
-- [x] macOS Aarch64 (Almost ready)
-
-- [x] Windows i686 (WIP)
-- [ ] Linux i686
-
-- [ ] FreeBSD (WIP)
-- [ ] Haiku
-- [ ] Solaris
-- [ ] Android (in the future)
-
-## Command-Line interface
-
-- [x] List installed instances `list-instances`, `-l`
-- [x] List versions available for download `list-available-versions`, `-a`
-- [x] Create instance from CLI
-- [x] Launch instance from CLI
-- [ ] Install loaders from CLI
-- [ ] Mod installation features from CLI
-- [ ] Preset, modpack features from CLI
-
-# MSRV (Minimum Supported Rust Version)
-
-The MSRV is Rust 1.82.0. Any deviation from this
-is considered a bug, please report if found.
-
-# Contributing/Contributors
-
-For more info, see [CONTRIBUTING.md](https://github.com/Mrmayman/quantumlauncher/tree/main/CONTRIBUTING.md)
-
-# Testing
-
-For more info, see [tests/README.md](https://github.com/Mrmayman/quantumlauncher/tree/main/tests/README.md)
+- **MSRV** (Minimum Supported Rust Version): `1.82.0`
+  - Any mismatch is considered a bug, please report if found
+- [**Roadmap/Plans**](docs/ROADMAP.md)
+- [**Contributing**](CONTRIBUTING.md)
+- [**Test Suite**](tests/README.md)
 
 # Licensing and Credits
 
-A lot of this launcher's design, including the code for creating and launching the game,
-and installing forge, is inspired by <https://github.com/alexivkin/minecraft-launcher/>.
+- Most of this launcher is licensed under the **GNU General Public License v3**
+- There are a few exceptions such as GitHub actions and assets. ([more info](assets/README.md))
 
-Nearly all of this launcher is licensed under the **GNU General Public License v3**,
-however there are a few exceptions (such as GitHub actions and assets).
-Visit [the assets README](assets/README.md) for more information.
+> Many parts of the launcher were inspired by
+> <https://github.com/alexivkin/minecraft-launcher/>.
+> Massive shoutout!
 
 # Notes
 
-If you play the game in offline mode, it's at your own risk. I am not responsible for any issues caused.
-I recommend that you buy the game, but if you don't have the means, feel free to use this launcher as a last resort.
+This launcher supports offline mode, but it's at your own risk.
+I am not responsible for any issues caused.
+You should buy the game, but if you can't, feel free to use this launcher
+until you eventually get the means (like me).
+
 If anyone has any issues/complaints, just open an issue in the repo.

@@ -4,30 +4,31 @@
 
 ## UX
 
-- (TODO) Presets and text exporting (explained below) are now grouped together
-  under a hamburger menu for easier access
-- Disabled mods are now tinted darker
-- (TODO) Mod selection no longer uses clunky checkboxes, but rather proper list items
-- Ctrl-A can now select all mods and jarmods
+- Overhauled the mod list, now with **icons**, bulk-selection
+  (shift/ctrl-click and ctrl-a), and better aesthetics.
+- Presets, text exporting (explained below), and recommended mods
+  are now under a hamburger menu.
 
 ## Text export
 
-- You can now export your mods as a text list, making it easy to share with others.
-- The list includes mods, and can optionally include links and instance details.
-- Anyone can view the list and manually install mods, regardless of their launcher.
+- Export mods as a text list for easy sharing.
+- List includes mods, optional links, and instance details.
+- Anyone can view and manually install mods, regardless of their launcher.
 
 # Other
 
 ## File location (linux)
 
-- Files moved from `~/.config` to `~/.local/share`
-- There will be auto-migration, and symbolic links so older launcher versions still work seamlessly
+- Files moved from `~/.config` to `~/.local/share`.
+- Auto-migration and symbolic links ensure compatibility with older launcher versions.
 
 # Fixes
 
-- The terminal output will now have colored text on Windows too
-- CurseForge mods that don't specify a loader
-  can now be installed
-- You can now open instances created in newer versions, in v0.4.1
-- Fixed crash with "Better Discord Rich Presence" mod
-- Fixed a launcher panic when launching the game
+- Colored terminal output on Windows.
+- CurseForge mods without a loader can now be installed.
+- Instances from newer launcher versions can be opened in v0.4.1.
+- Backspace no longer kills running instances without Ctrl.
+
+- Fixed crash with "Better Discord Rich Presence" mod.
+- Fixed launcher panics when launching the game.
+- Fixed "java binary not found" macOS error.

@@ -60,7 +60,7 @@ fn command() -> Command {
         ])
         .about("Deletes an instance of Minecraft")
     )
-    .subcommand(Command::new("list-available-versions").short_flag('a').about("Lists all downloadable versions, downloading a list from Mojang/Omniarchive"))
+    .subcommand(Command::new("list-available-versions").short_flag('a').about("Lists all downloadable Minecraft versions"))
     .subcommand(Command::new("--no-sandbox").hide(true)) // This one doesn't do anything, but on Windows i686 it's automatically passed?
 }
 
