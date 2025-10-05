@@ -13,7 +13,7 @@ A comprehensive list of all launcher keybindings
 - **Ctrl Backspace**: Kill instance
 - **Ctrl/Alt + 1/2/3**: Change tab (Play/Edit/Logs)
 - **Ctrl N**: Create instance
-- (TODO) **Ctrl Comma**: Open Launcher Settings
+- **Ctrl Comma**: Open Launcher Settings
 
 ## Mods
 - **Ctrl A**: Select all/none

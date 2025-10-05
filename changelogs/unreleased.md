@@ -15,7 +15,13 @@
 - List includes mods, optional links, and instance details.
 - Anyone can view and manually install mods, regardless of their launcher.
 
-# Other
+---
+
+## Keyboard Navigation
+
+- `Ctrl/Cmd/Alt 1/2/3` to switch tabs in main screen
+- `Ctrl N` to create new instance
+- `Ctrl ,` to open settings
 
 ## File location (linux)
 
