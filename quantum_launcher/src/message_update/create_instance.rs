@@ -103,7 +103,7 @@ then go to "Mods->Add File""#,
         }
     }
 
-    fn go_to_create_screen(&mut self) -> Task<Message> {
+    pub fn go_to_create_screen(&mut self) -> Task<Message> {
         if let Some(versions) = self.client_version_list_cache.clone() {
             let combo_state = iced::widget::combo_box::State::new(versions.clone());
             self.state = State::Create(MenuCreateInstance::Choosing {

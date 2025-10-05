@@ -334,6 +334,7 @@ pub enum Message {
     CoreOpenIntro,
     CoreEvent(iced::Event, iced::event::Status),
     CoreCleanComplete(Res),
+    CoreTryQuit,
 
     CoreImageDownloaded(Res<ImageResult>),
 
@@ -356,12 +357,10 @@ pub enum Message {
         selected_server: Option<String>,
         message: Option<String>,
     },
-    ServerManageStartServer(String),
-    ServerManageStartServerFinish(Res<(Arc<Mutex<Child>>, bool)>),
-    ServerManageEndedLog(Res<(ExitStatus, String)>),
-    ServerManageKillServer(String),
-    ServerManageEditCommand(String, String),
-    ServerManageSubmitCommand(String),
+    ServerStartFinish(Res<(Arc<Mutex<Child>>, bool)>),
+    ServerStopped(Res<(ExitStatus, String)>),
+    ServerCommandEdit(String, String),
+    ServerCommandSubmit(String),
 
     ServerCreateScreenOpen,
     ServerCreateVersionsLoaded(Res<Vec<ListEntry>>),
