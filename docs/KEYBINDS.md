@@ -11,12 +11,13 @@ A comprehensive list of all launcher keybindings
 - **Up/Down arrows**: Select instance
 - **Ctrl Enter**: Launch instance
 - **Ctrl Backspace**: Kill instance
-- (TODO) **Ctrl/Alt + 1/2/3**: Change tab (Play/Edit/Logs)
-- (TODO) **Ctrl N**: Create instance
-- (TODO) **Ctrl Comma**: Open Launcher Settings
+- **Ctrl/Alt + 1/2/3**: Change tab (Play/Edit/Logs)
+- **Ctrl N**: Create instance
+- **Ctrl Comma**: Open Launcher Settings
 
 ## Mods
 - **Ctrl A**: Select all/none
+- **Shift/Ctrl + Click**: Select multiple
 
 ## Jar Mods
 - **Ctrl A**: Select all/none

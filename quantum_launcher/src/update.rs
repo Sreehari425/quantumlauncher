@@ -26,6 +26,17 @@ impl Launcher {
                 return task;
             }
 
+            Message::CoreTryQuit => {
+                let safe_to_exit = self.client_processes.is_empty()
+                    && self.server_processes.is_empty()
+                    && (self.key_escape_back(false).0 || matches!(self.state, State::Launch(_)));
+
+                if safe_to_exit {
+                    info_no_log!("CTRL-Q pressed, closing launcher...");
+                    std::process::exit(1);
+                }
+            }
+
             Message::CoreTickConfigSaved(result)
             | Message::LaunchKillEnd(result)
             | Message::UpdateDownloadEnd(result) => {
@@ -41,10 +52,10 @@ impl Launcher {
             Message::ServerCreateEnd(Err(err))
             | Message::ServerCreateVersionsLoaded(Err(err))
             | Message::UninstallLoaderEnd(Err(err))
-            | Message::ServerManageStartServerFinish(Err(err))
+            | Message::ServerStartFinish(Err(err))
             | Message::InstallForgeEnd(Err(err))
             | Message::LaunchEndedLog(Err(err))
-            | Message::ServerManageEndedLog(Err(err))
+            | Message::ServerStopped(Err(err))
             | Message::CoreListLoaded(Err(err)) => self.set_error(err),
 
             Message::WelcomeContinueToTheme => {
@@ -307,25 +318,11 @@ impl Launcher {
                     name: String::new(),
                 });
             }
-            Message::ServerManageStartServer(server) => {
-                self.server_logs.remove(&server);
-                let (sender, receiver) = std::sync::mpsc::channel();
-                self.java_recv = Some(ProgressBar::with_recv(receiver));
-
-                if self.server_processes.contains_key(&server) {
-                    err!("Server is already running");
-                } else {
-                    return Task::perform(
-                        async move { ql_servers::run(server, sender).await.strerr() },
-                        Message::ServerManageStartServerFinish,
-                    );
-                }
-            }
-            Message::ServerManageStartServerFinish(Ok((child, is_classic_server))) => {
+            Message::ServerStartFinish(Ok((child, is_classic_server))) => {
                 self.java_recv = None;
                 return self.add_server_to_processes(child, is_classic_server);
             }
-            Message::ServerManageEndedLog(Ok((status, name))) => {
+            Message::ServerStopped(Ok((status, name))) => {
                 if status.success() {
                     info!("Server {name} stopped.");
                 } else {
@@ -337,15 +334,12 @@ impl Launcher {
                     log.has_crashed = !status.success();
                 }
             }
-            Message::ServerManageKillServer(server) => {
-                self.kill_selected_server(&server);
-            }
-            Message::ServerManageEditCommand(selected_server, command) => {
+            Message::ServerCommandEdit(selected_server, command) => {
                 if let Some(log) = self.server_logs.get_mut(&selected_server) {
                     log.command = command;
                 }
             }
-            Message::ServerManageSubmitCommand(selected_server) => {
+            Message::ServerCommandSubmit(selected_server) => {
                 if let (
                     Some(log),
                     Some(ServerProcess {

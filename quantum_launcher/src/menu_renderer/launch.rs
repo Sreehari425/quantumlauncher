@@ -83,7 +83,7 @@ impl Launcher {
                 LaunchTabId::Buttons => {
                     let main_buttons = widget::row![
                         if menu.is_viewing_server {
-                            self.get_server_play_button(selected_instance_s)
+                            self.get_server_play_button(selected_instance_s).into()
                         } else {
                             self.get_client_play_button(selected_instance_s)
                         },
@@ -232,12 +232,9 @@ impl Launcher {
                 menu.is_viewing_server.then_some(
                     widget::text_input("Enter command...", command)
                         .on_input(move |n| {
-                            Message::ServerManageEditCommand(
-                                selected_instance.unwrap().to_owned(),
-                                n,
-                            )
+                            Message::ServerCommandEdit(selected_instance.unwrap().to_owned(), n)
                         })
-                        .on_submit(Message::ServerManageSubmitCommand(
+                        .on_submit(Message::ServerCommandSubmit(
                             selected_instance.unwrap().to_owned(),
                         ))
                         .width(190),
@@ -434,29 +431,25 @@ impl Launcher {
             .width(97)
     }
 
-    fn get_server_play_button<'a>(&self, selected_server: Option<&'a str>) -> Element<'a> {
-        if selected_server.is_some_and(|n| self.server_processes.contains_key(n)) {
-            tooltip(
+    fn get_server_play_button<'a>(
+        &self,
+        selected_server: Option<&'a str>,
+    ) -> iced::widget::Tooltip<'a, Message, LauncherTheme> {
+        match selected_server {
+            Some(n) if self.server_processes.contains_key(n) => tooltip(
                 button_with_icon(icon_manager::play(), "Stop", 16)
                     .width(97)
-                    .on_press_maybe(selected_server.is_some().then(|| {
-                        Message::ServerManageKillServer(selected_server.unwrap().to_owned())
-                    })),
+                    .on_press_maybe(selected_server.is_some().then(|| Message::LaunchKill)),
                 shortcut_ctrl("Escape"),
                 Position::Bottom,
-            )
-            .into()
-        } else {
-            tooltip(
+            ),
+            _ => tooltip(
                 button_with_icon(icon_manager::play(), "Start", 16)
                     .width(97)
-                    .on_press_maybe(selected_server.is_some().then(|| {
-                        Message::ServerManageStartServer(selected_server.unwrap().to_owned())
-                    })),
+                    .on_press_maybe(selected_server.is_some().then(|| Message::LaunchStart)),
                 "By starting the server, you agree to the EULA",
                 Position::Bottom,
-            )
-            .into()
+            ),
         }
     }
 }

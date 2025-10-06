@@ -28,6 +28,7 @@ use std::{
         Arc, Mutex,
     },
 };
+use tokio::io::AsyncWriteExt;
 use tokio::process::Child;
 
 pub const SIDEBAR_DRAG_LEEWAY: f32 = 10.0;
@@ -50,9 +51,7 @@ impl Launcher {
         let (sender, receiver) = std::sync::mpsc::channel();
         self.java_recv = Some(ProgressBar::with_recv(receiver));
 
-        if let Some(log) = self.client_logs.get_mut(selected_instance) {
-            log.log.clear();
-        }
+        self.client_logs.remove(selected_instance);
 
         let global_settings = self.config.global_settings.clone();
         let extra_java_args = self.config.extra_java_args.clone().unwrap_or_default();
@@ -382,7 +381,7 @@ impl Launcher {
                         .await
                         .strerr()
                 },
-                Message::ServerManageEndedLog,
+                Message::ServerStopped,
             );
         }
 
@@ -523,19 +522,40 @@ impl Launcher {
         let Some(selected_instance) = &self.selected_instance else {
             return Task::none();
         };
-        if let Some(process) = self.client_processes.remove(selected_instance.get_name()) {
-            Task::perform(
+        match selected_instance {
+            InstanceSelection::Instance(n) => {
+                if let Some(process) = self.client_processes.remove(n) {
+                    return Task::perform(
+                        async move {
+                            let mut child = process.child.lock().unwrap();
+                            child.start_kill().strerr()
+                        },
+                        Message::LaunchKillEnd,
+                    );
+                }
+            }
+            InstanceSelection::Server(n) => {
+                if let Some(ServerProcess {
+                    stdin: Some(stdin),
+                    is_classic_server,
+                    child,
+                    has_issued_stop_command,
+                    ..
+                }) = self.server_processes.get_mut(n)
                 {
-                    async move {
-                        let mut child = process.child.lock().unwrap();
-                        child.start_kill().strerr()
-                    }
-                },
-                Message::LaunchKillEnd,
-            )
-        } else {
-            Task::none()
+                    *has_issued_stop_command = true;
+                    if *is_classic_server {
+                        if let Err(err) = child.lock().unwrap().start_kill() {
+                            err!("Could not kill classic server: {err}");
+                        }
+                    } else {
+                        let future = stdin.write_all("stop\n".as_bytes());
+                        _ = block_on(future);
+                    };
+                }
+            }
         }
+        Task::none()
     }
 
     pub fn go_to_delete_instance_menu(&mut self) {
@@ -558,36 +578,50 @@ impl Launcher {
             return Task::none();
         };
 
-        if let Some(account) = &self.accounts_selected {
-            if account == OFFLINE_ACCOUNT_NAME
-                && (self.config.username.is_empty() || self.config.username.contains(' '))
-            {
-                return Task::none();
+        match selected_instance {
+            InstanceSelection::Instance(name) => {
+                if let Some(account) = &self.accounts_selected {
+                    if account == OFFLINE_ACCOUNT_NAME
+                        && (self.config.username.is_empty() || self.config.username.contains(' '))
+                    {
+                        return Task::none();
+                    }
+                }
+
+                if self.client_processes.contains_key(name) {
+                    return Task::none();
+                }
+
+                self.is_launching_game = true;
+                let account_data = self.get_selected_account_data();
+                // If the user is loading an existing login from disk
+                // then first refresh the tokens
+                if let Some(account) = &account_data {
+                    if account.access_token.is_none() || account.needs_refresh {
+                        return self.account_refresh(account);
+                    }
+                }
+                // Or, if the account is already refreshed/freshly added,
+                // directly launch the game
+                self.launch_game(account_data)
+            }
+            InstanceSelection::Server(server) => {
+                self.server_logs.remove(server);
+                let (sender, receiver) = std::sync::mpsc::channel();
+                self.java_recv = Some(ProgressBar::with_recv(receiver));
+
+                if self.server_processes.contains_key(server) {
+                    err!("Server is already running");
+                    Task::none()
+                } else {
+                    let server = server.clone();
+                    Task::perform(
+                        async move { ql_servers::run(server, sender).await.strerr() },
+                        Message::ServerStartFinish,
+                    )
+                }
             }
         }
-
-        let is_alive = match selected_instance {
-            InstanceSelection::Instance(name) => self.client_processes.contains_key(name),
-            InstanceSelection::Server(name) => self.server_processes.contains_key(name),
-        };
-        if is_alive {
-            return Task::none();
-        }
-
-        self.is_launching_game = true;
-        let account_data = self.get_selected_account_data();
-        if let Some(account) = &account_data {
-            if account.access_token.is_none() || account.needs_refresh {
-                return self.account_refresh(account);
-            }
-        }
-
-        // If the user is loading an existing login from disk
-        // then first refresh the tokens
-
-        // Or, if the account is freshly added,
-        // just directly launch the game.
-        self.launch_game(account_data)
     }
 }
 
