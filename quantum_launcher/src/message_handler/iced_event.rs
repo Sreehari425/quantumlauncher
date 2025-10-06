@@ -1,10 +1,10 @@
 use super::{SIDEBAR_DRAG_LEEWAY, SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT};
 use crate::message_update::MSG_RESIZE;
 use crate::state::{
-    Launcher, LauncherSettingsMessage, LauncherSettingsTab, MenuCreateInstance, MenuEditJarMods,
-    MenuEditMods, MenuEditPresets, MenuExportInstance, MenuInstallFabric, MenuInstallOptifine,
-    MenuLaunch, MenuLauncherSettings, MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS,
-    MenuRecommendedMods, MenuServerCreate, Message, State,
+    CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage, LauncherSettingsTab,
+    MenuCreateInstance, MenuEditJarMods, MenuEditMods, MenuEditPresets, MenuExportInstance,
+    MenuInstallFabric, MenuInstallOptifine, MenuLaunch, MenuLauncherSettings, MenuLauncherUpdate,
+    MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, MenuServerCreate, Message, State,
 };
 use iced::{
     keyboard::{self, key::Named, Key},
@@ -75,54 +75,7 @@ impl Launcher {
                     ..
                 } => {
                     if let iced::event::Status::Ignored = status {
-                        if let Key::Named(Named::Escape) = key {
-                            return self.key_escape_back(true).1;
-                        }
-                        if let Key::Named(Named::ArrowUp) = key {
-                            return self.key_change_selected_instance(false);
-                        } else if let Key::Named(Named::ArrowDown) = key {
-                            return self.key_change_selected_instance(true);
-                        } else if let Key::Named(Named::Enter) = key {
-                            if modifiers.command() {
-                                return self.launch_start();
-                            }
-                        } else if let Key::Named(Named::Backspace) = key {
-                            match self.selected_instance.clone() {
-                                Some(InstanceSelection::Instance(_)) => {
-                                    return self.kill_selected_instance();
-                                }
-                                Some(InstanceSelection::Server(server)) => {
-                                    self.kill_selected_server(&server);
-                                }
-                                None => {}
-                            }
-                        } else if let Key::Character(ch) = &key {
-                            if modifiers.command() {
-                                if ch == "q" {
-                                    let safe_to_exit = self.client_processes.is_empty()
-                                        && self.server_processes.is_empty()
-                                        && (self.key_escape_back(false).0
-                                            || matches!(self.state, State::Launch(_)));
-
-                                    if safe_to_exit {
-                                        info_no_log!("CTRL-Q pressed, closing launcher...");
-                                        std::process::exit(1);
-                                    }
-                                } else if ch == "a" {
-                                    if let State::EditMods(_) = &self.state {
-                                        return Task::done(Message::ManageMods(
-                                            crate::state::ManageModsMessage::SelectAll,
-                                        ));
-                                    } else if let State::EditJarMods(_) = &self.state {
-                                        return Task::done(Message::ManageJarMods(
-                                            crate::state::ManageJarModsMessage::SelectAll,
-                                        ));
-                                    }
-                                }
-                            }
-                        }
-
-                        self.keys_pressed.insert(key);
+                        return self.handle_key_press(key, modifiers);
                     } else {
                         // FUTURE
                     }
@@ -201,6 +154,60 @@ impl Launcher {
             },
             iced::Event::Touch(_) => {}
         }
+        Task::none()
+    }
+
+    fn handle_key_press(&mut self, key: Key, modifiers: keyboard::Modifiers) -> Task<Message> {
+        if let Key::Named(Named::Escape) = key {
+            return self.key_escape_back(true).1;
+        }
+        if let Key::Named(Named::ArrowUp) = key {
+            return self.key_change_selected_instance(false);
+        } else if let Key::Named(Named::ArrowDown) = key {
+            return self.key_change_selected_instance(true);
+        } else if let Key::Named(Named::Enter) = key {
+            if modifiers.command() {
+                return self.launch_start();
+            }
+        } else if let Key::Named(Named::Backspace) = key {
+            if modifiers.command() {
+                return Task::done(Message::LaunchKill);
+            }
+        } else if let Key::Character(ch) = &key {
+            let msg = match (
+                ch.as_str(),
+                modifiers.command(),
+                modifiers.alt(),
+                &self.state,
+            ) {
+                ("q", true, _, _) => Message::CoreTryQuit,
+                ("a", true, _, State::EditMods(_)) => {
+                    Message::ManageMods(crate::state::ManageModsMessage::SelectAll)
+                }
+                ("a", true, _, State::EditJarMods(_)) => {
+                    Message::ManageJarMods(crate::state::ManageJarModsMessage::SelectAll)
+                }
+                ("n", true, _, State::Launch(_)) => {
+                    Message::CreateInstance(CreateInstanceMessage::ScreenOpen)
+                }
+                ("1", ctrl, alt, State::Launch(_)) if ctrl | alt => {
+                    Message::LaunchChangeTab(LaunchTabId::Buttons)
+                }
+                ("2", ctrl, alt, State::Launch(_)) if ctrl | alt => {
+                    Message::LaunchChangeTab(LaunchTabId::Edit)
+                }
+                ("3", ctrl, alt, State::Launch(_)) if ctrl | alt => {
+                    Message::LaunchChangeTab(LaunchTabId::Log)
+                }
+                (",", true, _, State::Launch(_)) => {
+                    Message::LauncherSettings(LauncherSettingsMessage::Open)
+                }
+                _ => Message::Nothing,
+            };
+            return Task::done(msg);
+        }
+        self.keys_pressed.insert(key);
+
         Task::none()
     }
 
@@ -289,7 +296,7 @@ impl Launcher {
         }
     }
 
-    fn key_escape_back(&mut self, affect: bool) -> (bool, Task<Message>) {
+    pub fn key_escape_back(&mut self, affect: bool) -> (bool, Task<Message>) {
         let mut should_return_to_main_screen = false;
         let mut should_return_to_mods_screen = false;
         let mut should_return_to_download_screen = false;
