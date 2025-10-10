@@ -1,11 +1,9 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - "**"
   pull_request:
-  workflow_dispatch:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -92,14 +90,16 @@ jobs:
       - name: Install cross (for armv7)
         if: matrix.cross
         run: cargo install cross --locked
+        shell: bash
 
       - name: Cache
         uses: Swatinem/rust-cache@v2
 
+      - name: Build with cross
+        if: matrix.cross
+        run: cross build --all-targets --all-features --target ${{ matrix.target }} --verbose
+        shell: bash
+
       - name: Build
-        run: |
-          if [ "${{ matrix.cross }}" = "true" ]; then
-            cross build --all-targets --all-features --target ${{ matrix.target }} --verbose
-          else
-            cargo build --all-targets --all-features --target ${{ matrix.target }} --verbose
-          fi
+        if: ${{ !matrix.cross }}
+        run: cargo build --all-targets --all-features --target ${{ matrix.target }} --verbose
