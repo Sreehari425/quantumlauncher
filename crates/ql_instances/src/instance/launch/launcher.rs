@@ -769,7 +769,7 @@ impl GameLauncher {
             if let Err(err) = downloader.download_library(library, Some(artifact)).await {
                 err!("Couldn't download library! Skipping...\n{err}");
             } else if !library_path.exists() {
-                err!("Library still doesn't exist... failed?")
+                err!("Library still doesn't exist... failed?");
             }
         }
         #[allow(unused_mut)]
@@ -851,8 +851,16 @@ impl GameLauncher {
                 .and_then(|n| n.pre_launch_prefix.clone())
                 .unwrap_or_default(),
         );
-        if !prefix_commands.is_empty() {
-            info!("Pre args: {prefix_commands:?}");
+        if prefix_commands.is_empty() {
+            // No prefix, use normal Java command
+            command.args(
+                java_arguments
+                    .iter()
+                    .chain(game_arguments.iter())
+                    .filter(|n| !n.is_empty()),
+            );
+        } else {
+            info!("Prefix: {prefix_commands:?}");
 
             let original_java_path = path.to_string_lossy().to_string();
             let mut new_command = Command::new(&prefix_commands[0]);
@@ -870,14 +878,6 @@ impl GameLauncher {
 
             command = new_command;
             path = PathBuf::from(&prefix_commands[0]);
-        } else {
-            // No prefix, use normal Java command
-            command.args(
-                java_arguments
-                    .iter()
-                    .chain(game_arguments.iter())
-                    .filter(|n| !n.is_empty()),
-            );
         }
 
         command.current_dir(&self.minecraft_dir);

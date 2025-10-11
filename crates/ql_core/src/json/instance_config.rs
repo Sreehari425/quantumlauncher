@@ -32,6 +32,7 @@ pub enum JavaArgsMode {
 impl JavaArgsMode {
     pub const ALL: &[Self] = &[Self::Combine, Self::Disable, Self::Fallback];
 
+    #[must_use]
     pub fn get_description(self) -> &'static str {
         match self {
             JavaArgsMode::Fallback => "Use global arguments only when instance has no arguments",
@@ -81,6 +82,7 @@ impl PreLaunchPrefixMode {
         Self::Fallback,
     ];
 
+    #[must_use]
     pub fn get_description(self) -> &'static str {
         match self {
             PreLaunchPrefixMode::Fallback => "Use global prefix only when instance has no prefix",
@@ -325,9 +327,8 @@ impl InstanceConfigJson {
     ///
     /// The behavior depends on the instance's `java_args_mode`.
     /// See [`JavaArgsMode`] documentation for more info.
-    ///
-    /// Returns an empty vector if no arguments should be used.
     #[must_use]
+    #[allow(clippy::missing_panics_doc)] // Won't panic
     pub fn get_java_args(&self, global_args: &[String]) -> Vec<String> {
         let mode = self
             .java_args_mode
@@ -404,7 +405,7 @@ impl InstanceConfigJson {
         match mode {
             PreLaunchPrefixMode::Fallback => {
                 if instance_prefix.is_empty() {
-                    global_prefix.to_owned()
+                    global_prefix.clone()
                 } else {
                     instance_prefix
                 }

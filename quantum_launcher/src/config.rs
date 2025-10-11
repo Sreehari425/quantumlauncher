@@ -196,7 +196,7 @@ impl LauncherConfig {
     }
 
     pub fn c_ui_opacity(&self) -> f32 {
-        self.ui.as_ref().map(|n| n.window_opacity).unwrap_or(0.9)
+        self.ui.as_ref().map_or(0.9, |n| n.window_opacity)
     }
 
     pub fn c_launch_prefix(&mut self) -> &mut Vec<String> {
@@ -210,7 +210,7 @@ impl LauncherConfig {
         self.ui
             .as_ref()
             .map(|n| n.use_window_decorations)
-            .unwrap_or(false)
+            .unwrap_or_default()
     }
 }
 

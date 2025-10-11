@@ -366,6 +366,7 @@ pub enum SelectedMod {
 }
 
 impl SelectedMod {
+    #[must_use]
     pub fn from_pair(name: String, id: Option<ModId>) -> Self {
         match id {
             Some(id) => Self::Downloaded { name, id },

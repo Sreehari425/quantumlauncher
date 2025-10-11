@@ -83,11 +83,11 @@ pub fn list_instances(
                                 }
                                 Loader::Paper => writeln!(cmds_loader, "{}", m.blue()),
                                 Loader::Liteloader => writeln!(cmds_loader, "{}", m.bright_blue()),
-                                Loader::Modloader => writeln!(cmds_loader, "{}", m),
+                                Loader::Modloader => writeln!(cmds_loader, "{m}"),
                                 Loader::Rift => writeln!(cmds_loader, "{}", m.bold().underline()),
                             };
                         }
-                        Err(_) => {
+                        Err(()) => {
                             if m == "Vanilla" {
                                 _ = writeln!(cmds_loader, "{}", "Vanilla".bright_black());
                             } else {

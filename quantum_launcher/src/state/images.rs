@@ -73,10 +73,10 @@ impl ImageState {
         } else if let Some(handle) = self.svg.get(url) {
             let mut e = widget::svg(handle.clone());
             if let Some(s) = w {
-                e = e.width(s)
+                e = e.width(s);
             }
             if let Some(s) = h {
-                e = e.height(s)
+                e = e.height(s);
             }
             e.into()
         } else {
