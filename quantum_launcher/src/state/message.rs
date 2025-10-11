@@ -141,9 +141,11 @@ pub enum ManageJarModsMessage {
 
 #[derive(Debug, Clone)]
 pub enum InstallModsMessage {
-    SearchResult(Res<SearchResult>),
     Open,
+    TickDesc,
     SearchInput(String),
+    SearchResult(Res<SearchResult>),
+
     Click(usize),
     BackToMainScreen,
     LoadData(Res<(ModId, String)>),

@@ -1347,6 +1347,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "frostmark"
+version = "0.1.0"
+source = "git+https://github.com/Mrmayman/frostmark.git?rev=971a143fcfb6cc8889c7858cf5cdb12db64a1396#971a143fcfb6cc8889c7858cf5cdb12db64a1396"
+dependencies = [
+ "bitflags 2.9.2",
+ "comrak",
+ "html5ever",
+ "iced",
+ "markup5ever_rcdom",
+]
+
+[[package]]
 name = "fsevent-sys"
 version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3686,13 +3698,10 @@ version = "0.4.2"
 dependencies = [
  "chrono",
  "clap",
- "comrak",
  "embed-resource",
- "html5ever",
+ "frostmark",
  "iced",
- "image",
  "itertools",
- "markup5ever_rcdom",
  "notify",
  "owo-colors",
  "paste",

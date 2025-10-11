@@ -131,9 +131,7 @@ impl Launcher {
                 .padding(10)
                 .spacing(10)
                 .into(),
-            // TODO: maybe remove window_size argument?
-            // It's not needed right now, but could be in the future.
-            State::ModsDownload(menu) => menu.view(&self.images, self.window_size, self.tick_timer),
+            State::ModsDownload(menu) => menu.view(&self.images, self.tick_timer),
             State::LauncherSettings(menu) => menu.view(&self.config, self.window_size),
             State::InstallPaper => {
                 let dots = ".".repeat((self.tick_timer % 3) + 1);

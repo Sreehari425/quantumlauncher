@@ -396,7 +396,7 @@ impl MenuEditMods {
             right: 15.0,
             left: 20.0,
         };
-        const ICON_SIZE: u16 = 18;
+        const ICON_SIZE: f32 = 18.0;
         const SPACING: u16 = 25;
 
         let no_icon = widget::Column::new()
@@ -414,7 +414,7 @@ impl MenuEditMods {
                     });
 
                     let image: Element = if let Some(url) = &config.icon_url {
-                        images.view(url, Some(ICON_SIZE), no_icon)
+                        images.view(url, Some(ICON_SIZE), Some(ICON_SIZE), no_icon)
                     } else {
                         no_icon
                     };

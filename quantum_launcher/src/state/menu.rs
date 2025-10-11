@@ -1,8 +1,9 @@
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     time::Instant,
 };
 
+use frostmark::MarkState;
 use iced::{widget::scrollable::AbsoluteOffset, Task};
 use ql_core::{
     file_utils::DirItem,
@@ -16,7 +17,9 @@ use ql_mod_manager::{
     store::{CurseforgeNotAllowed, ModConfig, ModIndex, QueryType, RecommendedMod, SearchResult},
 };
 
-use crate::{config::SIDEBAR_WIDTH_DEFAULT, message_handler::get_locally_installed_mods};
+use crate::{
+    config::SIDEBAR_WIDTH_DEFAULT, message_handler::get_locally_installed_mods, state::ImageState,
+};
 
 use super::{ManageModsMessage, Message, ProgressBar};
 
@@ -299,13 +302,15 @@ pub struct MenuLauncherUpdate {
 pub struct MenuModsDownload {
     pub query: String,
     pub results: Option<SearchResult>,
+    pub description: Option<MarkState>,
+
     pub mod_descriptions: HashMap<ModId, String>,
-    pub version_json: Box<VersionDetails>,
+    pub mods_download_in_progress: HashMap<ModId, String>,
     pub opened_mod: Option<usize>,
     pub latest_load: Instant,
-    pub mods_download_in_progress: BTreeMap<ModId, String>,
     pub scroll_offset: AbsoluteOffset,
 
+    pub version_json: Box<VersionDetails>,
     pub config: InstanceConfigJson,
     pub mod_index: ModIndex,
 
@@ -316,6 +321,33 @@ pub struct MenuModsDownload {
     /// i.e. when you scroll down and more stuff appears
     pub is_loading_continuation: bool,
     pub has_continuation_ended: bool,
+}
+
+impl MenuModsDownload {
+    pub fn reload_description(&mut self, images: &mut ImageState) {
+        let (Some(selection), Some(results)) = (self.opened_mod, &self.results) else {
+            return;
+        };
+        let Some(hit) = results.mods.get(selection) else {
+            return;
+        };
+        let Some(info) = self
+            .mod_descriptions
+            .get(&ModId::from_pair(&hit.id, results.backend))
+        else {
+            return;
+        };
+        let description = match results.backend {
+            StoreBackendType::Modrinth => MarkState::with_html_and_markdown(info),
+            StoreBackendType::Curseforge => MarkState::with_html(info), // Optimization, curseforge only has HTML
+        };
+        let imgs = description.find_image_links();
+        self.description = Some(description);
+
+        for img in imgs {
+            images.queue(&img);
+        }
+    }
 }
 
 pub struct MenuLauncherSettings {

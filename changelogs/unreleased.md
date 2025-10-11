@@ -10,6 +10,16 @@
 - (TODO) Mod selection no longer uses clunky checkboxes, but rather proper list items
 - Ctrl-A can now select all mods and jarmods
 
+## Descriptions
+
+Improved mod store description viewer with a revamped HTML renderer, featuring:
+
+- Visual layout fixes and sharper images
+- Lower CPU usage
+- Enhanced formatting: bold, italic, emojis, strikethrough, underline, monospace
+- Selectable text in codeblocks
+- GIF support (TODO)
+
 ## Text export
 
 - You can now export your mods as a text list, making it easy to share with others.

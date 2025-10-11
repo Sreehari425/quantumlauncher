@@ -157,7 +157,7 @@ impl Launcher {
     }
 
     fn scale_factor(&self) -> f64 {
-        self.config.ui_scale.unwrap_or(1.0).max(0.05) as f64
+        self.config.ui_scale.unwrap_or(1.0).max(0.05)
     }
 }
 
@@ -247,7 +247,7 @@ fn load_config(dir_is_ok: bool) -> Result<LauncherConfig, JsonFileError> {
 }
 
 fn load_icon() -> Option<iced::window::Icon> {
-    match iced::window::icon::from_file_data(LAUNCHER_ICON, Some(image::ImageFormat::Ico)) {
+    match iced::window::icon::from_file_data(LAUNCHER_ICON, None) {
         Ok(n) => Some(n),
         Err(err) => {
             err_no_log!("Couldn't load launcher icon! (bug detected): {err}");

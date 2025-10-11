@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::{collections::HashMap, time::Instant};
 
 use iced::futures::executor::block_on;
@@ -32,10 +31,11 @@ impl Launcher {
             results: None,
             opened_mod: None,
             mod_descriptions: HashMap::new(),
-            mods_download_in_progress: BTreeMap::new(),
+            mods_download_in_progress: HashMap::new(),
             mod_index,
             is_loading_continuation: false,
             has_continuation_ended: false,
+            description: None,
 
             backend: StoreBackendType::Modrinth,
             query_type: QueryType::Mods,

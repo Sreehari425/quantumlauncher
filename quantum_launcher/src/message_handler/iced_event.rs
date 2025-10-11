@@ -389,6 +389,7 @@ impl Launcher {
             if should_return_to_download_screen {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.opened_mod = None;
+                    menu.description = None;
                     return (
                         true,
                         iced::widget::scrollable::scroll_to(

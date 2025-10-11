@@ -17,6 +17,7 @@ mod presets;
 mod recommended;
 
 use crate::config::UiSettings;
+use crate::state::MenuModsDownload;
 use crate::{
     state::{
         self, InstallFabricMessage, InstallModsMessage, InstallOptifineMessage, Launcher,
@@ -167,6 +168,15 @@ impl Launcher {
                 Ok(command) => return command,
                 Err(err) => self.set_error(err),
             },
+            InstallModsMessage::TickDesc => {
+                if let State::ModsDownload(MenuModsDownload {
+                    description: Some(d),
+                    ..
+                }) = &mut self.state
+                {
+                    d.update();
+                }
+            }
             InstallModsMessage::SearchInput(input) => {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.query = input;
@@ -176,6 +186,7 @@ impl Launcher {
             InstallModsMessage::Click(i) => {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.opened_mod = Some(i);
+                    menu.reload_description(&mut self.images);
                     if let Some(results) = &menu.results {
                         let hit = results.mods.get(i).unwrap();
                         if !menu
@@ -195,6 +206,7 @@ impl Launcher {
             InstallModsMessage::BackToMainScreen => {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.opened_mod = None;
+                    menu.description = None;
                     return iced::widget::scrollable::scroll_to(
                         iced::widget::scrollable::Id::new("MenuModsDownload:main:mods_list"),
                         menu.scroll_offset,
@@ -204,6 +216,7 @@ impl Launcher {
             InstallModsMessage::LoadData(Ok((id, description))) => {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.mod_descriptions.insert(id, description);
+                    menu.reload_description(&mut self.images);
                 }
             }
             InstallModsMessage::Download(index) => {
