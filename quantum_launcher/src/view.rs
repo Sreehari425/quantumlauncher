@@ -1,5 +1,4 @@
 use iced::{widget, Length};
-use ql_core::LOGGER;
 
 use crate::{
     icon_manager,
@@ -58,17 +57,8 @@ impl Launcher {
         .push_maybe(self.is_log_open.then(|| {
             const TEXT_SIZE: f32 = 12.0;
 
-            let text = {
-                if let Some(logger) = LOGGER.as_ref() {
-                    let logger = logger.lock().unwrap();
-                    logger.text.clone()
-                } else {
-                    Vec::new()
-                }
-            };
-
             Self::view_launcher_log(
-                text,
+                ql_core::print::get(),
                 TEXT_SIZE,
                 self.log_scroll,
                 Message::CoreLogScroll,

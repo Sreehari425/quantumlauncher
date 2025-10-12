@@ -73,6 +73,7 @@ owo-colors = { workspace = true }
 clap = { version = "4", features = ["help"] }
 notify = "8"
 itertools = "0.14"
+open = "5.3.2"
 
 # iced::widget::markdown doesn't have inline
 # HTML support, so I made my own renderer.

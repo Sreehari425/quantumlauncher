@@ -379,7 +379,7 @@ impl Launcher {
             || (menu.is_viewing_server && self.server_processes.contains_key(name))
     }
 
-    fn get_accounts_bar(&self, menu: &MenuLaunch) -> Element {
+    fn get_accounts_bar(&self, menu: &MenuLaunch) -> Element<'_> {
         let something_is_happening = self.java_recv.is_some() || menu.login_progress.is_some();
 
         let dropdown: Element = if something_is_happening {

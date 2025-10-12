@@ -116,6 +116,13 @@ fn get_logs_file() -> Option<File> {
 
 pub static LOGGER: LazyLock<Option<Mutex<LoggingState>>> = LazyLock::new(LoggingState::create);
 
+pub fn get() -> Vec<(String, LogType)> {
+    LOGGER
+        .as_ref()
+        .and_then(|l| l.lock().ok())
+        .map_or(Vec::new(), |n| n.text.clone())
+}
+
 pub fn print_to_file(msg: &str, t: LogType) {
     if let Some(logger) = LOGGER.as_ref() {
         if let Ok(mut lock) = logger.lock() {

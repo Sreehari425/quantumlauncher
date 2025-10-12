@@ -1,7 +1,7 @@
 use iced::{futures::executor::block_on, Task};
 use ql_core::{
-    err, err_no_log, file_utils::DirItem, info, info_no_log, open_file_explorer, InstanceSelection,
-    IntoIoError, IntoStringError, LOGGER,
+    err, err_no_log, file_utils::DirItem, info, info_no_log, InstanceSelection, IntoIoError,
+    IntoStringError,
 };
 use ql_instances::UpdateCheckInfo;
 use ql_mod_manager::loaders;
@@ -86,12 +86,12 @@ impl Launcher {
                 Err(err) => self.set_error(err),
             },
             Message::InstallFabric(message) => return self.update_install_fabric(message),
-            Message::CoreOpenLink(dir) => open_file_explorer(&dir),
+            Message::CoreOpenLink(dir) => _ = open::that_detached(&dir),
             Message::CoreOpenPath(dir) => {
                 if !dir.exists() && dir.to_string_lossy().contains("jarmods") {
                     _ = std::fs::create_dir_all(&dir);
                 }
-                open_file_explorer(&dir)
+                _ = open::that_detached(&dir);
             }
             Message::CoreCopyError => {
                 if let State::Error { error } = &self.state {
@@ -99,14 +99,7 @@ impl Launcher {
                 }
             }
             Message::CoreCopyLog => {
-                let text = {
-                    if let Some(logger) = LOGGER.as_ref() {
-                        let logger = logger.lock().unwrap();
-                        logger.text.clone()
-                    } else {
-                        Vec::new()
-                    }
-                };
+                let text = ql_core::print::get();
 
                 let mut log = String::new();
                 for (line, kind) in text {
