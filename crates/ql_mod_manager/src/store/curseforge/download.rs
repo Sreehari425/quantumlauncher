@@ -10,8 +10,8 @@ use ql_core::{
 
 use crate::store::{
     curseforge::{get_query_type, ModQuery},
-    get_loader, get_mods_resourcepacks_shaderpacks_dir, install_modpack, CurseforgeNotAllowed,
-    ModConfig, ModError, ModFile, ModIndex, QueryType, SOURCE_ID_CURSEFORGE,
+    get_mods_resourcepacks_shaderpacks_dir, install_modpack, CurseforgeNotAllowed, ModConfig,
+    ModError, ModFile, ModIndex, QueryType, SOURCE_ID_CURSEFORGE,
 };
 
 use super::Mod;
@@ -19,7 +19,7 @@ use super::Mod;
 pub struct ModDownloader<'a> {
     version: String,
     instance: InstanceSelection,
-    pub loader: Option<String>,
+    pub loader: Option<&'static str>,
     pub index: ModIndex,
 
     mods_dir: PathBuf,
@@ -43,9 +43,11 @@ impl<'a> ModDownloader<'a> {
 
         Ok(Self {
             version: version_json.get_id().to_owned(),
-            loader: get_loader(&instance)
+            loader: instance
+                .get_loader()
                 .await?
-                .map(|n| n.to_curseforge().to_owned()),
+                .not_vanilla()
+                .map(|n| n.to_curseforge_num()),
             index: ModIndex::load(&instance).await?,
             mods_dir,
             resourcepacks_dir,

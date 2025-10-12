@@ -7,7 +7,8 @@ use std::{
 use ql_core::{
     err, info,
     json::{InstanceConfigJson, VersionDetails},
-    pt, InstanceSelection, IntoIoError, IntoJsonError, ModId, SelectedMod, LAUNCHER_VERSION_NAME,
+    pt, InstanceSelection, IntoIoError, IntoJsonError, Loader, ModId, SelectedMod,
+    LAUNCHER_VERSION_NAME,
 };
 use serde::{Deserialize, Serialize};
 use zip::ZipWriter;
@@ -52,7 +53,7 @@ pub struct PresetOutput {
 pub struct Preset {
     pub launcher_version: String,
     pub minecraft_version: String,
-    pub instance_type: String,
+    pub instance_type: Loader,
     pub entries_modrinth: HashMap<String, ModConfig>,
     pub entries_local: Vec<String>,
 }
@@ -265,7 +266,7 @@ impl Preset {
     }
 }
 
-async fn get_instance_type(instance_name: &InstanceSelection) -> Result<String, ModError> {
+async fn get_instance_type(instance_name: &InstanceSelection) -> Result<Loader, ModError> {
     let config = InstanceConfigJson::read(instance_name).await?;
     Ok(config.mod_type)
 }

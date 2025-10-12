@@ -74,13 +74,12 @@ pub fn list_instances(
                     match Loader::try_from(m.as_str()) {
                         Ok(l) => {
                             _ = match l {
+                                Loader::Vanilla => writeln!(cmds_loader, "{}", m.bright_black()),
                                 Loader::Fabric => writeln!(cmds_loader, "{}", m.bright_green()),
                                 Loader::Quilt => writeln!(cmds_loader, "{}", m.bright_purple()),
                                 Loader::Forge => writeln!(cmds_loader, "{}", m.bright_yellow()),
                                 Loader::Neoforge => writeln!(cmds_loader, "{}", m.yellow()),
-                                Loader::OptiFine => {
-                                    writeln!(cmds_loader, "{}", m.red().bold())
-                                }
+                                Loader::OptiFine => writeln!(cmds_loader, "{}", m.red().bold()),
                                 Loader::Paper => writeln!(cmds_loader, "{}", m.blue()),
                                 Loader::Liteloader => writeln!(cmds_loader, "{}", m.bright_blue()),
                                 Loader::Modloader => writeln!(cmds_loader, "{m}"),
@@ -88,12 +87,8 @@ pub fn list_instances(
                             };
                         }
                         Err(()) => {
-                            if m == "Vanilla" {
-                                _ = writeln!(cmds_loader, "{}", "Vanilla".bright_black());
-                            } else {
-                                cmds_loader.push_str(&m);
-                                cmds_loader.push('\n');
-                            }
+                            cmds_loader.push_str(&m);
+                            cmds_loader.push('\n');
                         }
                     }
                 }

@@ -48,6 +48,8 @@ pub use urlcache::url_cache_get;
 
 use regex::Regex;
 
+use crate::json::InstanceConfigJson;
+
 pub static REGEX_SNAPSHOT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\d{2}w\d*[a-zA-Z]+").unwrap());
 
@@ -281,6 +283,11 @@ impl InstanceSelection {
     #[must_use]
     pub fn get_pair(&self) -> (&str, bool) {
         (self.get_name(), self.is_server())
+    }
+
+    pub async fn get_loader(&self) -> Result<Loader, JsonFileError> {
+        let config_json = InstanceConfigJson::read(self).await?;
+        Ok(config_json.mod_type)
     }
 }
 

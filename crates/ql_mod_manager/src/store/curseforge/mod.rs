@@ -7,7 +7,7 @@ use std::{
 use chrono::DateTime;
 use download::ModDownloader;
 use ql_core::{
-    err, pt, GenericProgress, IntoJsonError, JsonDownloadError, ModId, RequestError, CLIENT,
+    err, pt, GenericProgress, IntoJsonError, JsonDownloadError, Loader, ModId, RequestError, CLIENT,
 };
 use reqwest::header::HeaderValue;
 use serde::Deserialize;
@@ -211,8 +211,8 @@ impl Backend for CurseforgeBackend {
         ]);
 
         if let QueryType::Mods | QueryType::ModPacks = query_type {
-            if let Some(loader) = query.loader {
-                params.insert("modLoaderType", loader.to_curseforge().to_owned());
+            if !query.loader.is_vanilla() {
+                params.insert("modLoaderType", query.loader.to_curseforge_num().to_owned());
             }
             params.insert("gameVersion", query.version.clone());
         }
@@ -268,10 +268,10 @@ impl Backend for CurseforgeBackend {
     async fn get_latest_version_date(
         id: &str,
         version: &str,
-        loader: Option<ql_core::Loader>,
+        loader: Loader,
     ) -> Result<(DateTime<chrono::FixedOffset>, String), ModError> {
         let response = ModQuery::load(id).await?;
-        let loader = loader.map(|n| n.to_curseforge());
+        let loader = loader.not_vanilla().map(|n| n.to_curseforge_num());
 
         let query_type = get_query_type(response.data.classId).await?;
         let (file_query, _) = response

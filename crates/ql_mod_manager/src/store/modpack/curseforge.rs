@@ -6,7 +6,7 @@ use std::{
 use ql_core::{
     do_jobs, file_utils,
     json::{InstanceConfigJson, VersionDetails},
-    pt, GenericProgress, InstanceSelection, IntoIoError,
+    pt, GenericProgress, InstanceSelection, IntoIoError, Loader,
 };
 use serde::Deserialize;
 use tokio::sync::Mutex;
@@ -198,11 +198,11 @@ pub async fn install(
 
     pt!("CurseForge Modpack: {}", index.name);
 
-    let loader = match config.mod_type.as_str() {
-        "Forge" => "forge",
-        "Fabric" => "fabric",
-        "Quilt" => "quilt",
-        "NeoForge" => "neoforge",
+    let loader = match config.mod_type {
+        Loader::Forge => "forge",
+        Loader::Fabric => "fabric",
+        Loader::Quilt => "quilt",
+        Loader::Neoforge => "neoforge",
         _ => {
             return Err(expect_got_curseforge(index, config));
         }
@@ -265,6 +265,6 @@ fn expect_got_curseforge(index: &PackIndex, config: &InstanceConfigJson) -> Pack
             .map(|l| l.id.split('-').next().unwrap_or(&l.id))
             .collect::<Vec<&str>>()
             .join(", "),
-        got: config.mod_type.clone(),
+        got: config.mod_type,
     }
 }

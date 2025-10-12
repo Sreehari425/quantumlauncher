@@ -7,9 +7,7 @@ use std::{
 
 use chrono::DateTime;
 use ql_core::{
-    err, file_utils, info,
-    json::{InstanceConfigJson, VersionDetails},
-    pt, GenericProgress, InstanceSelection,
+    err, file_utils, info, json::VersionDetails, pt, GenericProgress, InstanceSelection,
 };
 
 use crate::store::{
@@ -24,7 +22,7 @@ use super::info::ProjectInfo;
 pub struct ModDownloader {
     version: String,
     pub index: ModIndex,
-    loader: Option<String>,
+    loader: Option<&'static str>,
     currently_installing_mods: HashSet<String>,
     pub info: HashMap<String, ProjectInfo>,
     instance: InstanceSelection,
@@ -45,7 +43,11 @@ impl ModDownloader {
             get_mods_resourcepacks_shaderpacks_dir(instance, &version_json).await?;
 
         let index = ModIndex::load(instance).await?;
-        let loader = get_loader_type(instance).await?;
+        let loader = instance
+            .get_loader()
+            .await?
+            .not_vanilla()
+            .map(|n| n.to_modrinth_str());
         let currently_installing_mods = HashSet::new();
         Ok(ModDownloader {
             version: version_json.get_id().to_owned(),
@@ -181,8 +183,8 @@ impl ModDownloader {
     }
 
     fn has_compatible_loader(&self, project_info: &ProjectInfo) -> bool {
-        if let Some(loader) = &self.loader {
-            if project_info.loaders.contains(loader) {
+        if let Some(loader) = self.loader {
+            if project_info.loaders.iter().any(|n| n == loader) {
                 true
             } else {
                 pt!(
@@ -210,9 +212,9 @@ impl ModDownloader {
             .filter(|v| v.game_versions.contains(&self.version))
             .filter(|v| {
                 if let (Some(loader), QueryType::Mods | QueryType::ModPacks) =
-                    (&self.loader, project_type)
+                    (self.loader, project_type)
                 {
-                    v.loaders.contains(loader)
+                    v.loaders.iter().any(|n| n == loader)
                 } else {
                     true
                 }
@@ -329,25 +331,4 @@ fn print_downloading_message(project_info: &ProjectInfo, dependent: Option<&str>
     } else {
         pt!("Downloading {}", project_info.title);
     }
-}
-
-pub async fn get_loader_type(instance: &InstanceSelection) -> Result<Option<String>, ModError> {
-    let instance_dir = instance.get_instance_path();
-    let config_json = InstanceConfigJson::read_from_dir(&instance_dir).await?;
-
-    Ok(match config_json.mod_type.as_str() {
-        "Fabric" => Some("fabric"),
-        "Forge" => Some("forge"),
-        "Quilt" => Some("quilt"),
-        "NeoForge" => Some("neoforge"),
-        "LiteLoader" => Some("liteloader"),
-        "Rift" => Some("rift"),
-        loader => {
-            if loader != "Vanilla" {
-                err!("Unknown loader {loader}");
-            }
-            None
-        } // TODO: Add more loaders
-    }
-    .map(str::to_owned))
 }

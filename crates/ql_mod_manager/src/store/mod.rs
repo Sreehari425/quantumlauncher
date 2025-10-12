@@ -2,9 +2,8 @@ use std::{collections::HashSet, fmt::Display, path::PathBuf, sync::mpsc::Sender,
 
 use chrono::DateTime;
 use ql_core::{
-    err,
-    json::{InstanceConfigJson, VersionDetails},
-    GenericProgress, InstanceSelection, IntoIoError, Loader, ModId, StoreBackendType,
+    err, json::VersionDetails, GenericProgress, InstanceSelection, IntoIoError, Loader, ModId,
+    StoreBackendType,
 };
 
 mod add_file;
@@ -55,7 +54,7 @@ pub trait Backend {
     async fn get_latest_version_date(
         id: &str,
         version: &str,
-        loader: Option<Loader>,
+        loader: Loader,
     ) -> Result<(DateTime<chrono::FixedOffset>, String), ModError>;
 
     async fn download(
@@ -139,7 +138,7 @@ pub async fn download_mods_bulk(
 }
 
 pub async fn get_latest_version_date(
-    loader: Option<Loader>,
+    loader: Loader,
     mod_id: &ModId,
     version: &str,
 ) -> Result<(DateTime<chrono::FixedOffset>, String), ModError> {
@@ -232,7 +231,7 @@ impl QueryType {
 pub struct Query {
     pub name: String,
     pub version: String,
-    pub loader: Option<Loader>,
+    pub loader: Loader,
     pub server_side: bool,
 }
 
@@ -254,27 +253,6 @@ pub struct SearchMod {
     pub project_type: String,
     pub id: String,
     pub icon_url: String,
-}
-
-async fn get_loader(instance: &InstanceSelection) -> Result<Option<Loader>, ModError> {
-    let instance_dir = instance.get_instance_path();
-    let config_json = InstanceConfigJson::read_from_dir(&instance_dir).await?;
-
-    Ok(match config_json.mod_type.as_str() {
-        "Fabric" => Some(Loader::Fabric),
-        "Forge" => Some(Loader::Forge),
-        "Quilt" => Some(Loader::Quilt),
-        "NeoForge" => Some(Loader::Neoforge),
-        "LiteLoader" => Some(Loader::Liteloader),
-        "Rift" => Some(Loader::Rift),
-        "OptiFine" => Some(Loader::OptiFine),
-        loader => {
-            if loader != "Vanilla" {
-                err!("Unknown loader {loader}");
-            }
-            None
-        } // TODO: Add more loaders
-    })
 }
 
 async fn get_mods_resourcepacks_shaderpacks_dir(
