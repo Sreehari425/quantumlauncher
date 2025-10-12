@@ -319,7 +319,7 @@ async fn get_dir(
     instance: &InstanceSelection,
     json: &VersionDetails,
     query_type: QueryType,
-) -> Result<std::path::PathBuf, PackError> {
+) -> Result<PathBuf, PackError> {
     let (dir_mods, dir_res_packs, dir_shader) =
         get_mods_resourcepacks_shaderpacks_dir(instance, json).await?;
     let dir = match query_type {

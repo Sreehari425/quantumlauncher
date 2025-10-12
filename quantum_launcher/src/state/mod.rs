@@ -513,7 +513,7 @@ pub async fn load_custom_jars() -> Result<Vec<String>, IoError> {
 
 pub fn dir_watch<P: AsRef<Path>>(
     path: P,
-) -> notify::Result<(mpsc::Receiver<notify::Event>, notify::RecommendedWatcher)> {
+) -> notify::Result<(Receiver<notify::Event>, notify::RecommendedWatcher)> {
     let (tx, rx) = mpsc::channel();
 
     // `notify` runs callbacks in its own thread.

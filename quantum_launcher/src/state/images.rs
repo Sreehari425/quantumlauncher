@@ -9,8 +9,8 @@ use crate::{menu_renderer::Element, state::Message};
 
 #[derive(Default)]
 pub struct ImageState {
-    bitmap: HashMap<String, iced::widget::image::Handle>,
-    svg: HashMap<String, iced::widget::svg::Handle>,
+    bitmap: HashMap<String, widget::image::Handle>,
+    svg: HashMap<String, widget::svg::Handle>,
     downloads_in_progress: HashSet<String>,
     /// A queue to request that an image be loaded.
     /// The `bool` represents whether it's a small
@@ -21,13 +21,11 @@ pub struct ImageState {
 impl ImageState {
     pub fn insert_image(&mut self, image: ql_mod_manager::store::ImageResult) {
         if image.is_svg {
-            let handle = iced::widget::svg::Handle::from_memory(image.image);
+            let handle = widget::svg::Handle::from_memory(image.image);
             self.svg.insert(image.url, handle);
         } else {
-            self.bitmap.insert(
-                image.url,
-                iced::widget::image::Handle::from_bytes(image.image),
-            );
+            self.bitmap
+                .insert(image.url, widget::image::Handle::from_bytes(image.image));
         }
     }
 

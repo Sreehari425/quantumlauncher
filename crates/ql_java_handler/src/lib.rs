@@ -51,7 +51,7 @@
 //! ## Linux platforms
 //! - Risc-V
 //! - PowerPC
-//! - Iaarch64
+//! - aarch64
 //! - Alpha
 //! - S390 (IBM Z)
 //! - SPARC
@@ -90,7 +90,7 @@ const fn which_java() -> &'static str {
     #[cfg(target_os = "windows")]
     return "javaw";
     #[cfg(not(target_os = "windows"))]
-    return "java";
+    "java"
 }
 
 /// Which Java to use for GUI apps.

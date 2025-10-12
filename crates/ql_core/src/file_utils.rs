@@ -712,7 +712,7 @@ pub async fn zip_directory_to_bytes<P: AsRef<Path>>(dir: P) -> std::io::Result<V
 /// Gets the old location of the launcher dir
 ///
 /// This uses the same methods as before the migration,
-/// so if the user has overwriten it using `$XDG_CONFIG_DIR` we don't lose track of it.
+/// so if the user has overwritten it using `$XDG_CONFIG_DIR` we don't lose track of it.
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 #[must_use]
 pub fn migration_legacy_launcher_dir() -> Option<PathBuf> {

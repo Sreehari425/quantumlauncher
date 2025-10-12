@@ -30,7 +30,7 @@ pub enum JavaArgsMode {
 }
 
 impl JavaArgsMode {
-    pub const ALL: &[Self] = &[Self::Combine, Self::Disable, Self::Fallback];
+    pub const ALL: &'static [Self] = &[Self::Combine, Self::Disable, Self::Fallback];
 
     #[must_use]
     pub fn get_description(self) -> &'static str {
@@ -75,7 +75,7 @@ pub enum PreLaunchPrefixMode {
 }
 
 impl PreLaunchPrefixMode {
-    pub const ALL: &[Self] = &[
+    pub const ALL: &'static [Self] = &[
         Self::CombineGlobalLocal,
         Self::CombineLocalGlobal,
         Self::Disable,

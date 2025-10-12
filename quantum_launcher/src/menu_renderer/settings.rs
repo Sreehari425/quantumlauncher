@@ -127,7 +127,7 @@ impl MenuLauncherSettings {
                                     ))
                             )
                     )
-                    .align_y(iced::Alignment::Center),
+                    .align_y(Alignment::Center),
                 widget::slider(0.5..=2.0, self.temp_scale, |n| Message::LauncherSettings(
                     LauncherSettingsMessage::UiScale(n)
                 ))

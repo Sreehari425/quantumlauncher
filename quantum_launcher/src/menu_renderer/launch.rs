@@ -379,7 +379,7 @@ impl Launcher {
             || (menu.is_viewing_server && self.server_processes.contains_key(name))
     }
 
-    fn get_accounts_bar<'a>(&'a self, menu: &MenuLaunch) -> Element<'a> {
+    fn get_accounts_bar(&self, menu: &MenuLaunch) -> Element {
         let something_is_happening = self.java_recv.is_some() || menu.login_progress.is_some();
 
         let dropdown: Element = if something_is_happening {
@@ -521,7 +521,7 @@ impl MenuLaunch {
             ]
             .width(tab_height(decor) + 4.0)
             .height(tab_height(decor) + 4.0)
-            .align_y(iced::Alignment::Center),
+            .align_y(Alignment::Center),
         )
         .padding(0)
         .style(|n, status| n.style_button(status, StyleButton::FlatExtraDark))

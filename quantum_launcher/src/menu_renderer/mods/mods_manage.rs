@@ -475,12 +475,7 @@ impl MenuEditMods {
                     if is_enabled {
                         checkbox.into()
                     } else {
-                        tooltip(
-                            checkbox,
-                            "Disabled",
-                            widget::tooltip::Position::FollowCursor,
-                        )
-                        .into()
+                        tooltip(checkbox, "Disabled", Position::FollowCursor).into()
                     }
                 } else {
                     widget::row![
@@ -530,12 +525,7 @@ impl MenuEditMods {
                 if is_enabled {
                     checkbox.into()
                 } else {
-                    tooltip(
-                        checkbox,
-                        "Disabled",
-                        widget::tooltip::Position::FollowCursor,
-                    )
-                    .into()
+                    tooltip(checkbox, "Disabled", Position::FollowCursor).into()
                 }
             }
         }

@@ -106,9 +106,7 @@ pub fn subbutton_with_icon<'a>(
             .spacing(8)
             .padding(1),
     )
-    .style(|t: &LauncherTheme, s| {
-        t.style_button(s, crate::stylesheet::widgets::StyleButton::RoundDark)
-    })
+    .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
 }
 
 pub fn button_with_icon<'a>(
@@ -413,7 +411,7 @@ impl MenuCurseforgeManualDownload {
                         widget::button(widget::text("Open link").size(14)).on_press(Message::CoreOpenLink(url)),
                         widget::text(&entry.name)
                     ]
-                    .align_y(iced::Alignment::Center)
+                    .align_y(Alignment::Center)
                     .spacing(10)
                     .into()
                 }))
@@ -549,7 +547,7 @@ pub fn view_account_login<'a>() -> Element<'a> {
                     }
                 )),
             ]
-            .align_x(iced::Alignment::Center)
+            .align_x(Alignment::Center)
             .spacing(5),
             widget::horizontal_space(),
         ],
@@ -608,7 +606,7 @@ pub fn view_log_upload_result(url: &'_ str, is_server: bool) -> Element<'_> {
                     widget::button("Open").on_press(Message::CoreOpenLink(url.to_string()))
                 ]
                 .spacing(10)
-                .align_y(iced::Alignment::Center)
+                .align_y(Alignment::Center)
             )
             .padding(10),
             widget::vertical_space(),

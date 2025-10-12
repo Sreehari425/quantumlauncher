@@ -320,7 +320,7 @@ impl LauncherTheme {
 
     pub fn style_container_selected_flat_button_semi(&self, radii: [bool; 4]) -> Style {
         Style {
-            border: iced::Border {
+            border: Border {
                 radius: get_radius_semi(radii),
                 width: 1.0,
                 color: self.get(Color::SecondDark),
