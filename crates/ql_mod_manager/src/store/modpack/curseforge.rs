@@ -45,7 +45,7 @@ pub struct PackLoader {
 #[derive(Deserialize)]
 #[allow(non_snake_case)]
 pub struct PackFile {
-    pub projectID: usize,
+    pub projectID: i32,
     pub fileID: usize,
     pub required: bool,
 }
@@ -57,21 +57,20 @@ impl PackFile {
         dirs: &DirStructure,
         sender: Option<&Sender<GenericProgress>>,
         (i, len): (&Mutex<usize>, usize),
-        cache: &HashMap<String, curseforge::Mod>,
+        cache: &HashMap<i32, curseforge::Mod>,
         index: &Mutex<ModIndex>,
     ) -> Result<(), PackError> {
         if !self.required {
             return Ok(());
         }
 
-        let project_id = self.projectID.to_string();
-        let mod_info = if let Some(n) = cache.get(&project_id) {
+        let mod_info = if let Some(n) = cache.get(&self.projectID) {
             n.clone()
         } else {
-            ModQuery::load(&project_id).await?.data
+            ModQuery::load(self.projectID).await?.data
         };
 
-        let query = CurseforgeFileQuery::load(&project_id, self.fileID as i32).await?;
+        let query = CurseforgeFileQuery::load(&self.projectID, self.fileID as i32).await?;
         let query_type = get_query_type(mod_info.classId).await?;
         let Some(url) = query.data.downloadUrl.clone() else {
             self.add_to_not_allowed(not_allowed, mod_info, query, query_type)
@@ -90,7 +89,7 @@ impl PackFile {
         }
 
         file_utils::download_file_to_path(&url, true, &path).await?;
-        add_to_index(index, project_id, &mod_info, query, url).await;
+        add_to_index(index, self.projectID.to_string(), &mod_info, query, url).await;
 
         send_progress(sender, i, len, &mod_info).await;
         Ok(())
@@ -222,7 +221,7 @@ pub async fn install(
     let mod_index = Mutex::new(ModIndex::load(instance).await?);
     let dirs = DirStructure::new(instance, json).await?;
 
-    let cache: HashMap<String, curseforge::Mod> = {
+    let cache: HashMap<i32, curseforge::Mod> = {
         let project_ids: Vec<String> = index
             .files
             .iter()
@@ -232,7 +231,7 @@ pub async fn install(
             .await?
             .data
             .into_iter()
-            .map(|n| (n.id.to_string(), n))
+            .map(|n| (n.id, n))
             .collect()
     };
 

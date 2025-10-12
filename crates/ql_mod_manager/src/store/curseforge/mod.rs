@@ -30,7 +30,7 @@ pub struct ModQuery {
 }
 
 impl ModQuery {
-    pub async fn load(id: &str) -> Result<Self, JsonDownloadError> {
+    pub async fn load<T: std::fmt::Display>(id: T) -> Result<Self, JsonDownloadError> {
         let response = send_request(&format!("mods/{id}"), &HashMap::new()).await?;
         let response: ModQuery = serde_json::from_str(&response).json(response)?;
         Ok(response)
@@ -52,10 +52,10 @@ pub struct Mod {
 }
 
 impl Mod {
-    async fn get_file(
+    async fn get_file<T: std::fmt::Display>(
         &self,
         title: String,
-        id: &str,
+        id: T,
         version: String,
         loader: Option<&str>,
         query_type: QueryType,
@@ -120,7 +120,10 @@ pub struct CurseforgeFileQuery {
 }
 
 impl CurseforgeFileQuery {
-    pub async fn load(mod_id: &str, file_id: i32) -> Result<Self, JsonDownloadError> {
+    pub async fn load<T: std::fmt::Display>(
+        mod_id: T,
+        file_id: i32,
+    ) -> Result<Self, JsonDownloadError> {
         let response =
             send_request(&format!("mods/{mod_id}/files/{file_id}"), &HashMap::new()).await?;
         let response: Self = serde_json::from_str(&response).json(response)?;
