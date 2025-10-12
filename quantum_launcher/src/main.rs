@@ -35,7 +35,7 @@ use ql_core::{err, err_no_log, file_utils, info, info_no_log, IntoStringError, J
 use ql_instances::OS_NAME;
 use tokio::io::AsyncWriteExt;
 
-use crate::state::CustomJarState;
+use crate::{menu_renderer::FONT_DEFAULT, state::CustomJarState};
 
 /// The CLI interface of the launcher.
 mod cli;
@@ -198,7 +198,7 @@ fn main() {
         .theme(Launcher::theme)
         .settings(Settings {
             fonts: load_fonts(),
-            default_font: iced::Font::with_name("Inter"),
+            default_font: FONT_DEFAULT,
             antialiasing: config
                 .as_ref()
                 .ok()

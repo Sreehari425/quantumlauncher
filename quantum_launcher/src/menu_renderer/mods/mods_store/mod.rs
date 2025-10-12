@@ -5,7 +5,7 @@ use ql_mod_manager::store::{QueryType, SearchMod};
 
 use crate::{
     icon_manager,
-    menu_renderer::{back_button, button_with_icon, Element, FONT_MONO},
+    menu_renderer::{back_button, button_with_icon, Element, FONT_DEFAULT, FONT_MONO},
     state::{ImageState, InstallModsMessage, ManageModsMessage, MenuModsDownload, Message},
     stylesheet::{color::Color, styles::LauncherTheme},
 };
@@ -250,6 +250,7 @@ impl MenuModsDownload {
                 .on_clicking_link(Message::CoreOpenLink)
                 .on_drawing_image(|img| { images.view(img.url, img.width, img.height, "".into()) })
                 .on_updating_state(|| Message::InstallMods(InstallModsMessage::TickDesc))
+                .font(FONT_DEFAULT)
                 .font_mono(FONT_MONO))
         } else {
             let dots = ".".repeat((tick_timer % 3) + 1);

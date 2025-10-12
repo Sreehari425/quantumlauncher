@@ -28,6 +28,7 @@ pub const DISCORD: &str = "https://discord.gg/bWqRaSXar5";
 pub const GITHUB: &str = "https://github.com/Mrmayman/quantumlauncher";
 
 pub const FONT_MONO: iced::Font = iced::Font::with_name("JetBrains Mono");
+pub const FONT_DEFAULT: iced::Font = iced::Font::with_name("Inter");
 
 pub type Element<'a> = iced::Element<'a, Message, LauncherTheme>;
 
