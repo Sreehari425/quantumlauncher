@@ -1,6 +1,6 @@
 use iced::widget::tooltip::Position;
 use iced::{widget, Alignment, Length};
-use ql_core::{InstanceSelection, SelectedMod};
+use ql_core::{InstanceSelection, Loader, SelectedMod};
 
 use crate::menu_renderer::{select_box, subbutton_with_icon, FONT_MONO};
 use crate::state::ImageState;
@@ -158,8 +158,8 @@ impl MenuEditMods {
     }
 
     fn get_mod_installer_buttons(&'_ self, selected_instance: &InstanceSelection) -> Element<'_> {
-        match self.config.mod_type.as_str() {
-            "Vanilla" => match selected_instance {
+        match self.config.mod_type {
+            Loader::Vanilla => match selected_instance {
                 InstanceSelection::Instance(_) => widget::column![
                     "Install:",
                     widget::row!(
@@ -212,42 +212,38 @@ impl MenuEditMods {
                 .into(),
             },
 
-            "Forge" => widget::column!(
+            Loader::Forge => widget::column!(
                 tooltip(
                     widget::button(widget::text("Install OptiFine with Forge").size(14)),
                     "Coming in a future launcher version...",
                     Position::Bottom
                 ),
-                Self::get_uninstall_panel(
-                    &self.config.mod_type,
-                    Message::UninstallLoaderForgeStart,
-                )
+                Self::get_uninstall_panel(self.config.mod_type, Message::UninstallLoaderForgeStart,)
             )
             .spacing(5)
             .into(),
-            "OptiFine" => widget::column!(
+            Loader::OptiFine => widget::column!(
                 tooltip(
                     widget::button(widget::text("Install Forge with OptiFine").size(14)),
                     "Coming in a future launcher version...",
                     Position::Bottom
                 ),
                 Self::get_uninstall_panel(
-                    &self.config.mod_type,
+                    self.config.mod_type,
                     Message::UninstallLoaderOptiFineStart,
                 ),
             )
             .spacing(5)
             .into(),
 
-            "NeoForge" => {
-                Self::get_uninstall_panel(&self.config.mod_type, Message::UninstallLoaderForgeStart)
+            Loader::Neoforge => {
+                Self::get_uninstall_panel(self.config.mod_type, Message::UninstallLoaderForgeStart)
             }
-            "Fabric" | "Quilt" => Self::get_uninstall_panel(
-                &self.config.mod_type,
-                Message::UninstallLoaderFabricStart,
-            ),
-            "Paper" => {
-                Self::get_uninstall_panel(&self.config.mod_type, Message::UninstallLoaderPaperStart)
+            Loader::Fabric | Loader::Quilt => {
+                Self::get_uninstall_panel(self.config.mod_type, Message::UninstallLoaderFabricStart)
+            }
+            Loader::Paper => {
+                Self::get_uninstall_panel(self.config.mod_type, Message::UninstallLoaderPaperStart)
             }
 
             _ => {
@@ -256,7 +252,10 @@ impl MenuEditMods {
         }
     }
 
-    fn get_uninstall_panel(mod_type: &'_ str, uninstall_loader_message: Message) -> Element<'_> {
+    fn get_uninstall_panel(
+        mod_type: Loader,
+        uninstall_loader_message: Message,
+    ) -> Element<'static> {
         widget::button(
             widget::row![
                 icon_manager::delete_with_size(14),
@@ -268,7 +267,7 @@ impl MenuEditMods {
         )
         .on_press(Message::UninstallLoaderConfirm(
             Box::new(uninstall_loader_message),
-            mod_type.to_owned(),
+            mod_type,
         ))
         .into()
     }
@@ -302,7 +301,7 @@ impl MenuEditMods {
             widget::column!(
                 widget::Column::new()
                     .push_maybe(
-                        (self.config.mod_type == "Vanilla" && !self.sorted_mods_list.is_empty())
+                        (self.config.mod_type.is_vanilla() && !self.sorted_mods_list.is_empty())
                         .then_some(
                             widget::container(
                                 widget::text(

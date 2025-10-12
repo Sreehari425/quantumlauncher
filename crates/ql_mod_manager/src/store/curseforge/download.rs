@@ -106,7 +106,7 @@ impl<'a> ModDownloader<'a> {
                 response.name.clone(),
                 id,
                 self.version.clone(),
-                self.loader.as_deref(),
+                self.loader,
                 query_type,
             )
             .await?;
@@ -163,7 +163,7 @@ impl<'a> ModDownloader<'a> {
     pub async fn ensure_essential_mods(&mut self) -> Result<(), ModError> {
         const FABRIC: &str = "4";
 
-        if self.loader.as_deref() == Some(FABRIC)
+        if self.loader == Some(FABRIC)
             && !self.index.mods.values_mut().any(|n| n.name == "Fabric API")
         {
             self.download("306612", None).await?;

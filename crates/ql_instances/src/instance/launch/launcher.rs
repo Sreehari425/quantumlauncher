@@ -3,7 +3,6 @@ use crate::{
     download::GameDownloader,
     jarmod,
 };
-use ql_core::json::{GlobalSettings, V_1_5_2, V_PRECLASSIC_LAST};
 use ql_core::{
     err, file_utils, info,
     json::{
@@ -13,6 +12,10 @@ use ql_core::{
     },
     pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError, JsonFileError,
     CLASSPATH_SEPARATOR, LAUNCHER_DIR,
+};
+use ql_core::{
+    json::{GlobalSettings, V_1_5_2, V_PRECLASSIC_LAST},
+    Loader,
 };
 use ql_java_handler::{get_java_binary, JavaVersion};
 use std::{
@@ -353,7 +356,7 @@ impl GameLauncher {
         java_arguments: &mut Vec<String>,
         game_arguments: &mut Vec<String>,
     ) -> Result<Option<FabricJSON>, GameLaunchError> {
-        if !(self.config_json.mod_type == "Fabric" || self.config_json.mod_type == "Quilt") {
+        if !matches!(self.config_json.mod_type, Loader::Fabric | Loader::Quilt) {
             return Ok(None);
         }
 
@@ -374,7 +377,7 @@ impl GameLauncher {
         java_arguments: &mut Vec<String>,
         game_arguments: &mut Vec<String>,
     ) -> Result<Option<forge::JsonDetails>, GameLaunchError> {
-        if self.config_json.mod_type != "Forge" && self.config_json.mod_type != "NeoForge" {
+        if !matches!(self.config_json.mod_type, Loader::Forge | Loader::Neoforge) {
             return Ok(None);
         }
         if self.version_json.is_legacy_version() && self.version_json.get_id() != "1.5.2" {
@@ -436,7 +439,7 @@ impl GameLauncher {
         &self,
         game_arguments: &mut Vec<String>,
     ) -> Result<Option<(JsonOptifine, PathBuf)>, GameLaunchError> {
-        if self.config_json.mod_type != "OptiFine" {
+        if !matches!(self.config_json.mod_type, Loader::OptiFine) {
             return Ok(None);
         }
 

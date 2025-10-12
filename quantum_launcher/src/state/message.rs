@@ -7,7 +7,8 @@ use std::{
 
 use iced::widget;
 use ql_core::{
-    file_utils::DirItem, jarmod::JarMods, InstanceSelection, ListEntry, ModId, StoreBackendType,
+    file_utils::DirItem, jarmod::JarMods, InstanceSelection, ListEntry, Loader, ModId,
+    StoreBackendType,
 };
 use ql_instances::{
     auth::{
@@ -312,7 +313,7 @@ pub enum Message {
     InstallPaperStart,
     InstallPaperEnd(Res),
 
-    UninstallLoaderConfirm(Box<Message>, String),
+    UninstallLoaderConfirm(Box<Message>, Loader),
     UninstallLoaderFabricStart,
     UninstallLoaderForgeStart,
     UninstallLoaderOptiFineStart,

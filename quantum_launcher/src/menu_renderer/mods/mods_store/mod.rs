@@ -1,6 +1,6 @@
 use frostmark::MarkWidget;
 use iced::{widget, Length};
-use ql_core::{ModId, StoreBackendType};
+use ql_core::{Loader, ModId, StoreBackendType};
 use ql_mod_manager::store::{QueryType, SearchMod};
 
 use crate::{
@@ -31,7 +31,7 @@ impl MenuModsDownload {
             widget::Column::new()
                 .push_maybe(
                     (self.query_type == QueryType::Shaders
-                        && self.config.mod_type != "OptiFine"
+                        && self.config.mod_type != Loader::OptiFine
 
                         // Iris Shaders Mod
                         && !self.mod_index.mods.contains_key("YL57xq9U") // Modrinth ID
@@ -46,7 +46,7 @@ impl MenuModsDownload {
                 )
                 .push_maybe(
                     (self.query_type == QueryType::Mods
-                        && self.config.mod_type == "Vanilla")
+                        && self.config.mod_type.is_vanilla())
                     .then_some(
                         widget::container(
                             widget::text(

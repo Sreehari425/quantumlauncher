@@ -208,7 +208,7 @@ impl Launcher {
 
             let (update_cmd, update_check_handle) = if !check_updates
                 || this.mod_updates_checked.contains_key(instance)
-                || config_json.mod_type == "Vanilla"
+                || config_json.mod_type.is_vanilla()
             {
                 (Task::none(), None)
             } else {

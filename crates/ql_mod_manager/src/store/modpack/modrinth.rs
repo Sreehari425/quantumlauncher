@@ -148,7 +148,7 @@ fn expect_got_modrinth(index_json: &PackIndex, config: &InstanceConfigJson) -> P
     {
         Some(expect) => PackError::Loader {
             expect,
-            got: config.mod_type.clone(),
+            got: config.mod_type,
         },
         None => PackError::NoLoadersSpecified,
     }

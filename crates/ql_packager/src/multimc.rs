@@ -251,7 +251,7 @@ async fn install_fabric(
 
     let mut config = InstanceConfigJson::read(instance_selection).await?;
     config.main_class_override = Some(fabric_json.mainClass.clone());
-    "Fabric".clone_into(&mut config.mod_type);
+    config.mod_type = Loader::Fabric;
     config.save(instance_selection).await?;
 
     let fabric_json_path = instance_path.join("fabric.json");
