@@ -2,7 +2,7 @@ use std::{collections::HashSet, fmt::Display, path::PathBuf, sync::mpsc::Sender,
 
 use chrono::DateTime;
 use ql_core::{
-    err, json::VersionDetails, GenericProgress, InstanceSelection, IntoIoError, Loader, ModId,
+    json::VersionDetails, GenericProgress, InstanceSelection, IntoIoError, Loader, ModId,
     StoreBackendType,
 };
 
@@ -255,58 +255,52 @@ pub struct SearchMod {
     pub icon_url: String,
 }
 
-async fn get_mods_resourcepacks_shaderpacks_dir(
-    instance_name: &InstanceSelection,
-    version_json: &VersionDetails,
-) -> Result<(PathBuf, PathBuf, PathBuf), ModError> {
-    let dot_minecraft_dir = instance_name.get_dot_minecraft_path();
-    let mods_dir = dot_minecraft_dir.join("mods");
-    tokio::fs::create_dir_all(&mods_dir).await.path(&mods_dir)?;
-
-    // Minecraft 13w24a release date (1.6.1 snapshot)
-    // Switched from Texture Packs to Resource Packs
-    let v1_6_1 = DateTime::parse_from_rfc3339("2013-06-13T15:32:23+00:00")?;
-    let resource_packs = match DateTime::parse_from_rfc3339(&version_json.releaseTime) {
-        Ok(dt) => {
-            if dt >= v1_6_1 {
-                "resourcepacks"
-            } else {
-                "texturepacks"
-            }
-        }
-        Err(e) => {
-            err!("Could not parse instance date/time: {e}");
-            "resourcepacks"
-        }
-    };
-
-    let resource_packs_dir = dot_minecraft_dir.join(resource_packs);
-    tokio::fs::create_dir_all(&resource_packs_dir)
-        .await
-        .path(&resource_packs_dir)?;
-
-    let shader_packs_dir = dot_minecraft_dir.join("shaderpacks");
-    tokio::fs::create_dir_all(&shader_packs_dir)
-        .await
-        .path(&shader_packs_dir)?;
-
-    Ok((mods_dir, resource_packs_dir, shader_packs_dir))
+struct DirStructure {
+    mods: PathBuf,
+    resource_packs: PathBuf,
+    shaders: PathBuf,
 }
 
-async fn get_dir(
-    instance: &InstanceSelection,
-    json: &VersionDetails,
-    query_type: QueryType,
-) -> Result<PathBuf, PackError> {
-    let (dir_mods, dir_res_packs, dir_shader) =
-        get_mods_resourcepacks_shaderpacks_dir(instance, json).await?;
-    let dir = match query_type {
-        QueryType::Mods => dir_mods,
-        QueryType::ResourcePacks => dir_res_packs,
-        QueryType::Shaders => dir_shader,
-        QueryType::ModPacks => return Err(PackError::ModpackInModpack),
-    };
-    Ok(dir)
+impl DirStructure {
+    pub async fn new(
+        instance_name: &InstanceSelection,
+        version_json: &VersionDetails,
+    ) -> Result<Self, ModError> {
+        // Minecraft 13w23b release date (1.6.1 snapshot)
+        // Last version with Texture Packs instead of Resource Packs
+        const V1_6_1: &str = "2013-06-08T00:32:01+00:00";
+
+        let dot_minecraft_dir = instance_name.get_dot_minecraft_path();
+
+        let resource_packs = if version_json.is_before_or_eq(V1_6_1) {
+            "texturepacks"
+        } else {
+            "resourcepacks"
+        };
+
+        let resource_packs = dot_minecraft_dir.join(resource_packs);
+        tokio::fs::create_dir_all(&resource_packs)
+            .await
+            .path(&resource_packs)?;
+
+        let shaders = dot_minecraft_dir.join("shaderpacks");
+        tokio::fs::create_dir_all(&shaders).await.path(&shaders)?;
+
+        Ok(Self {
+            mods: dot_minecraft_dir.join("mods"),
+            resource_packs,
+            shaders,
+        })
+    }
+
+    pub fn get(&self, query_type: QueryType) -> Result<PathBuf, PackError> {
+        Ok(match query_type {
+            QueryType::Mods => self.mods.clone(),
+            QueryType::ResourcePacks => self.resource_packs.clone(),
+            QueryType::Shaders => self.shaders.clone(),
+            QueryType::ModPacks => return Err(PackError::ModpackInModpack),
+        })
+    }
 }
 
 #[must_use]

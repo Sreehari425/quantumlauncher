@@ -1,7 +1,6 @@
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
-    path::{Path, PathBuf},
     sync::mpsc::Sender,
 };
 
@@ -11,26 +10,24 @@ use ql_core::{
 };
 
 use crate::store::{
-    get_mods_resourcepacks_shaderpacks_dir, install_modpack,
+    install_modpack,
     local_json::{ModConfig, ModIndex},
     modrinth::versions::ModVersion,
-    ModError, QueryType, SOURCE_ID_MODRINTH,
+    DirStructure, ModError, QueryType, SOURCE_ID_MODRINTH,
 };
 
 use super::info::ProjectInfo;
 
 pub struct ModDownloader {
+    instance: InstanceSelection,
     version: String,
-    pub index: ModIndex,
     loader: Option<&'static str>,
+
+    pub index: ModIndex,
     currently_installing_mods: HashSet<String>,
     pub info: HashMap<String, ProjectInfo>,
-    instance: InstanceSelection,
     sender: Option<Sender<GenericProgress>>,
-
-    mods_dir: PathBuf,
-    resourcepacks_dir: PathBuf,
-    shaderpacks_dir: PathBuf,
+    dirs: DirStructure,
 }
 
 impl ModDownloader {
@@ -39,8 +36,6 @@ impl ModDownloader {
         sender: Option<Sender<GenericProgress>>,
     ) -> Result<ModDownloader, ModError> {
         let version_json = VersionDetails::load(instance).await?;
-        let (mods_dir, resourcepacks_dir, shaderpacks_dir) =
-            get_mods_resourcepacks_shaderpacks_dir(instance, &version_json).await?;
 
         let index = ModIndex::load(instance).await?;
         let loader = instance
@@ -58,9 +53,7 @@ impl ModDownloader {
             instance: instance.clone(),
             sender,
 
-            mods_dir,
-            resourcepacks_dir,
-            shaderpacks_dir,
+            dirs: DirStructure::new(instance, &version_json).await?,
         })
     }
 
@@ -233,15 +226,6 @@ impl ModDownloader {
         Ok(download_version)
     }
 
-    fn get_dir(&self, project_type: QueryType) -> Option<&Path> {
-        match project_type {
-            QueryType::Mods => Some(&self.mods_dir),
-            QueryType::ResourcePacks => Some(&self.resourcepacks_dir),
-            QueryType::Shaders => Some(&self.shaderpacks_dir),
-            QueryType::ModPacks => None,
-        }
-    }
-
     async fn download_file(
         &self,
         project_type: QueryType,
@@ -258,7 +242,7 @@ impl ModDownloader {
             );
             return Ok(());
         }
-        let file_path = self.get_dir(project_type).unwrap().join(&file.filename);
+        let file_path = self.dirs.get(project_type).unwrap().join(&file.filename);
         file_utils::download_file_to_path(&file.url, true, &file_path).await?;
         Ok(())
     }

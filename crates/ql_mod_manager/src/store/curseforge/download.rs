@@ -1,6 +1,5 @@
 use std::{
     collections::{HashMap, HashSet},
-    path::PathBuf,
     sync::mpsc::Sender,
 };
 
@@ -10,8 +9,8 @@ use ql_core::{
 
 use crate::store::{
     curseforge::{get_query_type, ModQuery},
-    get_mods_resourcepacks_shaderpacks_dir, install_modpack, CurseforgeNotAllowed, ModConfig,
-    ModError, ModFile, ModIndex, QueryType, SOURCE_ID_CURSEFORGE,
+    install_modpack, CurseforgeNotAllowed, DirStructure, ModConfig, ModError, ModFile, ModIndex,
+    QueryType, SOURCE_ID_CURSEFORGE,
 };
 
 use super::Mod;
@@ -22,9 +21,7 @@ pub struct ModDownloader<'a> {
     pub loader: Option<&'static str>,
     pub index: ModIndex,
 
-    mods_dir: PathBuf,
-    resourcepacks_dir: PathBuf,
-    shaderpacks_dir: PathBuf,
+    dirs: DirStructure,
 
     pub query_cache: HashMap<String, Mod>,
     pub not_allowed: HashSet<CurseforgeNotAllowed>,
@@ -38,8 +35,6 @@ impl<'a> ModDownloader<'a> {
         sender: Option<&'a Sender<GenericProgress>>,
     ) -> Result<Self, ModError> {
         let version_json = VersionDetails::load(&instance).await?;
-        let (mods_dir, resourcepacks_dir, shaderpacks_dir) =
-            get_mods_resourcepacks_shaderpacks_dir(&instance, &version_json).await?;
 
         Ok(Self {
             version: version_json.get_id().to_owned(),
@@ -49,9 +44,7 @@ impl<'a> ModDownloader<'a> {
                 .not_vanilla()
                 .map(|n| n.to_curseforge_num()),
             index: ModIndex::load(&instance).await?,
-            mods_dir,
-            resourcepacks_dir,
-            shaderpacks_dir,
+            dirs: DirStructure::new(&instance, &version_json).await?,
             already_installed: HashSet::new(),
             query_cache: HashMap::new(),
             instance,
@@ -122,9 +115,9 @@ impl<'a> ModDownloader<'a> {
         };
 
         let dir = match query_type {
-            QueryType::Mods => &self.mods_dir,
-            QueryType::ResourcePacks => &self.resourcepacks_dir,
-            QueryType::Shaders => &self.shaderpacks_dir,
+            QueryType::Mods => &self.dirs.mods,
+            QueryType::ResourcePacks => &self.dirs.resource_packs,
+            QueryType::Shaders => &self.dirs.shaders,
             QueryType::ModPacks => {
                 let bytes = file_utils::download_file_to_bytes(&url, true).await?;
                 self.index.save(&self.instance).await?;

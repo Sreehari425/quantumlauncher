@@ -13,7 +13,8 @@ use tokio::sync::Mutex;
 
 use crate::store::{
     curseforge::{self, get_query_type, CFSearchResult, CurseforgeFileQuery, ModQuery},
-    get_dir, CurseforgeNotAllowed, ModConfig, ModFile, ModIndex, QueryType, SOURCE_ID_CURSEFORGE,
+    CurseforgeNotAllowed, DirStructure, ModConfig, ModFile, ModIndex, QueryType,
+    SOURCE_ID_CURSEFORGE,
 };
 
 use super::PackError;
@@ -53,8 +54,7 @@ impl PackFile {
     pub async fn download(
         &self,
         not_allowed: &Mutex<HashSet<CurseforgeNotAllowed>>,
-        instance: &InstanceSelection,
-        json: &VersionDetails,
+        dirs: &DirStructure,
         sender: Option<&Sender<GenericProgress>>,
         (i, len): (&Mutex<usize>, usize),
         cache: &HashMap<String, curseforge::Mod>,
@@ -79,9 +79,7 @@ impl PackFile {
             return Ok(());
         };
 
-        let path = get_dir(instance, json, query_type)
-            .await?
-            .join(&query.data.fileName);
+        let path = dirs.get(query_type)?.join(&query.data.fileName);
         if path.is_file() {
             let metadata = tokio::fs::metadata(&path).await.path(&path)?;
             let got_len = metadata.len();
@@ -222,6 +220,7 @@ pub async fn install(
 
     let i = Mutex::new(0);
     let mod_index = Mutex::new(ModIndex::load(instance).await?);
+    let dirs = DirStructure::new(instance, json).await?;
 
     let cache: HashMap<String, curseforge::Mod> = {
         let project_ids: Vec<String> = index
@@ -237,17 +236,12 @@ pub async fn install(
             .collect()
     };
 
-    do_jobs::<(), PackError>(index.files.iter().map(|file| {
-        file.download(
-            &not_allowed,
-            instance,
-            json,
-            sender,
-            (&i, len),
-            &cache,
-            &mod_index,
-        )
-    }))
+    do_jobs::<(), PackError>(
+        index
+            .files
+            .iter()
+            .map(|file| file.download(&not_allowed, &dirs, sender, (&i, len), &cache, &mod_index)),
+    )
     .await?;
 
     mod_index.lock().await.save(instance).await?;
