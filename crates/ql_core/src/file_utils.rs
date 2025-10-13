@@ -1,7 +1,6 @@
 use std::{
     collections::HashSet,
     ffi::OsStr,
-    fs::Metadata,
     io::{Cursor, Write},
     path::{Path, PathBuf},
     sync::LazyLock,
@@ -11,14 +10,13 @@ use futures::StreamExt;
 use reqwest::header::InvalidHeaderValue;
 use serde::de::DeserializeOwned;
 use thiserror::Error;
-use tokio::fs::DirEntry;
 use tokio_util::io::StreamReader;
 use walkdir::WalkDir;
 use zip::{write::FileOptions, ZipArchive, ZipWriter};
 
 use crate::{
     error::{DownloadFileError, IoError},
-    info_no_log, retry, IntoIoError, IntoJsonError, JsonDownloadError, CLIENT, WEBSITE,
+    retry, IntoIoError, IntoJsonError, JsonDownloadError, CLIENT, WEBSITE,
 };
 
 /// The path to the QuantumLauncher root folder.
@@ -432,52 +430,6 @@ pub fn create_symlink(src: &Path, dest: &Path) -> Result<(), IoError> {
             symlink_file(src, dest).path(src)
         }
     }
-}
-
-pub async fn clean_dir(path: &str) -> Result<(), IoError> {
-    const SIZE_LIMIT_BYTES: u64 = 100 * 1024 * 1024; // 100 MB
-
-    let dir = get_launcher_dir()?.join(path);
-    if !dir.is_dir() {
-        tokio::fs::create_dir_all(&dir).await.path(dir)?;
-        return Ok(());
-    }
-    let mut total_size = 0;
-    let mut files: Vec<(DirEntry, Metadata)> = Vec::new();
-
-    let mut read_dir = tokio::fs::read_dir(&dir).await.dir(&dir)?;
-
-    while let Some(entry) = read_dir.next_entry().await.dir(&dir)? {
-        let metadata = entry.metadata().await.path(entry.path())?;
-        if metadata.is_file() {
-            total_size += metadata.len();
-            files.push((entry, metadata));
-        }
-    }
-
-    if total_size <= SIZE_LIMIT_BYTES {
-        return Ok(());
-    }
-
-    info_no_log!(
-        "Exceeded {} MB, cleaning up {dir:?}",
-        SIZE_LIMIT_BYTES / (1024 * 1024)
-    );
-    files.sort_unstable_by_key(|(_, metadata)| {
-        metadata.modified().unwrap_or(std::time::SystemTime::now())
-    });
-
-    for (file, metadata) in files {
-        let path = file.path();
-        tokio::fs::remove_file(&path).await.path(path)?;
-        total_size -= metadata.len();
-
-        if total_size <= SIZE_LIMIT_BYTES {
-            break;
-        }
-    }
-
-    Ok(())
 }
 
 /// Recursively copies the contents of

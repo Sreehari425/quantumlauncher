@@ -28,12 +28,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 use std::{borrow::Cow, time::Duration};
 
 use config::LauncherConfig;
-use iced::{futures::executor::block_on, Settings, Task};
+use iced::{Settings, Task};
 use state::{get_entries, Launcher, Message, ServerProcess};
 
 use ql_core::{err, err_no_log, file_utils, info, info_no_log, IntoStringError, JsonFileError};
 use ql_instances::OS_NAME;
-use tokio::io::AsyncWriteExt;
 
 use crate::{menu_renderer::FONT_DEFAULT, state::CustomJarState};
 
@@ -106,36 +105,15 @@ impl Launcher {
             Task::batch([
                 check_for_updates_command,
                 get_entries_command,
-                Task::perform(file_utils::clean_dir("logs"), |n| {
+                Task::perform(ql_core::clean::dir("logs"), |n| {
                     Message::CoreCleanComplete(n.strerr())
                 }),
-                Task::perform(file_utils::clean_dir("downloads/cache"), |n| {
+                Task::perform(ql_core::clean::dir("downloads/cache"), |n| {
                     Message::CoreCleanComplete(n.strerr())
                 }),
                 CustomJarState::load(),
             ]),
         )
-    }
-
-    fn kill_selected_server(&mut self, server: &str) {
-        if let Some(ServerProcess {
-            stdin: Some(stdin),
-            is_classic_server,
-            child,
-            has_issued_stop_command,
-            ..
-        }) = self.server_processes.get_mut(server)
-        {
-            *has_issued_stop_command = true;
-            if *is_classic_server {
-                if let Err(err) = child.lock().unwrap().start_kill() {
-                    err!("Could not kill classic server: {err}");
-                }
-            } else {
-                let future = stdin.write_all("stop\n".as_bytes());
-                _ = block_on(future);
-            };
-        }
     }
 
     // Iced expects a `fn(&self)` so we're putting `&self`

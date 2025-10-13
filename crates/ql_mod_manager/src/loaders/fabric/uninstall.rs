@@ -80,6 +80,13 @@ pub async fn uninstall_client(instance_name: String) -> Result<(), FabricInstall
         }
     }
 
+    let cache_dir = instance_dir.join(".minecraft/.fabric");
+    if tokio::fs::try_exists(&cache_dir).await.path(&cache_dir)? {
+        tokio::fs::remove_dir_all(&cache_dir)
+            .await
+            .path(&cache_dir)?;
+    }
+
     change_instance_type(&instance_dir, Loader::Vanilla).await?;
     Ok(())
 }

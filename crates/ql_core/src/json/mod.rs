@@ -10,7 +10,7 @@ pub mod version;
 pub use fabric::FabricJSON;
 pub use optifine::{JsonOptifine, OptifineArguments, OptifineLibrary};
 
-pub use asset_index::AssetIndexMap;
+pub use asset_index::AssetIndex;
 pub use instance_config::{GlobalSettings, InstanceConfigJson};
 pub use manifest::Manifest;
 pub use version::{

@@ -33,6 +33,9 @@ impl ImageState {
         let mut commands = Vec::new();
 
         for url in self.to_load.lock().unwrap().drain() {
+            if url.is_empty() {
+                continue;
+            }
             if !self.downloads_in_progress.contains(&url) {
                 self.downloads_in_progress.insert(url.clone());
                 commands.push(Task::perform(

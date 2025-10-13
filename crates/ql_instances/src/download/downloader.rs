@@ -8,7 +8,7 @@ use ql_core::{
     do_jobs,
     file_utils::{self, LAUNCHER_DIR},
     impl_3_errs_jri, info,
-    json::{AssetIndexMap, InstanceConfigJson, Manifest, VersionDetails},
+    json::{AssetIndex, InstanceConfigJson, Manifest, VersionDetails},
     pt, DownloadFileError, DownloadProgress, IntoIoError, IntoJsonError, IoError, JsonError,
     ListEntry, Loader, RequestError,
 };
@@ -139,7 +139,7 @@ impl GameDownloader {
 
     pub async fn download_assets(&self) -> Result<(), DownloadError> {
         info!("Downloading assets");
-        let asset_index: AssetIndexMap =
+        let asset_index: AssetIndex =
             file_utils::download_file_to_json(&self.version_json.assetIndex.url, false).await?;
 
         let assets_dir = LAUNCHER_DIR.join("assets");
@@ -193,7 +193,7 @@ impl GameDownloader {
 
     async fn save_asset_index(
         &self,
-        asset_index: &AssetIndexMap,
+        asset_index: &AssetIndex,
         current_assets_dir: &Path,
     ) -> Result<(), DownloadError> {
         let assets_indexes_path = current_assets_dir.join("indexes");

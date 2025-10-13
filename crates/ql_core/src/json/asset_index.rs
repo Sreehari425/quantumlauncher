@@ -5,14 +5,15 @@ use serde::{Deserialize, Serialize};
 use crate::{err, file_utils, DownloadFileError, IntoIoError, RequestError};
 
 #[derive(Serialize, Deserialize)]
-pub struct AssetIndexMap {
+pub struct AssetIndex {
     pub objects: HashMap<String, AssetObject>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct AssetObject {
     pub hash: String,
-    pub size: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
 }

@@ -15,7 +15,7 @@ pub const V_1_12_2: &str = "2017-09-18T08:39:46+00:00";
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct VersionDetails {
     /// An index/list of assets (music/sounds) to be downloaded.
-    pub assetIndex: AssetIndex,
+    pub assetIndex: AssetIndexInfo,
     /// Which version of the assets to be downloaded.
     pub assets: String,
     /// Where to download the client/server jar.
@@ -197,7 +197,7 @@ pub struct Arguments {
 
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct AssetIndex {
+pub struct AssetIndexInfo {
     pub id: String,
     pub sha1: String,
     pub size: usize,
