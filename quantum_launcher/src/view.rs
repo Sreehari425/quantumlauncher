@@ -7,7 +7,7 @@ use crate::{
         view_log_upload_result, Element, FONT_MONO,
     },
     state::{Launcher, Message, State},
-    stylesheet::{styles::LauncherTheme, widgets::StyleButton},
+    stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
     DEBUG_LOG_BUTTON_HEIGHT,
 };
 
@@ -180,10 +180,29 @@ impl Launcher {
             menu
         } else {
             let round = !self.config.c_window_decorations();
-            widget::container(menu)
-                .style(move |t: &LauncherTheme| t.style_container_bg_semiround([round; 4], None))
-                .width(Length::Fill)
-                .height(Length::Fill)
+            widget::Column::new()
+                .push_maybe(
+                    round.then_some(
+                        widget::mouse_area(
+                            widget::container(widget::row![])
+                                .height(28)
+                                .width(Length::Fill)
+                                .style(|t: &LauncherTheme| {
+                                    t.style_container_bg_semiround(
+                                        [true, true, false, false],
+                                        Some((Color::ExtraDark, 1.0)),
+                                    )
+                                }),
+                        )
+                        .on_press(Message::CoreTitlebarPressed),
+                    ),
+                )
+                .push(
+                    widget::container(menu)
+                        .style(move |t: &LauncherTheme| t.style_container_bg(0.0, None))
+                        .width(Length::Fill)
+                        .height(Length::Fill),
+                )
                 .into()
         }
     }
