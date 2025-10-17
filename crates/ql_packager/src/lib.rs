@@ -10,10 +10,11 @@ use ql_instances::DownloadError;
 
 mod export;
 mod import;
-mod multimc;
+pub mod multimc;
 
 pub use export::{export_instance, EXCEPTIONS};
 pub use import::import_instance;
+pub use multimc::{export_to_multimc, import_from_multimc};
 
 const PKG_ERR_PREFIX: &str = "while importing/exporting instance:\n";
 #[derive(Debug, Error)]

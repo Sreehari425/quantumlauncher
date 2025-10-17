@@ -78,6 +78,27 @@ then go to "Mods->Add File""#,
                 }
                 Err(err) => self.set_error(err),
             },
+            CreateInstanceMessage::ImportMultiMC => {
+                if let Some(file) = rfd::FileDialog::new()
+                    .set_title("Select a MultiMC/PrismLauncher instance ZIP...")
+                    .add_filter("ZIP files", &["zip"])
+                    .pick_file()
+                {
+                    let (send, recv) = std::sync::mpsc::channel();
+                    let progress = ProgressBar::with_recv(recv);
+
+                    pt!("(Internal): Importing MultiMC instance...");
+
+                    self.state = State::Create(MenuCreateInstance::ImportingInstance(progress));
+
+                    return Task::perform(
+                        ql_packager::import_instance(file.clone(), true, Some(send)),
+                        |n| {
+                            Message::CreateInstance(CreateInstanceMessage::ImportResult(n.strerr()))
+                        },
+                    );
+                }
+            }
         }
         Task::none()
     }

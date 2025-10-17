@@ -76,9 +76,9 @@ pub async fn import_instance(
             )
             .await?,
         )
-    } else if let Ok(mmc_pack) = fs::read_to_string(&try_mmc).await {
+    } else if fs::metadata(&try_mmc).await.is_ok() {
         Some(
-            crate::multimc::import(download_assets, temp_dir, &mmc_pack, sender.map(Arc::new))
+            crate::multimc::import_from_multimc(download_assets, temp_dir, sender.map(Arc::new))
                 .await?,
         )
     } else {

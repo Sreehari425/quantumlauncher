@@ -49,6 +49,7 @@ pub enum CreateInstanceMessage {
     #[allow(unused)]
     Import,
     ImportResult(Res<Option<InstanceSelection>>),
+    ImportMultiMC,
 }
 
 #[derive(Debug, Clone)]

@@ -160,8 +160,12 @@ impl MenuCreateInstance {
             MenuCreateInstance::LoadingList { .. } => widget::column![
                 widget::row![
                     back_button().on_press(Message::CreateInstance(CreateInstanceMessage::Cancel)),
-                    button_with_icon(icon_manager::folder_with_size(14), "Import Instance", 14)
+                    button_with_icon(icon_manager::folder_with_size(14), "Import QL", 14)
                         .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
+                    button_with_icon(icon_manager::folder_with_size(14), "Import MultiMC", 14)
+                        .on_press(Message::CreateInstance(
+                            CreateInstanceMessage::ImportMultiMC
+                        )),
                 ]
                 .spacing(5),
                 widget::text("Loading version list...").size(20),
@@ -222,8 +226,10 @@ impl MenuCreateInstance {
                                         message: None,
                                         clear_selection: false
                                 }),
-                            button_with_icon(icon_manager::folder_with_size(14), "Import Instance", 14)
+                            button_with_icon(icon_manager::folder_with_size(14), "Import QL", 14)
                                 .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
+                            button_with_icon(icon_manager::folder_with_size(14), "Import MultiMC", 14)
+                                .on_press(Message::CreateInstance(CreateInstanceMessage::ImportMultiMC)),
                         ]
                         .spacing(5),
                         widget::combo_box(combo_state, "Select a version...", selected_version.as_ref(), |version| {

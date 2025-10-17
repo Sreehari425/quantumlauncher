@@ -117,7 +117,13 @@ impl MenuModsDownload {
                 .size(14)
                 .into()
             }))
-            .spacing(5)
+            .spacing(5),
+            widget::Space::with_height(5) // FIXME: Categories feature commented out - missing fields in MenuModsDownload
+                                          // widget::text("Categories:").size(18),
+                                          // {
+                                          //     let mut category_column = widget::column![];
+                                          //     category_column.spacing(5)
+                                          // }
         )
         .spacing(5);
 
