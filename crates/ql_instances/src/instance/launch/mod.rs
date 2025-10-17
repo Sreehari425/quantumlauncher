@@ -1,4 +1,4 @@
-use crate::auth::AccountData;
+use crate::{auth::AccountData, ARG_REDACT_SECTIONS};
 use error::GameLaunchError;
 use ql_core::{err, info, GenericProgress};
 use std::sync::{mpsc::Sender, Arc, Mutex};
@@ -109,24 +109,29 @@ pub async fn launch(
 }
 
 fn print_censored_args(auth: Option<&AccountData>, game_arguments: &mut Vec<String>) {
-    censor(game_arguments, "--clientId", |args| {
-        censor(args, "--session", |args| {
-            censor(args, "--accessToken", |args| {
-                censor(args, "--uuid", |args| {
-                    censor_string(
-                        args,
-                        &auth
-                            .as_ref()
-                            .and_then(|n| n.access_token.clone())
-                            .unwrap_or_default(),
-                        |args| {
-                            info!("Game args: {args:?}\n");
-                        },
-                    );
+    let redact = *ARG_REDACT_SECTIONS.lock().unwrap();
+    if redact {
+        censor(game_arguments, "--clientId", |args| {
+            censor(args, "--session", |args| {
+                censor(args, "--accessToken", |args| {
+                    censor(args, "--uuid", |args| {
+                        censor_string(
+                            args,
+                            &auth
+                                .as_ref()
+                                .and_then(|n| n.access_token.clone())
+                                .unwrap_or_default(),
+                            |args| {
+                                info!("Game args: {args:?}\n");
+                            },
+                        );
+                    });
                 });
             });
         });
-    });
+    } else {
+        info!("Game args: {game_arguments:?}\n");
+    }
 }
 
 fn censor<F: FnOnce(&mut Vec<String>)>(vec: &mut Vec<String>, argument: &str, code: F) {

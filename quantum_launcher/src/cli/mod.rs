@@ -2,6 +2,7 @@ use clap::{Arg, ArgAction, Command};
 use itertools::Itertools;
 use owo_colors::{OwoColorize, Style};
 use ql_core::{err, LAUNCHER_VERSION_NAME, WEBSITE};
+use ql_instances::ARG_REDACT_SECTIONS;
 
 use crate::{
     cli::helpers::render_row,
@@ -62,6 +63,10 @@ fn command() -> Command {
     )
     .subcommand(Command::new("list-available-versions").short_flag('a').about("Lists all downloadable Minecraft versions"))
     .subcommand(Command::new("--no-sandbox").hide(true)) // This one doesn't do anything, but on Windows i686 it's automatically passed?
+    .arg(
+        Arg::new("--no-redact-args").long("no-redact-args")
+            .action(ArgAction::SetTrue).help("Stops censoring sensitive data in arguments")
+    )
 }
 
 fn get_launch_subcommand() -> Command {
@@ -175,6 +180,9 @@ fn get_right_text() -> String {
 pub fn start_cli(is_dir_err: bool) {
     let command = command();
     let matches = command.clone().get_matches();
+
+    let dont_redact: &bool = matches.get_one("--no-redact-args").unwrap();
+    *ARG_REDACT_SECTIONS.lock().unwrap() = !dont_redact;
 
     if let Some(subcommand) = matches.subcommand() {
         if is_dir_err {

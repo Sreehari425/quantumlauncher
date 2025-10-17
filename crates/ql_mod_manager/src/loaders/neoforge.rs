@@ -254,6 +254,7 @@ pub async fn get_versions(
             // Ensures there are a constant number of parts in the version.
             start_pattern.push_str(".0");
         }
+        start_pattern.push('.');
         start_pattern
     };
 
