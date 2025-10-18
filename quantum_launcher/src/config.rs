@@ -6,7 +6,7 @@ use ql_core::{
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::Path};
 
-pub const SIDEBAR_WIDTH_DEFAULT: u32 = 190;
+pub const SIDEBAR_WIDTH_DEFAULT: u64 = 190;
 
 /// Global launcher configuration stored in
 /// `QuantumLauncher/config.json`.
@@ -54,7 +54,7 @@ pub struct LauncherConfig {
     /// (which shows the list of instances). You can
     /// drag it around to resize it.
     // Since: v0.4
-    pub sidebar_width: Option<u32>,
+    pub sidebar_width: Option<u64>,
     /// A list of Minecraft accounts logged into the launcher.
     ///
     /// `String (username) : ConfigAccount { uuid: String, skin: None (unimplemented) }`

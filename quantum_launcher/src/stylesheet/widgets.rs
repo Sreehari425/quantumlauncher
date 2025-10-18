@@ -481,3 +481,31 @@ impl widget::rule::Catalog for LauncherTheme {
 }
 
 impl widget::combo_box::Catalog for LauncherTheme {}
+
+impl widget::pane_grid::Catalog for LauncherTheme {
+    type Class<'a> = ();
+
+    fn default<'a>() -> <Self as widget::pane_grid::Catalog>::Class<'a> {
+        ()
+    }
+
+    fn style(
+        &self,
+        _: &<Self as widget::pane_grid::Catalog>::Class<'_>,
+    ) -> widget::pane_grid::Style {
+        widget::pane_grid::Style {
+            hovered_region: widget::pane_grid::Highlight {
+                background: self.get_bg(Color::ExtraDark),
+                border: iced::Border::default(),
+            },
+            picked_split: widget::pane_grid::Line {
+                color: self.get(Color::SecondLight),
+                width: 2.0,
+            },
+            hovered_split: widget::pane_grid::Line {
+                color: self.get(Color::Mid),
+                width: 1.0,
+            },
+        }
+    }
+}

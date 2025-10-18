@@ -1,9 +1,8 @@
-use super::{SIDEBAR_DRAG_LEEWAY, SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT};
 use crate::message_update::MSG_RESIZE;
 use crate::state::{
     CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage, LauncherSettingsTab,
     MenuCreateInstance, MenuEditJarMods, MenuEditMods, MenuEditPresets, MenuExportInstance,
-    MenuInstallFabric, MenuInstallOptifine, MenuLaunch, MenuLauncherSettings, MenuLauncherUpdate,
+    MenuInstallFabric, MenuInstallOptifine, MenuLauncherSettings, MenuLauncherUpdate,
     MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, MenuServerCreate, Message, State,
 };
 use iced::{
@@ -17,8 +16,6 @@ use std::path::Path;
 
 impl Launcher {
     pub fn iced_event(&mut self, event: iced::Event, status: iced::event::Status) -> Task<Message> {
-        self.validate_sidebar_width();
-
         match event {
             iced::Event::Window(event) => match event {
                 iced::window::Event::CloseRequested => {
@@ -93,64 +90,13 @@ impl Launcher {
                 iced::mouse::Event::CursorMoved { position } => {
                     let pos = (position.x, position.y);
                     self.window_state.mouse_pos = pos;
-
-                    if let State::Launch(MenuLaunch {
-                        sidebar_width,
-                        sidebar_dragging: true,
-                        ..
-                    }) = &mut self.state
-                    {
-                        if pos.0 < SIDEBAR_LIMIT_LEFT {
-                            *sidebar_width = SIDEBAR_LIMIT_LEFT as u16;
-                        } else if (pos.0 + f32::from(SIDEBAR_LIMIT_RIGHT)
-                            > self.window_state.size.0)
-                            && self.window_state.size.0 as u16 > SIDEBAR_LIMIT_RIGHT
-                        {
-                            *sidebar_width = self.window_state.size.0 as u16 - SIDEBAR_LIMIT_RIGHT;
-                        } else {
-                            *sidebar_width = pos.0 as u16;
-                        }
-                    }
                 }
-                iced::mouse::Event::ButtonPressed(button) => {
-                    if let (State::Launch(menu), iced::mouse::Button::Left) =
-                        (&mut self.state, button)
-                    {
-                        let difference = self.window_state.mouse_pos.0 - f32::from(menu.sidebar_width);
-                        if difference > 0.0 && difference < SIDEBAR_DRAG_LEEWAY {
-                            menu.sidebar_dragging = true;
-                        }
-                    }
+                iced::mouse::Event::ButtonPressed(_) => {
                     if let iced::event::Status::Ignored = status {
                         self.hide_submenu();
                     }
                 }
-                iced::mouse::Event::ButtonReleased(button) => {
-                    if let (State::Launch(menu), iced::mouse::Button::Left) =
-                        (&mut self.state, button)
-                    {
-                        menu.sidebar_dragging = false;
-                    }
-                }
-                iced::mouse::Event::WheelScrolled { /*delta*/ .. } => {
-                    /*if let iced::event::Status::Ignored = status {
-                        if self.keys_pressed.contains(&Key::Named(Named::Control)) {
-                            match delta {
-                                iced::mouse::ScrollDelta::Lines { y, .. }
-                                | iced::mouse::ScrollDelta::Pixels { y, .. } => {
-                                    let new_scale =
-                                        self.config.ui_scale.unwrap_or(1.0) + (f64::from(y) / 5.0);
-                                    let new_scale = new_scale.clamp(0.5, 2.0);
-                                    self.config.ui_scale = Some(new_scale);
-                                    if let State::LauncherSettings(menu) = &mut self.state {
-                                        menu.temp_scale = new_scale;
-                                    }
-                                }
-                            }
-                        }
-                    }*/
-                }
-                iced::mouse::Event::CursorEntered | iced::mouse::Event::CursorLeft => {}
+                _ => {}
             },
             iced::Event::Touch(_) => {}
         }
@@ -272,23 +218,6 @@ impl Launcher {
             }
         } else {
             Task::none()
-        }
-    }
-
-    fn validate_sidebar_width(&mut self) {
-        if let State::Launch(MenuLaunch { sidebar_width, .. }) = &mut self.state {
-            self.config.sidebar_width = Some(u32::from(*sidebar_width));
-            let window_width = self.window_state.size.0;
-
-            if window_width > f32::from(SIDEBAR_LIMIT_RIGHT)
-                && *sidebar_width > window_width as u16 - SIDEBAR_LIMIT_RIGHT
-            {
-                *sidebar_width = window_width as u16 - SIDEBAR_LIMIT_RIGHT;
-            }
-
-            if window_width > SIDEBAR_LIMIT_LEFT && *sidebar_width < SIDEBAR_LIMIT_LEFT as u16 {
-                *sidebar_width = SIDEBAR_LIMIT_LEFT as u16;
-            }
         }
     }
 
@@ -445,7 +374,7 @@ impl Launcher {
             let State::Launch(menu) = &self.state else {
                 return Task::none();
             };
-            (menu.is_viewing_server, menu.sidebar_height)
+            (menu.is_viewing_server, menu.sidebar_scrolled)
         };
         let list = if is_viewing_server {
             self.server_list.clone()

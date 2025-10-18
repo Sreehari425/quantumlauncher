@@ -31,8 +31,7 @@ use std::{
 use tokio::io::AsyncWriteExt;
 use tokio::process::Child;
 
-pub const SIDEBAR_DRAG_LEEWAY: f32 = 10.0;
-pub const SIDEBAR_LIMIT_RIGHT: u16 = 120;
+pub const SIDEBAR_LIMIT_RIGHT: f32 = 120.0;
 pub const SIDEBAR_LIMIT_LEFT: f32 = 135.0;
 
 mod iced_event;
@@ -303,7 +302,7 @@ impl Launcher {
             };
             menu_launch.is_viewing_server = true;
             if let Some(width) = self.config.sidebar_width {
-                menu_launch.sidebar_width = width as u16;
+                menu_launch.resize_sidebar(width as f32, self.window_state.size.0);
             }
             self.state = State::Launch(menu_launch);
         }

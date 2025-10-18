@@ -333,7 +333,8 @@ pub enum Message {
     LaunchKillEnd(Res),
     LaunchChangeTab(LaunchTabId),
 
-    LaunchScrollSidebar(f32),
+    LaunchSidebarResize(f32),
+    LaunchSidebarScroll(f32),
 
     DeleteInstanceMenu,
     DeleteInstance,

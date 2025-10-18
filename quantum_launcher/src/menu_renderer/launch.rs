@@ -10,7 +10,6 @@ use crate::state::WindowMessage;
 use crate::{
     icon_manager,
     menu_renderer::DISCORD,
-    message_handler::SIDEBAR_DRAG_LEEWAY,
     state::{
         AccountMessage, CreateInstanceMessage, InstanceLog, LaunchTabId, Launcher,
         LauncherSettingsMessage, ManageModsMessage, MenuLaunch, Message, State, NEW_ACCOUNT_NAME,
@@ -49,18 +48,14 @@ impl Launcher {
             .as_ref()
             .map(InstanceSelection::get_name);
 
-        let difference = self.window_state.mouse_pos.0 - f32::from(menu.sidebar_width);
-        let hovered = difference < SIDEBAR_DRAG_LEEWAY && difference > 0.0;
-
-        widget::row!(
-            self.get_sidebar(selected_instance_s, menu),
-            self.get_tab(selected_instance_s, menu)
-        )
-        .spacing(if hovered || menu.sidebar_dragging {
-            2
-        } else {
-            0
+        widget::pane_grid(&menu.sidebar_grid_state, |_, is_sidebar, _| {
+            if *is_sidebar {
+                self.get_sidebar(selected_instance_s, menu).into()
+            } else {
+                self.get_tab(selected_instance_s, menu).into()
+            }
         })
+        .on_resize(10, |t| Message::LaunchSidebarResize(t.ratio))
         .into()
     }
 
@@ -278,8 +273,6 @@ impl Launcher {
         selected_instance_s: Option<&'a str>,
         menu: &'a MenuLaunch,
     ) -> Element<'a> {
-        let difference = self.window_state.mouse_pos.0 - f32::from(menu.sidebar_width);
-
         let list = if menu.is_viewing_server {
             self.server_list.as_deref()
         } else {
@@ -288,75 +281,69 @@ impl Launcher {
 
         let decor = self.config.c_window_decorations();
 
-        let is_hovered = difference < SIDEBAR_DRAG_LEEWAY
-            && difference > 0.0
-            && (!self.is_log_open
-                || (self.window_state.mouse_pos.1 < self.window_state.size.1 / 2.0));
+        let list = if let Some(instances) = list {
+            widget::column(instances.iter().map(|name| {
+                let playing_icon = if self.is_process_running(menu, name) {
+                    Some(widget::row![
+                        widget::horizontal_space(),
+                        icon_manager::play_with_size(15),
+                        widget::Space::with_width(10),
+                    ])
+                } else {
+                    None
+                };
 
-        let list = widget::row!(if let Some(instances) = list {
-            widget::column![
-                widget::scrollable(widget::column(instances.iter().map(|name| {
-                    let playing_icon = if self.is_process_running(menu, name) {
-                        Some(widget::row![
-                            widget::horizontal_space(),
-                            icon_manager::play_with_size(15),
-                            widget::Space::with_width(10),
-                        ])
-                    } else {
-                        None
-                    };
+                let text = widget::text(name)
+                    .size(15)
+                    .style(|t: &LauncherTheme| t.style_text(Color::SecondLight));
 
-                    let text = widget::text(name)
-                        .size(15)
-                        .style(|t: &LauncherTheme| t.style_text(Color::SecondLight));
-
-                    if selected_instance_s == Some(name) {
-                        widget::container(widget::row!(widget::Space::with_width(5), text))
-                            .style(LauncherTheme::style_container_selected_flat_button)
-                            .width(Length::Fill)
-                            .padding(5)
-                            .into()
-                    } else {
-                        underline(
-                            widget::button(widget::row![text].push_maybe(playing_icon))
-                                .style(|n: &LauncherTheme, status| {
-                                    n.style_button(status, StyleButton::FlatExtraDark)
-                                })
-                                .on_press(Message::LaunchInstanceSelected {
-                                    name: name.clone(),
-                                    is_server: menu.is_viewing_server,
-                                })
-                                .width(Length::Fill),
-                            Color::Dark,
-                        )
+                if selected_instance_s == Some(name) {
+                    widget::container(widget::row!(widget::Space::with_width(5), text))
+                        .style(LauncherTheme::style_container_selected_flat_button)
+                        .width(Length::Fill)
+                        .padding(5)
                         .into()
-                    }
-                })))
+                } else {
+                    underline(
+                        widget::button(widget::row![text].push_maybe(playing_icon))
+                            .style(|n: &LauncherTheme, status| {
+                                n.style_button(status, StyleButton::FlatExtraDark)
+                            })
+                            .on_press(Message::LaunchInstanceSelected {
+                                name: name.clone(),
+                                is_server: menu.is_viewing_server,
+                            })
+                            .width(Length::Fill),
+                        Color::Dark,
+                    )
+                    .into()
+                }
+            }))
+        } else {
+            let dots = ".".repeat((self.tick_timer % 3) + 1);
+            widget::column![widget::text!("Loading{dots}")].padding(10)
+        };
+
+        let list = widget::column![
+            widget::scrollable(list)
                 .height(Length::Fill)
                 .style(LauncherTheme::style_scrollable_flat_extra_dark)
                 .id(widget::scrollable::Id::new("MenuLaunch:sidebar"))
                 .on_scroll(|n| {
                     let total = n.content_bounds().height - n.bounds().height;
-                    Message::LaunchScrollSidebar(total)
+                    Message::LaunchSidebarScroll(total)
                 }),
-                widget::horizontal_rule(1).style(|t: &LauncherTheme| t.style_rule(Color::Dark, 1)),
-                self.get_accounts_bar(menu),
-            ]
-            .spacing(5)
-        } else {
-            let dots = ".".repeat((self.tick_timer % 3) + 1);
-            widget::column![widget::text!("Loading{dots}")]
-        }
-        .width(menu.sidebar_width))
-        .push_maybe(is_hovered.then_some(
-            widget::vertical_rule(0).style(|n: &LauncherTheme| n.style_rule(Color::Mid, 4)),
-        ));
+            widget::horizontal_rule(1).style(|t: &LauncherTheme| t.style_rule(Color::Dark, 1)),
+            self.get_accounts_bar(menu),
+        ]
+        .spacing(5)
+        .width(Length::Fill);
 
         widget::column![
             widget::mouse_area(
                 widget::container(menu.get_sidebar_new_button(decor))
                     .align_y(Alignment::End)
-                    .width(menu.sidebar_width)
+                    .width(menu.get_sidebar_width())
                     .height(tab_height(decor) + decorh(decor))
                     .style(|t: &LauncherTheme| t.style_container_bg_semiround(
                         [true, false, false, false],
@@ -561,7 +548,7 @@ impl MenuLaunch {
         } else {
             Message::CreateInstance(CreateInstanceMessage::ScreenOpen)
         })
-        .width(self.sidebar_width)
+        .width(Length::Fill)
     }
 
     fn render_tab_button(&self, n: LaunchTabId, decor: bool) -> Element<'_> {

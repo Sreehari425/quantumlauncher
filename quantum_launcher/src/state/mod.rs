@@ -64,6 +64,7 @@ pub struct Launcher {
     pub java_recv: Option<ProgressBar<GenericProgress>>,
     pub custom_jar: Option<CustomJarState>,
     pub mod_updates_checked: HashMap<InstanceSelection, Vec<(ModId, String, bool)>>,
+    pub autosave: HashSet<AutoSaveKind>,
 
     pub accounts: HashMap<String, AccountData>,
     pub accounts_dropdown: Vec<String>,
@@ -79,9 +80,13 @@ pub struct Launcher {
     pub server_logs: HashMap<String, InstanceLog>,
 
     pub window_state: WindowState,
-
     pub keys_pressed: HashSet<iced::keyboard::Key>,
     pub modifiers_pressed: iced::keyboard::Modifiers,
+}
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub enum AutoSaveKind {
+    LauncherConfig,
 }
 
 pub struct WindowState {
@@ -132,6 +137,7 @@ impl Launcher {
 
         let mut config = config?;
         let theme = get_theme(&config);
+        let (window_width, window_height) = config.c_window_size();
 
         let mut launch = if let Some(message) = message {
             MenuLaunch::with_message(message)
@@ -140,7 +146,7 @@ impl Launcher {
         };
 
         if let Some(sidebar_width) = config.sidebar_width {
-            launch.sidebar_width = sidebar_width as u16;
+            launch.resize_sidebar(sidebar_width as f32, window_width);
         }
 
         let launch = State::Launch(launch);
@@ -187,8 +193,6 @@ impl Launcher {
                 .unwrap_or_else(|| OFFLINE_ACCOUNT_NAME.to_owned()),
         );
 
-        let (window_width, window_height) = config.c_window_size();
-
         Ok(Self {
             state,
             config,
@@ -225,6 +229,7 @@ impl Launcher {
             log_scroll: 0,
             tick_timer: 0,
 
+            autosave: HashSet::new(),
             images: ImageState::default(),
             modifiers_pressed: iced::keyboard::Modifiers::empty(),
         })
@@ -290,6 +295,7 @@ impl Launcher {
                 mouse_pos: (0.0, 0.0),
                 is_maximized: false,
             },
+            autosave: HashSet::new(),
             accounts_dropdown: vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()],
             accounts_selected: Some(OFFLINE_ACCOUNT_NAME.to_owned()),
             modifiers_pressed: iced::keyboard::Modifiers::empty(),
@@ -309,7 +315,7 @@ impl Launcher {
             None => MenuLaunch::default(),
         };
         if let Some(width) = self.config.sidebar_width {
-            menu_launch.sidebar_width = width as u16;
+            menu_launch.resize_sidebar(width as f32, self.window_state.size.0);
         }
         self.state = State::Launch(menu_launch);
         Task::perform(get_entries(false), Message::CoreListLoaded)

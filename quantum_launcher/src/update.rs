@@ -8,10 +8,13 @@ use ql_mod_manager::loaders;
 use std::{collections::HashMap, fmt::Write};
 use tokio::io::AsyncWriteExt;
 
-use crate::state::{
-    CustomJarState, InstanceLog, LaunchTabId, Launcher, ManageModsMessage, MenuExportInstance,
-    MenuLaunch, MenuLauncherUpdate, MenuLicense, MenuServerCreate, MenuWelcome, Message,
-    ProgressBar, ServerProcess, State, WindowMessage,
+use crate::{
+    message_handler::{SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT},
+    state::{
+        AutoSaveKind, CustomJarState, InstanceLog, LaunchTabId, Launcher, ManageModsMessage,
+        MenuExportInstance, MenuLaunch, MenuLauncherUpdate, MenuLicense, MenuServerCreate,
+        MenuWelcome, Message, ProgressBar, ServerProcess, State, WindowMessage,
+    },
 };
 
 impl Launcher {
@@ -78,6 +81,7 @@ impl Launcher {
             }
             Message::LaunchUsernameSet(username) => {
                 self.config.username = username;
+                self.autosave.remove(&AutoSaveKind::LauncherConfig);
             }
             Message::LaunchStart => return self.launch_start(),
             Message::LaunchEnd(result) => return self.finish_launching(result),
@@ -445,8 +449,23 @@ impl Launcher {
                     *log_scroll = lines;
                 }
             }
-            Message::LaunchScrollSidebar(total) => {
-                if let State::Launch(MenuLaunch { sidebar_height, .. }) = &mut self.state {
+            Message::LaunchSidebarResize(ratio) => {
+                if let State::Launch(menu) = &mut self.state {
+                    self.autosave.remove(&AutoSaveKind::LauncherConfig);
+                    let window_width = self.window_state.size.0;
+                    let ratio = ratio * window_width;
+                    menu.resize_sidebar(
+                        ratio.clamp(SIDEBAR_LIMIT_LEFT, window_width - SIDEBAR_LIMIT_RIGHT),
+                        window_width,
+                    );
+                }
+            }
+            Message::LaunchSidebarScroll(total) => {
+                if let State::Launch(MenuLaunch {
+                    sidebar_scrolled: sidebar_height,
+                    ..
+                }) = &mut self.state
+                {
                     *sidebar_height = total;
                 }
             }

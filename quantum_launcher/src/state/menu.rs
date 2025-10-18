@@ -4,7 +4,10 @@ use std::{
 };
 
 use frostmark::MarkState;
-use iced::{widget::scrollable::AbsoluteOffset, Task};
+use iced::{
+    widget::{self, scrollable::AbsoluteOffset},
+    Task,
+};
 use ql_core::{
     file_utils::DirItem,
     jarmod::JarMods,
@@ -19,6 +22,7 @@ use ql_mod_manager::{
 
 use crate::{
     config::SIDEBAR_WIDTH_DEFAULT, message_handler::get_locally_installed_mods, state::ImageState,
+    WINDOW_WIDTH,
 };
 
 use super::{ManageModsMessage, Message, ProgressBar};
@@ -52,9 +56,10 @@ pub struct MenuLaunch {
     pub tab: LaunchTabId,
     pub edit_instance: Option<MenuEditInstance>,
 
-    pub sidebar_width: u16,
-    pub sidebar_height: f32,
-    pub sidebar_dragging: bool,
+    sidebar_width: u64,
+    pub sidebar_scrolled: f32,
+    pub sidebar_grid_state: widget::pane_grid::State<bool>,
+    sidebar_split: Option<widget::pane_grid::Split>,
 
     pub is_viewing_server: bool,
     pub is_uploading_mclogs: bool,
@@ -69,18 +74,39 @@ impl Default for MenuLaunch {
 
 impl MenuLaunch {
     pub fn with_message(message: String) -> Self {
+        let (mut sidebar_grid_state, pane) = widget::pane_grid::State::new(true);
+        let sidebar_split = if let Some((_, split)) =
+            sidebar_grid_state.split(widget::pane_grid::Axis::Vertical, pane, false)
+        {
+            sidebar_grid_state.resize(split, SIDEBAR_WIDTH_DEFAULT as f32 / WINDOW_WIDTH);
+            Some(split)
+        } else {
+            None
+        };
         Self {
             message,
             tab: LaunchTabId::default(),
             edit_instance: None,
             login_progress: None,
-            sidebar_width: SIDEBAR_WIDTH_DEFAULT as u16,
-            sidebar_height: 100.0,
-            sidebar_dragging: false,
+            sidebar_width: SIDEBAR_WIDTH_DEFAULT as u64,
+            sidebar_scrolled: 100.0,
             is_viewing_server: false,
+            sidebar_grid_state,
             log_scroll: 0,
             is_uploading_mclogs: false,
+            sidebar_split,
         }
+    }
+
+    pub fn resize_sidebar(&mut self, width: f32, window_width: f32) {
+        if let Some(split) = self.sidebar_split {
+            self.sidebar_width = width as u64;
+            self.sidebar_grid_state.resize(split, width / window_width);
+        }
+    }
+
+    pub fn get_sidebar_width(&self) -> f32 {
+        self.sidebar_width as f32
     }
 }
 
