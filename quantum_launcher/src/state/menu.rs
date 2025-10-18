@@ -378,6 +378,20 @@ impl std::fmt::Display for LauncherSettingsTab {
 
 impl LauncherSettingsTab {
     pub const ALL: &'static [Self] = &[Self::UserInterface, Self::Internal, Self::About];
+
+    pub const fn next(self) -> Self {
+        match self {
+            Self::UserInterface => Self::Internal,
+            Self::Internal | Self::About => Self::About,
+        }
+    }
+
+    pub const fn prev(self) -> Self {
+        match self {
+            Self::UserInterface | Self::Internal => Self::UserInterface,
+            Self::About => Self::Internal,
+        }
+    }
 }
 
 pub struct MenuEditPresets {
@@ -516,9 +530,9 @@ pub struct MenuLicense {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LicenseTab {
     Gpl3,
+    ForgeInstallerApache,
     OpenFontLicense,
     PasswordAsterisks,
-    ForgeInstallerApache,
     Lwjgl,
 }
 
@@ -530,6 +544,24 @@ impl LicenseTab {
         Self::PasswordAsterisks,
         Self::Lwjgl,
     ];
+
+    pub const fn next(self) -> Self {
+        match self {
+            Self::Gpl3 => Self::ForgeInstallerApache,
+            Self::ForgeInstallerApache => Self::OpenFontLicense,
+            Self::OpenFontLicense => Self::PasswordAsterisks,
+            Self::PasswordAsterisks | Self::Lwjgl => Self::Lwjgl,
+        }
+    }
+
+    pub const fn prev(self) -> Self {
+        match self {
+            Self::Gpl3 | Self::ForgeInstallerApache => Self::Gpl3,
+            Self::OpenFontLicense => Self::ForgeInstallerApache,
+            Self::PasswordAsterisks => Self::OpenFontLicense,
+            Self::Lwjgl => Self::PasswordAsterisks,
+        }
+    }
 
     pub fn get_text(self) -> &'static str {
         match self {

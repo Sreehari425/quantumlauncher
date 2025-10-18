@@ -161,19 +161,7 @@ impl Launcher {
         if let Key::Named(Named::Escape) = key {
             return self.key_escape_back(true).1;
         }
-        if let Key::Named(Named::ArrowUp) = key {
-            return self.key_change_selected_instance(false);
-        } else if let Key::Named(Named::ArrowDown) = key {
-            return self.key_change_selected_instance(true);
-        } else if let Key::Named(Named::Enter) = key {
-            if modifiers.command() {
-                return self.launch_start();
-            }
-        } else if let Key::Named(Named::Backspace) = key {
-            if modifiers.command() {
-                return Task::done(Message::LaunchKill);
-            }
-        } else if let Key::Character(ch) = &key {
+        if let Key::Character(ch) = &key {
             let msg = match (
                 ch.as_str(),
                 modifiers.command(),
@@ -205,6 +193,36 @@ impl Launcher {
                 _ => Message::Nothing,
             };
             return Task::done(msg);
+        } else if let State::LauncherSettings(menu) = &mut self.state {
+            if let Key::Named(Named::ArrowUp) = key {
+                return Task::done(Message::LauncherSettings(
+                    LauncherSettingsMessage::ChangeTab(menu.selected_tab.prev()),
+                ));
+            } else if let Key::Named(Named::ArrowDown) = key {
+                return Task::done(Message::LauncherSettings(
+                    LauncherSettingsMessage::ChangeTab(menu.selected_tab.next()),
+                ));
+            }
+        } else if let State::License(menu) = &mut self.state {
+            if let Key::Named(Named::ArrowUp) = key {
+                return Task::done(Message::LicenseChangeTab(menu.selected_tab.prev()));
+            } else if let Key::Named(Named::ArrowDown) = key {
+                return Task::done(Message::LicenseChangeTab(menu.selected_tab.next()));
+            }
+        } else if let State::Launch(_) = &self.state {
+            if let Key::Named(Named::ArrowUp) = key {
+                return self.key_change_selected_instance(false);
+            } else if let Key::Named(Named::ArrowDown) = key {
+                return self.key_change_selected_instance(true);
+            } else if let Key::Named(Named::Enter) = key {
+                if modifiers.command() {
+                    return self.launch_start();
+                }
+            } else if let Key::Named(Named::Backspace) = key {
+                if modifiers.command() {
+                    return Task::done(Message::LaunchKill);
+                }
+            }
         }
         self.keys_pressed.insert(key);
 

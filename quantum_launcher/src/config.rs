@@ -136,7 +136,15 @@ impl LauncherConfig {
             return LauncherConfig::create(&config_path);
         }
 
-        let config = std::fs::read_to_string(&config_path).path(&config_path)?;
+        let mut config = std::fs::read_to_string(&config_path).path(&config_path)?;
+        if config.is_empty() {
+            for _ in 0..5 {
+                config = std::fs::read_to_string(&config_path).path(&config_path)?;
+                if !config.is_empty() {
+                    break;
+                }
+            }
+        }
         let mut config: Self = match serde_json::from_str(&config) {
             Ok(config) => config,
             Err(err) => {

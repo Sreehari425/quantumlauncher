@@ -321,28 +321,54 @@ pub fn get_theme_selector(config: &'_ LauncherConfig) -> (Element<'_>, Element<'
         left: 10.0,
     };
 
+    let td = |t: &LauncherTheme| t.style_text(Color::Mid);
+
     let theme = config.theme.as_deref().unwrap_or("Dark");
     let (light, dark): (Element, Element) = if theme == "Dark" {
         (
-            widget::button(widget::text("Light").size(14))
-                .on_press(Message::LauncherSettings(
-                    LauncherSettingsMessage::ThemePicked("Light".to_owned()),
-                ))
-                .into(),
-            widget::container(widget::text("Dark").size(14))
-                .padding(PADDING)
-                .into(),
+            widget::button(
+                widget::row![
+                    icon_manager::mode_light_with_size(14),
+                    widget::text("Light").size(14)
+                ]
+                .spacing(5),
+            )
+            .on_press(Message::LauncherSettings(
+                LauncherSettingsMessage::ThemePicked("Light".to_owned()),
+            ))
+            .into(),
+            widget::container(
+                widget::row![
+                    icon_manager::mode_dark_with_size(14).style(td),
+                    widget::text("Dark").size(14)
+                ]
+                .spacing(5),
+            )
+            .padding(PADDING)
+            .into(),
         )
     } else {
         (
-            widget::container(widget::text("Light").size(14))
-                .padding(PADDING)
-                .into(),
-            widget::button(widget::text("Dark").size(14))
-                .on_press(Message::LauncherSettings(
-                    LauncherSettingsMessage::ThemePicked("Dark".to_owned()),
-                ))
-                .into(),
+            widget::container(
+                widget::row![
+                    icon_manager::mode_light_with_size(14).style(td),
+                    widget::text("Light").size(14)
+                ]
+                .spacing(5),
+            )
+            .padding(PADDING)
+            .into(),
+            widget::button(
+                widget::row![
+                    icon_manager::mode_dark_with_size(14),
+                    widget::text("Dark").size(14)
+                ]
+                .spacing(5),
+            )
+            .on_press(Message::LauncherSettings(
+                LauncherSettingsMessage::ThemePicked("Dark".to_owned()),
+            ))
+            .into(),
         )
     };
     (light, dark)

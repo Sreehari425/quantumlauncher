@@ -531,61 +531,11 @@ impl Launcher {
                     input.trim().parse::<u32>().ok()
                 };
             }
-            LauncherSettingsMessage::GlobalJavaArgsAdd => {
-                self.config
-                    .extra_java_args
-                    .get_or_insert_with(Vec::new)
-                    .push(String::new());
+            LauncherSettingsMessage::GlobalJavaArgs(msg) => {
+                msg.apply(self.config.extra_java_args.get_or_insert_with(Vec::new));
             }
-            LauncherSettingsMessage::GlobalJavaArgEdit(arg, idx) => {
-                if let Some(args) = self.config.extra_java_args.as_mut() {
-                    add_to_arguments_list(arg, args, idx);
-                }
-            }
-            LauncherSettingsMessage::GlobalJavaArgDelete(idx) => {
-                if let Some(args) = self.config.extra_java_args.as_mut() {
-                    if idx < args.len() {
-                        args.remove(idx);
-                    }
-                }
-            }
-            LauncherSettingsMessage::GlobalJavaArgShiftUp(idx) => {
-                if let Some(args) = self.config.extra_java_args.as_mut() {
-                    if idx > 0 && idx < args.len() {
-                        args.swap(idx, idx - 1);
-                    }
-                }
-            }
-            LauncherSettingsMessage::GlobalJavaArgShiftDown(idx) => {
-                if let Some(args) = self.config.extra_java_args.as_mut() {
-                    if idx + 1 < args.len() {
-                        args.swap(idx, idx + 1);
-                    }
-                }
-            }
-            LauncherSettingsMessage::GlobalPreLaunchPrefixAdd => {
-                self.config.c_launch_prefix().push(String::new());
-            }
-            LauncherSettingsMessage::GlobalPreLaunchPrefixEdit(arg, idx) => {
-                add_to_arguments_list(arg, self.config.c_launch_prefix(), idx);
-            }
-            LauncherSettingsMessage::GlobalPreLaunchPrefixDelete(idx) => {
-                let args = self.config.c_launch_prefix();
-                if idx < args.len() {
-                    args.remove(idx);
-                }
-            }
-            LauncherSettingsMessage::GlobalPreLaunchPrefixShiftUp(idx) => {
-                let args = self.config.c_launch_prefix();
-                if idx > 0 && idx < args.len() {
-                    args.swap(idx, idx - 1);
-                }
-            }
-            LauncherSettingsMessage::GlobalPreLaunchPrefixShiftDown(idx) => {
-                let args = self.config.c_launch_prefix();
-                if idx + 1 < args.len() {
-                    args.swap(idx, idx + 1);
-                }
+            LauncherSettingsMessage::GlobalPreLaunchPrefix(msg) => {
+                msg.apply(self.config.c_launch_prefix());
             }
         }
         Task::none()

@@ -371,7 +371,9 @@ impl Launcher {
                     ))
             )
             .on_press(Message::Window(WindowMessage::TitlebarDragged)),
-            widget::container(list).style(|n| n.style_container_sharp_box(0.0, Color::ExtraDark))
+            widget::container(list)
+                .height(Length::Fill)
+                .style(|n| n.style_container_sharp_box(0.0, Color::ExtraDark))
         ]
         .into()
     }
