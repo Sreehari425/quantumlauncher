@@ -563,7 +563,7 @@ impl LauncherTheme {
                 }
             }
             widget::button::Status::Pressed => widget::button::Style {
-                background: Some(self.get_bg(Color::White)),
+                background: Some(self.get_bg(Color::SecondLight)),
                 text_color: self.get(Color::Dark),
                 border: self.get_border_style(&style, Color::White),
                 ..Default::default()

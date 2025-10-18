@@ -70,7 +70,7 @@ pub fn underline<'a>(
         widget::column![
             widget::vertical_space(),
             widget::horizontal_rule(1).style(move |t: &LauncherTheme| t.style_rule(color, 1)),
-            widget::Space::with_height(1),
+            widget::Space::with_height(0.1),
         ]
     )
 }

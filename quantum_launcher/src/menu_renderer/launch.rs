@@ -168,14 +168,7 @@ impl Launcher {
         };
 
         widget::column![
-            widget::stack![widget::column![
-                menu.get_tab_selector(decor),
-                widget::Space::with_height(0.5)
-            ],]
-            .push_maybe((!decor).then_some(widget::column![
-                widget::vertical_space(),
-                widget::horizontal_rule(4).style(|t: &LauncherTheme| t.style_rule(Color::Dark, 4)),
-            ])),
+            menu.get_tab_selector(decor),
             widget::container(tab_body).style(|t: &LauncherTheme| t.style_container_bg(0.0, None))
         ]
         .into()
@@ -606,7 +599,12 @@ impl MenuLaunch {
                     .padding(padding)
                     .align_y(Alignment::End),
             )
-            .style(|n, status| n.style_button(status, StyleButton::FlatExtraDark))
+            .style(move |n, status| {
+                n.style_button(
+                    status,
+                    StyleButton::SemiExtraDark([!decor, !decor, false, false]),
+                )
+            })
             .on_press(Message::LaunchChangeTab(n))
             .padding(0)
             .into()

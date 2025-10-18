@@ -368,11 +368,11 @@ impl MenuEditMods {
         size: iced::Size,
         images: &'a ImageState,
     ) -> Element<'a> {
-        widget::scrollable(widget::column({
+        widget::scrollable(widget::column(
             self.sorted_mods_list
                 .iter()
-                .map(|mod_list_entry| self.get_mod_entry(mod_list_entry, size, images))
-        }))
+                .map(|mod_list_entry| self.get_mod_entry(mod_list_entry, size, images)),
+        ))
         .direction(widget::scrollable::Direction::Both {
             vertical: widget::scrollable::Scrollbar::new(),
             horizontal: widget::scrollable::Scrollbar::new(),
@@ -390,8 +390,8 @@ impl MenuEditMods {
         images: &'a ImageState,
     ) -> Element<'a> {
         const PADDING: iced::Padding = iced::Padding {
-            top: 2.0,
-            bottom: 4.0,
+            top: 4.0,
+            bottom: 6.0,
             right: 15.0,
             left: 20.0,
         };
