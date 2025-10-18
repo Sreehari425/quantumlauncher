@@ -1,4 +1,4 @@
-use iced::{widget, Alignment, Length};
+use iced::{mouse::Interaction, widget, window::Direction, Alignment, Length};
 
 use crate::{
     config::UiWindowDecorations,
@@ -82,7 +82,7 @@ impl Launcher {
         if self.window_state.is_maximized || self.config.c_window_decorations() {
             view.into()
         } else {
-            widget::container(view).padding(1).into()
+            setup_window_borders(view.into())
         }
     }
 
@@ -192,7 +192,7 @@ impl Launcher {
                                 )
                             }),
                     )
-                    .on_press(Message::Window(WindowMessage::TitlebarDragged));
+                    .on_press(Message::Window(WindowMessage::Dragged));
                     round.then_some(custom_decor)
                 })
                 .push(
@@ -222,7 +222,7 @@ impl Launcher {
                 .align_y(Alignment::Center)
                 .padding([3.0, 1.5]),
             )
-            .on_press(m)
+            .on_release(m)
             .into()
         }
 
@@ -264,4 +264,70 @@ impl Launcher {
                 .push(wmin)
         }
     }
+}
+
+fn setup_window_borders(view: Element<'_>) -> Element<'_> {
+    fn m(
+        (w, h): (impl Into<Length>, impl Into<Length>),
+        i: Interaction,
+        d: Direction,
+    ) -> widget::MouseArea<'static, Message, LauncherTheme> {
+        widget::mouse_area(widget::column![].width(w).height(h))
+            .interaction(i)
+            .on_press(Message::Window(WindowMessage::Resized(d)))
+    }
+    let right = cfg!(target_os = "macos");
+
+    widget::stack!(
+        widget::column![widget::container(view).padding(1)].padding(2),
+        widget::row![
+            // Left
+            widget::Column::new()
+                .push_maybe((!right).then_some(m(
+                    (10, 10),
+                    Interaction::ResizingDiagonallyUp,
+                    Direction::NorthWest
+                )))
+                .push(m(
+                    (10, Length::Fill),
+                    Interaction::ResizingHorizontally,
+                    Direction::West
+                ))
+                .push(m(
+                    (10, 10),
+                    Interaction::ResizingDiagonallyDown,
+                    Direction::SouthWest
+                )),
+            widget::column![
+                m(
+                    (Length::Fill, 10),
+                    Interaction::ResizingVertically,
+                    Direction::North
+                ),
+                widget::vertical_space(),
+                m(
+                    (Length::Fill, 10),
+                    Interaction::ResizingVertically,
+                    Direction::South
+                )
+            ],
+            widget::Column::new()
+                .push_maybe(right.then_some(m(
+                    (10, 10),
+                    Interaction::ResizingDiagonallyUp,
+                    Direction::NorthEast
+                )))
+                .push(m(
+                    (10, Length::Fill),
+                    Interaction::ResizingHorizontally,
+                    Direction::East
+                ))
+                .push(m(
+                    (10, 10),
+                    Interaction::ResizingDiagonallyDown,
+                    Direction::SouthEast
+                )),
+        ]
+    )
+    .into()
 }

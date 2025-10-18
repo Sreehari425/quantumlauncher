@@ -370,7 +370,7 @@ impl Launcher {
                         Some((Color::ExtraDark, t.alpha))
                     ))
             )
-            .on_press(Message::Window(WindowMessage::TitlebarDragged)),
+            .on_press(Message::Window(WindowMessage::Dragged)),
             widget::container(list)
                 .height(Length::Fill)
                 .style(|n| n.style_container_sharp_box(0.0, Color::ExtraDark))
@@ -542,7 +542,7 @@ impl MenuLaunch {
                 )
             }),
         )
-        .on_press(Message::Window(WindowMessage::TitlebarDragged))
+        .on_press(Message::Window(WindowMessage::Dragged))
         .into()
     }
 

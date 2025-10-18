@@ -553,8 +553,12 @@ impl Launcher {
 
     pub fn update_window_msg(&mut self, msg: WindowMessage) -> Task<Message> {
         match msg {
-            WindowMessage::TitlebarDragged => {
+            WindowMessage::Dragged => {
                 return iced::window::get_latest().and_then(iced::window::drag);
+            }
+            WindowMessage::Resized(dir) => {
+                return iced::window::get_latest()
+                    .and_then(move |id| iced::window::drag_resize(id, dir));
             }
             WindowMessage::ClickMinimize => {
                 return iced::window::get_latest().and_then(|id| iced::window::minimize(id, true));

@@ -178,7 +178,8 @@ pub enum RecommendedModMessage {
 
 #[derive(Debug, Clone)]
 pub enum WindowMessage {
-    TitlebarDragged,
+    Dragged,
+    Resized(iced::window::Direction),
     ClickClose,
     ClickMinimize,
     ClickMaximize,
