@@ -188,7 +188,15 @@ pub enum RecommendedModMessage {
     DownloadEnd(Res<HashSet<CurseforgeNotAllowed>>),
 }
 
-// FIXME: Look at the unused messages
+#[derive(Debug, Clone)]
+pub enum WindowMessage {
+    TitlebarDragged,
+    ClickClose,
+    ClickMinimize,
+    ClickMaximize,
+    IsMaximized(bool),
+}
+
 #[allow(unused)]
 #[derive(Debug, Clone)]
 pub enum AccountMessage {
@@ -341,7 +349,7 @@ pub enum Message {
     CoreCleanComplete(Res),
     CoreTryQuit,
 
-    CoreTitlebarPressed,
+    Window(WindowMessage),
     CoreImageDownloaded(Res<ImageResult>),
 
     CoreLogToggle,

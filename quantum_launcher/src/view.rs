@@ -1,12 +1,13 @@
-use iced::{widget, Length};
+use iced::{widget, Alignment, Length};
 
 use crate::{
+    config::UiWindowDecorations,
     icon_manager,
     menu_renderer::{
         button_with_icon, changelog, tooltip, view_account_login, view_confirm, view_error,
         view_log_upload_result, Element, FONT_MONO,
     },
-    state::{Launcher, Message, State},
+    state::{Launcher, Message, State, WindowMessage},
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
     DEBUG_LOG_BUTTON_HEIGHT,
 };
@@ -40,10 +41,7 @@ impl Launcher {
         );
 
         let view = widget::column![
-            widget::column![self.view_menu()].height(
-                (self.window_size.1 / if self.is_log_open { 2.0 } else { 1.0 })
-                    - DEBUG_LOG_BUTTON_HEIGHT
-            ),
+            widget::column![self.view_menu()],
             widget::row![toggler].push_maybe(self.is_log_open.then(|| {
                 widget::button(widget::text("Copy Log").size(10))
                     .padding(0)
@@ -81,7 +79,7 @@ impl Launcher {
             )
         }));
 
-        if self.config.c_window_decorations() {
+        if self.window_state.is_maximized || self.config.c_window_decorations() {
             view.into()
         } else {
             widget::container(view).padding(1).into()
@@ -122,7 +120,7 @@ impl Launcher {
                 .spacing(10)
                 .into(),
             State::ModsDownload(menu) => menu.view(&self.images, self.tick_timer),
-            State::LauncherSettings(menu) => menu.view(&self.config, self.window_size),
+            State::LauncherSettings(menu) => menu.view(&self.config, self.window_state.size),
             State::InstallPaper => {
                 let dots = ".".repeat((self.tick_timer % 3) + 1);
                 widget::column!(widget::text!("Installing Paper{dots}").size(20))
@@ -181,22 +179,22 @@ impl Launcher {
         } else {
             let round = !self.config.c_window_decorations();
             widget::Column::new()
-                .push_maybe(
-                    round.then_some(
-                        widget::mouse_area(
-                            widget::container(widget::row![])
-                                .height(28)
-                                .width(Length::Fill)
-                                .style(|t: &LauncherTheme| {
-                                    t.style_container_bg_semiround(
-                                        [true, true, false, false],
-                                        Some((Color::ExtraDark, 1.0)),
-                                    )
-                                }),
-                        )
-                        .on_press(Message::CoreTitlebarPressed),
-                    ),
-                )
+                .push_maybe({
+                    let maximized = self.window_state.is_maximized;
+                    let custom_decor = widget::mouse_area(
+                        widget::container(self.view_window_decorations())
+                            .height(32)
+                            .width(Length::Fill)
+                            .style(move |t: &LauncherTheme| {
+                                t.style_container_bg_semiround(
+                                    [!maximized, !maximized, false, false],
+                                    Some((Color::ExtraDark, 1.0)),
+                                )
+                            }),
+                    )
+                    .on_press(Message::Window(WindowMessage::TitlebarDragged));
+                    round.then_some(custom_decor)
+                })
                 .push(
                     widget::container(menu)
                         .style(move |t: &LauncherTheme| t.style_container_bg(0.0, None))
@@ -204,6 +202,66 @@ impl Launcher {
                         .height(Length::Fill),
                 )
                 .into()
+        }
+    }
+
+    pub fn view_window_decorations(&self) -> widget::Row<'_, Message, LauncherTheme> {
+        const ICON_SIZE: u16 = 10;
+
+        fn win_button(icon: widget::Text<'_, LauncherTheme>, m: Message) -> Element<'_> {
+            widget::mouse_area(
+                widget::row![widget::button(
+                    widget::row![icon.style(|t: &LauncherTheme| t.style_text(Color::Mid))]
+                        .align_y(iced::alignment::Vertical::Center)
+                        .padding([4, 10]),
+                )
+                .padding(0)
+                .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
+                .on_press(m.clone())]
+                .height(Length::Fill)
+                .align_y(Alignment::Center)
+                .padding([3.0, 1.5]),
+            )
+            .on_press(m)
+            .into()
+        }
+
+        let right = matches!(
+            self.config
+                .ui
+                .as_ref()
+                .map(|n| n.window_decorations)
+                .unwrap_or_default(),
+            UiWindowDecorations::Right
+        );
+
+        let wcls_space = widget::mouse_area(widget::column![].height(Length::Fill).width(6.5))
+            .on_press(Message::Window(WindowMessage::ClickClose));
+        let wcls = win_button(
+            icon_manager::win_close_with_size(ICON_SIZE),
+            Message::Window(WindowMessage::ClickClose),
+        );
+        let wmax = win_button(
+            icon_manager::win_maximize_with_size(ICON_SIZE),
+            Message::Window(WindowMessage::ClickMaximize),
+        );
+        let wmin = win_button(
+            icon_manager::win_minimize_with_size(ICON_SIZE),
+            Message::Window(WindowMessage::ClickMinimize),
+        );
+        if right {
+            widget::Row::new()
+                .push(widget::horizontal_space())
+                .push(wmin)
+                .push(wmax)
+                .push(wcls)
+                .push(wcls_space)
+        } else {
+            widget::Row::new()
+                .push(wcls_space)
+                .push(wcls)
+                .push(wmax)
+                .push(wmin)
         }
     }
 }

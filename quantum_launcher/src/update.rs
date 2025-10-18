@@ -11,7 +11,7 @@ use tokio::io::AsyncWriteExt;
 use crate::state::{
     CustomJarState, InstanceLog, LaunchTabId, Launcher, ManageModsMessage, MenuExportInstance,
     MenuLaunch, MenuLauncherUpdate, MenuLicense, MenuServerCreate, MenuWelcome, Message,
-    ProgressBar, ServerProcess, State,
+    ProgressBar, ServerProcess, State, WindowMessage,
 };
 
 impl Launcher {
@@ -66,10 +66,12 @@ impl Launcher {
             }
 
             Message::Account(msg) => return self.update_account(msg),
-            Message::ManageMods(message) => return self.update_manage_mods(message),
-            Message::ExportMods(message) => return self.update_export_mods(message),
-            Message::ManageJarMods(message) => return self.update_manage_jar_mods(message),
-            Message::RecommendedMods(message) => return self.update_recommended_mods(message),
+            Message::ManageMods(msg) => return self.update_manage_mods(msg),
+            Message::ExportMods(msg) => return self.update_export_mods(msg),
+            Message::ManageJarMods(msg) => return self.update_manage_jar_mods(msg),
+            Message::RecommendedMods(msg) => return self.update_recommended_mods(msg),
+            Message::Window(msg) => return self.update_window_msg(msg),
+
             Message::LaunchInstanceSelected { name, is_server } => {
                 self.selected_instance = Some(InstanceSelection::new(&name, is_server));
                 self.load_edit_instance(None);
@@ -132,6 +134,11 @@ impl Launcher {
                 let command = self.tick();
                 tasks.push(command);
 
+                let max_command = iced::window::get_latest()
+                    .and_then(|id| iced::window::get_maximized(id))
+                    .map(|m| Message::Window(WindowMessage::IsMaximized(m)));
+                tasks.push(max_command);
+
                 if self
                     .custom_jar
                     .as_ref()
@@ -174,9 +181,6 @@ impl Launcher {
             }
             Message::InstallForgeEnd(Ok(())) | Message::UninstallLoaderEnd(Ok(())) => {
                 return self.go_to_edit_mods_menu(false);
-            }
-            Message::CoreTitlebarPressed => {
-                return iced::window::get_latest().and_then(iced::window::drag);
             }
             Message::LaunchEndedLog(Ok((status, name))) => {
                 info!("Game exited with status: {status}");

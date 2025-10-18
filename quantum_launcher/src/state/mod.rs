@@ -78,11 +78,16 @@ pub struct Launcher {
     pub client_logs: HashMap<String, InstanceLog>,
     pub server_logs: HashMap<String, InstanceLog>,
 
-    pub window_size: (f32, f32),
-    pub mouse_pos: (f32, f32),
+    pub window_state: WindowState,
 
     pub keys_pressed: HashSet<iced::keyboard::Key>,
     pub modifiers_pressed: iced::keyboard::Modifiers,
+}
+
+pub struct WindowState {
+    pub size: (f32, f32),
+    pub mouse_pos: (f32, f32),
+    pub is_maximized: bool,
 }
 
 pub struct CustomJarState {
@@ -191,7 +196,11 @@ impl Launcher {
             accounts,
             accounts_dropdown,
 
-            window_size: (window_width, window_height),
+            window_state: WindowState {
+                size: (window_width, window_height),
+                mouse_pos: (0.0, 0.0),
+                is_maximized: false,
+            },
             accounts_selected: Some(selected_account),
 
             client_list: None,
@@ -215,7 +224,6 @@ impl Launcher {
 
             log_scroll: 0,
             tick_timer: 0,
-            mouse_pos: (0.0, 0.0),
 
             images: ImageState::default(),
             modifiers_pressed: iced::keyboard::Modifiers::empty(),
@@ -267,7 +275,6 @@ impl Launcher {
 
             log_scroll: 0,
             tick_timer: 0,
-            mouse_pos: (0.0, 0.0),
 
             client_processes: HashMap::new(),
             client_logs: HashMap::new(),
@@ -278,7 +285,11 @@ impl Launcher {
             mod_updates_checked: HashMap::new(),
 
             images: ImageState::default(),
-            window_size: (window_width, window_height),
+            window_state: WindowState {
+                size: (window_width, window_height),
+                mouse_pos: (0.0, 0.0),
+                is_maximized: false,
+            },
             accounts_dropdown: vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()],
             accounts_selected: Some(OFFLINE_ACCOUNT_NAME.to_owned()),
             modifiers_pressed: iced::keyboard::Modifiers::empty(),

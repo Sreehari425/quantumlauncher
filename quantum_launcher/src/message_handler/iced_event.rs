@@ -29,7 +29,7 @@ impl Launcher {
                     info!("Shutting down launcher (2)");
                 }
                 iced::window::Event::Resized(size) => {
-                    self.window_size = (size.width, size.height);
+                    self.window_state.size = (size.width, size.height);
                     // Save window size to config for persistence
                     let window = self.config.window.get_or_insert_with(Default::default);
                     window.width = Some(size.width);
@@ -91,8 +91,8 @@ impl Launcher {
             },
             iced::Event::Mouse(mouse) => match mouse {
                 iced::mouse::Event::CursorMoved { position } => {
-                    self.mouse_pos.0 = position.x;
-                    self.mouse_pos.1 = position.y;
+                    let pos = (position.x, position.y);
+                    self.window_state.mouse_pos = pos;
 
                     if let State::Launch(MenuLaunch {
                         sidebar_width,
@@ -100,15 +100,15 @@ impl Launcher {
                         ..
                     }) = &mut self.state
                     {
-                        if self.mouse_pos.0 < SIDEBAR_LIMIT_LEFT {
+                        if pos.0 < SIDEBAR_LIMIT_LEFT {
                             *sidebar_width = SIDEBAR_LIMIT_LEFT as u16;
-                        } else if (self.mouse_pos.0 + f32::from(SIDEBAR_LIMIT_RIGHT)
-                            > self.window_size.0)
-                            && self.window_size.0 as u16 > SIDEBAR_LIMIT_RIGHT
+                        } else if (pos.0 + f32::from(SIDEBAR_LIMIT_RIGHT)
+                            > self.window_state.size.0)
+                            && self.window_state.size.0 as u16 > SIDEBAR_LIMIT_RIGHT
                         {
-                            *sidebar_width = self.window_size.0 as u16 - SIDEBAR_LIMIT_RIGHT;
+                            *sidebar_width = self.window_state.size.0 as u16 - SIDEBAR_LIMIT_RIGHT;
                         } else {
-                            *sidebar_width = self.mouse_pos.0 as u16;
+                            *sidebar_width = pos.0 as u16;
                         }
                     }
                 }
@@ -116,7 +116,7 @@ impl Launcher {
                     if let (State::Launch(menu), iced::mouse::Button::Left) =
                         (&mut self.state, button)
                     {
-                        let difference = self.mouse_pos.0 - f32::from(menu.sidebar_width);
+                        let difference = self.window_state.mouse_pos.0 - f32::from(menu.sidebar_width);
                         if difference > 0.0 && difference < SIDEBAR_DRAG_LEEWAY {
                             menu.sidebar_dragging = true;
                         }
@@ -260,7 +260,7 @@ impl Launcher {
     fn validate_sidebar_width(&mut self) {
         if let State::Launch(MenuLaunch { sidebar_width, .. }) = &mut self.state {
             self.config.sidebar_width = Some(u32::from(*sidebar_width));
-            let window_width = self.window_size.0;
+            let window_width = self.window_state.size.0;
 
             if window_width > f32::from(SIDEBAR_LIMIT_RIGHT)
                 && *sidebar_width > window_width as u16 - SIDEBAR_LIMIT_RIGHT

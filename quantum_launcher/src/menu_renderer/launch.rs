@@ -6,6 +6,7 @@ use iced::{widget, Alignment, Length, Padding};
 use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
 
 use crate::menu_renderer::{underline, FONT_MONO};
+use crate::state::WindowMessage;
 use crate::{
     icon_manager,
     menu_renderer::DISCORD,
@@ -34,7 +35,7 @@ const fn decorh(decor: bool) -> f32 {
     if decor {
         0.0
     } else {
-        28.0
+        32.0
     }
 }
 
@@ -48,7 +49,7 @@ impl Launcher {
             .as_ref()
             .map(InstanceSelection::get_name);
 
-        let difference = self.mouse_pos.0 - f32::from(menu.sidebar_width);
+        let difference = self.window_state.mouse_pos.0 - f32::from(menu.sidebar_width);
         let hovered = difference < SIDEBAR_DRAG_LEEWAY && difference > 0.0;
 
         widget::row!(
@@ -284,7 +285,7 @@ impl Launcher {
         selected_instance_s: Option<&'a str>,
         menu: &'a MenuLaunch,
     ) -> Element<'a> {
-        let difference = self.mouse_pos.0 - f32::from(menu.sidebar_width);
+        let difference = self.window_state.mouse_pos.0 - f32::from(menu.sidebar_width);
 
         let list = if menu.is_viewing_server {
             self.server_list.as_deref()
@@ -296,7 +297,8 @@ impl Launcher {
 
         let is_hovered = difference < SIDEBAR_DRAG_LEEWAY
             && difference > 0.0
-            && (!self.is_log_open || (self.mouse_pos.1 < self.window_size.1 / 2.0));
+            && (!self.is_log_open
+                || (self.window_state.mouse_pos.1 < self.window_state.size.1 / 2.0));
 
         let list = widget::row!(if let Some(instances) = list {
             widget::column![
@@ -368,7 +370,7 @@ impl Launcher {
                         Some((Color::ExtraDark, t.alpha))
                     ))
             )
-            .on_press(Message::CoreTitlebarPressed),
+            .on_press(Message::Window(WindowMessage::TitlebarDragged)),
             widget::container(list).style(|n| n.style_container_sharp_box(0.0, Color::ExtraDark))
         ]
         .into()
@@ -538,7 +540,7 @@ impl MenuLaunch {
                 )
             }),
         )
-        .on_press(Message::CoreTitlebarPressed)
+        .on_press(Message::Window(WindowMessage::TitlebarDragged))
         .into()
     }
 

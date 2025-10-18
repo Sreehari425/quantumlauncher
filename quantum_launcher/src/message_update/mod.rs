@@ -17,7 +17,7 @@ mod presets;
 mod recommended;
 
 use crate::config::UiSettings;
-use crate::state::MenuModsDownload;
+use crate::state::{MenuModsDownload, WindowMessage};
 use crate::{
     state::{
         self, InstallFabricMessage, InstallModsMessage, InstallOptifineMessage, Launcher,
@@ -600,17 +600,27 @@ impl Launcher {
             selected_tab: state::LauncherSettingsTab::UserInterface,
         });
     }
-}
 
-fn add_to_arguments_list(msg: String, args: &mut Vec<String>, idx: usize) {
-    if msg.contains(' ') {
-        args.remove(idx);
-        let mut insert_idx = idx;
-        for s in msg.split(' ').filter(|n| !n.is_empty()) {
-            args.insert(insert_idx, s.to_owned());
-            insert_idx += 1;
+    pub fn update_window_msg(&mut self, msg: WindowMessage) -> Task<Message> {
+        match msg {
+            WindowMessage::TitlebarDragged => {
+                return iced::window::get_latest().and_then(iced::window::drag);
+            }
+            WindowMessage::ClickMinimize => {
+                return iced::window::get_latest().and_then(|id| iced::window::minimize(id, true));
+            }
+            WindowMessage::ClickMaximize => {
+                return iced::window::get_latest().and_then(|id| {
+                    iced::window::get_maximized(id)
+                        .map(|t| Some(t))
+                        .and_then(move |max| iced::window::maximize(id, !max))
+                })
+            }
+            WindowMessage::ClickClose => std::process::exit(0),
+            WindowMessage::IsMaximized(n) => {
+                self.window_state.is_maximized = n;
+                Task::none()
+            }
         }
-    } else if let Some(arg) = args.get_mut(idx) {
-        *arg = msg;
     }
 }

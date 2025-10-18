@@ -209,7 +209,7 @@ impl LauncherConfig {
     pub fn c_window_decorations(&self) -> bool {
         self.ui
             .as_ref()
-            .map(|n| n.use_window_decorations)
+            .map(|n| matches!(n.window_decorations, UiWindowDecorations::System))
             .unwrap_or_default()
     }
 }
@@ -281,17 +281,36 @@ impl Default for WindowProperties {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct UiSettings {
-    pub use_window_decorations: bool,
+    pub window_decorations: UiWindowDecorations,
     pub window_opacity: f32,
 }
 
 impl Default for UiSettings {
     fn default() -> Self {
         Self {
-            use_window_decorations: false,
+            window_decorations: UiWindowDecorations::default(),
             window_opacity: 0.9,
         }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub enum UiWindowDecorations {
+    #[serde(rename = "system")]
+    System,
+    #[serde(rename = "left")]
+    Left,
+    #[serde(rename = "right")]
+    Right,
+}
+
+impl Default for UiWindowDecorations {
+    fn default() -> Self {
+        #[cfg(target_os = "macos")]
+        return Self::Left;
+        #[cfg(not(target_os = "macos"))]
+        Self::Right
     }
 }

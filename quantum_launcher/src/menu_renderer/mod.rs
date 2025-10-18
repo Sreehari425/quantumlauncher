@@ -102,7 +102,8 @@ pub fn subbutton_with_icon<'a>(
     text: &'a str,
 ) -> widget::Button<'a, Message, LauncherTheme> {
     widget::button(
-        widget::row![icon.into(), widget::text(text).size(12)]
+        widget::row![icon.into()]
+            .push_maybe((!text.is_empty()).then_some(widget::text(text).size(12)))
             .align_y(iced::alignment::Vertical::Center)
             .spacing(8)
             .padding(1),
