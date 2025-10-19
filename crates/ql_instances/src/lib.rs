@@ -56,6 +56,8 @@ mod instance;
 mod json_profiles;
 mod launcher_update_detector;
 
+use std::sync::{LazyLock, Mutex};
+
 pub use download::{constants::OS_NAME, create_instance, DownloadError};
 pub use instance::launch::launch;
 pub use instance::list_versions::list_versions;
@@ -75,3 +77,5 @@ const LAUNCHER_VERSION: semver::Version = semver::Version {
     pre: Prerelease::EMPTY,
     build: BuildMetadata::EMPTY,
 };
+
+pub static ARG_REDACT_SECTIONS: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(true));

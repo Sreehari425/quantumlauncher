@@ -1,8 +1,5 @@
 name: Build-RPM
 
-# permissions:
-#  contents: write
-
 on:
   workflow_dispatch: # allows manual triggering
 
@@ -26,11 +23,6 @@ jobs:
             os: fedora
             arch: x86_64
             altarch: amd64
-          - docker: fedora-41
-            version: 41
-            os: fedora
-            arch: x86_64
-            altarch: amd64
 
     steps:
       - name: Install Build Dependencies
@@ -43,7 +35,7 @@ jobs:
 
       - name: Build release package
         run: |
-          cd quantum-launcher
+          cd quantumlauncher
           sudo dnf5 builddep -y quantum_launcher.spec
           mkdir ~/rpmlocal && rpkg local --outdir ~/rpmlocal
           rm -f ~/rpmlocal/${{ matrix.arch }}/*debug*

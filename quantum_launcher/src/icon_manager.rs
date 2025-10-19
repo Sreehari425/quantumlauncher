@@ -12,7 +12,7 @@
 use crate::stylesheet::styles::LauncherTheme;
 use paste::paste;
 
-const ICON_FONT: iced::Font = iced::Font::with_name("QL_Icons_V1-2");
+const ICON_FONT: iced::Font = iced::Font::with_name("QuantumLauncher");
 
 pub fn icon<'a>(codepoint: char) -> iced::widget::Text<'a, LauncherTheme> {
     iced::widget::text(codepoint).font(ICON_FONT)
@@ -73,7 +73,7 @@ icon_define!(toggle_off, '\u{e91C}');
 icon_define!(toggle_on, '\u{e91D}');
 
 icon_define!(arrow_up, '\u{e91E}');
-icon_define!(refresh_clock, '\u{e91F}'); // This should be an update icon
+icon_define!(update_warn, '\u{e91F}');
 
 icon_define!(chatbox_alt, '\u{e920}'); // This is experimental, I guess
 icon_define!(mode_dark, '\u{e921}');
@@ -83,3 +83,9 @@ icon_define!(sort2, '\u{e924}');
 icon_define!(sort_ascending, '\u{e925}');
 icon_define!(sort_descending, '\u{e926}');
 icon_define!(cross, '\u{e927}');
+
+icon_define!(win_close, '\u{e928}');
+icon_define!(win_minimize, '\u{e92A}');
+icon_define!(win_maximize, '\u{e929}');
+icon_define!(paintbrush, '\u{e92B}');
+icon_define!(windowsize, '\u{e92C}');

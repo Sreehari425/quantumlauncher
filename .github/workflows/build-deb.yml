@@ -1,15 +1,12 @@
 name: Build-DEB
 
-# permissions:
-#  contents: write
-
 on:
-  workflow_dispatch: # allows manual triggering
+  workflow_dispatch:
 
 env:
   BIN_NAME: quantum_launcher
   PROJECT_NAME: quantum_launcher
-  REPO_NAME: Mrmayman/quantum-launcher
+  CARGO_TERM_COLOR: always
 
 jobs:
   DEB:
@@ -21,21 +18,21 @@ jobs:
         build: [x86_64-linux, aarch64-linux]
         include:
           - build: x86_64-linux
-            os: ubuntu-22.04
+            os: ubuntu-latest
             rust: stable
             target: x86_64-unknown-linux-gnu
             cross: false
             arch: x86_64
           - build: aarch64-linux
-            os: ubuntu-22.04
+            os: ubuntu-24.04-arm
             rust: stable
             target: aarch64-unknown-linux-gnu
-            cross: true
+            cross: false
             arch: aarch64
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install ${{ matrix.rust }} toolchain
         shell: bash
@@ -56,35 +53,17 @@ jobs:
             cargo build --release --target ${{ matrix.target }}
           fi
 
-      - name: Strip release binary
-        if: matrix.build == 'x86_64-linux'
-        run: |
-          strip --strip-all "target/${{ matrix.target }}/release/$BIN_NAME"
-          mv "target/${{ matrix.target }}/release/$BIN_NAME" "assets/freedesktop/quantum-launcher"
-
-      - name: Strip release binary (arm)
-        if: matrix.build == 'aarch64-linux'
-        run: |
-          docker run --rm -v \
-          "$PWD/target:/target:Z" \
-          rustembedded/cross:${{ matrix.target }} \
-          aarch64-linux-gnu-strip \
-          /target/${{ matrix.target }}/release/$BIN_NAME
-          mv "target/${{ matrix.target }}/release/$BIN_NAME" "assets/freedesktop/quantum-launcher"
-
       - name: Build DEB
         run: |
           sudo apt-get install fakeroot
-          mkdir dist
-          cd assets/freedesktop
+          mkdir -p dist build
 
-          mkdir -v -p {etc,usr/{bin,share/{applications,metainfo,pixmaps}}}
-
-          cp -pdf "quantum-launcher.desktop" "usr/share/applications/quantum-launcher.desktop"
-          cp -pdf "quantum-launcher.metainfo.xml" "usr/share/metainfo/quantum-launcher.metainfo.xml"
-          cp -pdf "../icon/ql_logo.png" "usr/share/pixmaps/io.github.Mrmayman.QuantumLauncher.png"
-          mv debian DEBIAN
-          fakeroot dpkg-deb --build . ../../dist/$PROJECT_NAME-${{ matrix.build }}.deb
+          install -D "assets/freedesktop/quantum-launcher.desktop" "build/usr/share/applications/quantum-launcher.desktop"
+          install -D "assets/freedesktop/quantum-launcher.metainfo.xml" "build/usr/share/metainfo/quantum-launcher.metainfo.xml"
+          install -D "assets/icon/256x256/ql_logo.png" "build/usr/share/icons/hicolor/256x256/apps/io.github.Mrmayman.QuantumLauncher.png"
+          install -D "target/${{ matrix.target }}/release/${{ env.BIN_NAME }}" "build/usr/bin/quantum-launcher"
+          mv "assets/freedesktop/debian" "build/DEBIAN"
+          fakeroot dpkg-deb --build build dist/$PROJECT_NAME-${{ matrix.build }}.deb
 
       - uses: actions/upload-artifact@v4
         with:
