@@ -1,5 +1,5 @@
 [book]
-authors = ["Sreehari Anil"]
+authors = ["mrmayman <navneetkrishna22@gmail.com>"]
 language = "en"
 src = "."
 title = "Quantum Launcher Documentation"
