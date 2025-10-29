@@ -51,8 +51,11 @@ unable to find valid certification path to requested target
 ```
 
 **Fix**
+
 A) use a newer java version and supply the custom java excutable to the QuantumLauncher
+
 B) Add the following arguments to java launch option
+
 ```java
 --Djavax.net.ssl.trustStoreType=Windows-ROOT
 ```
