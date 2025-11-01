@@ -97,7 +97,7 @@ i_opengl
 
 **Credits**
 
-Discoverd by Spicy Bee(balos_sandor)
+Discoverd by Spicy Bee(balos_sandor) at discord
 
 workaround by [Aurlt](https://github.com/Aurlt)  
    
