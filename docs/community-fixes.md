@@ -93,7 +93,6 @@ and in qldir.txt
 ```txt
 .
 i_opengl
-  
 ```
 
 **Credits**
