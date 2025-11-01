@@ -65,3 +65,41 @@ B) Add the following arguments to java launch option
 Discovered by blackbananaman1 at discord
 
 workaround by [Sreehari425](https://github.com/Sreehari425/)
+
+
+## LLVM 3.8 Invalid Record (WGPU Graphics Backend)
+
+**Description**
+
+```txt
+
+error: Invalid record (Producer: 'LLVM3.8.0' Reader: 'LLVM 3.8.0')
+
+```
+
+When wgpu tries to compile or read cached shader data using those backends, the underlying LLVM/DXIL parser fails, resulting in this error.
+
+**Fix**
+
+Force QuantumLauncher to use the OpenGL backend instead of DirectX 12 or Vulkan
+set WGPU_BACKEND=gl
+
+or
+
+Create qldir.txt in the launcher directory
+
+and in qldir.txt
+
+```txt
+.
+i_opengl
+  
+```
+
+**Credits**
+
+Discoverd by Spicy Bee(balos_sandor)
+
+workaround by [Aurlt](https://github.com/Aurlt)  
+   
+    
