@@ -10,14 +10,6 @@ pub const SCOPE: &str =
     "Yggdrasil.PlayerProfiles.Read Yggdrasil.Server.Join Yggdrasil.MinecraftToken.Create User.Read";
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-struct TokenResponse {
-    token_type: String,
-    expires_in: u64,
-    access_token: String,
-    refresh_token: String,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
 struct UserInfo {
     #[serde(rename = "uid")]
     id: u64,
@@ -26,62 +18,6 @@ struct UserInfo {
     email: Option<String>,
 }
 
-/* /// Step 1: Generate the authorization URL for the user to visit
-fn authorization_url(scope: &str) -> String {
-    format!(
-        "https://littleskin.cn/oauth/authorize?client_id={CLIENT_ID}&response_type=code&scope={scope}"
-    )
-}
-/// Step 2: Exchange the authorization code for tokens
-async fn exchange_code_for_token(client: &Client, code: &str) -> Result<TokenResponse, Error> {
-    let params = [
-        ("grant_type", "authorization_code"),
-        ("client_id", CLIENT_ID),
-        ("code", code),
-    ];
-    let resp = client
-        .post("https://littleskin.cn/oauth/token")
-        .form(&params)
-        .header("Accept", "application/json")
-        .send()
-        .await?;
-    if !resp.status().is_success() {
-        return Err(RequestError::DownloadError {
-            code: resp.status(),
-            url: resp.url().clone(),
-        }
-        .into());
-    }
-    let token = resp.text().await?;
-    let token: TokenResponse = serde_json::from_str(&token).json(token)?;
-    Ok(token)
-}
-/// Step 3: Refresh the access token using the refresh token
-async fn refresh_token(client: &Client, refresh_token: &str) -> Result<TokenResponse, Error> {
-    let params = [
-        ("grant_type", "refresh_token"),
-        ("refresh_token", refresh_token),
-        ("client_id", CLIENT_ID),
-    ];
-    let resp = client
-        .post("https://littleskin.cn/oauth/token")
-        .form(&params)
-        .header("Accept", "application/json")
-        .send()
-        .await?;
-    if !resp.status().is_success() {
-        return Err(RequestError::DownloadError {
-            code: resp.status(),
-            url: resp.url().clone(),
-        }
-        .into());
-    }
-    let token = resp.text().await?;
-    let token: TokenResponse = serde_json::from_str(&token).json(token)?;
-    Ok(token)
-}*/
-
-/// Step 4: Get user info using the access token
 async fn get_user_info(access_token: &str) -> Result<UserInfo, Error> {
     let resp = CLIENT
         .get("https://littleskin.cn/api/user")

@@ -473,19 +473,18 @@ pub async fn install(
     }
 }
 
+#[derive(Default, Clone, Copy)]
 pub enum ForgeInstallProgress {
+    #[default]
     P1Start,
     P2DownloadingJson,
     P3DownloadingInstaller,
     P4RunningInstaller,
-    P5DownloadingLibrary { num: usize, out_of: usize },
+    P5DownloadingLibrary {
+        num: usize,
+        out_of: usize,
+    },
     P6Done,
-}
-
-impl Default for ForgeInstallProgress {
-    fn default() -> Self {
-        Self::P1Start
-    }
 }
 
 impl Progress for ForgeInstallProgress {

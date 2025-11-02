@@ -109,8 +109,8 @@ async fn get_used_hashes(
 ) -> Result<HashSet<String>, JsonFileError> {
     let mut jsons = Vec::new();
 
-    let mut indexes = fs::read_dir(&indexes_dir).await.path(&indexes_dir)?;
-    while let Some(next) = indexes.next_entry().await.path(&indexes_dir)? {
+    let mut indexes = fs::read_dir(&indexes_dir).await.path(indexes_dir)?;
+    while let Some(next) = indexes.next_entry().await.path(indexes_dir)? {
         let path = next.path();
         let name = next.file_name();
         if !index_files.iter().any(|n| **n == name) {
@@ -125,8 +125,7 @@ async fn get_used_hashes(
 
     let hashes: HashSet<String> = jsons
         .into_iter()
-        .map(|n| n.objects.into_values().map(|n| n.hash))
-        .flatten()
+        .flat_map(|n| n.objects.into_values().map(|n| n.hash))
         .collect();
 
     Ok(hashes)
