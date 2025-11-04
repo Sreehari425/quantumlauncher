@@ -39,7 +39,7 @@ impl Launcher {
                 }
                 self.tick_processes_and_logs();
 
-                if self.tick_timer % 5 == 0 {
+                if self.tick_timer.is_multiple_of(5) {
                     let launcher_config = self.config.clone();
                     commands.push(Task::perform(
                         async move { launcher_config.save().await.strerr() },
