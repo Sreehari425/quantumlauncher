@@ -102,3 +102,48 @@ Discoverd by Spicy Bee(balos_sandor) at discord
 workaround by [Aurlt](https://github.com/Aurlt)  
    
     
+
+---
+
+## Minecraft fails to launch on Wayland or minimal X11 configurations (missing xrandr command)
+
+**Description**
+
+
+Older versions of Minecraft have a hardcoded dependency on the **xrandr** command, which is part of the **X11 display management utilities**.
+
+If the xrandr command is not installed or missing from $PATH, Minecraft may fail to launch without a clear error message.
+This can happen both on X11 and on Wayland (when running through XWayland).
+
+
+```log
+
+java.lang.ExceptionInInitializerError ...
+Caused by: java.lang.ArrayIndexOutOfBoundsException: 0
+        at org.lwjgl.opengl.LinuxDisplay.getAvailableDisplayModes(LinuxDisplay.java:951)
+        at org.lwjgl.opengl.LinuxDisplay.init(LinuxDisplay.java:738)
+        at org.lwjgl.opengl.Display.<clinit>(Display.java:138)
+
+```
+
+**Fix**
+
+Install `xrandr` using your package manager.
+For example:
+
+```bash
+# Fedora / RHEL-based systems
+sudo dnf install xrandr
+
+# Arch / Manjaro
+sudo pacman -S xorg-xrandr
+
+# Ubuntu / Debian
+sudo apt install x11-xserver-utils
+```
+
+**Credits**
+
+Discovered and confirmed by [mrmayman](https://github.com/mrmayman).
+
+
