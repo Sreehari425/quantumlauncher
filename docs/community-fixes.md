@@ -102,3 +102,35 @@ Discoverd by Spicy Bee(balos_sandor) at discord
 workaround by [Aurlt](https://github.com/Aurlt)  
    
     
+
+---
+
+## Minecraft fails to launch on Wayland (missing xrandr command)
+
+**Description**
+
+Older versions of Minecraft have a **hardcoded dependency on the `xrandr` command**, which is used for display management on **X11**.
+When running under **Wayland**, this command interacts with the **XWayland** compatibility layer.
+If `xrandr` is **not installed** or **missing from `$PATH`**, Minecraft will fail to start without any clear error message.
+
+**Fix**
+
+Install `xrandr` using your package manager.
+For example:
+
+```bash
+# Fedora / RHEL-based systems
+sudo dnf install xrandr
+
+# Arch / Manjaro
+sudo pacman -S xorg-xrandr
+
+# Ubuntu / Debian
+sudo apt install x11-xserver-utils
+```
+
+**Credits**
+
+Discovered and confirmed by [mrmayman](https://github.com/mrmayman).
+
+
