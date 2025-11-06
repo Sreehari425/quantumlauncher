@@ -116,6 +116,16 @@ If the xrandr command is not installed or missing from $PATH, Minecraft may fail
 This can happen both on X11 and on Wayland (when running through XWayland).
 
 
+```log
+
+java.lang.ExceptionInInitializerError ...
+Caused by: java.lang.ArrayIndexOutOfBoundsException: 0
+        at org.lwjgl.opengl.LinuxDisplay.getAvailableDisplayModes(LinuxDisplay.java:951)
+        at org.lwjgl.opengl.LinuxDisplay.init(LinuxDisplay.java:738)
+        at org.lwjgl.opengl.Display.<clinit>(Display.java:138)
+
+```
+
 **Fix**
 
 Install `xrandr` using your package manager.
