@@ -37,11 +37,17 @@ If multiple are available you can choose between them.
 
 ---
 
+# User Experience
+
+- Tweaks to sidebar and info message
+
 ## Keyboard Navigation
 
 - `Ctrl/Cmd/Alt 1/2/3` to switch tabs in main screen
 - `Ctrl N` to create new instance
 - `Ctrl ,` to open settings
+
+---
 
 ## File location (linux)
 
