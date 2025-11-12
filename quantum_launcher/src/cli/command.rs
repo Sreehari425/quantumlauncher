@@ -255,8 +255,11 @@ pub fn launch_instance(
 
     if let Some(f) = child.read_logs(censors, None) {
         match runtime.block_on(f) {
-            Ok((s, _)) => {
+            Ok((s, _, diag)) => {
                 info!("Game exited with code {s}");
+                if let Some(diag) = diag {
+                    err!("{diag}");
+                }
                 exit(s.code().unwrap_or_default());
             }
             Err(err) => Err(err)?,

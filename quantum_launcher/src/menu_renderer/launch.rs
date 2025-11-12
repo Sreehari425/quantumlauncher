@@ -72,7 +72,7 @@ impl Launcher {
                         })
                     },
                 ],
-                get_footer_text(menu),
+                get_footer_text(),
             ],
         ]
         .spacing(5);
@@ -130,7 +130,10 @@ impl Launcher {
                 .into()
         };
 
-        widget::column!(tab_selector, tab_body).spacing(5).into()
+        widget::column!(tab_selector)
+            .push_maybe(view_info_message(menu))
+            .push(tab_body)
+            .into()
     }
 
     fn get_mods_button(
@@ -432,6 +435,32 @@ impl Launcher {
     }
 }
 
+fn view_info_message(
+    menu: &'_ MenuLaunch,
+) -> Option<widget::Container<'_, Message, LauncherTheme>> {
+    (!menu.message.is_empty()).then_some(
+        widget::container(widget::row![
+            widget::text(&menu.message)
+                .width(Length::Fill)
+                .size(12)
+                .style(|t: &LauncherTheme| t.style_text(Color::SecondLight)),
+            widget::button(
+                icon_manager::win_close()
+                    .style(|t: &LauncherTheme| t.style_text(Color::Mid))
+                    .size(14)
+            )
+            .padding(0)
+            .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatExtraDark))
+            .on_press(Message::LaunchScreenOpen {
+                message: None,
+                clear_selection: false
+            })
+        ])
+        .padding(10)
+        .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark)),
+    )
+}
+
 fn get_sidebar_new_button(menu: &MenuLaunch) -> widget::Button<'_, Message, LauncherTheme> {
     widget::button(
         widget::row![icon_manager::create(), widget::text("New").size(16)]
@@ -489,13 +518,20 @@ fn get_tab_selector<'a>(selected_instance_s: Option<&'a str>, menu: &'a MenuLaun
     .into()
 }
 
-fn render_tab_button(n: LaunchTabId, menu: &'_ MenuLaunch) -> Element<'_> {
+fn render_tab_button(tab: LaunchTabId, menu: &'_ MenuLaunch) -> Element<'_> {
+    let name = tab.to_string();
+
     let txt = widget::row!(
         widget::horizontal_space(),
-        widget::text(n.to_string()),
+        widget::rich_text![widget::span(name).underline(if let LaunchTabId::Log = tab {
+            menu.message.contains("crashed!")
+        } else {
+            false
+        })],
         widget::horizontal_space(),
     );
-    if menu.tab == n {
+
+    if menu.tab == tab {
         widget::container(txt)
             .style(LauncherTheme::style_container_selected_flat_button)
             .padding(5)
@@ -505,7 +541,7 @@ fn render_tab_button(n: LaunchTabId, menu: &'_ MenuLaunch) -> Element<'_> {
     } else {
         widget::button(txt)
             .style(|n, status| n.style_button(status, StyleButton::FlatExtraDark))
-            .on_press(Message::LaunchChangeTab(n))
+            .on_press(Message::LaunchChangeTab(tab))
             .width(70)
             .height(TAB_HEIGHT)
             .into()
@@ -529,8 +565,8 @@ fn get_no_logs_message<'a>() -> widget::Column<'a, Message, LauncherTheme> {
     }
 }
 
-fn get_footer_text(menu: &'_ MenuLaunch) -> Element<'_> {
-    let version_message = widget::column!(
+fn get_footer_text() -> widget::Column<'static, Message, LauncherTheme> {
+    widget::column!(
         widget::vertical_space(),
         widget::row!(
             widget::horizontal_space(),
@@ -544,21 +580,5 @@ fn get_footer_text(menu: &'_ MenuLaunch) -> Element<'_> {
                 .size(10)
                 .style(|t: &LauncherTheme| t.style_text(Color::Mid))
         ),
-    );
-
-    if menu.message.is_empty() {
-        widget::column!(version_message)
-    } else {
-        widget::column!(
-            widget::row!(
-                widget::horizontal_space(),
-                widget::container(widget::text(&menu.message).size(14))
-                    .width(190)
-                    .padding(10)
-            ),
-            version_message
-        )
-    }
-    .spacing(10)
-    .into()
+    )
 }

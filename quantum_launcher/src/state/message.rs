@@ -3,8 +3,8 @@ use std::{collections::HashSet, path::PathBuf, process::ExitStatus};
 use crate::message_handler::ForgeKind;
 use iced::widget;
 use ql_core::{
-    file_utils::DirItem, jarmod::JarMods, InstanceSelection, LaunchedProcess, ListEntry, ModId,
-    StoreBackendType,
+    file_utils::DirItem, jarmod::JarMods, read_log::Diagnostic, InstanceSelection, LaunchedProcess,
+    ListEntry, ModId, StoreBackendType,
 };
 use ql_instances::{
     auth::{
@@ -343,7 +343,7 @@ pub enum Message {
 
     LaunchLogScroll(isize),
     LaunchLogScrollAbsolute(isize),
-    LaunchGameExited(Res<(ExitStatus, InstanceSelection)>),
+    LaunchGameExited(Res<(ExitStatus, InstanceSelection, Option<Diagnostic>)>),
     LaunchCopyLog,
     LaunchUploadLog,
     LaunchUploadLogResult(Res<String>),

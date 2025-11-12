@@ -12,7 +12,7 @@ use iced::futures::executor::block_on;
 use iced::Task;
 use ql_core::json::instance_config::ModTypeInfo;
 use ql_core::json::VersionDetails;
-use ql_core::read_log::ReadError;
+use ql_core::read_log::{Diagnostic, ReadError};
 use ql_core::{
     err, json::instance_config::InstanceConfigJson, GenericProgress, InstanceSelection,
     IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
@@ -105,7 +105,7 @@ impl Launcher {
                                     if io.kind() == std::io::ErrorKind::InvalidData =>
                                 {
                                     err!("Minecraft log contains invalid unicode! Stopping the logging...\n(note: the game will continue to run despite the next message)");
-                                    Ok((ExitStatus::default(), selected_instance))
+                                    Ok((ExitStatus::default(), selected_instance, None))
                                 }
                                 _ => result.strerr(),
                             }
@@ -228,7 +228,12 @@ impl Launcher {
         }
     }
 
-    pub fn set_game_exited(&mut self, status: ExitStatus, instance: &InstanceSelection) {
+    pub fn set_game_exited(
+        &mut self,
+        status: ExitStatus,
+        instance: &InstanceSelection,
+        diagnostic: Option<Diagnostic>,
+    ) {
         let kind = if instance.is_server() {
             "Server"
         } else {
@@ -239,8 +244,11 @@ impl Launcher {
         if let State::Launch(MenuLaunch { message, .. }) = &mut self.state {
             let has_crashed = !status.success();
             if has_crashed {
-                *message =
-                    format!("{kind} crashed with code: {status}\nCheck Logs for more information");
+                *message = format!("{kind} crashed! ({status})\nCheck \"Logs\" for more info");
+                if let Some(diag) = diagnostic {
+                    message.push_str("\n\n");
+                    message.push_str(&diag.to_string());
+                }
             }
             if let Some(log) = self.logs.get_mut(instance) {
                 log.has_crashed = has_crashed;

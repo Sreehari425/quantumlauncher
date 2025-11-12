@@ -15,7 +15,7 @@
 #![allow(clippy::cast_precision_loss)]
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
-use crate::read_log::{read_logs, LogLine, ReadError};
+use crate::read_log::{read_logs, Diagnostic, LogLine, ReadError};
 use futures::StreamExt;
 use json::VersionDetails;
 use regex::Regex;
@@ -544,14 +544,14 @@ pub struct LaunchedProcess {
     pub is_classic_server: bool,
 }
 
+type ReadLogOut = Result<(ExitStatus, InstanceSelection, Option<Diagnostic>), ReadError>;
+
 impl LaunchedProcess {
     pub fn read_logs(
         &self,
         censors: Vec<String>,
         sender: Option<Sender<LogLine>>,
-    ) -> Option<
-        Pin<Box<dyn Future<Output = Result<(ExitStatus, InstanceSelection), ReadError>> + Send>>,
-    > {
+    ) -> Option<Pin<Box<dyn Future<Output = ReadLogOut> + Send>>> {
         let mut c = self.child.lock().unwrap();
         let (Some(stdout), Some(stderr)) = (c.stdout.take(), c.stderr.take()) else {
             return None;

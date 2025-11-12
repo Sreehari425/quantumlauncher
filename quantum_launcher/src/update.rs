@@ -161,8 +161,8 @@ impl Launcher {
             Message::InstallForgeEnd(Ok(())) | Message::UninstallLoaderEnd(Ok(())) => {
                 return self.go_to_edit_mods_menu(false);
             }
-            Message::LaunchGameExited(Ok((status, instance))) => {
-                self.set_game_exited(status, &instance);
+            Message::LaunchGameExited(Ok((status, instance, diagnostic))) => {
+                self.set_game_exited(status, &instance, diagnostic);
             }
             Message::LaunchKill => return self.kill_selected_instance(),
             Message::LaunchCopyLog => {
