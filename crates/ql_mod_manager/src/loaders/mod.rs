@@ -20,8 +20,10 @@ pub mod neoforge;
 pub mod optifine;
 pub mod paper;
 
-pub(crate) const FORGE_INSTALLER_JAVA: &str =
-    include_str!("../../../../assets/installers/ForgeInstaller.java");
+pub(crate) const FORGE_INSTALLER_CLIENT: &[u8] =
+    include_bytes!("../../../../assets/installers/ForgeInstaller.class");
+pub(crate) const FORGE_INSTALLER_SERVER: &[u8] =
+    include_bytes!("../../../../assets/installers/ForgeInstallerServer.class");
 
 async fn change_instance_type(
     instance_dir: &Path,

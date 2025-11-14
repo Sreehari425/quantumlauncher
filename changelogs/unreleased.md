@@ -65,3 +65,5 @@ If multiple are available you can choose between them.
 - Fixed launcher panics when launching the game.
 - Fixed "java binary not found" macOS error.
 - Fixed NeoForge 1.21.1 crash (reinstall NeoForge to apply)
+- Fixed forge installer error: "Processor failed, invalid outputs"
+  (also made installer faster)

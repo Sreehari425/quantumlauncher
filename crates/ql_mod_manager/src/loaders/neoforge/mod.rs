@@ -115,7 +115,7 @@ async fn download_libraries(
         info!("Downloading library {i}/{len}: {}", library.name);
         send_progress(
             f_progress,
-            ForgeInstallProgress::P6DownloadingLibrary {
+            ForgeInstallProgress::P5DownloadingLibrary {
                 num: i,
                 out_of: len,
             },

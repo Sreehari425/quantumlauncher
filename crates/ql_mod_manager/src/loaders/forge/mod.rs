@@ -6,8 +6,8 @@ use ql_core::{
         instance_config::ModTypeInfo,
         VersionDetails,
     },
-    no_window, pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError,
-    Progress, CLASSPATH_SEPARATOR,
+    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError, Progress,
+    CLASSPATH_SEPARATOR,
 };
 use ql_java_handler::{get_java_binary, JavaVersion, JAVA};
 use std::sync::Mutex;
@@ -20,7 +20,7 @@ use std::{
 };
 use tokio::fs;
 
-use crate::loaders::{change_instance_type, FORGE_INSTALLER_JAVA};
+use crate::loaders::{change_instance_type, FORGE_INSTALLER_CLIENT, FORGE_INSTALLER_SERVER};
 
 mod error;
 mod server;
@@ -217,46 +217,21 @@ impl ForgeInstaller {
         j_progress: Option<&Sender<GenericProgress>>,
         installer_name: &str,
     ) -> Result<(), ForgeInstallError> {
-        let javac_path = get_java_binary(JavaVersion::Java21, "javac", j_progress).await?;
-        let java_source_file = FORGE_INSTALLER_JAVA
-            .replace("CLIENT", if self.is_server { "SERVER" } else { "CLIENT" });
-        let source_path = self.forge_dir.join("ForgeInstaller.java");
-        fs::write(&source_path, java_source_file)
+        let installer = if self.is_server {
+            FORGE_INSTALLER_SERVER
+        } else {
+            FORGE_INSTALLER_CLIENT
+        };
+        let installer_class = self.forge_dir.join("ForgeInstaller.class");
+        fs::write(&installer_class, installer)
             .await
-            .path(source_path)?;
+            .path(installer_class)?;
 
-        if !self.is_server {
-            let launcher_profiles_json_path = self.forge_dir.join("launcher_profiles.json");
-            fs::write(&launcher_profiles_json_path, "{}")
-                .await
-                .path(launcher_profiles_json_path)?;
-            let launcher_profiles_json_microsoft_store_path = self
-                .forge_dir
-                .join("launcher_profiles_microsoft_store.json");
-            fs::write(&launcher_profiles_json_microsoft_store_path, "{}")
-                .await
-                .path(launcher_profiles_json_microsoft_store_path)?;
-        }
+        self.run_installer_create_garbage_files().await?;
 
-        pt!("Compiling Installer");
-        self.send_progress(ForgeInstallProgress::P4CompilingInstaller);
-        let mut command = Command::new(&javac_path);
-        command
-            .args(["-cp", installer_name, "ForgeInstaller.java", "-d", "."])
-            .current_dir(&self.forge_dir);
-        no_window!(command);
-
-        let output = command.output().path(javac_path)?;
-        if !output.status.success() {
-            return Err(ForgeInstallError::CompileError(
-                String::from_utf8(output.stdout)?,
-                String::from_utf8(output.stderr)?,
-            ));
-        }
-
-        let java_path = get_java_binary(JavaVersion::Java21, JAVA, None).await?;
+        let java_path = get_java_binary(JavaVersion::Java8, JAVA, j_progress).await?;
         pt!("Running Installer");
-        self.send_progress(ForgeInstallProgress::P5RunningInstaller);
+        self.send_progress(ForgeInstallProgress::P4RunningInstaller);
         let mut command = Command::new(&java_path);
         command
             .args([
@@ -274,6 +249,21 @@ impl ForgeInstaller {
             ));
         }
         Ok(())
+    }
+
+    async fn run_installer_create_garbage_files(&self) -> Result<(), ForgeInstallError> {
+        Ok(if !self.is_server {
+            let launcher_profiles_json_path = self.forge_dir.join("launcher_profiles.json");
+            fs::write(&launcher_profiles_json_path, "{}")
+                .await
+                .path(launcher_profiles_json_path)?;
+            let launcher_profiles_json_microsoft_store_path = self
+                .forge_dir
+                .join("launcher_profiles_microsoft_store.json");
+            fs::write(&launcher_profiles_json_microsoft_store_path, "{}")
+                .await
+                .path(launcher_profiles_json_microsoft_store_path)?;
+        })
     }
 
     fn get_forge_json(
@@ -375,7 +365,7 @@ impl ForgeInstaller {
                 library.name
             );
 
-            self.send_progress(ForgeInstallProgress::P6DownloadingLibrary {
+            self.send_progress(ForgeInstallProgress::P5DownloadingLibrary {
                 num: *i,
                 out_of: num_libraries,
             });
@@ -483,9 +473,8 @@ pub enum ForgeInstallProgress {
     P1Start,
     P2DownloadingJson,
     P3DownloadingInstaller,
-    P4CompilingInstaller,
-    P5RunningInstaller,
-    P6DownloadingLibrary {
+    P4RunningInstaller,
+    P5DownloadingLibrary {
         num: usize,
         out_of: usize,
     },
@@ -495,13 +484,11 @@ pub enum ForgeInstallProgress {
 impl Progress for ForgeInstallProgress {
     fn get_num(&self) -> f32 {
         match self {
-            ForgeInstallProgress::P1Start => 0.0,
-            ForgeInstallProgress::P2DownloadingJson => 1.0,
-            ForgeInstallProgress::P3DownloadingInstaller => 2.0,
-            ForgeInstallProgress::P4CompilingInstaller => 3.0,
-            ForgeInstallProgress::P5RunningInstaller => 4.0,
-            ForgeInstallProgress::P6DownloadingLibrary { num, out_of } => {
-                6.0 + (*num as f32 * 2.0 / *out_of as f32)
+            ForgeInstallProgress::P1Start | ForgeInstallProgress::P2DownloadingJson => 0.0,
+            ForgeInstallProgress::P3DownloadingInstaller => 1.0,
+            ForgeInstallProgress::P4RunningInstaller => 2.0,
+            ForgeInstallProgress::P5DownloadingLibrary { num, out_of } => {
+                4.0 + (*num as f32 * 2.0 / *out_of as f32)
             }
             ForgeInstallProgress::P7Done => 8.0,
         }
@@ -512,11 +499,10 @@ impl Progress for ForgeInstallProgress {
             ForgeInstallProgress::P1Start => "Installing forge...".to_owned(),
             ForgeInstallProgress::P2DownloadingJson => "Downloading JSON".to_owned(),
             ForgeInstallProgress::P3DownloadingInstaller => "Downloading installer".to_owned(),
-            ForgeInstallProgress::P4CompilingInstaller => "Compiling installer".to_owned(),
-            ForgeInstallProgress::P5RunningInstaller => {
+            ForgeInstallProgress::P4RunningInstaller => {
                 "Running Installer (this might take a while)".to_owned()
             }
-            ForgeInstallProgress::P6DownloadingLibrary { num, out_of } => {
+            ForgeInstallProgress::P5DownloadingLibrary { num, out_of } => {
                 format!("Downloading Library ({num}/{out_of})")
             }
             ForgeInstallProgress::P7Done => "Done!".to_owned(),

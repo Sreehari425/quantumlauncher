@@ -9,10 +9,11 @@
 - QuantumLauncher logo made by [Aurlt](https://github.com/Aurlt)
 
 # Installers
-- `ForgeInstaller.java` taken from
+- `OptifineInstaller.java` made by Mrmayman (me) for connecting to OptiFine installer.
+- `ForgeInstaller.java` (with some modifications) taken from
   [minecraft-launcher](https://github.com/alexivkin/minecraft-launcher/blob/master/ClientInstaller36.java)
   (licensed under [Apache 2.0](https://github.com/Mrmayman/quantumlauncher/tree/main/assets/licenses/APACHE_2.txt)) for connecting to Forge installer.
-- `OptifineInstaller.java` made by Mrmayman (me) for connecting to OptiFine installer.
+- `ForgeInstaller.class` `ForgeInstallerServer.class`: Compiled versions of the above file using `javac` 8.
 
 # ASCII
 ASCII art for QuantumLauncher, to be shown as an intro message to the terminal. Licensed under public domain.

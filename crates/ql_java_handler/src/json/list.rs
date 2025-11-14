@@ -60,13 +60,6 @@ impl JavaListJson {
     }
 
     pub fn get_url(&self, version: JavaVersion) -> Option<String> {
-        if (cfg!(target_os = "windows")
-            || (cfg!(target_os = "macos") && cfg!(target_arch = "x86_64")))
-            && version == JavaVersion::Java8
-        {
-            return None;
-        }
-
         let java_list = if cfg!(target_os = "linux") {
             if cfg!(target_arch = "x86_64") {
                 &self.linux
