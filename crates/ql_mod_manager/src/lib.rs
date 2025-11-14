@@ -9,7 +9,7 @@
 //! - Interacting with Modrinth and Curseforge API to
 //!   search, install, uninstall and update mods.
 //! - Packaging mods into single-file presets
-//!   (see [`PresetJson`] for more info)
+//!   (see [`Preset`] for more info)
 //! ## Installing and uninstalling:
 //! - Fabric
 //! - Forge

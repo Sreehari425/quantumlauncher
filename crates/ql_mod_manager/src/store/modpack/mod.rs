@@ -20,7 +20,7 @@ use super::CurseforgeNotAllowed;
 
 /// Installs a modpack file.
 ///
-/// Not to be confused with [`crate::PresetJson`]
+/// Not to be confused with [`crate::Preset`]
 /// (`.qmp` mod presets). Those are QuantumLauncher-only,
 /// but these are found across the internet.
 ///
