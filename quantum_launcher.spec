@@ -1,5 +1,5 @@
 Name:           quantum-launcher
-Version:        0.4.2
+Version:        0.4.3
 Release:        1%{?dist}
 Summary:        Simple Minecraft Launcher written in Rust
 

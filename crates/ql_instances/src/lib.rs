@@ -70,7 +70,7 @@ use semver::{BuildMetadata, Prerelease};
 const LAUNCHER_VERSION: semver::Version = semver::Version {
     major: 0,
     minor: 4,
-    patch: 2,
+    patch: 3,
     pre: Prerelease::EMPTY,
     build: BuildMetadata::EMPTY,
 };
