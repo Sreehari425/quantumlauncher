@@ -35,7 +35,7 @@ impl std::fmt::Display for LaunchTabId {
             "{}",
             match self {
                 LaunchTabId::Buttons => "Play",
-                LaunchTabId::Log => "Log",
+                LaunchTabId::Log => "Logs",
                 LaunchTabId::Edit => "Edit",
             }
         )

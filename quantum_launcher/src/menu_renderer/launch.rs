@@ -519,17 +519,19 @@ fn get_tab_selector<'a>(selected_instance_s: Option<&'a str>, menu: &'a MenuLaun
 }
 
 fn render_tab_button(tab: LaunchTabId, menu: &'_ MenuLaunch) -> Element<'_> {
-    let name = tab.to_string();
+    let name = widget::text(tab.to_string());
 
-    let txt = widget::row!(
-        widget::horizontal_space(),
-        widget::rich_text![widget::span(name).underline(if let LaunchTabId::Log = tab {
-            menu.message.contains("crashed!")
+    let txt: Element = if let LaunchTabId::Log = tab {
+        if menu.message.contains("crashed!") {
+            underline(name, Color::Mid).into()
         } else {
-            false
-        })],
-        widget::horizontal_space(),
-    );
+            name.into()
+        }
+    } else {
+        name.into()
+    };
+
+    let txt = widget::row!(widget::horizontal_space(), txt, widget::horizontal_space());
 
     if menu.tab == tab {
         widget::container(txt)
