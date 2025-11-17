@@ -225,6 +225,13 @@ impl VersionDetails {
     pub fn get_id(&self) -> &str {
         self.id.strip_suffix("-lwjgl3").unwrap_or(&self.id)
     }
+
+    #[must_use]
+    pub fn uses_java_8(&self) -> bool {
+        self.javaVersion
+            .as_ref()
+            .is_some_and(|n| n.majorVersion == 8)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
