@@ -22,11 +22,11 @@ It's designed to be simple and easy to use, with a focus on performance and feat
 
 ![](https://github.com/Mrmayman/quantumlauncher/raw/main/assets/screenshots/lightweight.png)
 
-## Install fabric, forge or optifine with ease
+## Install Fabric, Forge, NeoForge, Quilt, or OptiFine with ease
 
 ![](https://github.com/Mrmayman/quantumlauncher/raw/main/assets/screenshots/install_loader.png)
 
-## Build in mod store to download your favorite mods
+## Built-in mod store to download your favorite mods!
 
 ![](https://github.com/Mrmayman/quantumlauncher/raw/main/assets/screenshots/mod_store.png)
 
@@ -34,15 +34,15 @@ It's designed to be simple and easy to use, with a focus on performance and feat
 
 ![](https://github.com/Mrmayman/quantumlauncher/raw/main/assets/screenshots/new.png)
 
-## Full support for old Minecraft versions, integrated with Omniarchive. Includes skin and sound fixes!
+## Full support for old Minecraft versions (via Omniarchive). Includes skin and sound fixes!
 
 ![](https://github.com/Mrmayman/quantumlauncher/raw/main/assets/screenshots/old_mc.png)
 
-## Neatly package your mods into presets, and share it with your friends!
+## Manage your hundreds of mods conveniently!
 
-![](https://github.com/Mrmayman/quantumlauncher/raw/main/assets/screenshots/presets.png)
+![](https://github.com/Mrmayman/quantumlauncher/raw/main/assets/screenshots/mod_manage.png)
 
-## Built in themes!
+## Make your launcher yours
 
 ![](https://github.com/Mrmayman/quantumlauncher/raw/main/assets/screenshots/themes.png)
 <br><br>

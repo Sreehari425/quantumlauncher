@@ -29,7 +29,7 @@ pub async fn launch(name: String, timeout: f32) -> bool {
     let timeout_duration = Duration::from_secs_f32(timeout);
     let start_time = tokio::time::Instant::now();
 
-    let sys = sysinfo::System::new_all(); // sys needs to be mutable to refresh
+    let sys = sysinfo::System::new_all();
 
     loop {
         if start_time.elapsed() >= timeout_duration {
