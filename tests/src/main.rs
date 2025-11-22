@@ -80,15 +80,18 @@ async fn main() {
         }
         for loader in *loaders {
             println!("(Loader: {loader:?})");
-            attempt(
-                ql_mod_manager::loaders::install_specified_loader(
-                    instance.clone(),
-                    *loader,
-                    None,
-                    None,
-                )
-                .await,
-            );
+            if let Err(err) = ql_mod_manager::loaders::install_specified_loader(
+                instance.clone(),
+                *loader,
+                None,
+                None,
+            )
+            .await
+            {
+                eprintln!("{err}");
+                fails.push((*name, Some(*loader)));
+                continue;
+            }
 
             println!("Done");
             if !launch::launch((*name).to_owned(), cli.timeout.unwrap_or(60.0)).await {

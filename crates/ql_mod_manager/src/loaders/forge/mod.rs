@@ -316,10 +316,7 @@ impl ForgeInstaller {
 
         let (file, path) = Self::get_filename_and_path(lib, ver, &library, class)?;
 
-        if class == "net.minecraftforge" && lib == "forge" {
-            if self.major_version > 48 {
-                Self::add_to_classpath(classpath, &path, &file);
-            }
+        if class == "net.minecraftforge" && lib == "forge" && self.major_version < 49 {
             pt!("Built in forge library, skipping...");
             return Ok(());
         }

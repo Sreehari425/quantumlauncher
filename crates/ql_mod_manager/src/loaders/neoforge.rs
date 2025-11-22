@@ -2,19 +2,17 @@ use chrono::DateTime;
 use ql_core::{
     file_utils, info,
     json::{instance_config::ModTypeInfo, VersionDetails},
-    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError,
+    no_window, pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError,
     CLASSPATH_SEPARATOR, REGEX_SNAPSHOT,
 };
+use ql_java_handler::{get_java_binary, JavaVersion};
 use serde::Deserialize;
 use std::{fmt::Write, io::Cursor, path::Path, sync::mpsc::Sender};
-use tokio::fs;
+use tokio::{fs, process::Command};
 
 use crate::loaders::change_instance_type;
-use run_installer::compile_and_run_installer;
 
 use super::forge::{ForgeInstallError, ForgeInstallProgress};
-
-mod run_installer;
 
 const NEOFORGE_VERSIONS_URL: &str =
     "https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge";
@@ -53,7 +51,7 @@ pub async fn install(
         .await
         .path(&installer_path)?;
 
-    compile_and_run_installer(
+    run_installer(
         &neoforge_dir,
         j_progress.as_ref(),
         f_progress,
@@ -297,5 +295,58 @@ async fn create_required_jsons(neoforge_dir: &Path) -> Result<(), ForgeInstallEr
     let p = neoforge_dir.join("launcher_profiles_microsoft_store.json");
     fs::write(&p, CONTENTS).await.path(p)?;
 
+    Ok(())
+}
+
+const FORGE_INSTALLER_CLIENT: &[u8] =
+    include_bytes!("../../../../assets/installers/NeoForgeInstallerClient.class");
+const FORGE_INSTALLER_SERVER: &[u8] =
+    include_bytes!("../../../../assets/installers/NeoForgeInstallerServer.class");
+
+pub async fn run_installer(
+    neoforge_dir: &Path,
+    j_progress: Option<&Sender<GenericProgress>>,
+    f_progress: Option<&Sender<ForgeInstallProgress>>,
+    is_server: bool,
+) -> Result<(), ForgeInstallError> {
+    pt!("Running Installer");
+    send_progress(f_progress, ForgeInstallProgress::P4RunningInstaller);
+
+    let installer = if is_server {
+        FORGE_INSTALLER_SERVER
+    } else {
+        FORGE_INSTALLER_CLIENT
+    };
+    let installer_class = neoforge_dir.join("NeoForgeInstaller.class");
+    fs::write(&installer_class, installer)
+        .await
+        .path(installer_class)?;
+
+    let java_path = get_java_binary(JavaVersion::Java21, "java", j_progress).await?;
+    let mut command = Command::new(&java_path);
+    no_window!(command);
+    command
+        .args([
+            "-cp",
+            &format!(
+                "forge/{INSTALLER_NAME}{CLASSPATH_SEPARATOR}{INSTALLER_NAME}{CLASSPATH_SEPARATOR}forge/{CLASSPATH_SEPARATOR}."
+            ),
+            "NeoForgeInstaller",
+        ])
+        .current_dir(if is_server {
+            neoforge_dir
+                .parent()
+                .map_or(neoforge_dir.join(".."), |n| n.to_owned())
+        } else {
+            neoforge_dir.to_owned()
+        });
+
+    let output = command.output().await.path(java_path)?;
+    if !output.status.success() {
+        return Err(ForgeInstallError::InstallerError(
+            String::from_utf8(output.stdout)?,
+            String::from_utf8(output.stderr)?,
+        ));
+    }
     Ok(())
 }
