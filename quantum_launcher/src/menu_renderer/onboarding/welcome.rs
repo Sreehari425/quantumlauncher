@@ -92,7 +92,8 @@ impl MenuWelcome {
                         .on_press_maybe((!config.username.is_empty()).then_some(
                             Message::LaunchScreenOpen {
                                 message: None,
-                                clear_selection: true
+                                clear_selection: true,
+                                is_server: Some(false)
                             }
                         ))
                 ),

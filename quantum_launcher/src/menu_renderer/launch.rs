@@ -60,17 +60,16 @@ impl Launcher {
                 // toggle the experimental server manager
                 widget::column![
                     widget::vertical_space(),
-                    if menu.is_viewing_server {
-                        widget::button("View Instances...").on_press(Message::LaunchScreenOpen {
-                            message: None,
-                            clear_selection: true,
-                        })
+                    widget::button(if menu.is_viewing_server {
+                        "View Instances..."
                     } else {
-                        widget::button("View Servers...").on_press(Message::ServerManageOpen {
-                            selected_server: None,
-                            message: None,
-                        })
-                    },
+                        "View Servers..."
+                    })
+                    .on_press(Message::LaunchScreenOpen {
+                        message: None,
+                        clear_selection: false,
+                        is_server: Some(!menu.is_viewing_server),
+                    }),
                 ],
                 get_footer_text(),
             ],
@@ -453,7 +452,8 @@ fn view_info_message(
             .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatExtraDark))
             .on_press(Message::LaunchScreenOpen {
                 message: None,
-                clear_selection: false
+                clear_selection: false,
+                is_server: Some(menu.is_viewing_server)
             })
         ])
         .padding(10)
@@ -469,11 +469,9 @@ fn get_sidebar_new_button(menu: &MenuLaunch) -> widget::Button<'_, Message, Laun
             .spacing(10),
     )
     .style(|n, status| n.style_button(status, StyleButton::FlatDark))
-    .on_press(if menu.is_viewing_server {
-        Message::ServerCreateScreenOpen
-    } else {
-        Message::CreateInstance(CreateInstanceMessage::ScreenOpen)
-    })
+    .on_press(Message::CreateInstance(CreateInstanceMessage::ScreenOpen {
+        is_server: menu.is_viewing_server,
+    }))
     .width(menu.sidebar_width)
 }
 

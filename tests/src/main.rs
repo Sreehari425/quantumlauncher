@@ -129,7 +129,7 @@ async fn create_instance(version: String) -> Result<(), DownloadError> {
         version.clone(),
         ListEntry {
             name: version,
-            is_classic_server: false,
+            is_server: false,
         },
         None,
         false,

@@ -1,5 +1,7 @@
 use iced::Task;
-use ql_core::{pt, DownloadProgress, InstanceSelection, IntoStringError, ListEntry};
+use ql_core::{
+    pt, DownloadProgress, InstanceSelection, IntoStringError, JsonDownloadError, ListEntry,
+};
 
 use crate::state::{
     CreateInstanceMessage, Launcher, MenuCreateInstance, Message, ProgressBar, State,
@@ -8,9 +10,11 @@ use crate::state::{
 impl Launcher {
     pub fn update_create_instance(&mut self, message: CreateInstanceMessage) -> Task<Message> {
         match message {
-            CreateInstanceMessage::ScreenOpen => return self.go_to_create_screen(),
-            CreateInstanceMessage::VersionsLoaded(result) => {
-                self.create_instance_finish_loading_versions_list(result);
+            CreateInstanceMessage::ScreenOpen { is_server } => {
+                return self.go_to_create_screen(is_server)
+            }
+            CreateInstanceMessage::VersionsLoaded(result, is_server) => {
+                self.create_instance_finish_loading_versions_list(result, is_server);
             }
             CreateInstanceMessage::VersionSelected(selected_version) => {
                 self.select_created_instance_version(selected_version);
@@ -19,8 +23,13 @@ impl Launcher {
             CreateInstanceMessage::Start => return self.create_instance(),
             CreateInstanceMessage::End(result) => match result {
                 Ok(instance) => {
-                    self.selected_instance = Some(InstanceSelection::Instance(instance));
-                    return self.go_to_launch_screen(Some("Created Instance".to_owned()));
+                    let is_server = instance.is_server();
+                    self.selected_instance = Some(instance);
+                    return if is_server {
+                        self.go_to_server_manage_menu(Some("Created Server".to_owned()))
+                    } else {
+                        self.go_to_launch_screen(Some("Created Instance"))
+                    };
                 }
                 Err(n) => self.set_error(n),
             },
@@ -84,11 +93,17 @@ then go to "Mods->Add File""#,
 
     fn create_instance_finish_loading_versions_list(
         &mut self,
-        result: Result<Vec<ListEntry>, String>,
+        result: Result<(Vec<ListEntry>, String), String>,
+        is_server: bool,
     ) {
         match result {
-            Ok(versions) => {
-                self.client_version_list_cache = Some(versions.clone());
+            Ok((versions, latest)) => {
+                if is_server {
+                    self.version_list_cache.server = Some(versions.clone());
+                } else {
+                    self.version_list_cache.client = Some(versions.clone());
+                }
+                self.version_list_cache.latest_stable = Some(latest);
                 let combo_state = iced::widget::combo_box::State::new(versions.clone());
                 if let State::Create(MenuCreateInstance::LoadingList { .. }) = &self.state {
                     self.state = State::Create(MenuCreateInstance::Choosing {
@@ -96,6 +111,7 @@ then go to "Mods->Add File""#,
                         selected_version: None,
                         download_assets: true,
                         combo_state: Box::new(combo_state),
+                        is_server,
                     });
                 }
             }
@@ -103,20 +119,29 @@ then go to "Mods->Add File""#,
         }
     }
 
-    pub fn go_to_create_screen(&mut self) -> Task<Message> {
-        if let Some(versions) = self.client_version_list_cache.clone() {
+    pub fn go_to_create_screen(&mut self, is_server: bool) -> Task<Message> {
+        if let Some(versions) = self.version_list_cache.client.clone() {
             let combo_state = iced::widget::combo_box::State::new(versions.clone());
             self.state = State::Create(MenuCreateInstance::Choosing {
                 instance_name: String::new(),
                 selected_version: None,
                 download_assets: true,
                 combo_state: Box::new(combo_state),
+                is_server,
             });
             Task::none()
         } else {
-            let (task, handle) = Task::perform(ql_instances::list_versions(), |n| {
-                Message::CreateInstance(CreateInstanceMessage::VersionsLoaded(n.strerr()))
-            })
+            let msg = move |n: Result<(Vec<ListEntry>, String), JsonDownloadError>| {
+                Message::CreateInstance(CreateInstanceMessage::VersionsLoaded(
+                    n.strerr(),
+                    is_server,
+                ))
+            };
+            let (task, handle) = if is_server {
+                Task::perform(ql_servers::list(), msg)
+            } else {
+                Task::perform(ql_instances::list_versions(), msg)
+            }
             .abortable();
 
             self.state = State::Create(MenuCreateInstance::LoadingList {
@@ -147,9 +172,11 @@ then go to "Mods->Add File""#,
             instance_name,
             download_assets,
             selected_version,
+            is_server,
             ..
         }) = &mut self.state
         {
+            let is_server = *is_server;
             let (sender, receiver) = std::sync::mpsc::channel::<DownloadProgress>();
             let progress = ProgressBar {
                 num: 0.0,
@@ -158,21 +185,49 @@ then go to "Mods->Add File""#,
                 progress: DownloadProgress::DownloadingJsonManifest,
             };
 
-            let instance_name = instance_name.clone();
-            let version = selected_version.clone().unwrap();
+            let version = selected_version
+                .clone()
+                .or(self
+                    .version_list_cache
+                    .latest_stable
+                    .clone()
+                    .map(|name| ListEntry { name, is_server }))
+                .unwrap();
+            let instance_name = if instance_name.trim().is_empty() {
+                version.name.clone()
+            } else {
+                instance_name.clone()
+            };
             let download_assets = *download_assets;
 
             self.state = State::Create(MenuCreateInstance::DownloadingInstance(progress));
 
-            return Task::perform(
-                ql_instances::create_instance(
-                    instance_name.clone(),
-                    version,
-                    Some(sender),
-                    download_assets,
-                ),
-                |n| Message::CreateInstance(CreateInstanceMessage::End(n.strerr())),
-            );
+            return if is_server {
+                Task::perform(
+                    async move {
+                        let sender = sender;
+                        ql_servers::create_server(instance_name.clone(), version, Some(&sender))
+                            .await
+                            .strerr()
+                            .map(InstanceSelection::Server)
+                    },
+                    |n| Message::CreateInstance(CreateInstanceMessage::End(n)),
+                )
+            } else {
+                Task::perform(
+                    ql_instances::create_instance(
+                        instance_name.clone(),
+                        version,
+                        Some(sender),
+                        download_assets,
+                    ),
+                    |n| {
+                        Message::CreateInstance(CreateInstanceMessage::End(
+                            n.strerr().map(InstanceSelection::Instance),
+                        ))
+                    },
+                )
+            };
         }
         Task::none()
     }

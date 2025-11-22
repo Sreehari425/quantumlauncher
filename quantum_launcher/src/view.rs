@@ -99,7 +99,10 @@ impl Launcher {
             State::GenericMessage(msg) => widget::column![widget::text(msg)].padding(10).into(),
             State::AccountLogin => view_account_login(),
             State::EditMods(menu) => menu.view(self.instance(), self.tick_timer, &self.images),
-            State::Create(menu) => menu.view(self.client_list.as_ref()),
+            State::Create(menu) => menu.view(
+                self.client_list.as_ref(),
+                self.version_list_cache.latest_stable.as_deref(),
+            ),
             State::ConfirmAction {
                 msg1,
                 msg2,
@@ -122,6 +125,7 @@ impl Launcher {
                 let back_msg = Message::LaunchScreenOpen {
                     message: None,
                     clear_selection: true,
+                    is_server: None,
                 };
                 widget::scrollable(
                     widget::column!(
@@ -159,7 +163,6 @@ impl Launcher {
             State::InstallForge(menu) => menu.view(),
             State::UpdateFound(menu) => menu.view(),
             State::InstallOptifine(menu) => menu.view(),
-            State::ServerCreate(menu) => menu.view(),
             State::ManagePresets(menu) => menu.view(),
             State::RecommendedMods(menu) => menu.view(),
         }

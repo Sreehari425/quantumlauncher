@@ -34,7 +34,7 @@ pub async fn create_instance(
     download_assets: bool,
 ) -> Result<String, DownloadError> {
     info!("Started creating instance.");
-    debug_assert!(!version.is_classic_server);
+    debug_assert!(!version.is_server);
 
     // An empty asset directory.
     let launcher_dir = &*LAUNCHER_DIR;

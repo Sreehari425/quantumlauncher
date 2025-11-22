@@ -14,8 +14,8 @@ use ql_mod_manager::store::{ModConfig, ModIndex};
 use crate::state::{
     EditInstanceMessage, GameProcess, InstallModsMessage, InstanceLog, LaunchTabId, Launcher,
     ManageJarModsMessage, MenuCreateInstance, MenuEditMods, MenuExportInstance, MenuInstallFabric,
-    MenuInstallOptifine, MenuLaunch, MenuLoginMS, MenuModsDownload, MenuRecommendedMods,
-    MenuServerCreate, Message, ModListEntry, State,
+    MenuInstallOptifine, MenuLaunch, MenuLoginMS, MenuModsDownload, MenuRecommendedMods, Message,
+    ModListEntry, State,
 };
 
 impl Launcher {
@@ -124,7 +124,6 @@ impl Launcher {
                     }
                 }
             },
-            State::ServerCreate(menu) => menu.tick(),
             State::ManagePresets(menu) => {
                 if let Some(progress) = &mut menu.progress {
                     progress.tick();
@@ -266,17 +265,6 @@ impl MenuModsDownload {
             async move { ModIndex::load(&selected_instance).await },
             |n| Message::InstallMods(InstallModsMessage::IndexUpdated(n.strerr())),
         )
-    }
-}
-
-impl MenuServerCreate {
-    pub fn tick(&mut self) {
-        match self {
-            MenuServerCreate::LoadingList | MenuServerCreate::Loaded { .. } => {}
-            MenuServerCreate::Downloading { progress } => {
-                progress.tick();
-            }
-        }
     }
 }
 

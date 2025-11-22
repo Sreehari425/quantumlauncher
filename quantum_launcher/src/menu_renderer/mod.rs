@@ -1,6 +1,6 @@
 use iced::widget::tooltip::Position;
 use iced::{widget, Alignment, Length};
-use ql_core::{InstanceSelection, Progress, WEBSITE};
+use ql_core::{Progress, WEBSITE};
 
 use crate::state::ImageState;
 use crate::{
@@ -9,7 +9,7 @@ use crate::{
     state::{
         AccountMessage, CreateInstanceMessage, InstallModsMessage, LauncherSettingsMessage,
         LicenseTab, ManageModsMessage, MenuCreateInstance, MenuCurseforgeManualDownload,
-        MenuLauncherUpdate, MenuLicense, MenuServerCreate, Message, ProgressBar,
+        MenuLauncherUpdate, MenuLicense, Message, ProgressBar,
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
@@ -155,7 +155,7 @@ fn sidebar_button<'a, A: PartialEq>(
 impl ImageState {}
 
 impl MenuCreateInstance {
-    pub fn view(&'_ self, list: Option<&Vec<String>>) -> Element<'_> {
+    pub fn view(&'_ self, list: Option<&Vec<String>>, latest_stable: Option<&str>) -> Element<'_> {
         match self {
             MenuCreateInstance::LoadingList { .. } => widget::column![
                 widget::row![
@@ -174,42 +174,11 @@ impl MenuCreateInstance {
                 selected_version,
                 download_assets,
                 combo_state,
+                is_server,
                 ..
             } => {
                 let already_exists = list.is_some_and(|n| n.contains(instance_name));
-
-                let create_button = button_with_icon(icon_manager::create(), "Create Instance", 16)
-                    .on_press_maybe(
-                        (selected_version.is_some()
-                            && !instance_name.is_empty()
-                            && !already_exists)
-                            .then(|| Message::CreateInstance(CreateInstanceMessage::Start)),
-                    );
-
-                let create_button: Element = if selected_version.is_none() {
-                    tooltip(
-                        create_button,
-                        "Select a version first!",
-                        Position::FollowCursor,
-                    )
-                    .into()
-                } else if instance_name.is_empty() {
-                    tooltip(
-                        create_button,
-                        "Enter a name for your instance.",
-                        Position::FollowCursor,
-                    )
-                    .into()
-                } else if already_exists {
-                    tooltip(
-                        create_button,
-                        "An instance with that name already exists!",
-                        Position::FollowCursor,
-                    )
-                    .into()
-                } else {
-                    create_button.into()
-                };
+                let create_button = get_create_button(already_exists);
 
                 widget::scrollable(
                     widget::column![
@@ -218,19 +187,35 @@ impl MenuCreateInstance {
                                 .on_press(
                                     Message::LaunchScreenOpen {
                                         message: None,
-                                        clear_selection: false
-                                }),
+                                        clear_selection: false,
+                                        is_server: Some(*is_server),
+                                    }
+                                ),
                             button_with_icon(icon_manager::folder_with_size(14), "Import Instance", 14)
                                 .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
                         ]
                         .spacing(5),
-                        widget::combo_box(combo_state, "Select a version...", selected_version.as_ref(), |version| {
-                            Message::CreateInstance(CreateInstanceMessage::VersionSelected(version))
-                        }),
-                        widget::text_input("Enter instance name...", instance_name)
-                            .on_input(|n| Message::CreateInstance(CreateInstanceMessage::NameInput(n))),
+
+                        widget::row![
+                            widget::text("Version:").width(100).size(18),
+                            widget::combo_box(combo_state, &latest_stable.map(|n| format!("{n} (latest)")).unwrap_or_else(|| "Pick a version...".to_owned()), selected_version.as_ref(), |version| {
+                                Message::CreateInstance(CreateInstanceMessage::VersionSelected(version))
+                            }),
+                        ].align_y(Alignment::Center),
+                        widget::row![
+                            widget::text("Name:").width(100).size(18),
+                            {
+                                let placeholder = selected_version.as_ref().map(|n| n.name.as_str()).or(latest_stable).unwrap_or("Enter name...");
+                                widget::text_input(placeholder, instance_name)
+                                    .on_input(|n| Message::CreateInstance(CreateInstanceMessage::NameInput(n)))
+                            }
+                        ].align_y(Alignment::Center),
+
                         tooltip(
-                            widget::checkbox("Download assets?", *download_assets).on_toggle(|t| Message::CreateInstance(CreateInstanceMessage::ChangeAssetToggle(t))),
+                            widget::row![
+                                widget::Space::with_width(5),
+                                widget::checkbox("Download assets?", *download_assets).text_size(14).size(14).on_toggle(|t| Message::CreateInstance(CreateInstanceMessage::ChangeAssetToggle(t)))
+                            ],
                             widget::text("If disabled, creating instance will be MUCH faster, but no sound or music will play in-game").size(12),
                             Position::Bottom
                         ),
@@ -281,6 +266,24 @@ impl MenuCreateInstance {
     }
 }
 
+fn get_create_button(already_exists: bool) -> Element<'static> {
+    let create_button = button_with_icon(icon_manager::create(), "Create Instance", 16)
+        .on_press_maybe(
+            (!already_exists).then_some(Message::CreateInstance(CreateInstanceMessage::Start)),
+        );
+
+    if already_exists {
+        tooltip(
+            create_button,
+            "An instance with that name already exists!",
+            Position::FollowCursor,
+        )
+        .into()
+    } else {
+        create_button.into()
+    }
+}
+
 impl MenuLauncherUpdate {
     pub fn view(&'_ self) -> Element<'_> {
         if let Some(progress) = &self.progress {
@@ -294,7 +297,8 @@ impl MenuLauncherUpdate {
                     back_button().on_press(
                         Message::LaunchScreenOpen {
                             message: None,
-                            clear_selection: false
+                            clear_selection: false,
+                            is_server: None
                         }
                     ),
                     button_with_icon(icon_manager::globe(), "Open Website", 16)
@@ -369,19 +373,11 @@ fn get_color_schemes(config: &'_ LauncherConfig) -> Element<'_> {
     .into()
 }
 
-fn back_to_launch_screen(
-    selected_instance: &InstanceSelection,
-    message: Option<String>,
-) -> Message {
-    match selected_instance {
-        InstanceSelection::Server(selected_server) => Message::ServerManageOpen {
-            selected_server: Some(selected_server.clone()),
-            message,
-        },
-        InstanceSelection::Instance(_) => Message::LaunchScreenOpen {
-            message: None,
-            clear_selection: false,
-        },
+fn back_to_launch_screen(is_server: Option<bool>, message: Option<String>) -> Message {
+    Message::LaunchScreenOpen {
+        message,
+        clear_selection: false,
+        is_server,
     }
 }
 
@@ -448,48 +444,6 @@ impl MenuCurseforgeManualDownload {
     }
 }
 
-impl MenuServerCreate {
-    pub fn view(&'_ self) -> Element<'_> {
-        match self {
-            MenuServerCreate::LoadingList => {
-                widget::column!(widget::text("Loading version list...").size(20),)
-            }
-            MenuServerCreate::Loaded {
-                name,
-                versions,
-                selected_version,
-                ..
-            } => {
-                widget::column!(
-                    back_button().on_press(Message::ServerManageOpen {
-                        selected_server: None,
-                        message: None
-                    }),
-                    widget::text("Create new server").size(20),
-                    widget::combo_box(
-                        versions,
-                        "Select a version...",
-                        selected_version.as_ref(),
-                        Message::ServerCreateVersionSelected
-                    ),
-                    widget::text_input("Enter server name...", name)
-                        .on_input(Message::ServerCreateNameInput),
-                    widget::button("Create Server").on_press_maybe(
-                        (selected_version.is_some() && !name.is_empty())
-                            .then(|| Message::ServerCreateStart)
-                    ),
-                )
-            }
-            MenuServerCreate::Downloading { progress } => {
-                widget::column!(widget::text("Creating Server...").size(20), progress.view())
-            }
-        }
-        .padding(10)
-        .spacing(10)
-        .into()
-    }
-}
-
 impl MenuLicense {
     pub fn view(&'_ self) -> Element<'_> {
         widget::row![
@@ -529,10 +483,7 @@ impl MenuLicense {
 
 pub fn view_account_login<'a>() -> Element<'a> {
     widget::column![
-        back_button().on_press(Message::LaunchScreenOpen {
-            message: None,
-            clear_selection: false
-        }),
+        back_button().on_press(back_to_launch_screen(None, None)),
         widget::vertical_space(),
         widget::row![
             widget::horizontal_space(),
@@ -570,10 +521,7 @@ pub fn view_error(error: &'_ str) -> Element<'_> {
         widget::column!(
             widget::text!("Error: {error}"),
             widget::row![
-                widget::button("Back").on_press(Message::LaunchScreenOpen {
-                    message: None,
-                    clear_selection: true
-                }),
+                widget::button("Back").on_press(back_to_launch_screen(None, None)),
                 widget::button("Copy Error").on_press(Message::CoreCopyError),
                 widget::button("Copy Error + Log").on_press(Message::CoreCopyLog),
                 widget::button("Join Discord for help")
@@ -593,10 +541,7 @@ pub fn view_error(error: &'_ str) -> Element<'_> {
 
 pub fn view_log_upload_result(url: &'_ str, is_server: bool) -> Element<'_> {
     widget::column![
-        back_button().on_press(Message::LaunchScreenOpen {
-            message: None,
-            clear_selection: false,
-        }),
+        back_button().on_press(back_to_launch_screen(Some(is_server), None)),
         widget::column![
             widget::vertical_space(),
             widget::text(format!(

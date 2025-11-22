@@ -3,6 +3,7 @@ use std::{
     time::Instant,
 };
 
+use crate::{config::SIDEBAR_WIDTH_DEFAULT, message_handler::get_locally_installed_mods};
 use iced::{widget::scrollable::AbsoluteOffset, Task};
 use ql_core::{
     file_utils::DirItem,
@@ -11,12 +12,11 @@ use ql_core::{
     DownloadProgress, GenericProgress, InstanceSelection, ListEntry, ModId, OptifineUniqueVersion,
     SelectedMod, StoreBackendType,
 };
+use ql_mod_manager::loaders::paper::PaperVersion;
 use ql_mod_manager::{
     loaders::{self, forge::ForgeInstallProgress, optifine::OptifineInstallProgress},
     store::{CurseforgeNotAllowed, ModConfig, ModIndex, QueryType, RecommendedMod, SearchResult},
 };
-use ql_mod_manager::loaders::paper::PaperVersion;
-use crate::{config::SIDEBAR_WIDTH_DEFAULT, message_handler::get_locally_installed_mods};
 
 use super::{ManageModsMessage, Message, ProgressBar};
 
@@ -251,6 +251,7 @@ pub enum MenuCreateInstance {
         _handle: iced::task::Handle,
     },
     Choosing {
+        is_server: bool,
         instance_name: String,
         selected_version: Option<ListEntry>,
         download_assets: bool,
@@ -475,7 +476,6 @@ pub enum State {
 
     ModsDownload(MenuModsDownload),
     LauncherSettings(MenuLauncherSettings),
-    ServerCreate(MenuServerCreate),
     ManagePresets(MenuEditPresets),
     RecommendedMods(MenuRecommendedMods),
 
@@ -547,18 +547,6 @@ impl std::fmt::Display for LicenseTab {
         };
         write!(f, "{name}")
     }
-}
-
-pub enum MenuServerCreate {
-    LoadingList,
-    Loaded {
-        name: String,
-        versions: Box<iced::widget::combo_box::State<ListEntry>>,
-        selected_version: Option<ListEntry>,
-    },
-    Downloading {
-        progress: ProgressBar<GenericProgress>,
-    },
 }
 
 pub enum MenuInstallOptifine {

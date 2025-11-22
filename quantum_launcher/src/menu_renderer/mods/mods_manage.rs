@@ -89,7 +89,10 @@ impl MenuEditMods {
     ) -> widget::Scrollable<'a, Message, LauncherTheme> {
         widget::scrollable(
             widget::column!(
-                back_button().on_press(back_to_launch_screen(selected_instance, None)),
+                back_button().on_press(back_to_launch_screen(
+                    Some(selected_instance.is_server()),
+                    None
+                )),
                 self.get_mod_installer_buttons(selected_instance),
                 widget::column!(
                     button_with_icon(icon_manager::download_with_size(14), "Download Content", 15)
@@ -469,7 +472,7 @@ impl MenuEditMods {
 
                             let measured: f32 = (config.installed_version.len() as f32) * 7.2;
                             let occupied =
-                                measured + self.width_name + PADDING.left + PADDING.right + 20.0;
+                                measured + self.width_name + PADDING.left + PADDING.right + 100.0;
                             let space = size.width - occupied;
                             (space > -10.0).then_some(widget::Space::with_width(space))
                         })

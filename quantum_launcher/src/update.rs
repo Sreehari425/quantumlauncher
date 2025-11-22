@@ -9,8 +9,7 @@ use tokio::io::AsyncWriteExt;
 
 use crate::state::{
     CustomJarState, GameProcess, LaunchTabId, Launcher, ManageModsMessage, MenuExportInstance,
-    MenuLaunch, MenuLauncherUpdate, MenuLicense, MenuServerCreate, MenuWelcome, Message,
-    ProgressBar, State,
+    MenuLaunch, MenuLauncherUpdate, MenuLicense, MenuWelcome, Message, ProgressBar, State,
 };
 
 impl Launcher {
@@ -45,9 +44,7 @@ impl Launcher {
                 err_no_log!("{err}");
             }
 
-            Message::ServerCreateEnd(Err(err))
-            | Message::ServerCreateVersionsLoaded(Err(err))
-            | Message::UninstallLoaderEnd(Err(err))
+            Message::UninstallLoaderEnd(Err(err))
             | Message::InstallForgeEnd(Err(err))
             | Message::LaunchGameExited(Err(err))
             | Message::CoreListLoaded(Err(err)) => self.set_error(err),
@@ -84,11 +81,23 @@ impl Launcher {
             Message::LaunchScreenOpen {
                 message,
                 clear_selection,
+                is_server,
             } => {
+                let is_server = is_server
+                    .or(self
+                        .selected_instance
+                        .as_ref()
+                        .map(InstanceSelection::is_server))
+                    .unwrap_or_default();
                 if clear_selection {
                     self.selected_instance = None;
                 }
-                return self.go_to_launch_screen(message);
+
+                return if is_server {
+                    self.go_to_server_manage_menu(message)
+                } else {
+                    self.go_to_launch_screen(message)
+                };
             }
             Message::EditInstance(message) => match self.update_edit_instance(message) {
                 Ok(n) => return n,
@@ -215,82 +224,6 @@ impl Launcher {
             #[cfg(not(feature = "auto_update"))]
             Message::UpdateDownloadStart | Message::UpdateCheckResult(_) => return Task::none(),
 
-            Message::ServerManageOpen {
-                selected_server,
-                message,
-            } => {
-                self.selected_instance = selected_server.map(InstanceSelection::Server);
-                return self.go_to_server_manage_menu(message);
-            }
-            Message::ServerCreateScreenOpen => {
-                if let Some(cache) = &self.server_version_list_cache {
-                    self.state = State::ServerCreate(MenuServerCreate::Loaded {
-                        name: String::new(),
-                        versions: Box::new(iced::widget::combo_box::State::new(cache.clone())),
-                        selected_version: None,
-                    });
-                } else {
-                    self.state = State::ServerCreate(MenuServerCreate::LoadingList);
-
-                    return Task::perform(
-                        async move { ql_servers::list().await.strerr() },
-                        Message::ServerCreateVersionsLoaded,
-                    );
-                }
-            }
-            Message::ServerCreateNameInput(new_name) => {
-                if let State::ServerCreate(MenuServerCreate::Loaded { name, .. }) = &mut self.state
-                {
-                    *name = new_name;
-                }
-            }
-            Message::ServerCreateVersionSelected(list_entry) => {
-                if let State::ServerCreate(MenuServerCreate::Loaded {
-                    selected_version, ..
-                }) = &mut self.state
-                {
-                    *selected_version = Some(list_entry);
-                }
-            }
-            Message::ServerCreateStart => {
-                if let State::ServerCreate(MenuServerCreate::Loaded {
-                    name,
-                    selected_version: Some(selected_version),
-                    ..
-                }) = &mut self.state
-                {
-                    let (sender, receiver) = std::sync::mpsc::channel();
-
-                    let name = name.clone();
-                    let selected_version = selected_version.clone();
-                    self.state = State::ServerCreate(MenuServerCreate::Downloading {
-                        progress: ProgressBar::with_recv(receiver),
-                    });
-                    return Task::perform(
-                        async move {
-                            let sender = sender;
-                            ql_servers::create_server(name, selected_version, Some(&sender))
-                                .await
-                                .strerr()
-                        },
-                        Message::ServerCreateEnd,
-                    );
-                }
-            }
-            Message::ServerCreateEnd(Ok(name)) => {
-                self.selected_instance = Some(InstanceSelection::Server(name));
-                return self.go_to_server_manage_menu(Some("Created Server".to_owned()));
-            }
-            Message::ServerCreateVersionsLoaded(Ok(vec)) => {
-                self.server_version_list_cache = Some(vec.clone());
-                if let State::ServerCreate(_) = &self.state {
-                    self.state = State::ServerCreate(MenuServerCreate::Loaded {
-                        versions: Box::new(iced::widget::combo_box::State::new(vec)),
-                        selected_version: None,
-                        name: String::new(),
-                    });
-                }
-            }
             Message::ServerCommandEdit(command) => {
                 let server = self.selected_instance.as_ref().unwrap();
                 debug_assert!(server.is_server());

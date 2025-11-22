@@ -4,8 +4,7 @@ use crate::state::{
     CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage, LauncherSettingsTab,
     MenuCreateInstance, MenuEditJarMods, MenuEditMods, MenuEditPresets, MenuExportInstance,
     MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLaunch, MenuLauncherSettings,
-    MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, MenuServerCreate,
-    Message, State,
+    MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, Message, State,
 };
 use iced::{
     keyboard::{self, key::Named, Key},
@@ -188,8 +187,10 @@ impl Launcher {
                 ("a", true, _, State::EditJarMods(_)) => {
                     Message::ManageJarMods(crate::state::ManageJarModsMessage::SelectAll)
                 }
-                ("n", true, _, State::Launch(_)) => {
-                    Message::CreateInstance(CreateInstanceMessage::ScreenOpen)
+                ("n", true, _, State::Launch(n)) => {
+                    Message::CreateInstance(CreateInstanceMessage::ScreenOpen {
+                        is_server: n.is_viewing_server,
+                    })
                 }
                 ("1", ctrl, alt, State::Launch(_)) if ctrl | alt => {
                     Message::LaunchChangeTab(LaunchTabId::Buttons)
@@ -311,9 +312,6 @@ impl Launcher {
             | State::Create(
                 MenuCreateInstance::LoadingList { .. } | MenuCreateInstance::Choosing { .. },
             )
-            | State::ServerCreate(
-                MenuServerCreate::LoadingList | MenuServerCreate::Loaded { .. },
-            )
             | State::Error { .. }
             | State::UpdateFound(MenuLauncherUpdate { progress: None, .. })
             | State::LauncherSettings(_)
@@ -379,7 +377,6 @@ impl Launcher {
             | State::Create(_)
             | State::ManagePresets(_)
             | State::ModsDownload(_)
-            | State::ServerCreate(_)
             | State::GenericMessage(_)
             | State::AccountLoginProgress(_)
             | State::ImportModpack(_)

@@ -38,8 +38,7 @@ impl ImageState {
         images_to_load.retain(|n, _| !n.is_empty());
 
         for (url, is_icon) in images_to_load.iter() {
-            if !self.downloads_in_progress.contains(url) {
-                self.downloads_in_progress.insert(url.to_owned());
+            if self.downloads_in_progress.insert(url.to_owned()) {
                 commands.push(Task::perform(
                     ql_mod_manager::store::download_image(url.to_owned(), *is_icon),
                     Message::CoreImageDownloaded,

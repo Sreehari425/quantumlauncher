@@ -373,7 +373,7 @@ async fn create_minecraft_instance(
 ) -> Result<(), InstancePackageError> {
     let version = ListEntry {
         name: version,
-        is_classic_server: false,
+        is_server: false,
     };
     let (d_send, d_recv) = std::sync::mpsc::channel();
     if let Some(sender) = sender.clone() {

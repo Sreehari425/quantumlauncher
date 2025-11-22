@@ -20,7 +20,7 @@ pub fn list_available_versions() {
     use std::io::Write;
 
     eprintln!("Listing downloadable versions...");
-    let versions = match tokio::runtime::Runtime::new()
+    let (versions, _) = match tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(ql_instances::list_versions())
         .strerr()
@@ -156,8 +156,8 @@ pub fn create_instance(
         runtime.block_on(ql_servers::create_server(
             instance_name,
             ListEntry {
-                is_classic_server: version.starts_with("c0."),
                 name: version,
+                is_server: true,
             },
             None,
         ))?;
@@ -166,7 +166,7 @@ pub fn create_instance(
             instance_name,
             ListEntry {
                 name: version.clone(),
-                is_classic_server: false,
+                is_server: false,
             },
             None,
             !skip_assets,

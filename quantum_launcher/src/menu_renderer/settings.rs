@@ -5,6 +5,7 @@ use super::{
     back_button, button_with_icon, get_theme_selector, sidebar_button, underline, Element, DISCORD,
     GITHUB,
 };
+use crate::menu_renderer::back_to_launch_screen;
 use crate::menu_renderer::edit_instance::{
     global_java_args_dialog, global_pre_launch_prefix_dialog, resolution_dialog,
 };
@@ -38,11 +39,8 @@ impl MenuLauncherSettings {
         widget::row![
             widget::container(
                 widget::column![
-                    widget::column!(back_button().on_press(Message::LaunchScreenOpen {
-                        message: None,
-                        clear_selection: false
-                    }))
-                    .padding(PADDING_NOT_BOTTOM),
+                    widget::column!(back_button().on_press(back_to_launch_screen(None, None)))
+                        .padding(PADDING_NOT_BOTTOM),
                     widget::row![
                         icon_manager::settings_with_size(20),
                         widget::text("Settings").size(20),

@@ -41,15 +41,17 @@ pub enum InstallPaperMessage {
 
 #[derive(Debug, Clone)]
 pub enum CreateInstanceMessage {
-    ScreenOpen,
+    ScreenOpen {
+        is_server: bool,
+    },
 
-    VersionsLoaded(Res<Vec<ListEntry>>),
+    VersionsLoaded(Res<(Vec<ListEntry>, String)>, bool),
     VersionSelected(ListEntry),
     NameInput(String),
     ChangeAssetToggle(bool),
 
     Start,
-    End(Res<String>),
+    End(Res<InstanceSelection>),
     Cancel,
 
     #[allow(unused)]
@@ -296,6 +298,7 @@ pub enum Message {
     LaunchScreenOpen {
         message: Option<String>,
         clear_selection: bool,
+        is_server: Option<bool>,
     },
     LaunchEnd(Res<LaunchedProcess>),
     LaunchKill,
@@ -352,19 +355,8 @@ pub enum Message {
     UpdateDownloadStart,
     UpdateDownloadEnd(Res),
 
-    ServerManageOpen {
-        selected_server: Option<String>,
-        message: Option<String>,
-    },
     ServerCommandEdit(String),
     ServerCommandSubmit,
-
-    ServerCreateScreenOpen,
-    ServerCreateVersionsLoaded(Res<Vec<ListEntry>>),
-    ServerCreateNameInput(String),
-    ServerCreateVersionSelected(ListEntry),
-    ServerCreateStart,
-    ServerCreateEnd(Res<String>),
 
     LicenseOpen,
     LicenseChangeTab(LicenseTab),

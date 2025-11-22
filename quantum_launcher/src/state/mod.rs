@@ -64,8 +64,7 @@ pub struct Launcher {
     pub accounts_dropdown: Vec<String>,
     pub accounts_selected: Option<String>,
 
-    pub client_version_list_cache: Option<Vec<ListEntry>>,
-    pub server_version_list_cache: Option<Vec<ListEntry>>,
+    pub version_list_cache: VersionListCache,
     pub client_list: Option<Vec<String>>,
     pub server_list: Option<Vec<String>>,
 
@@ -91,6 +90,13 @@ impl CustomJarState {
             Message::EditInstance(EditInstanceMessage::CustomJarLoaded(n.strerr()))
         })
     }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct VersionListCache {
+    pub client: Option<Vec<ListEntry>>,
+    pub server: Option<Vec<ListEntry>>,
+    pub latest_stable: Option<String>,
 }
 
 pub struct GameProcess {
@@ -184,8 +190,7 @@ impl Launcher {
             client_list: None,
             server_list: None,
             java_recv: None,
-            client_version_list_cache: None,
-            server_version_list_cache: None,
+            version_list_cache: VersionListCache::default(),
             selected_instance: None,
             custom_jar: None,
 
@@ -242,9 +247,7 @@ impl Launcher {
             java_recv: None,
             client_list: None,
             server_list: None,
-            client_version_list_cache: None,
             selected_instance: None,
-            server_version_list_cache: None,
             custom_jar: None,
 
             is_log_open: false,
@@ -261,6 +264,7 @@ impl Launcher {
             mod_updates_checked: HashMap::new(),
 
             images: ImageState::default(),
+            version_list_cache: VersionListCache::default(),
             window_size: (window_width, window_height),
             accounts_dropdown: vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()],
             accounts_selected: Some(OFFLINE_ACCOUNT_NAME.to_owned()),

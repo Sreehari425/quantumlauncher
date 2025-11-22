@@ -508,6 +508,7 @@ impl Launcher {
             no: Message::LaunchScreenOpen {
                 message: None,
                 clear_selection: false,
+                is_server: None,
             },
         };
     }

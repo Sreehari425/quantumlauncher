@@ -300,7 +300,7 @@ impl InstanceSelection {
 #[derive(Debug, Clone)]
 pub struct ListEntry {
     pub name: String,
-    pub is_classic_server: bool,
+    pub is_server: bool,
 }
 
 impl Display for ListEntry {

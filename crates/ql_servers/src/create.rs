@@ -3,7 +3,7 @@ use std::sync::mpsc::Sender;
 use ql_core::{
     file_utils, info,
     json::{instance_config::VersionInfo, InstanceConfigJson, Manifest, VersionDetails},
-    pt, GenericProgress, IntoIoError, IntoJsonError, IntoStringError, ListEntry, LAUNCHER_DIR,
+    pt, DownloadProgress, IntoIoError, IntoJsonError, IntoStringError, ListEntry, LAUNCHER_DIR,
 };
 
 use crate::ServerError;
@@ -42,7 +42,7 @@ use crate::ServerError;
 pub async fn create_server(
     name: String,
     version: ListEntry,
-    sender: Option<&Sender<GenericProgress>>,
+    sender: Option<&Sender<DownloadProgress>>,
 ) -> Result<String, ServerError> {
     info!("Creating server");
     progress_manifest(sender);
@@ -65,7 +65,7 @@ pub async fn create_server(
     };
 
     progress_server_jar(sender);
-    if version.is_classic_server {
+    if version.name.starts_with("c0.") {
         is_classic_server = true;
 
         let archive = file_utils::download_file_to_bytes(&server.url, true).await?;
@@ -150,16 +150,11 @@ async fn get_server_dir(name: &str) -> Result<std::path::PathBuf, ServerError> {
     Ok(server_dir)
 }
 
-fn progress_manifest(sender: Option<&Sender<GenericProgress>>) {
+fn progress_manifest(sender: Option<&Sender<DownloadProgress>>) {
     pt!("Downloading Manifest");
     if let Some(sender) = sender {
         sender
-            .send(GenericProgress {
-                done: 0,
-                total: 3,
-                message: Some("Downloading Manifest".to_owned()),
-                has_finished: false,
-            })
+            .send(DownloadProgress::DownloadingJsonManifest)
             .unwrap();
     }
 }
@@ -172,30 +167,18 @@ async fn write_eula(server_dir: &std::path::Path) -> Result<(), ServerError> {
     Ok(())
 }
 
-fn progress_server_jar(sender: Option<&Sender<GenericProgress>>) {
+fn progress_server_jar(sender: Option<&Sender<DownloadProgress>>) {
     pt!("Downloading server jar");
     if let Some(sender) = sender {
-        sender
-            .send(GenericProgress {
-                done: 2,
-                total: 3,
-                message: Some("Downloading Server Jar".to_owned()),
-                has_finished: false,
-            })
-            .unwrap();
+        sender.send(DownloadProgress::DownloadingJar).unwrap();
     }
 }
 
-fn progress_json(sender: Option<&Sender<GenericProgress>>) {
+fn progress_json(sender: Option<&Sender<DownloadProgress>>) {
     pt!("Downloading version JSON");
     if let Some(sender) = sender {
         sender
-            .send(GenericProgress {
-                done: 1,
-                total: 3,
-                message: Some("Downloading Version JSON".to_owned()),
-                has_finished: false,
-            })
+            .send(DownloadProgress::DownloadingVersionJson)
             .unwrap();
     }
 }
