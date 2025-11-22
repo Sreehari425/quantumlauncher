@@ -108,7 +108,10 @@ impl LoggingState {
                     let mut writer = writer;
 
                     while let Ok(msg) = receiver.recv() {
+                        _ = writer.write_all(t.to_string().as_bytes());
+                        _ = writer.write(b" ");
                         _ = writer.write_all(msg.as_bytes());
+                        _ = writer.write(b"\n");
                         _ = writer.flush();
                     }
                 });
@@ -262,6 +265,19 @@ macro_rules! pt {
             println!("{} {}", owo_colors::OwoColorize::bold(&"-"), format_args!($($arg)*));
         }
         $crate::print::print_to_file(&plain_text, $crate::print::LogType::Point);
+    }};
+}
+
+/// Print a point message, i.e. a small step in some process.
+/// Not saved to a log file.
+#[macro_export]
+macro_rules! pt_no_log {
+    ($($arg:tt)*) => {{
+        let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
+        if $crate::print::is_print() {
+            println!("{} {}", owo_colors::OwoColorize::bold(&"-"), format_args!($($arg)*));
+        }
+        $crate::print::print_to_storage(&plain_text, $crate::print::LogType::Point);
     }};
 }
 

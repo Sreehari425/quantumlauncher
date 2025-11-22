@@ -11,7 +11,7 @@ use iced::{
     Task,
 };
 use ql_core::jarmod::JarMods;
-use ql_core::{err, info, info_no_log, jarmod::JarMod, InstanceSelection};
+use ql_core::{err, jarmod::JarMod, pt_no_log, InstanceSelection};
 use std::ffi::OsStr;
 use std::path::Path;
 
@@ -22,11 +22,8 @@ impl Launcher {
         match event {
             iced::Event::Window(event) => match event {
                 iced::window::Event::CloseRequested => {
-                    info_no_log!("Shutting down launcher (1)");
+                    pt_no_log!("Closing...");
                     std::process::exit(0);
-                }
-                iced::window::Event::Closed => {
-                    info!("Shutting down launcher (2)");
                 }
                 iced::window::Event::Resized(size) => {
                     self.window_size = (size.width, size.height);
@@ -61,7 +58,8 @@ impl Launcher {
                         return self.drag_and_drop(&path, &extension, filename);
                     }
                 }
-                iced::window::Event::RedrawRequested(_)
+                iced::window::Event::Closed
+                | iced::window::Event::RedrawRequested(_)
                 | iced::window::Event::Moved { .. }
                 | iced::window::Event::Opened { .. }
                 | iced::window::Event::Focused

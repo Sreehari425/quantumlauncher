@@ -501,8 +501,17 @@ impl Launcher {
     }
 
     pub fn go_to_delete_instance_menu(&mut self) {
+        let instance = self.instance();
         self.state = State::ConfirmAction {
-            msg1: format!("delete the instance {}", self.instance().get_name()),
+            msg1: format!(
+                "delete the {} {}",
+                if instance.is_server() {
+                    "server"
+                } else {
+                    "instance"
+                },
+                instance.get_name()
+            ),
             msg2: "All your data, including worlds, will be lost".to_owned(),
             yes: Message::DeleteInstance,
             no: Message::LaunchScreenOpen {
