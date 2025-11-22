@@ -1,6 +1,6 @@
 use std::{collections::HashSet, path::PathBuf, process::ExitStatus};
 
-use crate::message_handler::ForgeKind;
+use crate::{message_handler::ForgeKind, state::MenuEditModsModal};
 use iced::widget;
 use ql_core::{
     file_utils::DirItem, jarmod::JarMods, read_log::Diagnostic, InstanceSelection, LaunchedProcess,
@@ -120,7 +120,7 @@ pub enum ManageModsMessage {
     AddFile(bool),
     AddFileDone(Res<HashSet<CurseforgeNotAllowed>>),
     ExportMenuOpen,
-    ToggleSubmenu1,
+    SetModal(Option<MenuEditModsModal>),
 
     CurseforgeManualToggleDelete(bool),
 }
@@ -336,6 +336,7 @@ pub enum Message {
     CoreOpenIntro,
     CoreEvent(iced::Event, iced::event::Status),
     CoreCleanComplete(Res),
+    CoreFocusNext,
     CoreTryQuit,
 
     CoreImageDownloaded(Res<ImageResult>),

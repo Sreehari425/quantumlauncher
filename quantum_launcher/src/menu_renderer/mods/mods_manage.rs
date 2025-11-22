@@ -1,7 +1,8 @@
 use crate::menu_renderer::{select_box, subbutton_with_icon, FONT_MONO};
 use crate::message_handler::ForgeKind;
-use crate::state::{ImageState, InstallPaperMessage};
+use crate::state::{ImageState, InstallPaperMessage, MenuEditModsModal};
 use crate::stylesheet::styles::{BORDER_RADIUS, BORDER_WIDTH};
+use crate::stylesheet::widgets::StyleButton;
 use crate::{
     icon_manager,
     menu_renderer::{back_button, back_to_launch_screen, button_with_icon, tooltip, Element},
@@ -46,7 +47,7 @@ impl MenuEditMods {
                 ))
             )
             .into()
-        } else if self.submenu1_shown {
+        } else if let Some(MenuEditModsModal::Submenu) = &self.modal {
             let submenu = widget::column![
                 ctx_button("Export list as text")
                     .on_press(Message::ManageMods(ManageModsMessage::ExportMenuOpen)),
@@ -89,19 +90,36 @@ impl MenuEditMods {
     ) -> widget::Scrollable<'a, Message, LauncherTheme> {
         widget::scrollable(
             widget::column!(
-                back_button().on_press(back_to_launch_screen(
-                    Some(selected_instance.is_server()),
-                    None
-                )),
+                widget::row![
+                    back_button().on_press(back_to_launch_screen(
+                        Some(selected_instance.is_server()),
+                        None
+                    )),
+                    tooltip(
+                        button_with_icon(icon_manager::folder(), "Open", 14).on_press_with(|| {
+                            Message::CoreOpenPath(
+                                selected_instance.get_dot_minecraft_path().join("mods"),
+                            )
+                        }),
+                        widget::text("Open Mods Folder").size(12),
+                        Position::Bottom
+                    )
+                ]
+                .spacing(5),
                 self.get_mod_installer_buttons(selected_instance),
                 widget::column!(
-                    button_with_icon(icon_manager::download_with_size(14), "Download Content", 15)
+                    button_with_icon(icon_manager::download_with_size(14), "Download Content", 14)
                         .on_press(Message::InstallMods(InstallModsMessage::Open)),
-                    button_with_icon(icon_manager::jar_file(), "Jarmod Patches", 15)
-                        .on_press(Message::ManageJarMods(ManageJarModsMessage::Open))
+                    button_with_icon(icon_manager::jar_file(), "Jarmod Patches", 14)
+                        .on_press(Message::ManageJarMods(ManageJarModsMessage::Open)),
+                    tooltip(
+                        button_with_icon(icon_manager::blank_file(), "Add File", 14)
+                            .on_press(Message::ManageMods(ManageModsMessage::AddFile(false))),
+                        widget::text("Includes mods and modpacks").size(12),
+                        Position::Bottom
+                    ),
                 )
                 .spacing(5),
-                Self::open_mod_folder_button(selected_instance),
                 self.get_mod_update_pane(tick_timer),
             )
             .padding(10)
@@ -288,17 +306,6 @@ impl MenuEditMods {
         ))
     }
 
-    fn open_mod_folder_button(selected_instance: &'_ InstanceSelection) -> Element<'_> {
-        let path = {
-            let path = selected_instance.get_dot_minecraft_path().join("mods");
-            path.exists().then_some(path)
-        };
-
-        button_with_icon(icon_manager::folder_with_size(14), "Open Mods Folder", 15)
-            .on_press_maybe(path.map(Message::CoreOpenPath))
-            .into()
-    }
-
     fn get_mod_list<'a>(&'a self, images: &'a ImageState) -> Element<'a> {
         if self.sorted_mods_list.is_empty() {
             return widget::column!(
@@ -329,6 +336,7 @@ impl MenuEditMods {
                     )
                     .push(
                         widget::row![
+                            // Hamburger dropdown
                             widget::button(
                                 widget::row![icon_manager::three_lines_with_size(12)]
                                     .align_y(iced::alignment::Vertical::Center)
@@ -337,19 +345,33 @@ impl MenuEditMods {
                             .style(|t: &LauncherTheme, s| {
                                 t.style_button(s, crate::stylesheet::widgets::StyleButton::RoundDark)
                             })
-                            .on_press(Message::ManageMods(ManageModsMessage::ToggleSubmenu1)),
-                            tooltip(
-                                widget::button(
-                                    widget::row![icon_manager::blank_file_with_size(12)]
-                                        .align_y(iced::alignment::Vertical::Center)
-                                        .padding(1),
-                                )
-                                .style(|t: &LauncherTheme, s| {
-                                    t.style_button(s, crate::stylesheet::widgets::StyleButton::RoundDark)
-                                }).on_press(Message::ManageMods(ManageModsMessage::AddFile(false))),
-                                widget::text("Import mod or modpack").size(12),
-                                Position::Bottom
+                            .on_press(Message::ManageMods(ManageModsMessage::SetModal(self.modal.is_none().then_some(MenuEditModsModal::Submenu)))),
+
+                            // Search button
+                            widget::button(
+                                widget::row![icon_manager::three_lines_with_size(12)]
+                                    .align_y(iced::alignment::Vertical::Center)
+                                    .padding(1),
+                            )
+                            .style(|t: &LauncherTheme, s| {
+                                t.style_button(s, if let Some(MenuEditModsModal::Search(_)) = &self.modal {
+                                    StyleButton::Round
+                                } else {
+                                    StyleButton::RoundDark
+                                })
+                            }).on_press(
+                                if self.modal.is_some() {
+                                    Message::ManageMods(ManageModsMessage::SetModal(None))
+                                } else {
+                                    Message::Multiple(vec![
+                                        Message::ManageMods(ManageModsMessage::SetModal(
+                                            Some(MenuEditModsModal::Search(String::new()))
+                                        )),
+                                        Message::CoreFocusNext
+                                    ])
+                                }
                             ),
+
                             subbutton_with_icon(icon_manager::delete_with_size(12), "Delete")
                             .on_press_maybe((!self.selected_mods.is_empty()).then_some(Message::ManageMods(ManageModsMessage::DeleteSelected))),
                             subbutton_with_icon(icon_manager::toggle_off_with_size(12), "Toggle")
@@ -369,6 +391,13 @@ impl MenuEditMods {
                     } else {
                         widget::text!("{} mods selected", self.selected_mods.len())
                     }.size(12).style(|t: &LauncherTheme| t.style_text(Color::Mid)))
+                    .push_maybe(if let Some(MenuEditModsModal::Search(search)) = &self.modal {
+                        Some(widget::text_input("Search...", search).size(14).on_input(|msg|
+                            Message::ManageMods(ManageModsMessage::SetModal(Some(MenuEditModsModal::Search(msg))))
+                        ))
+                    } else {
+                        None
+                    })
                     .padding(10)
                     .spacing(10),
                 widget::responsive(|s| self.get_mod_list_contents(s, images)),
@@ -387,6 +416,12 @@ impl MenuEditMods {
         widget::scrollable(widget::column({
             self.sorted_mods_list
                 .iter()
+                .filter(|n| {
+                    let Some(MenuEditModsModal::Search(search)) = &self.modal else {
+                        return true;
+                    };
+                    n.name().to_lowercase().contains(&search.to_lowercase())
+                })
                 .map(|mod_list_entry| self.get_mod_entry(mod_list_entry, size, images))
         }))
         .direction(widget::scrollable::Direction::Both {
@@ -429,7 +464,8 @@ impl MenuEditMods {
                     });
 
                     let image: Element = if let Some(url) = &config.icon_url {
-                        images.view(url, Some(ICON_SIZE), no_icon)
+                        // SVGs cause absurd lag in large lists of mods
+                        images.view_bitmap(url, Some(ICON_SIZE), no_icon)
                     } else {
                         no_icon
                     };

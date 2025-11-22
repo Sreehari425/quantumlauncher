@@ -23,9 +23,16 @@ pub fn changelog<'a>() -> Element<'a> {
 
         widget::column![
         "- The Create Instance screen now auto-fills the version and name by default.",
-        "- Overhauled the mod list, now with ICONS, bulk-selection, and better aesthetics.",
         "- Export mods as a text list for easy manual sharing, with optional links and instance details.",
         "- Tweaked and rearranged many menus/messages.",
+        ].spacing(5),
+
+        widget::text("Mod Menu").size(32),
+        widget::column![
+            widget::text("Revamped the mod menu, now with:"),
+            widget::text("- Icons and Search!"),
+            widget::text("- Easy bulk-selection (ctrl-a, shift/ctrl+click)"),
+            widget::text("- Better aesthetics and layout"),
         ].spacing(5),
 
         widget::image(IMG_MANAGE_MODS.clone()).height(400),

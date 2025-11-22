@@ -356,9 +356,9 @@ impl Launcher {
                     });
                 }
             }
-            ManageModsMessage::ToggleSubmenu1 => {
+            ManageModsMessage::SetModal(modal) => {
                 if let State::EditMods(menu) = &mut self.state {
-                    menu.submenu1_shown = !menu.submenu1_shown;
+                    menu.modal = modal;
                 }
             }
             ManageModsMessage::CurseforgeManualToggleDelete(t) => {

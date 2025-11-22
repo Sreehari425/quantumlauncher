@@ -71,4 +71,26 @@ impl ImageState {
             fallback
         }
     }
+
+    pub fn view_bitmap<'a>(
+        &self,
+        url: &str,
+        size: Option<u16>,
+        fallback: Element<'a>,
+    ) -> Element<'a> {
+        if let Some(handle) = self.bitmap.get(url) {
+            let e = widget::image(handle.clone());
+            if let Some(s) = size {
+                e.width(s).height(s).into()
+            } else {
+                e.into()
+            }
+        } else if self.svg.contains_key(url) {
+            fallback
+        } else {
+            let mut to_load = self.to_load.lock().unwrap();
+            to_load.insert(url.to_owned(), size.is_some());
+            fallback
+        }
+    }
 }

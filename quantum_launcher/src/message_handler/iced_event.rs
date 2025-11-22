@@ -2,9 +2,10 @@ use super::{SIDEBAR_DRAG_LEEWAY, SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT};
 use crate::message_update::MSG_RESIZE;
 use crate::state::{
     CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage, LauncherSettingsTab,
-    MenuCreateInstance, MenuEditJarMods, MenuEditMods, MenuEditPresets, MenuExportInstance,
-    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLaunch, MenuLauncherSettings,
-    MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, Message, State,
+    MenuCreateInstance, MenuEditJarMods, MenuEditMods, MenuEditModsModal, MenuEditPresets,
+    MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLaunch,
+    MenuLauncherSettings, MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods,
+    Message, State,
 };
 use iced::{
     keyboard::{self, key::Named, Key},
@@ -72,11 +73,7 @@ impl Launcher {
                     modifiers,
                     ..
                 } => {
-                    if let iced::event::Status::Ignored = status {
-                        return self.handle_key_press(key, modifiers);
-                    } else {
-                        // FUTURE
-                    }
+                    return self.handle_key_press(key, modifiers, status);
                 }
                 keyboard::Event::KeyReleased { key, .. } => {
                     self.keys_pressed.remove(&key);
@@ -155,51 +152,75 @@ impl Launcher {
         Task::none()
     }
 
-    fn handle_key_press(&mut self, key: Key, modifiers: keyboard::Modifiers) -> Task<Message> {
-        if let Key::Named(Named::Escape) = key {
-            return self.key_escape_back(true).1;
+    fn handle_key_press(
+        &mut self,
+        key: Key,
+        modifiers: keyboard::Modifiers,
+        status: iced::event::Status,
+    ) -> Task<Message> {
+        let ignored = matches!(status, iced::event::Status::Ignored);
+        if ignored {
+            if let Key::Named(Named::Escape) = key {
+                return self.key_escape_back(true).1;
+            }
+            if let Key::Named(Named::ArrowUp) = key {
+                return self.key_change_selected_instance(false);
+            } else if let Key::Named(Named::ArrowDown) = key {
+                return self.key_change_selected_instance(true);
+            } else if let Key::Named(Named::Enter) = key {
+                if modifiers.command() {
+                    return self.launch_start();
+                }
+            } else if let Key::Named(Named::Backspace) = key {
+                if modifiers.command() {
+                    return Task::done(Message::LaunchKill);
+                }
+            }
         }
-        if let Key::Named(Named::ArrowUp) = key {
-            return self.key_change_selected_instance(false);
-        } else if let Key::Named(Named::ArrowDown) = key {
-            return self.key_change_selected_instance(true);
-        } else if let Key::Named(Named::Enter) = key {
-            if modifiers.command() {
-                return self.launch_start();
-            }
-        } else if let Key::Named(Named::Backspace) = key {
-            if modifiers.command() {
-                return Task::done(Message::LaunchKill);
-            }
-        } else if let Key::Character(ch) = &key {
+
+        if let Key::Character(ch) = &key {
             let msg = match (
                 ch.as_str(),
                 modifiers.command(),
                 modifiers.alt(),
+                ignored,
                 &self.state,
             ) {
-                ("q", true, _, _) => Message::CoreTryQuit,
-                ("a", true, _, State::EditMods(_)) => {
+                ("q", true, _, true, _) => Message::CoreTryQuit,
+                ("a", true, _, true, State::EditMods(_)) => {
                     Message::ManageMods(crate::state::ManageModsMessage::SelectAll)
                 }
-                ("a", true, _, State::EditJarMods(_)) => {
+
+                // Ctrl-F search in mods list
+                #[rustfmt::skip]
+                ("f", true, _, _, State::EditMods(MenuEditMods { modal: Some(MenuEditModsModal::Search(_)), .. })) => {
+                    Message::ManageMods(crate::state::ManageModsMessage::SetModal(None))
+                },
+                ("f", true, _, _, State::EditMods(_)) => Message::Multiple(vec![
+                    Message::ManageMods(crate::state::ManageModsMessage::SetModal(Some(
+                        MenuEditModsModal::Search(String::new()),
+                    ))),
+                    Message::CoreFocusNext,
+                ]),
+
+                ("a", true, _, true, State::EditJarMods(_)) => {
                     Message::ManageJarMods(crate::state::ManageJarModsMessage::SelectAll)
                 }
-                ("n", true, _, State::Launch(n)) => {
+                ("n", true, _, _, State::Launch(n)) => {
                     Message::CreateInstance(CreateInstanceMessage::ScreenOpen {
                         is_server: n.is_viewing_server,
                     })
                 }
-                ("1", ctrl, alt, State::Launch(_)) if ctrl | alt => {
+                ("1", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
                     Message::LaunchChangeTab(LaunchTabId::Buttons)
                 }
-                ("2", ctrl, alt, State::Launch(_)) if ctrl | alt => {
+                ("2", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
                     Message::LaunchChangeTab(LaunchTabId::Edit)
                 }
-                ("3", ctrl, alt, State::Launch(_)) if ctrl | alt => {
+                ("3", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
                     Message::LaunchChangeTab(LaunchTabId::Log)
                 }
-                (",", true, _, State::Launch(_)) => {
+                (",", true, _, _, State::Launch(_)) => {
                     Message::LauncherSettings(LauncherSettingsMessage::Open)
                 }
                 _ => Message::Nothing,
@@ -300,6 +321,10 @@ impl Launcher {
         let mut should_return_to_main_screen = false;
         let mut should_return_to_mods_screen = false;
         let mut should_return_to_download_screen = false;
+
+        if affect && self.hide_submenu() {
+            return (true, Task::none());
+        }
 
         match &self.state {
             State::ChangeLog
@@ -414,10 +439,14 @@ impl Launcher {
         )
     }
 
-    fn hide_submenu(&mut self) {
+    fn hide_submenu(&mut self) -> bool {
         if let State::EditMods(menu) = &mut self.state {
-            menu.submenu1_shown = false;
+            if menu.modal.is_some() {
+                menu.modal = None;
+                return true;
+            }
         }
+        false
     }
 
     fn key_change_selected_instance(&mut self, down: bool) -> Task<Message> {

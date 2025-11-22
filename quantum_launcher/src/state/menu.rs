@@ -168,9 +168,17 @@ pub struct MenuEditMods {
     /// Index of the item selected before pressing shift
     pub list_shift_index: Option<usize>,
     pub drag_and_drop_hovered: bool,
-    pub submenu1_shown: bool,
+    pub modal: Option<MenuEditModsModal>,
 
     pub width_name: f32,
+}
+
+#[derive(Debug, Clone)]
+pub enum MenuEditModsModal {
+    Submenu,
+    Search(String),
+    // MultiRightClick,
+    // RightClick,
 }
 
 impl MenuEditMods {

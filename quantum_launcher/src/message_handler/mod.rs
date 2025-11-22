@@ -212,7 +212,7 @@ impl Launcher {
                 drag_and_drop_hovered: false,
                 update_check_handle,
                 version_json,
-                submenu1_shown: false,
+                modal: None,
                 width_name: 220.0,
                 list_shift_index: None,
             });
