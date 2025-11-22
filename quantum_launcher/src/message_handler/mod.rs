@@ -213,6 +213,7 @@ impl Launcher {
                 update_check_handle,
                 version_json,
                 modal: None,
+                search: None,
                 width_name: 220.0,
                 list_shift_index: None,
             });

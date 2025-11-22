@@ -1,7 +1,6 @@
-use crate::menu_renderer::{select_box, subbutton_with_icon, FONT_MONO};
+use crate::menu_renderer::{ctxbox, select_box, subbutton_with_icon, FONT_MONO};
 use crate::message_handler::ForgeKind;
 use crate::state::{ImageState, InstallPaperMessage, MenuEditModsModal};
-use crate::stylesheet::styles::{BORDER_RADIUS, BORDER_WIDTH};
 use crate::stylesheet::widgets::StyleButton;
 use crate::{
     icon_manager,
@@ -26,6 +25,7 @@ impl MenuEditMods {
         selected_instance: &'a InstanceSelection,
         tick_timer: usize,
         images: &'a ImageState,
+        window_height: f32,
     ) -> Element<'a> {
         if let Some(progress) = &self.mod_update_progress {
             return widget::column!(widget::text("Updating mods").size(20), progress.view())
@@ -65,15 +65,42 @@ impl MenuEditMods {
                 menu_main,
                 widget::row![
                     widget::Space::with_width(MODS_SIDEBAR_WIDTH + 30),
-                    widget::column![
-                        widget::Space::with_height(40),
-                        widget::container(submenu).padding(10).width(200).style(
-                            |t: &LauncherTheme| t.style_container_round_box(
-                                BORDER_WIDTH,
-                                Color::Dark,
-                                BORDER_RADIUS
-                            )
+                    widget::column![widget::Space::with_height(40), ctxbox(submenu).width(200)]
+                ]
+            )
+            .into()
+        } else if let Some(MenuEditModsModal::RightClick(id, (x, y))) = &self.modal {
+            widget::stack!(
+                menu_main,
+                widget::column![
+                    widget::Space::with_height(y.clamp(0.0, window_height - 130.0)),
+                    widget::row![
+                        widget::Space::with_width(*x),
+                        ctxbox(
+                            widget::column![
+                                ctx_button("Toggle").on_press(Message::ManageMods(
+                                    ManageModsMessage::ToggleSelected
+                                )),
+                                ctx_button("Delete").on_press(Message::ManageMods(
+                                    ManageModsMessage::DeleteSelected
+                                )),
+                                ctx_button("Mod Details").on_press_maybe(
+                                    self.mods.mods.get(&id.get_index_str()).map(|info| {
+                                        Message::Multiple(vec![
+                                            Message::InstallMods(InstallModsMessage::Open),
+                                            Message::InstallMods(
+                                                InstallModsMessage::ChangeBackend(id.get_backend()),
+                                            ),
+                                            Message::InstallMods(InstallModsMessage::SearchInput(
+                                                info.name.clone(),
+                                            )),
+                                        ])
+                                    })
+                                ),
+                            ]
+                            .spacing(4)
                         )
+                        .width(200)
                     ]
                 ]
             )
@@ -96,11 +123,12 @@ impl MenuEditMods {
                         None
                     )),
                     tooltip(
-                        button_with_icon(icon_manager::folder(), "Open", 14).on_press_with(|| {
-                            Message::CoreOpenPath(
-                                selected_instance.get_dot_minecraft_path().join("mods"),
-                            )
-                        }),
+                        button_with_icon(icon_manager::folder_with_size(14), "Open", 14)
+                            .on_press_with(|| {
+                                Message::CoreOpenPath(
+                                    selected_instance.get_dot_minecraft_path().join("mods"),
+                                )
+                            }),
                         widget::text("Open Mods Folder").size(12),
                         Position::Bottom
                     )
@@ -354,18 +382,18 @@ impl MenuEditMods {
                                     .padding(1),
                             )
                             .style(|t: &LauncherTheme, s| {
-                                t.style_button(s, if let Some(MenuEditModsModal::Search(_)) = &self.modal {
+                                t.style_button(s, if self.search.is_some() {
                                     StyleButton::Round
                                 } else {
                                     StyleButton::RoundDark
                                 })
                             }).on_press(
-                                if self.modal.is_some() {
-                                    Message::ManageMods(ManageModsMessage::SetModal(None))
+                                if self.search.is_some() {
+                                    Message::ManageMods(ManageModsMessage::SetSearch(None))
                                 } else {
                                     Message::Multiple(vec![
-                                        Message::ManageMods(ManageModsMessage::SetModal(
-                                            Some(MenuEditModsModal::Search(String::new()))
+                                        Message::ManageMods(ManageModsMessage::SetSearch(
+                                            Some(String::new())
                                         )),
                                         Message::CoreFocusNext
                                     ])
@@ -391,9 +419,9 @@ impl MenuEditMods {
                     } else {
                         widget::text!("{} mods selected", self.selected_mods.len())
                     }.size(12).style(|t: &LauncherTheme| t.style_text(Color::Mid)))
-                    .push_maybe(if let Some(MenuEditModsModal::Search(search)) = &self.modal {
+                    .push_maybe(if let Some(search) = &self.search {
                         Some(widget::text_input("Search...", search).size(14).on_input(|msg|
-                            Message::ManageMods(ManageModsMessage::SetModal(Some(MenuEditModsModal::Search(msg))))
+                            Message::ManageMods(ManageModsMessage::SetSearch(Some(msg)))
                         ))
                     } else {
                         None
@@ -417,7 +445,7 @@ impl MenuEditMods {
             self.sorted_mods_list
                 .iter()
                 .filter(|n| {
-                    let Some(MenuEditModsModal::Search(search)) = &self.modal else {
+                    let Some(search) = &self.search else {
                         return true;
                     };
                     n.name().to_lowercase().contains(&search.to_lowercase())
@@ -523,11 +551,27 @@ impl MenuEditMods {
                     )
                     .padding(0);
 
-                    if is_enabled {
+                    let checkbox: Element = if is_enabled {
                         checkbox.into()
                     } else {
                         tooltip(checkbox, "Disabled", Position::FollowCursor).into()
-                    }
+                    };
+
+                    let rightclick = Message::ManageMods(ManageModsMessage::RightClick(id.clone()));
+
+                    widget::mouse_area(checkbox)
+                        .on_right_press(if self.selected_mods.len() > 1 && self.is_selected(&id) {
+                            rightclick
+                        } else {
+                            Message::Multiple(vec![
+                                Message::ManageMods(ManageModsMessage::ToggleCheckbox(
+                                    config.name.clone(),
+                                    Some(id.clone()),
+                                )),
+                                rightclick,
+                            ])
+                        })
+                        .into()
                 } else {
                     widget::row![
                         widget::text("(dependency) ")

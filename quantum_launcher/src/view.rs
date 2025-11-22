@@ -98,7 +98,12 @@ impl Launcher {
             .into(),
             State::GenericMessage(msg) => widget::column![widget::text(msg)].padding(10).into(),
             State::AccountLogin => view_account_login(),
-            State::EditMods(menu) => menu.view(self.instance(), self.tick_timer, &self.images),
+            State::EditMods(menu) => menu.view(
+                self.instance(),
+                self.tick_timer,
+                &self.images,
+                self.window_size.1,
+            ),
             State::Create(menu) => menu.view(
                 self.client_list.as_ref(),
                 self.version_list_cache.latest_stable.as_deref(),

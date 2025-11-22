@@ -9,8 +9,8 @@ use std::{collections::HashSet, path::PathBuf};
 
 use crate::state::{
     ExportModsMessage, Launcher, ManageJarModsMessage, ManageModsMessage,
-    MenuCurseforgeManualDownload, MenuEditJarMods, MenuEditMods, Message, ProgressBar,
-    SelectedState, State,
+    MenuCurseforgeManualDownload, MenuEditJarMods, MenuEditMods, MenuEditModsModal, Message,
+    ProgressBar, SelectedState, State,
 };
 
 impl Launcher {
@@ -23,6 +23,7 @@ impl Launcher {
 
             ManageModsMessage::ToggleCheckbox(name, id) => {
                 if let State::EditMods(menu) = &mut self.state {
+                    menu.modal = None;
                     let selected_mod = SelectedMod::from_pair(name, id);
 
                     let pressed_ctrl = self.modifiers_pressed.contains(Modifiers::COMMAND);
@@ -361,9 +362,29 @@ impl Launcher {
                     menu.modal = modal;
                 }
             }
+            ManageModsMessage::SetSearch(search) => {
+                if let State::EditMods(menu) = &mut self.state {
+                    menu.search = search;
+                }
+            }
             ManageModsMessage::CurseforgeManualToggleDelete(t) => {
                 if let State::CurseforgeManualDownload(menu) = &mut self.state {
                     menu.delete_mods = t;
+                }
+            }
+            ManageModsMessage::RightClick(clicked_id) => {
+                if let State::EditMods(menu) = &mut self.state {
+                    if let Some(MenuEditModsModal::RightClick(old_id, _)) = &menu.modal {
+                        if *old_id == clicked_id {
+                            menu.modal = None;
+                        } else {
+                            menu.modal =
+                                Some(MenuEditModsModal::RightClick(clicked_id, self.mouse_pos));
+                        }
+                    } else {
+                        menu.modal =
+                            Some(MenuEditModsModal::RightClick(clicked_id, self.mouse_pos));
+                    }
                 }
             }
         }

@@ -169,6 +169,7 @@ pub struct MenuEditMods {
     pub list_shift_index: Option<usize>,
     pub drag_and_drop_hovered: bool,
     pub modal: Option<MenuEditModsModal>,
+    pub search: Option<String>,
 
     pub width_name: f32,
 }
@@ -176,9 +177,7 @@ pub struct MenuEditMods {
 #[derive(Debug, Clone)]
 pub enum MenuEditModsModal {
     Submenu,
-    Search(String),
-    // MultiRightClick,
-    // RightClick,
+    RightClick(ModId, (f32, f32)),
 }
 
 impl MenuEditMods {
@@ -239,6 +238,16 @@ impl MenuEditMods {
         } else {
             SelectedState::Some
         };
+    }
+
+    pub fn is_selected(&self, clicked_id: &ModId) -> bool {
+        self.selected_mods.iter().any(|n| {
+            if let SelectedMod::Downloaded { id, .. } = n {
+                id == clicked_id
+            } else {
+                false
+            }
+        })
     }
 }
 

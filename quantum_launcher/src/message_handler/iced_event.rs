@@ -2,10 +2,9 @@ use super::{SIDEBAR_DRAG_LEEWAY, SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT};
 use crate::message_update::MSG_RESIZE;
 use crate::state::{
     CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage, LauncherSettingsTab,
-    MenuCreateInstance, MenuEditJarMods, MenuEditMods, MenuEditModsModal, MenuEditPresets,
-    MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLaunch,
-    MenuLauncherSettings, MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods,
-    Message, State,
+    MenuCreateInstance, MenuEditJarMods, MenuEditMods, MenuEditPresets, MenuExportInstance,
+    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLaunch, MenuLauncherSettings,
+    MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, Message, State,
 };
 use iced::{
     keyboard::{self, key::Named, Key},
@@ -193,12 +192,12 @@ impl Launcher {
 
                 // Ctrl-F search in mods list
                 #[rustfmt::skip]
-                ("f", true, _, _, State::EditMods(MenuEditMods { modal: Some(MenuEditModsModal::Search(_)), .. })) => {
-                    Message::ManageMods(crate::state::ManageModsMessage::SetModal(None))
+                ("f", true, _, _, State::EditMods(MenuEditMods { search: Some(_), .. })) => {
+                    Message::ManageMods(crate::state::ManageModsMessage::SetSearch(None))
                 },
                 ("f", true, _, _, State::EditMods(_)) => Message::Multiple(vec![
-                    Message::ManageMods(crate::state::ManageModsMessage::SetModal(Some(
-                        MenuEditModsModal::Search(String::new()),
+                    Message::ManageMods(crate::state::ManageModsMessage::SetSearch(Some(
+                        String::new(),
                     ))),
                     Message::CoreFocusNext,
                 ]),
@@ -443,6 +442,10 @@ impl Launcher {
         if let State::EditMods(menu) = &mut self.state {
             if menu.modal.is_some() {
                 menu.modal = None;
+                return true;
+            }
+            if menu.search.is_some() {
+                menu.search = None;
                 return true;
             }
         }

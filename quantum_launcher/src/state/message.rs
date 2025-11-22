@@ -114,14 +114,17 @@ pub enum ManageModsMessage {
     UpdateCheckResult(Res<Vec<(ModId, String)>>),
     UpdateCheckToggle(usize, bool),
 
-    SelectAll,
     /// Add a mod, preset or modpack to the current instance.
     /// The field represents whether to delete the file after importing it.
     AddFile(bool),
     AddFileDone(Res<HashSet<CurseforgeNotAllowed>>),
-    ExportMenuOpen,
-    SetModal(Option<MenuEditModsModal>),
 
+    SelectAll,
+    SetModal(Option<MenuEditModsModal>),
+    RightClick(ModId),
+    SetSearch(Option<String>),
+
+    ExportMenuOpen,
     CurseforgeManualToggleDelete(bool),
 }
 

@@ -334,6 +334,14 @@ impl ModId {
     }
 
     #[must_use]
+    pub fn get_backend(&self) -> StoreBackendType {
+        match self {
+            ModId::Modrinth(_) => StoreBackendType::Modrinth,
+            ModId::Curseforge(_) => StoreBackendType::Curseforge,
+        }
+    }
+
+    #[must_use]
     pub fn from_index_str(n: &str) -> Self {
         if n.starts_with("CF:") {
             ModId::Curseforge(n.strip_prefix("CF:").unwrap_or(n).to_owned())

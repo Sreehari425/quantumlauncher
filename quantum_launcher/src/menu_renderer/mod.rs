@@ -3,6 +3,7 @@ use iced::{widget, Alignment, Length};
 use ql_core::{Progress, WEBSITE};
 
 use crate::state::ImageState;
+use crate::stylesheet::styles::{BORDER_RADIUS, BORDER_WIDTH};
 use crate::{
     config::LauncherConfig,
     icon_manager,
@@ -94,6 +95,14 @@ pub fn tooltip<'a>(
 
 pub fn back_button<'a>() -> widget::Button<'a, Message, LauncherTheme> {
     button_with_icon(icon_manager::back_with_size(14), "Back", 14)
+}
+
+pub fn ctxbox<'a>(inner: impl Into<Element<'a>>) -> widget::Container<'a, Message, LauncherTheme> {
+    widget::container(inner)
+        .padding(10)
+        .style(|t: &LauncherTheme| {
+            t.style_container_round_box(BORDER_WIDTH, Color::Dark, BORDER_RADIUS)
+        })
 }
 
 pub fn subbutton_with_icon<'a>(
