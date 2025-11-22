@@ -267,44 +267,15 @@ async fn get_list_of_versions_inner(
 ) -> Result<FabricVersionList, JsonDownloadError> {
     let version = version_json.get_id();
     if is_quilt {
-        let (versions, should_try_ornithe) = if version_json
-            .is_after_or_eq(V_OFFICIAL_FABRIC_SUPPORT)
-        {
-            match get_list_of_versions_from_backend(version, BackendType::Quilt, is_server).await {
-                // If the list is empty or an error 404
-                // then try OrnitheMC backend, otherwise
-                // stick to official Quilt backend
-                Ok(n) => {
-                    let is_empty = n.is_empty();
-                    (n, is_empty)
-                }
-                Err(JsonDownloadError::RequestError(RequestError::DownloadError {
-                    code, ..
-                })) if code.as_u16() == 404 => (Vec::new(), true),
-                Err(err) => Err(err)?,
-            }
-        } else {
-            (Vec::new(), true)
-        };
-
-        return Ok(if should_try_ornithe {
-            let versions =
-                get_list_of_versions_from_backend(version, BackendType::OrnitheMCQuilt, is_server)
-                    .await?;
-            if versions.is_empty() {
-                FabricVersionList::Unsupported
-            } else {
-                FabricVersionList::OrnitheMCQuilt(versions)
-            }
-        } else {
-            FabricVersionList::Quilt(versions)
-        });
+        return get_quilt_list(version_json, is_server, version).await;
     }
 
-    let official_versions =
-        get_list_of_versions_from_backend(version, BackendType::Fabric, is_server).await?;
-    if !official_versions.is_empty() {
-        return Ok(FabricVersionList::Fabric(official_versions));
+    if version_json.is_after_or_eq(V_OFFICIAL_FABRIC_SUPPORT) {
+        let official_versions =
+            get_list_of_versions_from_backend(version, BackendType::Fabric, is_server).await?;
+        if !official_versions.is_empty() {
+            return Ok(FabricVersionList::Fabric(official_versions));
+        }
     }
 
     if version == "b1.7.3" {
@@ -334,6 +305,43 @@ async fn get_list_of_versions_inner(
             legacy_fabric,
             ornithe_mc,
         },
+    })
+}
+
+async fn get_quilt_list(
+    version_json: &VersionDetails,
+    is_server: bool,
+    version: &str,
+) -> Result<FabricVersionList, JsonDownloadError> {
+    let (versions, should_try_ornithe) =
+        if version_json.is_after_or_eq(V_OFFICIAL_FABRIC_SUPPORT) {
+            match get_list_of_versions_from_backend(version, BackendType::Quilt, is_server).await {
+                // If the list is empty or an error 404
+                // then try OrnitheMC backend, otherwise
+                // stick to official Quilt backend
+                Ok(n) => {
+                    let is_empty = n.is_empty();
+                    (n, is_empty)
+                }
+                Err(JsonDownloadError::RequestError(RequestError::DownloadError {
+                    code, ..
+                })) if code.as_u16() == 404 => (Vec::new(), true),
+                Err(err) => Err(err)?,
+            }
+        } else {
+            (Vec::new(), true)
+        };
+    Ok(if should_try_ornithe {
+        let versions =
+            get_list_of_versions_from_backend(version, BackendType::OrnitheMCQuilt, is_server)
+                .await?;
+        if versions.is_empty() {
+            FabricVersionList::Unsupported
+        } else {
+            FabricVersionList::OrnitheMCQuilt(versions)
+        }
+    } else {
+        FabricVersionList::Quilt(versions)
     })
 }
 
