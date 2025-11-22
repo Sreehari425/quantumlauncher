@@ -3,7 +3,7 @@ use crate::{
     download::GameDownloader,
     jarmod,
 };
-use ql_core::json::{GlobalSettings, V_1_12_2, V_1_5_2, V_PRECLASSIC_LAST};
+use ql_core::json::{GlobalSettings, V_1_12_2, V_1_5_2, V_PAULSCODE_LAST, V_PRECLASSIC_LAST};
 use ql_core::{
     err, file_utils, info,
     json::{
@@ -794,6 +794,14 @@ impl GameLauncher {
         if main_class != "org.mcphackers.launchwrapper.Launch" && library_path.contains("20230311")
         {
             println!("  (skipping json-20230311.jar)");
+            return Ok(());
+        }
+        if library_path.contains("paulscode")
+            && !self.version_json.is_before_or_eq(V_PAULSCODE_LAST)
+        {
+            // Minecraft stopped using paulscode since 1.14
+            // but BetterJSONs still includes it as a dependency,
+            // leading to some class conflicts.
             return Ok(());
         }
 
