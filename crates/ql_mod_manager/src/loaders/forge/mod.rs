@@ -53,12 +53,6 @@ impl ForgeInstaller {
         Ok(())
     }
 
-    async fn remove_lock(&self) -> Result<(), ForgeInstallError> {
-        let lock_path = self.instance_dir.join("forge.lock");
-        fs::remove_file(&lock_path).await.path(lock_path)?;
-        Ok(())
-    }
-
     async fn new(
         forge_version: Option<String>, // example: "11.15.1.2318" for 1.8.9
         f_progress: Option<Sender<ForgeInstallProgress>>,
@@ -75,7 +69,6 @@ impl ForgeInstaller {
         let minecraft_version = version_json.get_id();
 
         create_mods_dir(&instance_dir).await?;
-        create_lock_file(&instance_dir).await?;
 
         pt!("Downloading JSON");
         if let Some(progress) = &f_progress {
@@ -252,7 +245,7 @@ impl ForgeInstaller {
     }
 
     async fn run_installer_create_garbage_files(&self) -> Result<(), ForgeInstallError> {
-        Ok(if !self.is_server {
+        if !self.is_server {
             let launcher_profiles_json_path = self.forge_dir.join("launcher_profiles.json");
             fs::write(&launcher_profiles_json_path, "{}")
                 .await
@@ -263,7 +256,8 @@ impl ForgeInstaller {
             fs::write(&launcher_profiles_json_microsoft_store_path, "{}")
                 .await
                 .path(launcher_profiles_json_microsoft_store_path)?;
-        })
+        }
+        Ok(())
     }
 
     fn get_forge_json(
@@ -436,21 +430,6 @@ async fn create_mods_dir(instance_dir: &Path) -> Result<(), ForgeInstallError> {
     Ok(())
 }
 
-async fn create_lock_file(instance_dir: &Path) -> Result<(), ForgeInstallError> {
-    let lock_path = instance_dir.join("forge.lock");
-    if lock_path.exists() {
-        err!("Previously incomplete installation of forge found! (not a problem)");
-    } else {
-        fs::write(
-            &lock_path,
-            "If you see this, forge was not installed correctly.",
-        )
-        .await
-        .path(lock_path)?;
-    }
-    Ok(())
-}
-
 pub async fn install(
     forge_version: Option<String>, // example: "11.15.1.2318" for 1.8.9
     instance: InstanceSelection,
@@ -605,7 +584,6 @@ pub async fn install_client(
     )
     .await?;
 
-    installer.remove_lock().await?;
     info!("Finished installing forge");
     Ok(())
 }

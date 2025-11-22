@@ -4,7 +4,7 @@
 //! # Here is a table representing java platform support.
 //!
 //! - ✅: Official support from Mojang
-//!     [(installed from their servers)](https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json)
+//!   [(installed from their servers)](https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json)
 //! - 🟢: Supported through *Amazon Corretto Java*
 //!   which we provide an alternate installer for.
 //! - 🟢³: Installed from

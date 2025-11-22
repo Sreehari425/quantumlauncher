@@ -51,7 +51,6 @@ pub async fn install_server(
         }),
     )
     .await?;
-    installer.remove_lock().await?;
 
     Ok(())
 }
