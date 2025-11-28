@@ -4,7 +4,6 @@ use ql_core::{
     info, DownloadProgress, IntoIoError, ListEntry, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
 };
 
-pub mod constants;
 mod downloader;
 mod libraries;
 
@@ -35,7 +34,7 @@ pub async fn create_instance(
     download_assets: bool,
 ) -> Result<String, DownloadError> {
     info!("Started creating instance.");
-    debug_assert!(!version.is_classic_server);
+    debug_assert!(!version.is_server);
 
     // An empty asset directory.
     let launcher_dir = &*LAUNCHER_DIR;
@@ -57,7 +56,10 @@ pub async fn create_instance(
         game_downloader.download_assets().await?;
     }
 
-    game_downloader.create_version_json().await?;
+    game_downloader
+        .version_json
+        .save_to_dir(&game_downloader.instance_dir)
+        .await?;
     game_downloader.create_profiles_json().await?;
     game_downloader.create_config_json().await?;
 

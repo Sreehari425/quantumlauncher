@@ -36,8 +36,7 @@ impl ImageState {
             if url.is_empty() {
                 continue;
             }
-            if !self.downloads_in_progress.contains(&url) {
-                self.downloads_in_progress.insert(url.clone());
+            if self.downloads_in_progress.insert(url.to_owned()) {
                 commands.push(Task::perform(
                     ql_mod_manager::store::download_image(url.clone()),
                     Message::CoreImageDownloaded,
@@ -80,6 +79,31 @@ impl ImageState {
                 e = e.height(s);
             }
             e.into()
+        } else {
+            let mut to_load = self.to_load.lock().unwrap();
+            to_load.insert(url.to_owned());
+            fallback
+        }
+    }
+
+    pub fn view_bitmap<'a>(
+        &self,
+        url: &str,
+        w: Option<f32>,
+        h: Option<f32>,
+        fallback: Element<'a>,
+    ) -> Element<'a> {
+        if let Some(handle) = self.bitmap.get(url) {
+            let mut e = widget::image(handle.clone());
+            if let Some(s) = w {
+                e = e.width(s);
+            }
+            if let Some(s) = h {
+                e = e.height(s);
+            }
+            e.into()
+        } else if self.svg.contains_key(url) {
+            fallback
         } else {
             let mut to_load = self.to_load.lock().unwrap();
             to_load.insert(url.to_owned());

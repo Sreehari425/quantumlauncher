@@ -112,20 +112,19 @@ async fn import_quantumlauncher(
     pt!("Exceptions : {:?} ", instance_info.exceptions);
     let version = ListEntry {
         name: version_json.id.clone(),
-        is_classic_server: instance_info.is_server && version_json.id.starts_with("c0."),
+        is_server: instance_info.is_server,
     };
 
+    let (d_send, d_recv) = std::sync::mpsc::channel();
+    if let Some(sender) = sender.clone() {
+        std::thread::spawn(move || {
+            pipe_progress(d_recv, &sender);
+        });
+    }
+
     if instance_info.is_server {
-        ql_servers::create_server(instance_info.instance_name, version, sender.as_deref()).await?;
+        ql_servers::create_server(instance_info.instance_name, version, Some(&d_send)).await?;
     } else {
-        let (d_send, d_recv) = std::sync::mpsc::channel();
-
-        if let Some(sender) = sender.clone() {
-            std::thread::spawn(move || {
-                pipe_progress(d_recv, &sender);
-            });
-        }
-
         ql_instances::create_instance(
             instance_info.instance_name,
             version,

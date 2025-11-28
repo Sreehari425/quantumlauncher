@@ -141,6 +141,12 @@ impl JavaVersion {
             } else {
                 None
             }
+        } else if cfg!(target_arch = "x86") {
+            if let JavaVersion::Java8 = self {
+                Some("https://github.com/hmsjy2017/get-jdk/releases/download/v8u231/jdk-8u231-linux-i586.tar.gz")
+            } else {
+                None
+            }
         } else {
             None
         }

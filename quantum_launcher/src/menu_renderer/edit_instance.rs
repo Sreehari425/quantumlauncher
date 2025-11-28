@@ -340,9 +340,8 @@ pub fn get_args_list<'a>(
 ) -> Element<'a> {
     const ITEM_SIZE: u16 = 10;
 
-    let Some(args) = args else {
-        return widget::column!().into();
-    };
+    let args = args.unwrap_or_default();
+
     widget::column![
         widget::column(args.iter().enumerate().map(|(i, arg)| {
             widget::row!(

@@ -3,6 +3,7 @@ use std::{
     time::Instant,
 };
 
+use crate::{config::SIDEBAR_WIDTH_DEFAULT, message_handler::get_locally_installed_mods};
 use frostmark::MarkState;
 use iced::{
     widget::{self, scrollable::AbsoluteOffset},
@@ -15,15 +16,13 @@ use ql_core::{
     DownloadProgress, GenericProgress, InstanceSelection, ListEntry, ModId, OptifineUniqueVersion,
     SelectedMod, StoreBackendType,
 };
+use ql_mod_manager::loaders::paper::PaperVersion;
 use ql_mod_manager::{
-    loaders::{forge::ForgeInstallProgress, optifine::OptifineInstallProgress},
+    loaders::{self, forge::ForgeInstallProgress, optifine::OptifineInstallProgress},
     store::{CurseforgeNotAllowed, ModConfig, ModIndex, QueryType, RecommendedMod, SearchResult},
 };
 
-use crate::{
-    config::SIDEBAR_WIDTH_DEFAULT, message_handler::get_locally_installed_mods, state::ImageState,
-    WINDOW_WIDTH,
-};
+use crate::{state::ImageState, WINDOW_WIDTH};
 
 use super::{ManageModsMessage, Message, ProgressBar};
 
@@ -42,7 +41,7 @@ impl std::fmt::Display for LaunchTabId {
             "{}",
             match self {
                 LaunchTabId::Buttons => "Play",
-                LaunchTabId::Log => "Log",
+                LaunchTabId::Log => "Logs",
                 LaunchTabId::Edit => "Edit",
             }
         )
@@ -198,9 +197,16 @@ pub struct MenuEditMods {
     /// Index of the item selected before pressing shift
     pub list_shift_index: Option<usize>,
     pub drag_and_drop_hovered: bool,
-    pub submenu1_shown: bool,
+    pub modal: Option<MenuEditModsModal>,
+    pub search: Option<String>,
 
     pub width_name: f32,
+}
+
+#[derive(Debug, Clone)]
+pub enum MenuEditModsModal {
+    Submenu,
+    RightClick(ModId, (f32, f32)),
 }
 
 impl MenuEditMods {
@@ -262,6 +268,16 @@ impl MenuEditMods {
             SelectedState::Some
         };
     }
+
+    pub fn is_selected(&self, clicked_id: &ModId) -> bool {
+        self.selected_mods.iter().any(|n| {
+            if let SelectedMod::Downloaded { id, .. } = n {
+                id == clicked_id
+            } else {
+                false
+            }
+        })
+    }
 }
 
 pub struct MenuExportMods {
@@ -281,6 +297,7 @@ pub enum MenuCreateInstance {
         _handle: iced::task::Handle,
     },
     Choosing {
+        is_server: bool,
         instance_name: String,
         selected_version: Option<ListEntry>,
         download_assets: bool,
@@ -296,9 +313,9 @@ pub enum MenuInstallFabric {
         _loading_handle: iced::task::Handle,
     },
     Loaded {
-        is_quilt: bool,
+        backend: loaders::fabric::BackendType,
         fabric_version: String,
-        fabric_versions: Vec<String>,
+        fabric_versions: loaders::fabric::FabricVersionList,
         progress: Option<ProgressBar<GenericProgress>>,
     },
     Unsupported(bool),
@@ -308,10 +325,21 @@ impl MenuInstallFabric {
     pub fn is_quilt(&self) -> bool {
         match self {
             MenuInstallFabric::Loading { is_quilt, .. }
-            | MenuInstallFabric::Loaded { is_quilt, .. }
             | MenuInstallFabric::Unsupported(is_quilt) => *is_quilt,
+            MenuInstallFabric::Loaded { backend, .. } => backend.is_quilt(),
         }
     }
+}
+
+pub enum MenuInstallPaper {
+    Loading {
+        _handle: iced::task::Handle,
+    },
+    Loaded {
+        version: PaperVersion,
+        versions: Vec<PaperVersion>,
+    },
+    Installing,
 }
 
 pub struct MenuInstallForge {
@@ -528,7 +556,7 @@ pub enum State {
     LoginMS(MenuLoginMS),
     LoginAlternate(MenuLoginAlternate),
 
-    InstallPaper,
+    InstallPaper(MenuInstallPaper),
     InstallFabric(MenuInstallFabric),
     InstallForge(MenuInstallForge),
     InstallOptifine(MenuInstallOptifine),
@@ -537,7 +565,6 @@ pub enum State {
 
     ModsDownload(MenuModsDownload),
     LauncherSettings(MenuLauncherSettings),
-    ServerCreate(MenuServerCreate),
     ManagePresets(MenuEditPresets),
     RecommendedMods(MenuRecommendedMods),
 
@@ -629,18 +656,6 @@ impl std::fmt::Display for LicenseTab {
     }
 }
 
-pub enum MenuServerCreate {
-    LoadingList,
-    Loaded {
-        name: String,
-        versions: Box<iced::widget::combo_box::State<ListEntry>>,
-        selected_version: Option<ListEntry>,
-    },
-    Downloading {
-        progress: ProgressBar<GenericProgress>,
-    },
-}
-
 pub enum MenuInstallOptifine {
     Choosing {
         optifine_unique_version: Option<OptifineUniqueVersion>,
@@ -664,7 +679,11 @@ impl MenuInstallOptifine {
             ..
         } = self
         {
-            o.get_url().0
+            if let OptifineUniqueVersion::Forge = o {
+                OPTIFINE_DOWNLOADS
+            } else {
+                o.get_url().0
+            }
         } else {
             OPTIFINE_DOWNLOADS
         }

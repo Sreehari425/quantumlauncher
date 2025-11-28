@@ -1,14 +1,10 @@
-use std::{
-    collections::HashSet,
-    path::PathBuf,
-    process::ExitStatus,
-    sync::{Arc, Mutex},
-};
+use std::{collections::HashSet, path::PathBuf, process::ExitStatus};
 
+use crate::{message_handler::ForgeKind, state::MenuEditModsModal};
 use iced::widget;
 use ql_core::{
-    file_utils::DirItem, jarmod::JarMods, InstanceSelection, ListEntry, Loader, ModId,
-    StoreBackendType,
+    file_utils::DirItem, jarmod::JarMods, read_log::Diagnostic, InstanceSelection, LaunchedProcess,
+    ListEntry, Loader, ModId, StoreBackendType,
 };
 use ql_instances::{
     auth::{
@@ -18,10 +14,9 @@ use ql_instances::{
     UpdateCheckInfo,
 };
 use ql_mod_manager::{
-    loaders::fabric::FabricVersionListItem,
+    loaders::{fabric, paper::PaperVersion},
     store::{CurseforgeNotAllowed, ImageResult, ModIndex, QueryType, RecommendedMod, SearchResult},
 };
-use tokio::process::Child;
 
 use super::{LaunchTabId, LauncherSettingsTab, LicenseTab, Res};
 
@@ -29,22 +24,34 @@ use super::{LaunchTabId, LauncherSettingsTab, LicenseTab, Res};
 pub enum InstallFabricMessage {
     End(Res),
     VersionSelected(String),
-    VersionsLoaded(Res<Vec<FabricVersionListItem>>),
+    VersionsLoaded(Res<fabric::FabricVersionList>),
     ButtonClicked,
     ScreenOpen { is_quilt: bool },
+    ChangeBackend(fabric::BackendType),
+}
+
+#[derive(Debug, Clone)]
+pub enum InstallPaperMessage {
+    End(Res),
+    VersionSelected(PaperVersion),
+    VersionsLoaded(Res<Vec<ql_mod_manager::loaders::paper::PaperVersion>>),
+    ButtonClicked,
+    ScreenOpen,
 }
 
 #[derive(Debug, Clone)]
 pub enum CreateInstanceMessage {
-    ScreenOpen,
+    ScreenOpen {
+        is_server: bool,
+    },
 
-    VersionsLoaded(Res<Vec<ListEntry>>),
+    VersionsLoaded(Res<(Vec<ListEntry>, String)>, bool),
     VersionSelected(ListEntry),
     NameInput(String),
     ChangeAssetToggle(bool),
 
     Start,
-    End(Res<String>),
+    End(Res<InstanceSelection>),
     Cancel,
 
     #[allow(unused)]
@@ -83,6 +90,7 @@ pub enum ManageModsMessage {
     ToggleCheckbox(String, Option<ModId>),
 
     DeleteSelected,
+    DeleteOptiforge(String),
     DeleteFinished(Res<Vec<ModId>>),
     LocalDeleteFinished(Res),
     LocalIndexLoaded(HashSet<String>),
@@ -95,14 +103,17 @@ pub enum ManageModsMessage {
     UpdateCheckResult(Res<Vec<(ModId, String)>>),
     UpdateCheckToggle(usize, bool),
 
-    SelectAll,
     /// Add a mod, preset or modpack to the current instance.
     /// The field represents whether to delete the file after importing it.
     AddFile(bool),
     AddFileDone(Res<HashSet<CurseforgeNotAllowed>>),
-    ExportMenuOpen,
-    ToggleSubmenu1,
 
+    SelectAll,
+    SetModal(Option<MenuEditModsModal>),
+    RightClick(ModId),
+    SetSearch(Option<String>),
+
+    ExportMenuOpen,
     CurseforgeManualToggleDelete(bool),
 }
 
@@ -245,6 +256,8 @@ pub enum LauncherSettingsMessage {
 
     ToggleAntialiasing(bool),
     ToggleWindowSize(bool),
+    #[allow(unused)]
+    ToggleWindowDecorations(bool),
 
     GlobalJavaArgs(ListMessage),
     GlobalPreLaunchPrefix(ListMessage),
@@ -299,8 +312,8 @@ impl ListMessage {
 #[derive(Debug, Clone)]
 pub enum Message {
     Nothing,
-    #[allow(unused)]
     Multiple(Vec<Message>),
+    ShowScreen(String),
 
     WelcomeContinueToTheme,
     WelcomeContinueToAuth,
@@ -327,10 +340,10 @@ pub enum Message {
     LaunchScreenOpen {
         message: Option<String>,
         clear_selection: bool,
+        is_server: Option<bool>,
     },
-    LaunchEnd(Res<Arc<Mutex<Child>>>),
+    LaunchEnd(Res<LaunchedProcess>),
     LaunchKill,
-    LaunchKillEnd(Res),
     LaunchChangeTab(LaunchTabId),
 
     LaunchSidebarResize(f32),
@@ -339,18 +352,12 @@ pub enum Message {
     DeleteInstanceMenu,
     DeleteInstance,
 
-    InstallForgeStart {
-        is_neoforge: bool,
-    },
+    InstallForge(ForgeKind),
     InstallForgeEnd(Res),
-    InstallPaperStart,
-    InstallPaperEnd(Res),
+    InstallPaper(InstallPaperMessage),
 
     UninstallLoaderConfirm(Box<Message>, Loader),
-    UninstallLoaderFabricStart,
-    UninstallLoaderForgeStart,
-    UninstallLoaderOptiFineStart,
-    UninstallLoaderPaperStart,
+    UninstallLoaderStart,
     UninstallLoaderEnd(Res),
 
     #[allow(unused)]
@@ -372,6 +379,7 @@ pub enum Message {
     CoreOpenIntro,
     CoreEvent(iced::Event, iced::event::Status),
     CoreCleanComplete(Res),
+    CoreFocusNext,
     CoreTryQuit,
 
     Window(WindowMessage),
@@ -383,7 +391,7 @@ pub enum Message {
 
     LaunchLogScroll(isize),
     LaunchLogScrollAbsolute(isize),
-    LaunchEndedLog(Res<(ExitStatus, String)>),
+    LaunchGameExited(Res<(ExitStatus, InstanceSelection, Option<Diagnostic>)>),
     LaunchCopyLog,
     LaunchUploadLog,
     LaunchUploadLogResult(Res<String>),
@@ -392,21 +400,8 @@ pub enum Message {
     UpdateDownloadStart,
     UpdateDownloadEnd(Res),
 
-    ServerManageOpen {
-        selected_server: Option<String>,
-        message: Option<String>,
-    },
-    ServerStartFinish(Res<(Arc<Mutex<Child>>, bool)>),
-    ServerStopped(Res<(ExitStatus, String)>),
-    ServerCommandEdit(String, String),
-    ServerCommandSubmit(String),
-
-    ServerCreateScreenOpen,
-    ServerCreateVersionsLoaded(Res<Vec<ListEntry>>),
-    ServerCreateNameInput(String),
-    ServerCreateVersionSelected(ListEntry),
-    ServerCreateStart,
-    ServerCreateEnd(Res<String>),
+    ServerCommandEdit(String),
+    ServerCommandSubmit,
 
     LicenseOpen,
     LicenseChangeTab(LicenseTab),

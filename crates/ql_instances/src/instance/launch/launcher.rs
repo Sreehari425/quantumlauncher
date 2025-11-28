@@ -5,13 +5,12 @@ use crate::{
 };
 use ql_core::{
     err, file_utils, info,
-    json::{forge, version::Library, FabricJSON, InstanceConfigJson, JsonOptifine, VersionDetails},
+    json::{
+        forge, version::Library, FabricJSON, GlobalSettings, InstanceConfigJson, JsonOptifine,
+        VersionDetails, V_1_12_2, V_1_5_2, V_PAULSCODE_LAST, V_PRECLASSIC_LAST,
+    },
     pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError, JsonFileError,
-    CLASSPATH_SEPARATOR, LAUNCHER_DIR,
-};
-use ql_core::{
-    json::{GlobalSettings, V_1_5_2, V_PRECLASSIC_LAST},
-    Loader,
+    Loader, CLASSPATH_SEPARATOR, LAUNCHER_DIR,
 };
 use ql_java_handler::{get_java_binary, JavaVersion};
 use std::{
@@ -572,6 +571,12 @@ impl GameLauncher {
     ) -> Result<(), GameLaunchError> {
         if let Some(fabric_json) = fabric_json {
             for library in &fabric_json.libraries {
+                if !library.is_allowed() {
+                    continue;
+                }
+                if library.is_lwjgl2() && self.version_json.is_before_or_eq(V_1_12_2) {
+                    continue;
+                }
                 if let Some(name) = remove_version_from_library(&library.name) {
                     if self
                         .version_json
@@ -586,7 +591,10 @@ impl GameLauncher {
                 }
 
                 let library_path = self.instance_dir.join("libraries").join(library.get_path());
-                debug_assert!(library_path.is_file());
+                debug_assert!(
+                    library_path.is_file(),
+                    "Couldn't find library {library_path:?}"
+                );
                 class_path.push_str(
                     library_path
                         .to_str()
@@ -695,7 +703,7 @@ impl GameLauncher {
             .version_json
             .libraries
             .iter()
-            .filter(|n| GameDownloader::download_libraries_library_is_allowed(n))
+            .filter(|n| n.is_allowed())
         {
             self.add_entry_to_classpath(
                 classpath_entries,
@@ -750,6 +758,14 @@ impl GameLauncher {
         if main_class != "org.mcphackers.launchwrapper.Launch" && library_path.contains("20230311")
         {
             println!("  (skipping json-20230311.jar)");
+            return Ok(());
+        }
+        if library_path.contains("paulscode")
+            && !self.version_json.is_before_or_eq(V_PAULSCODE_LAST)
+        {
+            // Minecraft stopped using paulscode since 1.14
+            // but BetterJSONs still includes it as a dependency,
+            // leading to some class conflicts.
             return Ok(());
         }
 

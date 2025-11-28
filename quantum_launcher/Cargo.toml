@@ -1,6 +1,6 @@
 [package]
 name = "quantum_launcher"
-version = "0.4.2"
+version = "0.4.3"
 edition = "2021"
 
 authors = ["Mrmayman <navneetkrishna22@gmail.com>"]
@@ -70,7 +70,7 @@ rfd = { workspace = true }
 # Terminal
 terminal_size = "0.4"
 owo-colors = { workspace = true }
-clap = { version = "4", features = ["help"] }
+clap = { version = "4", features = ["help", "derive"] }
 notify = "8"
 itertools = "0.14"
 open = "5.3.2"

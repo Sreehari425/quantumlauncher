@@ -31,22 +31,33 @@ impl Display for LogType {
     }
 }
 
+pub struct LogConfig {
+    pub terminal: bool,
+    pub file: bool,
+}
+
+impl Default for LogConfig {
+    fn default() -> Self {
+        Self {
+            terminal: true,
+            file: true,
+        }
+    }
+}
+
+#[derive(Default)]
 pub struct LoggingState {
     thread: Option<std::thread::JoinHandle<()>>,
     writer: Option<BufWriter<File>>,
     sender: Option<std::sync::mpsc::Sender<String>>,
+    config: LogConfig,
     pub text: Vec<(String, LogType)>,
 }
 
 impl LoggingState {
     #[must_use]
     pub fn create() -> Option<Mutex<LoggingState>> {
-        Some(Mutex::new(LoggingState {
-            thread: None,
-            writer: None,
-            sender: None,
-            text: Vec::new(),
-        }))
+        Some(Mutex::new(Self::default()))
     }
 
     pub fn write_to_storage(&mut self, s: &str, t: LogType) {
@@ -70,7 +81,10 @@ impl LoggingState {
                     let mut writer = writer;
 
                     while let Ok(msg) = receiver.recv() {
+                        _ = writer.write_all(t.to_string().as_bytes());
+                        _ = writer.write(b" ");
                         _ = writer.write_all(msg.as_bytes());
+                        _ = writer.write(b"\n");
                         _ = writer.flush();
                     }
                 });
@@ -81,7 +95,9 @@ impl LoggingState {
         }
 
         if let Some(sender) = &self.sender {
-            _ = sender.send(s.to_owned());
+            if self.config.file {
+                _ = sender.send(s.to_owned());
+            }
         }
     }
 
@@ -89,6 +105,12 @@ impl LoggingState {
         if let Some(writer) = &self.writer {
             _ = writer.get_ref().sync_all();
         }
+    }
+}
+
+pub fn set_config(c: LogConfig) {
+    if let Some(l) = &*LOGGER {
+        l.lock().unwrap().config = c;
     }
 }
 
@@ -153,13 +175,23 @@ pub fn print_to_storage(msg: &str, t: LogType) {
     }
 }
 
+pub fn is_print() -> bool {
+    if let Some(l) = &*LOGGER {
+        l.lock().unwrap().config.terminal
+    } else {
+        true
+    }
+}
+
 /// Print an informational message.
 /// Saved to a log file.
 #[macro_export]
 macro_rules! info {
     ($($arg:tt)*) => {{
         let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
-        println!("{} {}", owo_colors::OwoColorize::yellow(&"[info]"), format_args!($($arg)*));
+        if $crate::print::is_print() {
+            println!("{} {}", owo_colors::OwoColorize::yellow(&"[info]"), format_args!($($arg)*));
+        }
         $crate::print::print_to_file(&plain_text, $crate::print::LogType::Info);
     }};
 }
@@ -170,7 +202,9 @@ macro_rules! info {
 macro_rules! info_no_log {
     ($($arg:tt)*) => {{
         let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
-        println!("{} {}", owo_colors::OwoColorize::yellow(&"[info]"), format_args!($($arg)*));
+        if $crate::print::is_print() {
+            println!("{} {}", owo_colors::OwoColorize::yellow(&"[info]"), format_args!($($arg)*));
+        }
         $crate::print::print_to_storage(&plain_text, $crate::print::LogType::Info);
     }};
 }
@@ -181,7 +215,9 @@ macro_rules! info_no_log {
 macro_rules! err_no_log {
     ($($arg:tt)*) => {{
         let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
-        eprintln!("{} {}", owo_colors::OwoColorize::red(&"[error]"), format_args!($($arg)*));
+        if $crate::print::is_print() {
+            eprintln!("{} {}", owo_colors::OwoColorize::red(&"[error]"), format_args!($($arg)*));
+        }
         $crate::print::print_to_storage(&plain_text, $crate::print::LogType::Error);
     }};
 }
@@ -192,7 +228,9 @@ macro_rules! err_no_log {
 macro_rules! err {
     ($($arg:tt)*) => {{
         let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
-        eprintln!("{} {}", owo_colors::OwoColorize::red(&"[error]"), format_args!($($arg)*));
+        if $crate::print::is_print() {
+            eprintln!("{} {}", owo_colors::OwoColorize::red(&"[error]"), format_args!($($arg)*));
+        }
         $crate::print::print_to_file(&plain_text, $crate::print::LogType::Error);
     }};
 }
@@ -203,8 +241,23 @@ macro_rules! err {
 macro_rules! pt {
     ($($arg:tt)*) => {{
         let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
-        println!("{} {}", owo_colors::OwoColorize::bold(&"-"), format_args!($($arg)*));
+        if $crate::print::is_print() {
+            println!("{} {}", owo_colors::OwoColorize::bold(&"-"), format_args!($($arg)*));
+        }
         $crate::print::print_to_file(&plain_text, $crate::print::LogType::Point);
+    }};
+}
+
+/// Print a point message, i.e. a small step in some process.
+/// Not saved to a log file.
+#[macro_export]
+macro_rules! pt_no_log {
+    ($($arg:tt)*) => {{
+        let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
+        if $crate::print::is_print() {
+            println!("{} {}", owo_colors::OwoColorize::bold(&"-"), format_args!($($arg)*));
+        }
+        $crate::print::print_to_storage(&plain_text, $crate::print::LogType::Point);
     }};
 }
 

@@ -10,66 +10,60 @@ use ql_core::{err, json::Manifest, JsonDownloadError, ListEntry};
 ///
 /// Prints an error to log if Omniarchive versions couldn't be loaded.
 #[allow(clippy::missing_panics_doc)]
-pub async fn list() -> Result<Vec<ListEntry>, JsonDownloadError> {
-    // TODO: Allow sideloading server jars
-    // In Minecraft Server ecosystem, it's more common
-    // to "sideload", or provide your own custom server jars.
-    //
-    // This isn't common in clients because distributing
-    // full-built jars is against Minecraft EULA.
-    // The only use case for this in clients is for running old versions.
-    // We already have that built in through Omniarchive so it's fine.
-    //
-    // I think this "sideloading" is allowed for servers so gotta
-    // provide it somehow.
+pub async fn list() -> Result<(Vec<ListEntry>, String), JsonDownloadError> {
+    let manifest = Manifest::download().await?;
+    let latest = manifest.get_latest_release().unwrap().id.clone();
 
-    Ok(Manifest::download()
-        .await?
-        .versions
-        .into_iter()
-        .filter_map(|n| {
-            if n.id.starts_with("inf-") || n.id.starts_with("in-") || n.id.starts_with("pc-") {
-                return None;
-            }
-            if let Some(name) = n.id.strip_prefix("c0.") {
-                if name.contains("_st") || name.contains("-s") {
+    Ok((
+        manifest
+            .versions
+            .into_iter()
+            .filter_map(|n| {
+                if n.id.starts_with("inf-") || n.id.starts_with("in-") || n.id.starts_with("pc-") {
                     return None;
                 }
-                if name.starts_with("0.11")
-                    || name.starts_with("0.12")
-                    || name.starts_with("0.13")
-                    || name.starts_with("0.14")
-                    || name.starts_with("0.15")
-                {
-                    return None;
-                }
+                if let Some(name) = n.id.strip_prefix("c0.") {
+                    if name.contains("_st") || name.contains("-s") {
+                        return None;
+                    }
+                    if name.starts_with("0.11")
+                        || name.starts_with("0.12")
+                        || name.starts_with("0.13")
+                        || name.starts_with("0.14")
+                        || name.starts_with("0.15")
+                    {
+                        return None;
+                    }
 
-                return Some(ListEntry {
-                    name: n.id,
-                    is_classic_server: true,
-                });
-            }
-            if n.id.starts_with("a1.") {
-                // Minecraft a1.0.15: Added multiplayer to alpha
-                let a1_0_15 = DateTime::parse_from_rfc3339("2010-08-03T19:47:25+00:00").unwrap();
-                match DateTime::parse_from_rfc3339(&n.releaseTime) {
-                    Ok(dt) => {
-                        if dt < a1_0_15 {
-                            return None;
+                    return Some(ListEntry {
+                        name: n.id,
+                        is_server: true,
+                    });
+                }
+                if n.id.starts_with("a1.") {
+                    // Minecraft a1.0.15: Added multiplayer to alpha
+                    let a1_0_15 =
+                        DateTime::parse_from_rfc3339("2010-08-03T19:47:25+00:00").unwrap();
+                    match DateTime::parse_from_rfc3339(&n.releaseTime) {
+                        Ok(dt) => {
+                            if dt < a1_0_15 {
+                                return None;
+                            }
+                        }
+                        Err(e) => {
+                            err!("Could not parse instance date/time: {e}");
                         }
                     }
-                    Err(e) => {
-                        err!("Could not parse instance date/time: {e}");
-                    }
                 }
-            }
 
-            Some(ListEntry {
-                name: n.id,
-                is_classic_server: false,
+                Some(ListEntry {
+                    name: n.id,
+                    is_server: true,
+                })
             })
-        })
-        .collect())
+            .collect(),
+        latest,
+    ))
 }
 
 /*fn convert_classic_to_real_name(classic: &str) -> &str {

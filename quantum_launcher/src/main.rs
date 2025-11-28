@@ -18,9 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #![doc = include_str!("../../README.md")]
 #![windows_subsystem = "windows"]
-#![allow(clippy::doc_nested_refdefs)]
 #![allow(clippy::doc_markdown)]
-#![allow(clippy::missing_errors_doc)]
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_precision_loss)]
@@ -29,10 +27,12 @@ use std::{borrow::Cow, time::Duration};
 
 use config::LauncherConfig;
 use iced::{Settings, Task};
-use state::{get_entries, Launcher, Message, ServerProcess};
+use state::{get_entries, Launcher, Message};
 
-use ql_core::{err, err_no_log, file_utils, info, info_no_log, IntoStringError, JsonFileError};
-use ql_instances::OS_NAME;
+use ql_core::{
+    constants::OS_NAME, err, err_no_log, file_utils, info, info_no_log, IntoStringError,
+    JsonFileError,
+};
 
 use crate::{menu_renderer::FONT_DEFAULT, state::CustomJarState};
 
@@ -310,11 +310,11 @@ fn do_migration() {
         file_utils::migration_launcher_dir(),
     ) {
         if let Err(e) = std::fs::rename(&legacy_dir, &new_dir) {
-            eprintln!("Migration failed: {}", e);
+            eprintln!("Migration failed: {e}");
         } else if let Err(e) = file_utils::create_symlink(&new_dir, &legacy_dir) {
-            eprintln!("Migration successful but couldnt create symlink to the legacy dir: {e}",);
+            eprintln!("Migration successful but couldn't create symlink to the legacy dir: {e}",);
         } else {
-            info!("Migration successful!\nYour launcher files are now in ~./local/share/QuantumLauncher")
+            info!("Migration successful!\nYour launcher files are now in ~./local/share/QuantumLauncher");
         }
     }
 }

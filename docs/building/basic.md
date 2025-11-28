@@ -37,7 +37,7 @@ although it's not strictly necessary.
 Using Git allows you to easily manage the source code,
 fetch updates, and contribute to the project.
 
-1. **Open the terminal** and navigate to your desired directory (maybe a projects folder)
+1. **Open the terminal** and navigate to your desired directory (maybe your projects folder)
 
 ```sh
 cd path/to/folder
@@ -97,7 +97,7 @@ on Windows, and `quantum_launcher` on other platforms.
 ## Release vs Debug
 
 - **Debug** (default): Faster compilation, but the app is
-  larger in size and less optimized. Use `cargo run` or `cargo build`
+  larger and less optimized. Use `cargo run` or `cargo build`
   to compile the launcher in debug mode
 
 - **Release**: Optimized for performance, resulting in much

@@ -1,2 +1,0 @@
-Version = str
-PID = int

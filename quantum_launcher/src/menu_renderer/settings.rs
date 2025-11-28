@@ -5,6 +5,7 @@ use super::{
     back_button, button_with_icon, get_theme_selector, sidebar_button, underline, Element, DISCORD,
     GITHUB,
 };
+use crate::menu_renderer::back_to_launch_screen;
 use crate::menu_renderer::edit_instance::{get_args_list, resolution_dialog};
 use crate::{
     config::LauncherConfig,
@@ -36,11 +37,8 @@ impl MenuLauncherSettings {
         widget::row![
             widget::container(
                 widget::column![
-                    widget::column!(back_button().on_press(Message::LaunchScreenOpen {
-                        message: None,
-                        clear_selection: false
-                    }))
-                    .padding(PADDING_NOT_BOTTOM),
+                    widget::column!(back_button().on_press(back_to_launch_screen(None, None)))
+                        .padding(PADDING_NOT_BOTTOM),
                     widget::row![
                         icon_manager::settings_with_size(20),
                         widget::text("Settings").size(20),
@@ -151,18 +149,27 @@ impl MenuLauncherSettings {
             },
 
             widget::column![
+                // TODO: This requires launcher restart
+                // widget::checkbox("Custom Window Decorations", !config.c_window_decorations()).on_toggle(|n| {
+                //     Message::LauncherSettings(LauncherSettingsMessage::ToggleWindowDecorations(n))
+                // }),
+                // widget::text("Use custom window borders and close/minimize/maximize buttons").size(12),
+                // widget::Space::with_height(5),
+
                 widget::checkbox("Antialiasing (UI) - Requires Restart", config.antialiasing.unwrap_or(true))
                     .on_toggle(|n| Message::LauncherSettings(
                         LauncherSettingsMessage::ToggleAntialiasing(n)
                     )),
-                widget::text("Makes text/menus crisper. Also nudges the launcher into using your dedicated GPU for the User Interface.").size(12),
+                widget::text("Makes text/menus crisper. Also nudges the launcher into using your dedicated GPU for the User Interface").size(12),
                 widget::Space::with_height(5),
+
                 widget::checkbox("Remember window size", config.window.as_ref().is_none_or(|n| n.save_window_size))
                     .on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::ToggleWindowSize(n))),
             ]
             .padding(10)
             .spacing(5)
-        ).padding(iced::Padding::new(0.0).right(10.0))
+        )
+        .padding(iced::Padding::new(0.0).right(10.0))
         .spacing(SETTINGS_SPACING)
         .into()
     }

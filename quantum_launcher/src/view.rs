@@ -99,11 +99,15 @@ impl Launcher {
             State::GenericMessage(msg) => widget::column![widget::text(msg)].padding(10).into(),
             State::AccountLogin => view_account_login(),
             State::EditMods(menu) => menu.view(
-                self.selected_instance.as_ref().unwrap(),
+                self.instance(),
                 self.tick_timer,
                 &self.images,
+                self.window_state.size.1,
             ),
-            State::Create(menu) => menu.view(self.client_list.as_ref()),
+            State::Create(menu) => menu.view(
+                self.client_list.as_ref(),
+                self.version_list_cache.latest_stable.as_deref(),
+            ),
             State::ConfirmAction {
                 msg1,
                 msg2,
@@ -111,9 +115,7 @@ impl Launcher {
                 no,
             } => view_confirm(msg1, msg2, yes, no),
             State::Error { error } => view_error(error),
-            State::InstallFabric(menu) => {
-                menu.view(self.selected_instance.as_ref().unwrap(), self.tick_timer)
-            }
+            State::InstallFabric(menu) => menu.view(self.instance(), self.tick_timer),
             State::InstallJava => widget::column!(widget::text("Downloading Java").size(20),)
                 .push_maybe(self.java_recv.as_ref().map(|n| n.view()))
                 .padding(10)
@@ -121,17 +123,12 @@ impl Launcher {
                 .into(),
             State::ModsDownload(menu) => menu.view(&self.images, self.tick_timer),
             State::LauncherSettings(menu) => menu.view(&self.config, self.window_state.size),
-            State::InstallPaper => {
-                let dots = ".".repeat((self.tick_timer % 3) + 1);
-                widget::column!(widget::text!("Installing Paper{dots}").size(20))
-                    .padding(10)
-                    .spacing(10)
-                    .into()
-            }
+            State::InstallPaper(menu) => menu.view(self.tick_timer),
             State::ChangeLog => {
                 let back_msg = Message::LaunchScreenOpen {
                     message: None,
                     clear_selection: true,
+                    is_server: None,
                 };
                 widget::scrollable(
                     widget::column!(
@@ -148,7 +145,7 @@ impl Launcher {
                 .into()
             }
             State::Welcome(menu) => menu.view(&self.config),
-            State::EditJarMods(menu) => menu.view(self.selected_instance.as_ref().unwrap()),
+            State::EditJarMods(menu) => menu.view(self.instance()),
             State::ImportModpack(progress) => {
                 widget::column![widget::text("Installing mods..."), progress.view()]
                     .padding(10)
@@ -156,7 +153,7 @@ impl Launcher {
                     .into()
             }
             State::LogUploadResult { url } => {
-                view_log_upload_result(url, self.selected_instance.as_ref().unwrap().is_server())
+                view_log_upload_result(url, self.instance().is_server())
             }
 
             State::LoginAlternate(menu) => menu.view(self.tick_timer),
@@ -169,7 +166,6 @@ impl Launcher {
             State::InstallForge(menu) => menu.view(),
             State::UpdateFound(menu) => menu.view(),
             State::InstallOptifine(menu) => menu.view(),
-            State::ServerCreate(menu) => menu.view(),
             State::ManagePresets(menu) => menu.view(),
             State::RecommendedMods(menu) => menu.view(),
         };
@@ -276,18 +272,17 @@ fn setup_window_borders(view: Element<'_>) -> Element<'_> {
             .interaction(i)
             .on_press(Message::Window(WindowMessage::Resized(d)))
     }
-    let right = cfg!(target_os = "macos");
 
     widget::stack!(
         widget::column![widget::container(view).padding(1)].padding(2),
         widget::row![
             // Left
             widget::Column::new()
-                .push_maybe((!right).then_some(m(
+                .push(m(
                     (10, 10),
-                    Interaction::ResizingDiagonallyUp,
+                    Interaction::ResizingDiagonallyDown,
                     Direction::NorthWest
-                )))
+                ))
                 .push(m(
                     (10, Length::Fill),
                     Interaction::ResizingHorizontally,
@@ -295,7 +290,7 @@ fn setup_window_borders(view: Element<'_>) -> Element<'_> {
                 ))
                 .push(m(
                     (10, 10),
-                    Interaction::ResizingDiagonallyDown,
+                    Interaction::ResizingDiagonallyUp,
                     Direction::SouthWest
                 )),
             widget::column![
@@ -312,11 +307,11 @@ fn setup_window_borders(view: Element<'_>) -> Element<'_> {
                 )
             ],
             widget::Column::new()
-                .push_maybe(right.then_some(m(
+                .push(m(
                     (10, 10),
                     Interaction::ResizingDiagonallyUp,
                     Direction::NorthEast
-                )))
+                ))
                 .push(m(
                     (10, Length::Fill),
                     Interaction::ResizingHorizontally,

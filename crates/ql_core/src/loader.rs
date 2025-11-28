@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::err;
 
-#[derive(Serialize, Deserialize, Default, Debug, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Loader {
     #[serde(rename = "Vanilla")]
     #[default]
@@ -45,6 +45,19 @@ impl Display for Loader {
 }
 
 impl Loader {
+    pub const ALL: &[Self] = &[
+        Self::Vanilla,
+        Self::Fabric,
+        Self::Quilt,
+        Self::Forge,
+        Self::Neoforge,
+        Self::OptiFine,
+        Self::Paper,
+        Self::Liteloader,
+        Self::Modloader,
+        Self::Rift,
+    ];
+
     pub fn not_vanilla(self) -> Option<Self> {
         (!self.is_vanilla()).then_some(self)
     }

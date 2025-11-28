@@ -3,7 +3,9 @@ use std::str::FromStr;
 
 use iced::futures::executor::block_on;
 use iced::{widget::scrollable::AbsoluteOffset, Task};
-use ql_core::{err, info, InstanceSelection, IntoStringError, ModId, OptifineUniqueVersion};
+use ql_core::{
+    err, info, InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion,
+};
 use ql_mod_manager::{
     loaders,
     store::{get_description, QueryType},
@@ -16,13 +18,14 @@ mod manage_mods;
 mod presets;
 mod recommended;
 
-use crate::config::UiSettings;
-use crate::state::{MenuModsDownload, WindowMessage};
+use crate::config::UiWindowDecorations;
 use crate::{
+    config::UiSettings,
     state::{
-        self, InstallFabricMessage, InstallModsMessage, InstallOptifineMessage, Launcher,
-        LauncherSettingsMessage, MenuCurseforgeManualDownload, MenuInstallFabric,
-        MenuInstallOptifine, Message, ProgressBar, State,
+        self, InstallFabricMessage, InstallModsMessage, InstallOptifineMessage,
+        InstallPaperMessage, Launcher, LauncherSettingsMessage, MenuCurseforgeManualDownload,
+        MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuModsDownload, Message,
+        ProgressBar, State, WindowMessage,
     },
     stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
 };
@@ -44,16 +47,16 @@ impl Launcher {
                 }
             }
             InstallFabricMessage::VersionsLoaded(result) => match result {
-                Ok(list_of_versions) => {
+                Ok(list) => {
                     if let State::InstallFabric(menu) = &mut self.state {
-                        *menu = if let Some(first) = list_of_versions.first().cloned() {
+                        let (regular_list, backend) = list.clone().just_get_one();
+                        *menu = if let (false, Some(first)) =
+                            (list.is_unsupported(), regular_list.first())
+                        {
                             MenuInstallFabric::Loaded {
-                                is_quilt: menu.is_quilt(),
+                                backend,
                                 fabric_version: first.loader.version.clone(),
-                                fabric_versions: list_of_versions
-                                    .iter()
-                                    .map(|ver| ver.loader.version.clone())
-                                    .collect(),
+                                fabric_versions: list,
                                 progress: None,
                             }
                         } else {
@@ -63,11 +66,29 @@ impl Launcher {
                 }
                 Err(err) => self.set_error(err),
             },
+            InstallFabricMessage::ChangeBackend(b) => {
+                if let State::InstallFabric(MenuInstallFabric::Loaded {
+                    backend,
+                    fabric_version,
+                    fabric_versions,
+                    ..
+                }) = &mut self.state
+                {
+                    *backend = b;
+                    if let Some(n) = fabric_versions
+                        .clone()
+                        .get_specific(b)
+                        .and_then(|n| n.first().cloned())
+                    {
+                        *fabric_version = n.loader.version;
+                    }
+                }
+            }
             InstallFabricMessage::ButtonClicked => {
                 if let State::InstallFabric(MenuInstallFabric::Loaded {
                     fabric_version,
                     progress,
-                    is_quilt,
+                    backend,
                     ..
                 }) = &mut self.state
                 {
@@ -76,14 +97,14 @@ impl Launcher {
                     let loader_version = fabric_version.clone();
 
                     let instance_name = self.selected_instance.clone().unwrap();
-                    let is_quilt = *is_quilt;
+                    let backend = *backend;
                     return Task::perform(
                         async move {
                             loaders::fabric::install(
                                 Some(loader_version),
                                 instance_name,
                                 Some(&sender),
-                                is_quilt,
+                                backend,
                             )
                             .await
                         },
@@ -334,9 +355,16 @@ impl Launcher {
     pub fn update_install_optifine(&mut self, message: InstallOptifineMessage) -> Task<Message> {
         match message {
             InstallOptifineMessage::ScreenOpen => {
-                let optifine_unique_version = block_on(OptifineUniqueVersion::get(
-                    self.selected_instance.as_ref().unwrap(),
-                ));
+                let is_forge_installed = if let State::EditMods(menu) = &self.state {
+                    menu.config.mod_type == Loader::Forge
+                } else {
+                    false
+                };
+                let optifine_unique_version = if is_forge_installed {
+                    Some(OptifineUniqueVersion::Forge)
+                } else {
+                    block_on(OptifineUniqueVersion::get(self.instance()))
+                };
 
                 if let Some(version @ OptifineUniqueVersion::B1_7_3) = optifine_unique_version {
                     self.state = State::InstallOptifine(MenuInstallOptifine::InstallingB173);
@@ -388,8 +416,19 @@ impl Launcher {
         let (p_sender, p_recv) = std::sync::mpsc::channel();
         let (j_sender, j_recv) = std::sync::mpsc::channel();
 
-        let instance = self.selected_instance.as_ref().unwrap();
-        let optifine_unique_version = block_on(OptifineUniqueVersion::get(instance));
+        let instance = self.instance();
+        let get_name = instance.get_name().to_owned();
+
+        let optifine_unique_version =
+            if let State::InstallOptifine(MenuInstallOptifine::Choosing {
+                optifine_unique_version,
+                ..
+            }) = &self.state
+            {
+                *optifine_unique_version
+            } else {
+                block_on(OptifineUniqueVersion::get(instance))
+            };
 
         let delete_installer = if let State::InstallOptifine(MenuInstallOptifine::Choosing {
             delete_installer,
@@ -407,13 +446,6 @@ impl Launcher {
             is_java_being_installed: false,
         });
 
-        let get_name = self
-            .selected_instance
-            .as_ref()
-            .unwrap()
-            .get_name()
-            .to_owned();
-
         let installer_path = installer_path.to_owned();
 
         Task::perform(
@@ -424,7 +456,7 @@ impl Launcher {
                 installer_path.clone(),
                 Some(p_sender),
                 Some(j_sender),
-                optifine_unique_version.is_some(),
+                optifine_unique_version,
             ),
             |n| Message::InstallOptifine(InstallOptifineMessage::End(n.strerr())),
         )
@@ -537,6 +569,17 @@ impl Launcher {
             LauncherSettingsMessage::GlobalPreLaunchPrefix(msg) => {
                 msg.apply(self.config.c_launch_prefix());
             }
+            LauncherSettingsMessage::ToggleWindowDecorations(b) => {
+                let decor = if b {
+                    UiWindowDecorations::default()
+                } else {
+                    UiWindowDecorations::System
+                };
+                self.config
+                    .ui
+                    .get_or_insert_with(UiSettings::default)
+                    .window_decorations = decor;
+            }
         }
         Task::none()
     }
@@ -549,6 +592,66 @@ impl Launcher {
             temp_scale: self.config.ui_scale.unwrap_or(1.0),
             selected_tab: state::LauncherSettingsTab::UserInterface,
         });
+    }
+
+    pub fn update_install_paper(&mut self, msg: InstallPaperMessage) -> Task<Message> {
+        match msg {
+            InstallPaperMessage::VersionSelected(v) => {
+                if let State::InstallPaper(MenuInstallPaper::Loaded { version, .. }) =
+                    &mut self.state
+                {
+                    *version = v;
+                }
+            }
+            InstallPaperMessage::VersionsLoaded(res) => match res {
+                Ok(list) => {
+                    let Some(version) = list.first().cloned() else {
+                        self.set_error("No compatible Paper versions found");
+                        return Task::none();
+                    };
+                    self.state = State::InstallPaper(MenuInstallPaper::Loaded {
+                        version,
+                        versions: list,
+                    });
+                }
+                Err(err) => self.set_error(err),
+            },
+            InstallPaperMessage::ScreenOpen => {
+                if let State::EditMods(menu) = &self.state {
+                    let (task, handle) = Task::perform(
+                        loaders::paper::get_list_of_versions(menu.version_json.get_id().to_owned()),
+                        |n| Message::InstallPaper(InstallPaperMessage::VersionsLoaded(n.strerr())),
+                    )
+                    .abortable();
+                    self.state = State::InstallPaper(MenuInstallPaper::Loading { _handle: handle });
+                    return task;
+                }
+            }
+            InstallPaperMessage::ButtonClicked => {
+                let instance_name = self.instance().get_name().to_owned();
+                let version =
+                    if let State::InstallPaper(MenuInstallPaper::Loaded { version, .. }) =
+                        &self.state
+                    {
+                        Some(version.clone())
+                    } else {
+                        None
+                    };
+                self.state = State::InstallPaper(MenuInstallPaper::Installing);
+                return Task::perform(
+                    loaders::paper::install(instance_name, version.into()),
+                    |n| Message::InstallPaper(InstallPaperMessage::End(n.strerr())),
+                );
+            }
+            InstallPaperMessage::End(res) => {
+                if let Err(err) = res {
+                    self.set_error(err);
+                } else {
+                    return self.go_to_edit_mods_menu(false);
+                }
+            }
+        }
+        Task::none()
     }
 
     pub fn update_window_msg(&mut self, msg: WindowMessage) -> Task<Message> {
