@@ -87,7 +87,7 @@ impl MenuLaunch {
             tab: LaunchTabId::default(),
             edit_instance: None,
             login_progress: None,
-            sidebar_width: SIDEBAR_WIDTH_DEFAULT as u64,
+            sidebar_width: SIDEBAR_WIDTH_DEFAULT,
             sidebar_scrolled: 100.0,
             is_viewing_server: false,
             sidebar_grid_state,

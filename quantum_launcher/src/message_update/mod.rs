@@ -645,28 +645,24 @@ impl Launcher {
 
     pub fn update_window_msg(&mut self, msg: WindowMessage) -> Task<Message> {
         match msg {
-            WindowMessage::Dragged => {
-                return iced::window::get_latest().and_then(iced::window::drag);
-            }
-            WindowMessage::Resized(dir) => {
-                return iced::window::get_latest()
-                    .and_then(move |id| iced::window::drag_resize(id, dir));
-            }
+            WindowMessage::Dragged => iced::window::get_latest().and_then(iced::window::drag),
+            // WindowMessage::Resized(dir) => {
+            //     return iced::window::get_latest()
+            //         .and_then(move |id| iced::window::drag_resize(id, dir));
+            // }
             WindowMessage::ClickMinimize => {
-                return iced::window::get_latest().and_then(|id| iced::window::minimize(id, true));
+                iced::window::get_latest().and_then(|id| iced::window::minimize(id, true))
             }
-            WindowMessage::ClickMaximize => {
-                return iced::window::get_latest().and_then(|id| {
-                    iced::window::get_maximized(id)
-                        .map(|t| Some(t))
-                        .and_then(move |max| iced::window::maximize(id, !max))
-                })
-            }
+            WindowMessage::ClickMaximize => iced::window::get_latest().and_then(|id| {
+                iced::window::get_maximized(id)
+                    .map(Some)
+                    .and_then(move |max| iced::window::maximize(id, !max))
+            }),
             WindowMessage::ClickClose => std::process::exit(0),
-            WindowMessage::IsMaximized(n) => {
-                self.window_state.is_maximized = n;
-                Task::none()
-            }
+            // WindowMessage::IsMaximized(n) => {
+            //     self.window_state.is_maximized = n;
+            //     Task::none()
+            // }
         }
     }
 }

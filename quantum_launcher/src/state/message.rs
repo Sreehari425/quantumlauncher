@@ -194,11 +194,12 @@ pub enum RecommendedModMessage {
 #[derive(Debug, Clone)]
 pub enum WindowMessage {
     Dragged,
-    Resized(iced::window::Direction),
+    // HOOK: Decorations
+    // Resized(iced::window::Direction),
     ClickClose,
     ClickMinimize,
     ClickMaximize,
-    IsMaximized(bool),
+    // IsMaximized(bool),
 }
 
 #[allow(unused)]

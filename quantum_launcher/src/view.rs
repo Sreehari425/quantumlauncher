@@ -1,4 +1,4 @@
-use iced::{mouse::Interaction, widget, window::Direction, Alignment, Length};
+use iced::{widget, Alignment, Length};
 
 use crate::{
     config::UiWindowDecorations,
@@ -79,11 +79,11 @@ impl Launcher {
             )
         }));
 
-        if self.window_state.is_maximized || self.config.c_window_decorations() {
-            view.into()
-        } else {
-            setup_window_borders(view.into())
-        }
+        // if self.window_state.is_maximized || self.config.c_window_decorations() {
+        view.into()
+        // } else {
+        // setup_window_borders(view.into())
+        // }
     }
 
     fn view_menu(&'_ self) -> Element<'_> {
@@ -262,7 +262,8 @@ impl Launcher {
     }
 }
 
-fn setup_window_borders(view: Element<'_>) -> Element<'_> {
+// HOOK: Decorations
+/*fn setup_window_borders(view: Element<'_>) -> Element<'_> {
     fn m(
         (w, h): (impl Into<Length>, impl Into<Length>),
         i: Interaction,
@@ -325,4 +326,4 @@ fn setup_window_borders(view: Element<'_>) -> Element<'_> {
         ]
     )
     .into()
-}
+}*/

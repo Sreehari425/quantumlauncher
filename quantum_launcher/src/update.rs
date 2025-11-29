@@ -12,7 +12,7 @@ use crate::{
     state::{
         AutoSaveKind, CustomJarState, GameProcess, LaunchTabId, Launcher, ManageModsMessage,
         MenuExportInstance, MenuLaunch, MenuLauncherUpdate, MenuLicense, MenuWelcome, Message,
-        ProgressBar, State, WindowMessage,
+        ProgressBar, State,
     },
 };
 
@@ -146,10 +146,11 @@ impl Launcher {
                 let command = self.tick();
                 tasks.push(command);
 
-                let max_command = iced::window::get_latest()
-                    .and_then(|id| iced::window::get_maximized(id))
-                    .map(|m| Message::Window(WindowMessage::IsMaximized(m)));
-                tasks.push(max_command);
+                // HOOK: Decorations
+                // let max_command = iced::window::get_latest()
+                //     .and_then(iced::window::get_maximized)
+                //     .map(|m| Message::Window(WindowMessage::IsMaximized(m)));
+                // tasks.push(max_command);
 
                 if self
                     .custom_jar

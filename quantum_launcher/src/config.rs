@@ -316,12 +316,11 @@ pub enum UiWindowDecorations {
     Right,
 }
 
-impl Default for UiWindowDecorations {
+/*impl Default for UiWindowDecorations {
     fn default() -> Self {
-        // #[cfg(target_os = "macos")]
-        // return Self::Left;
-        // #[cfg(not(target_os = "macos"))]
-        // Self::Right
-        Self::System
+        #[cfg(target_os = "macos")]
+        return Self::Left;
+        #[cfg(not(target_os = "macos"))]
+        Self::Right
     }
-}
+}*/
