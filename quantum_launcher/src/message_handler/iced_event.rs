@@ -38,6 +38,8 @@ impl Launcher {
                                 ),
                             ));
                         }
+                    } else if let State::Launch(menu) = &mut self.state {
+                        menu.resize_sidebar(menu.get_sidebar_width(), size.width);
                     }
                 }
                 iced::window::Event::FileHovered(_) => {

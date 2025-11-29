@@ -218,7 +218,7 @@ impl LauncherConfig {
         self.ui
             .as_ref()
             .map(|n| matches!(n.window_decorations, UiWindowDecorations::System))
-            .unwrap_or_default()
+            .unwrap_or(true) // change this to false when enabling the experimental decorations
     }
 }
 
@@ -316,9 +316,10 @@ pub enum UiWindowDecorations {
 
 impl Default for UiWindowDecorations {
     fn default() -> Self {
-        #[cfg(target_os = "macos")]
-        return Self::Left;
-        #[cfg(not(target_os = "macos"))]
-        Self::Right
+        // #[cfg(target_os = "macos")]
+        // return Self::Left;
+        // #[cfg(not(target_os = "macos"))]
+        // Self::Right
+        Self::System
     }
 }
