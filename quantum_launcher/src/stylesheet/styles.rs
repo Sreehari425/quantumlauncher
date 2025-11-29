@@ -361,9 +361,7 @@ impl LauncherTheme {
                 }
             },
             background: Some(
-                color
-                    .map(|(c, a)| self.get_bg(c).scale_alpha(a))
-                    .unwrap_or(self.get_bg_color()),
+                color.map_or(self.get_bg_color(), |(c, a)| self.get_bg(c).scale_alpha(a)),
             ),
             ..Default::default()
         }
@@ -378,7 +376,7 @@ impl LauncherTheme {
                     radius: radius.into(),
                 }
             },
-            background: Some(color.map(|n| self.get_bg(n)).unwrap_or(self.get_bg_color())),
+            background: Some(color.map_or(self.get_bg_color(), |n| self.get_bg(n))),
             ..Default::default()
         }
     }
@@ -696,10 +694,10 @@ fn radius(t: bool) -> f32 {
 
 fn blend_colors(color1: iced::Color, color2: iced::Color) -> iced::Color {
     // Calculate the average of each RGBA component
-    let r = (color1.r + color2.r) / 2.0;
-    let g = (color1.g + color2.g) / 2.0;
-    let b = (color1.b + color2.b) / 2.0;
-    let a = (color1.a + color2.a) / 2.0;
+    let r = color1.r.midpoint(color2.r);
+    let g = color1.g.midpoint(color2.g);
+    let b = color1.b.midpoint(color2.b);
+    let a = color1.a.midpoint(color2.a);
 
     // Return a new Color with the blended RGBA values
     iced::Color::from_rgba(r, g, b, a)

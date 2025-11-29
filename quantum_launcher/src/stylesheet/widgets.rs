@@ -485,13 +485,11 @@ impl widget::combo_box::Catalog for LauncherTheme {}
 impl widget::pane_grid::Catalog for LauncherTheme {
     type Class<'a> = ();
 
-    fn default<'a>() -> <Self as widget::pane_grid::Catalog>::Class<'a> {
-        ()
-    }
+    fn default<'a>() -> <Self as widget::pane_grid::Catalog>::Class<'a> {}
 
     fn style(
         &self,
-        _: &<Self as widget::pane_grid::Catalog>::Class<'_>,
+        (): &<Self as widget::pane_grid::Catalog>::Class<'_>,
     ) -> widget::pane_grid::Style {
         widget::pane_grid::Style {
             hovered_region: widget::pane_grid::Highlight {

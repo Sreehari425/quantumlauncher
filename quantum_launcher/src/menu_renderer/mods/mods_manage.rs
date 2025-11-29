@@ -413,18 +413,18 @@ impl MenuEditMods {
                         .spacing(5)
                         .wrap()
                     )
-                    .push(if self.selected_mods.is_empty() {
-                        widget::text("Select some mods to perform actions on them")
-                    } else {
-                        widget::text!("{} mods selected", self.selected_mods.len())
-                    }.size(12).style(|t: &LauncherTheme| t.style_text(Color::Mid)))
-                    .push_maybe(if let Some(search) = &self.search {
-                        Some(widget::text_input("Search...", search).size(14).on_input(|msg|
+                    .push(
+                        if self.selected_mods.is_empty() {
+                            widget::text("Select some mods to perform actions on them")
+                        } else {
+                            widget::text!("{} mods selected", self.selected_mods.len())
+                        }.size(12).style(|t: &LauncherTheme| t.style_text(Color::Mid))
+                    )
+                    .push_maybe(self.search.as_ref().map(|search|
+                        widget::text_input("Search...", search).size(14).on_input(|msg|
                             Message::ManageMods(ManageModsMessage::SetSearch(Some(msg)))
-                        ))
-                    } else {
-                        None
-                    })
+                        )
+                    ))
                     .padding(10)
                     .spacing(10),
                 widget::responsive(|s| self.get_mod_list_contents(s, images)),
@@ -559,7 +559,7 @@ impl MenuEditMods {
                     let rightclick = Message::ManageMods(ManageModsMessage::RightClick(id.clone()));
 
                     widget::mouse_area(checkbox)
-                        .on_right_press(if self.selected_mods.len() > 1 && self.is_selected(&id) {
+                        .on_right_press(if self.selected_mods.len() > 1 && self.is_selected(id) {
                             rightclick
                         } else {
                             Message::Multiple(vec![
