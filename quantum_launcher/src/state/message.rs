@@ -1,6 +1,10 @@
 use std::{collections::HashSet, path::PathBuf, process::ExitStatus};
 
-use crate::{message_handler::ForgeKind, state::MenuEditModsModal};
+use crate::{
+    message_handler::ForgeKind,
+    state::MenuEditModsModal,
+    stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
+};
 use iced::widget;
 use ql_core::{
     file_utils::DirItem, jarmod::JarMods, read_log::Diagnostic, InstanceSelection, LaunchedProcess,
@@ -243,8 +247,8 @@ pub enum AccountMessage {
 #[derive(Debug, Clone)]
 pub enum LauncherSettingsMessage {
     Open,
-    ThemePicked(String),
-    ColorSchemePicked(String),
+    ThemePicked(LauncherThemeLightness),
+    ColorSchemePicked(LauncherThemeColor),
     UiScale(f64),
     UiScaleApply,
     UiOpacity(f32),

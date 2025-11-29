@@ -1,11 +1,8 @@
 use std::path::Path;
-use std::str::FromStr;
 
 use iced::futures::executor::block_on;
 use iced::{widget::scrollable::AbsoluteOffset, Task};
-use ql_core::{
-    err, info, InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion,
-};
+use ql_core::{err, InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion};
 use ql_mod_manager::{
     loaders,
     store::{get_description, QueryType},
@@ -27,7 +24,6 @@ use crate::{
         MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuModsDownload, Message,
         ProgressBar, State, WindowMessage,
     },
-    stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
 };
 
 pub const MSG_RESIZE: &str = "Resize your window to apply the changes.";
@@ -478,22 +474,15 @@ impl Launcher {
     pub fn update_launcher_settings(&mut self, msg: LauncherSettingsMessage) -> Task<Message> {
         match msg {
             LauncherSettingsMessage::ThemePicked(theme) => {
-                info!("Setting color mode {theme}");
                 self.config.theme = Some(theme.clone());
-
-                match theme.as_str() {
-                    "Light" => self.theme.lightness = LauncherThemeLightness::Light,
-                    "Dark" => self.theme.lightness = LauncherThemeLightness::Dark,
-                    _ => err!("Invalid color mode {theme}"),
-                }
+                self.theme.lightness = theme;
             }
             LauncherSettingsMessage::Open => {
                 self.go_to_launcher_settings();
             }
             LauncherSettingsMessage::ColorSchemePicked(color) => {
-                info!("Setting color scheme {color}");
-                self.config.style = Some(color.clone());
-                self.theme.color = LauncherThemeColor::from_str(&color).unwrap_or_default();
+                self.config.style = Some(color);
+                self.theme.color = color;
             }
             LauncherSettingsMessage::UiScale(scale) => {
                 if let State::LauncherSettings(menu) = &mut self.state {

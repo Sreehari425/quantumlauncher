@@ -4,6 +4,7 @@ use iced::widget::container::Style;
 use iced::widget::scrollable::Rail;
 use iced::{widget, Border};
 use ql_core::err;
+use serde::{Deserialize, Serialize};
 
 use super::{
     color::{Color, BROWN, CATPPUCCIN, PURPLE, SKY_BLUE, TEAL},
@@ -13,14 +14,20 @@ use super::{
 pub const BORDER_WIDTH: f32 = 1.0;
 pub const BORDER_RADIUS: f32 = 8.0;
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Default)]
 pub enum LauncherThemeColor {
+    #[serde(rename = "Brown")]
     Brown,
-    #[default]
-    Purple,
+    #[serde(rename = "Sky Blue")]
     SkyBlue,
+    #[serde(rename = "Catppuccin")]
     Catppuccin,
+    #[serde(rename = "Teal")]
     Teal,
+    #[default]
+    #[serde(rename = "Purple")]
+    #[serde(other)]
+    Purple,
 }
 
 impl LauncherThemeColor {
@@ -68,11 +75,14 @@ impl FromStr for LauncherThemeColor {
     }
 }
 
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Serialize, Deserialize, Copy, Clone, Default, Debug)]
 pub enum LauncherThemeLightness {
-    #[default]
-    Dark,
+    #[serde(rename = "Light")]
     Light,
+    #[default]
+    #[serde(other)]
+    #[serde(rename = "Dark")]
+    Dark,
 }
 
 #[derive(Clone, Default, Debug)]
@@ -83,18 +93,6 @@ pub struct LauncherTheme {
 }
 
 impl LauncherTheme {
-    pub fn from_vals(
-        color: LauncherThemeColor,
-        lightness: LauncherThemeLightness,
-        alpha: f32,
-    ) -> Self {
-        Self {
-            lightness,
-            color,
-            alpha,
-        }
-    }
-
     pub fn get(&self, color: Color) -> iced::Color {
         let (palette, color) = self.get_base(color);
         palette.get(color)

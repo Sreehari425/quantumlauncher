@@ -245,7 +245,7 @@ impl Launcher {
         .push_maybe(
             menu.is_viewing_server.then_some(
                 widget::text_input("Enter command...", command)
-                    .on_input(move |n| Message::ServerCommandEdit(n))
+                    .on_input(Message::ServerCommandEdit)
                     .on_submit(Message::ServerCommandSubmit)
                     .width(190),
             ),

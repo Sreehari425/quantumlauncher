@@ -4,7 +4,8 @@ use crate::{
     config::LauncherConfig,
     icon_manager,
     menu_renderer::{
-        button_with_icon, center_x, get_color_schemes, get_theme_selector, Element, DISCORD,
+        button_with_icon, center_x, get_theme_selector, settings::get_color_scheme_selector,
+        Element, DISCORD,
     },
     state::{AccountMessage, MenuWelcome, Message},
 };
@@ -25,7 +26,7 @@ impl MenuWelcome {
             .spacing(10)
             .into(),
             MenuWelcome::P2Theme => {
-                let style = get_color_schemes(config);
+                let style = get_color_scheme_selector().wrap();
                 let (light, dark) = get_theme_selector(config);
                 widget::column![
                     widget::vertical_space(),

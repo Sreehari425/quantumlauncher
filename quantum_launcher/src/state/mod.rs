@@ -2,7 +2,6 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
     path::Path,
-    str::FromStr,
     sync::mpsc::{self, Receiver},
 };
 
@@ -16,10 +15,7 @@ use ql_core::{
 use ql_instances::auth::{ms::CLIENT_ID, AccountData, AccountType};
 use tokio::process::ChildStdin;
 
-use crate::{
-    config::LauncherConfig,
-    stylesheet::styles::{LauncherTheme, LauncherThemeColor, LauncherThemeLightness},
-};
+use crate::{config::LauncherConfig, stylesheet::styles::LauncherTheme};
 
 mod images;
 mod menu;
@@ -129,7 +125,7 @@ impl Launcher {
         }
 
         let mut config = config?;
-        let theme = get_theme(&config);
+        let theme = config.c_theme();
         let (window_width, window_height) = config.c_window_size();
 
         let mut launch = if let Some(message) = message {
@@ -156,35 +152,7 @@ impl Launcher {
             State::ChangeLog
         };
 
-        let mut accounts = HashMap::new();
-
-        let mut accounts_dropdown =
-            vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()];
-
-        if let Some(config_accounts) = config.accounts.as_mut() {
-            let mut accounts_to_remove = Vec::new();
-
-            for (username, account) in config_accounts.iter_mut() {
-                load_account(
-                    &mut accounts,
-                    &mut accounts_dropdown,
-                    &mut accounts_to_remove,
-                    username,
-                    account,
-                );
-            }
-
-            for rem in accounts_to_remove {
-                config_accounts.remove(&rem);
-            }
-        }
-
-        let selected_account = config.account_selected.clone().unwrap_or(
-            accounts_dropdown
-                .first()
-                .cloned()
-                .unwrap_or_else(|| OFFLINE_ACCOUNT_NAME.to_owned()),
-        );
+        let (accounts, accounts_dropdown, selected_account) = load_accounts(&mut config);
 
         Ok(Self {
             state,
@@ -237,7 +205,7 @@ impl Launcher {
             .as_ref()
             .and_then(|_| {
                 match LauncherConfig::load_s().map(|n| {
-                    let theme = get_theme(&n);
+                    let theme = n.c_theme();
                     (n, theme)
                 }) {
                     Ok(n) => Some(n),
@@ -311,6 +279,40 @@ impl Launcher {
         self.state = State::Launch(menu_launch);
         Task::perform(get_entries(false), Message::CoreListLoaded)
     }
+}
+
+fn load_accounts(
+    config: &mut LauncherConfig,
+) -> (HashMap<String, AccountData>, Vec<String>, String) {
+    let mut accounts = HashMap::new();
+
+    let mut accounts_dropdown = vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()];
+
+    if let Some(config_accounts) = config.accounts.as_mut() {
+        let mut accounts_to_remove = Vec::new();
+
+        for (username, account) in config_accounts.iter_mut() {
+            load_account(
+                &mut accounts,
+                &mut accounts_dropdown,
+                &mut accounts_to_remove,
+                username,
+                account,
+            );
+        }
+
+        for rem in accounts_to_remove {
+            config_accounts.remove(&rem);
+        }
+    }
+
+    let selected_account = config.account_selected.clone().unwrap_or(
+        accounts_dropdown
+            .first()
+            .cloned()
+            .unwrap_or_else(|| OFFLINE_ACCOUNT_NAME.to_owned()),
+    );
+    (accounts, accounts_dropdown, selected_account)
 }
 
 fn load_account(
@@ -417,24 +419,6 @@ fn load_account(
             accounts_to_remove.push(username.to_owned());
         }
     }
-}
-
-fn get_theme(config: &LauncherConfig) -> LauncherTheme {
-    let theme = match config.theme.as_deref() {
-        Some("Dark") => LauncherThemeLightness::Dark,
-        Some("Light") => LauncherThemeLightness::Light,
-        None => LauncherThemeLightness::default(),
-        _ => {
-            err!("Unknown style: {:?}", config.theme);
-            LauncherThemeLightness::default()
-        }
-    };
-    let style = config
-        .style
-        .as_deref()
-        .and_then(|n| LauncherThemeColor::from_str(n).ok())
-        .unwrap_or_default();
-    LauncherTheme::from_vals(style, theme, config.c_ui_opacity())
 }
 
 pub async fn get_entries(is_server: bool) -> Res<(Vec<String>, bool)> {

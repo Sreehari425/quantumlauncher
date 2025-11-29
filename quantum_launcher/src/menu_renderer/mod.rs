@@ -3,7 +3,7 @@ use iced::{widget, Alignment, Length};
 use ql_core::{Progress, WEBSITE};
 
 use crate::state::ImageState;
-use crate::stylesheet::styles::{BORDER_RADIUS, BORDER_WIDTH};
+use crate::stylesheet::styles::{LauncherThemeLightness, BORDER_RADIUS, BORDER_WIDTH};
 use crate::{
     config::LauncherConfig,
     icon_manager,
@@ -341,9 +341,9 @@ pub fn get_theme_selector(config: &'_ LauncherConfig) -> (Element<'_>, Element<'
 
     let td = |t: &LauncherTheme| t.style_text(Color::Mid);
 
-    let theme = config.theme.as_deref().unwrap_or("Dark");
-    let (light, dark): (Element, Element) = if theme == "Dark" {
-        (
+    let theme = config.theme.unwrap_or_default();
+    let (light, dark): (Element, Element) = match theme {
+        LauncherThemeLightness::Dark => (
             widget::button(
                 widget::row![
                     icon_manager::mode_light_with_size(14),
@@ -352,7 +352,7 @@ pub fn get_theme_selector(config: &'_ LauncherConfig) -> (Element<'_>, Element<'
                 .spacing(5),
             )
             .on_press(Message::LauncherSettings(
-                LauncherSettingsMessage::ThemePicked("Light".to_owned()),
+                LauncherSettingsMessage::ThemePicked(LauncherThemeLightness::Light),
             ))
             .into(),
             widget::container(
@@ -364,9 +364,8 @@ pub fn get_theme_selector(config: &'_ LauncherConfig) -> (Element<'_>, Element<'
             )
             .padding(PADDING)
             .into(),
-        )
-    } else {
-        (
+        ),
+        LauncherThemeLightness::Light => (
             widget::container(
                 widget::row![
                     icon_manager::mode_light_with_size(14).style(td),
@@ -384,28 +383,12 @@ pub fn get_theme_selector(config: &'_ LauncherConfig) -> (Element<'_>, Element<'
                 .spacing(5),
             )
             .on_press(Message::LauncherSettings(
-                LauncherSettingsMessage::ThemePicked("Dark".to_owned()),
+                LauncherSettingsMessage::ThemePicked(LauncherThemeLightness::Dark),
             ))
             .into(),
-        )
+        ),
     };
     (light, dark)
-}
-
-fn get_color_schemes(config: &'_ LauncherConfig) -> Element<'_> {
-    // HOOK: Add more themes
-    let styles = [
-        "Brown".to_owned(),
-        "Purple".to_owned(),
-        "Sky Blue".to_owned(),
-        "Catppuccin".to_owned(),
-        "Teal".to_owned(),
-    ];
-
-    widget::pick_list(styles, config.style.clone(), |n| {
-        Message::LauncherSettings(LauncherSettingsMessage::ColorSchemePicked(n))
-    })
-    .into()
 }
 
 fn back_to_launch_screen(is_server: Option<bool>, message: Option<String>) -> Message {

@@ -1,3 +1,4 @@
+use crate::stylesheet::styles::{LauncherTheme, LauncherThemeColor, LauncherThemeLightness};
 use crate::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use ql_core::json::GlobalSettings;
 use ql_core::{
@@ -33,20 +34,13 @@ pub struct LauncherConfig {
 
     /// The theme (Light/Dark) set by the user.
     // Since: v0.3
-    pub theme: Option<String>,
-    /// The color scheme set by the user.
-    ///
-    /// Valid options are:
-    /// - Purple
-    /// - Brown
-    /// - Sky Blue
-    /// - Catppuccin
-    /// - Teal
+    pub theme: Option<LauncherThemeLightness>,
+    /// UI color scheme
     // Since: v0.3
-    pub style: Option<String>,
+    pub style: Option<LauncherThemeColor>,
 
     /// The version that the launcher was last time
-    /// you opened it.
+    /// you opened it
     // Since: v0.3
     pub version: Option<String>,
 
@@ -72,11 +66,10 @@ pub struct LauncherConfig {
 
     /// The scale of the UI, i.e. how big everything is.
     ///
-    /// - `(1.0-*)` A higher number means more zoomed in buttons, text
-    ///   and everything else (useful if you are on a high DPI display
-    ///   or have bad eyesight),
-    /// - `1.0` is the default value.
-    /// - `(0.x-1.0)` A lower number means zoomed out UI elements.
+    /// - above 1.0: More zoomed in buttons/text/etc.
+    ///   Useful for high DPI displays or bad eyesight
+    /// - 1.0: default
+    /// - 0.0-1.0: Zoomed out, smaller UI elements
     // Since: v0.4
     pub ui_scale: Option<f64>,
 
@@ -220,6 +213,14 @@ impl LauncherConfig {
             .map(|n| matches!(n.window_decorations, UiWindowDecorations::System))
             .unwrap_or(true) // change this to false when enabling the experimental decorations
     }
+
+    pub fn c_theme(&self) -> LauncherTheme {
+        LauncherTheme {
+            lightness: self.theme.unwrap_or_default(),
+            color: self.style.unwrap_or_default(),
+            alpha: self.c_ui_opacity(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -304,9 +305,10 @@ impl Default for UiSettings {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default)]
 pub enum UiWindowDecorations {
     #[serde(rename = "system")]
+    #[default]
     System,
     #[serde(rename = "left")]
     Left,

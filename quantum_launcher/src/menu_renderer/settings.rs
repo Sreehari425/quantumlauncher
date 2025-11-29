@@ -77,22 +77,6 @@ impl MenuLauncherSettings {
 
         let (light, dark) = get_theme_selector(config);
 
-        let color_scheme_picker = LauncherThemeColor::ALL.iter().map(|color| {
-            widget::button(widget::text(color.to_string()).size(14))
-                .style(|theme: &LauncherTheme, s| {
-                    LauncherTheme {
-                        lightness: theme.lightness,
-                        color: *color,
-                        alpha: 1.0,
-                    }
-                    .style_button(s, StyleButton::Round)
-                })
-                .on_press(Message::LauncherSettings(
-                    LauncherSettingsMessage::ColorSchemePicked(color.to_string()),
-                ))
-                .into()
-        });
-
         let ui_scale_apply = widget::row![
             widget::horizontal_space(),
             widget::button(widget::text("Apply").size(12))
@@ -110,12 +94,9 @@ impl MenuLauncherSettings {
         widget::column!(
             widget::column![widget::text("User Interface").size(20)].padding(PADDING_NOT_BOTTOM),
             widget::row!["Theme: ", light, dark].spacing(5).align_y(Alignment::Center).padding([0, 10]),
-            widget::column![
-                "Color scheme:",
-                widget::row(color_scheme_picker).spacing(5).wrap()
-            ]
-            .padding(iced::Padding::new(10.0).top(5.0))
-            .spacing(5),
+            widget::column!["Color scheme:", get_color_scheme_selector().wrap()]
+                .padding(iced::Padding::new(10.0).top(5.0))
+                .spacing(5),
             widget::row![
                 widget::row![widget::text!("UI Scale ({:.2}x)  ", self.temp_scale).size(15)]
                     .push_maybe(
@@ -173,6 +154,25 @@ impl MenuLauncherSettings {
         .spacing(SETTINGS_SPACING)
         .into()
     }
+}
+
+pub fn get_color_scheme_selector() -> widget::Row<'static, Message, LauncherTheme> {
+    widget::row(LauncherThemeColor::ALL.iter().map(|color| {
+        widget::button(widget::text(color.to_string()).size(14))
+            .style(|theme: &LauncherTheme, s| {
+                LauncherTheme {
+                    lightness: theme.lightness,
+                    color: *color,
+                    alpha: 1.0,
+                }
+                .style_button(s, StyleButton::Round)
+            })
+            .on_press(Message::LauncherSettings(
+                LauncherSettingsMessage::ColorSchemePicked(*color),
+            ))
+            .into()
+    }))
+    .spacing(5)
 }
 
 impl LauncherSettingsTab {
