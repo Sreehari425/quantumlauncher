@@ -2,9 +2,8 @@ use crate::message_update::MSG_RESIZE;
 use crate::state::{
     CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage, LauncherSettingsTab,
     MenuCreateInstance, MenuEditJarMods, MenuEditMods, MenuEditPresets, MenuExportInstance,
-    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper,  MenuLauncherSettings,
+    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLauncherSettings,
     MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, Message, State,
-   
 };
 use iced::{
     keyboard::{self, key::Named, Key},

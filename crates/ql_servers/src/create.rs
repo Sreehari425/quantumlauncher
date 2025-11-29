@@ -3,7 +3,8 @@ use std::sync::mpsc::Sender;
 use ql_core::{
     file_utils, info,
     json::{instance_config::VersionInfo, InstanceConfigJson, Manifest, VersionDetails},
-    pt, DownloadProgress, IntoIoError, IntoJsonError, IntoStringError, ListEntry, Loader, LAUNCHER_DIR,
+    pt, DownloadProgress, IntoIoError, IntoJsonError, IntoStringError, ListEntry, Loader,
+    LAUNCHER_DIR,
 };
 
 use crate::ServerError;
