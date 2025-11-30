@@ -36,7 +36,11 @@ pub enum Loader {
 
 impl Display for Loader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Ok(s) = serde_json::to_string(self) {
+        if let Some(s) = serde_json::to_string(self)
+            .ok()
+            .and_then(|n| n.strip_prefix("\"").map(str::to_owned))
+            .and_then(|n| n.strip_suffix("\"").map(str::to_owned))
+        {
             write!(f, "{s}")
         } else {
             write!(f, "{self:?}")

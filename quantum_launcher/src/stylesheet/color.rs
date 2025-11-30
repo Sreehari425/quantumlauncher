@@ -60,6 +60,16 @@ pub const TEAL: Palette = Palette {
     white: [0xfc, 0xff, 0xc8],
 };
 
+pub const ADWAITA_DARK: Palette = Palette {
+    extra_dark: [0x22, 0x22, 0x26],
+    dark: [0x2e; 3], // actually 0x30 but who cares
+    second_dark: [0x45, 0x45, 0x48],
+    mid: [0x58, 0x58, 0x5d],
+    second_light: [0x91, 0x91, 0x92],
+    light: [0xff, 0xff, 0xff], //?
+    white: [0xff, 0xff, 0xff], //?
+};
+
 #[derive(Clone, Copy)]
 pub enum Color {
     ExtraDark,

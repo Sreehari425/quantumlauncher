@@ -137,8 +137,12 @@ impl MenuEditMods {
                 .spacing(5),
                 self.get_mod_installer_buttons(selected_instance),
                 widget::column!(
-                    button_with_icon(icon_manager::download_with_size(14), "Download Content", 14)
-                        .on_press(Message::InstallMods(InstallModsMessage::Open)),
+                    button_with_icon(
+                        icon_manager::download_with_size(14),
+                        "Download Content...",
+                        14
+                    )
+                    .on_press(Message::InstallMods(InstallModsMessage::Open)),
                     button_with_icon(icon_manager::jar_file(), "Jarmod Patches", 14)
                         .on_press(Message::ManageJarMods(ManageJarModsMessage::Open)),
                     tooltip(
@@ -162,7 +166,7 @@ impl MenuEditMods {
         if self.update_check_handle.is_some() {
             let dots = ".".repeat((tick_timer % 3) + 1);
             widget::text!("Checking for mod updates{dots}")
-                .size(13)
+                .size(12)
                 .into()
         } else if self.available_updates.is_empty() {
             widget::column!().into()

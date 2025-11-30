@@ -6,6 +6,8 @@ use iced::{widget, Border};
 use ql_core::err;
 use serde::{Deserialize, Serialize};
 
+use crate::stylesheet::color::ADWAITA_DARK;
+
 use super::{
     color::{Color, BROWN, CATPPUCCIN, PURPLE, SKY_BLUE, TEAL},
     widgets::{IsFlat, StyleButton, StyleScrollable},
@@ -14,30 +16,27 @@ use super::{
 pub const BORDER_WIDTH: f32 = 1.0;
 pub const BORDER_RADIUS: f32 = 8.0;
 
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum LauncherThemeColor {
-    #[serde(rename = "Brown")]
     Brown,
     #[serde(rename = "Sky Blue")]
     SkyBlue,
-    #[serde(rename = "Catppuccin")]
     Catppuccin,
-    #[serde(rename = "Teal")]
     Teal,
+    Adwaita,
     #[default]
-    #[serde(rename = "Purple")]
     #[serde(other)]
     Purple,
 }
 
 impl LauncherThemeColor {
-    // HOOK: Add themes here
     pub const ALL: &'static [Self] = &[
         Self::Purple,
         Self::Brown,
         Self::SkyBlue,
         Self::Catppuccin,
         Self::Teal,
+        Self::Adwaita,
     ];
 }
 
@@ -52,6 +51,7 @@ impl Display for LauncherThemeColor {
                 LauncherThemeColor::SkyBlue => "Sky Blue",
                 LauncherThemeColor::Catppuccin => "Catppuccin",
                 LauncherThemeColor::Teal => "Teal",
+                LauncherThemeColor::Adwaita => "Adwaita",
             },
         )
     }
@@ -67,6 +67,7 @@ impl FromStr for LauncherThemeColor {
             "Sky Blue" => LauncherThemeColor::SkyBlue,
             "Catppuccin" => LauncherThemeColor::Catppuccin,
             "Teal" => LauncherThemeColor::Teal,
+            "Adwaita" => LauncherThemeColor::Adwaita,
             _ => {
                 err!("Unknown style: {s:?}");
                 LauncherThemeColor::default()
@@ -75,7 +76,7 @@ impl FromStr for LauncherThemeColor {
     }
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone, Default, Debug)]
+#[derive(Serialize, Deserialize, Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub enum LauncherThemeLightness {
     #[serde(rename = "Light")]
     Light,
@@ -99,19 +100,31 @@ impl LauncherTheme {
     }
 
     fn get_base(&self, mut color: Color) -> (&super::color::Palette, Color) {
-        let palette = self.get_palette();
-        if let LauncherThemeLightness::Light = self.lightness {
+        if self.lightness == LauncherThemeLightness::Light {
             if let Color::ExtraDark = color {
                 color = Color::Dark;
             } else if let Color::Dark = color {
                 color = Color::ExtraDark;
             }
         }
-        let color = match self.lightness {
-            LauncherThemeLightness::Dark => color,
-            LauncherThemeLightness::Light => color.invert(),
-        };
-        (palette, color)
+
+        if let LauncherThemeColor::Adwaita = self.color {
+            (
+                match self.lightness {
+                    LauncherThemeLightness::Light => todo!(),
+                    LauncherThemeLightness::Dark => &ADWAITA_DARK,
+                },
+                color,
+            )
+        } else {
+            (
+                self.get_palette(),
+                match self.lightness {
+                    LauncherThemeLightness::Dark => color,
+                    LauncherThemeLightness::Light => color.invert(),
+                },
+            )
+        }
     }
 
     fn get_palette(&self) -> &super::color::Palette {
@@ -121,6 +134,7 @@ impl LauncherTheme {
             LauncherThemeColor::SkyBlue => &SKY_BLUE,
             LauncherThemeColor::Catppuccin => &CATPPUCCIN,
             LauncherThemeColor::Teal => &TEAL,
+            LauncherThemeColor::Adwaita => unreachable!(),
         }
     }
 
@@ -310,7 +324,7 @@ impl LauncherTheme {
     pub fn style_container_selected_flat_button(&self) -> Style {
         Style {
             border: self.get_border_sharp(Color::Mid),
-            background: Some(self.get_bg(Color::SecondDark).scale_alpha(0.6)),
+            background: Some(self.get_bg(Color::SecondDark)),
             text_color: None,
             ..Default::default()
         }
@@ -382,9 +396,12 @@ impl LauncherTheme {
     }
 
     fn get_bg_color(&self) -> iced::Background {
-        iced::Background::Color(
-            blend_colors(self.get(Color::Dark), self.get(Color::ExtraDark)).scale_alpha(self.alpha),
-        )
+        let c = if let LauncherThemeColor::Adwaita = self.color {
+            self.get(Color::Dark)
+        } else {
+            blend_colors(self.get(Color::Dark), self.get(Color::ExtraDark))
+        };
+        iced::Background::Color(c.scale_alpha(self.alpha))
     }
 
     pub fn style_scrollable_round(
