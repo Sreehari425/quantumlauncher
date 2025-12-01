@@ -6,7 +6,7 @@ use iced::{widget, Border};
 use ql_core::err;
 use serde::{Deserialize, Serialize};
 
-use crate::stylesheet::color::ADWAITA_DARK;
+use crate::stylesheet::color::{ADWAITA_DARK, ADWAITA_LIGHT};
 
 use super::{
     color::{Color, BROWN, CATPPUCCIN, PURPLE, SKY_BLUE, TEAL},
@@ -111,7 +111,7 @@ impl LauncherTheme {
         if let LauncherThemeColor::Adwaita = self.color {
             (
                 match self.lightness {
-                    LauncherThemeLightness::Light => todo!(),
+                    LauncherThemeLightness::Light => &ADWAITA_LIGHT,
                     LauncherThemeLightness::Dark => &ADWAITA_DARK,
                 },
                 color,
