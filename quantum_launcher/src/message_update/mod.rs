@@ -2,7 +2,9 @@ use std::path::Path;
 
 use iced::futures::executor::block_on;
 use iced::{widget::scrollable::AbsoluteOffset, Task};
-use ql_core::{err, InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion};
+use ql_core::{
+    err, err_no_log, InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion,
+};
 use ql_mod_manager::{
     loaders,
     store::{get_description, QueryType},
@@ -569,6 +571,14 @@ impl Launcher {
                     .get_or_insert_with(UiSettings::default)
                     .window_decorations = decor;
             }
+            LauncherSettingsMessage::LoadedSystemTheme(res) => match res {
+                Ok(mode) => {
+                    self.theme.system_dark_mode = mode == dark_light::Mode::Dark;
+                }
+                Err(err) => {
+                    err_no_log!("while loading system theme: {err}")
+                }
+            },
         }
         Task::none()
     }

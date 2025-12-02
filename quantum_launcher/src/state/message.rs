@@ -248,6 +248,7 @@ pub enum AccountMessage {
 #[derive(Debug, Clone)]
 pub enum LauncherSettingsMessage {
     Open,
+    LoadedSystemTheme(Res<dark_light::Mode>),
     ThemePicked(LauncherThemeLightness),
     ColorSchemePicked(LauncherThemeColor),
     UiScale(f64),

@@ -78,12 +78,28 @@ impl FromStr for LauncherThemeColor {
 
 #[derive(Serialize, Deserialize, Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub enum LauncherThemeLightness {
-    #[serde(rename = "Light")]
     Light,
+    Dark,
     #[default]
     #[serde(other)]
-    #[serde(rename = "Dark")]
-    Dark,
+    Auto,
+}
+
+impl LauncherThemeLightness {
+    pub const ALL: &[Self] = &[Self::Light, Self::Dark, Self::Auto];
+}
+impl Display for LauncherThemeLightness {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                LauncherThemeLightness::Light => "Light",
+                LauncherThemeLightness::Dark => "Dark",
+                LauncherThemeLightness::Auto => "Auto",
+            },
+        )
+    }
 }
 
 #[derive(Clone, Default, Debug)]
@@ -91,16 +107,25 @@ pub struct LauncherTheme {
     pub lightness: LauncherThemeLightness,
     pub color: LauncherThemeColor,
     pub alpha: f32,
+    pub system_dark_mode: bool,
 }
 
 impl LauncherTheme {
+    pub fn is_light(&self) -> bool {
+        match self.lightness {
+            LauncherThemeLightness::Light => true,
+            LauncherThemeLightness::Dark => false,
+            LauncherThemeLightness::Auto => !self.system_dark_mode,
+        }
+    }
+
     pub fn get(&self, color: Color) -> iced::Color {
         let (palette, color) = self.get_base(color);
         palette.get(color)
     }
 
     fn get_base(&self, mut color: Color) -> (&super::color::Palette, Color) {
-        if self.lightness == LauncherThemeLightness::Light {
+        if self.is_light() {
             if let Color::ExtraDark = color {
                 color = Color::Dark;
             } else if let Color::Dark = color {
@@ -110,18 +135,20 @@ impl LauncherTheme {
 
         if let LauncherThemeColor::Adwaita = self.color {
             (
-                match self.lightness {
-                    LauncherThemeLightness::Light => &ADWAITA_LIGHT,
-                    LauncherThemeLightness::Dark => &ADWAITA_DARK,
+                if self.is_light() {
+                    &ADWAITA_LIGHT
+                } else {
+                    &ADWAITA_DARK
                 },
                 color,
             )
         } else {
             (
                 self.get_palette(),
-                match self.lightness {
-                    LauncherThemeLightness::Dark => color,
-                    LauncherThemeLightness::Light => color.invert(),
+                if self.is_light() {
+                    color.invert()
+                } else {
+                    color
                 },
             )
         }
@@ -525,17 +552,7 @@ impl LauncherTheme {
                 widget::button::Style {
                     background: Some({
                         let (palette, color) = self.get_base(color);
-                        iced::Background::Color(if let StyleButton::Round = style {
-                            if let (LauncherThemeColor::Catppuccin, LauncherThemeLightness::Light) =
-                                (self.color, self.lightness)
-                            {
-                                palette.get(color)
-                            } else {
-                                blend_colors(self.get(Color::Dark), self.get(Color::SecondDark))
-                            }
-                        } else {
-                            palette.get(color)
-                        })
+                        iced::Background::Color(palette.get(color))
                     }),
                     text_color: self.get(Color::White),
                     border: if let StyleButton::Round = style {

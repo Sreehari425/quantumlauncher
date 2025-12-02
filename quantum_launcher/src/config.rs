@@ -219,6 +219,9 @@ impl LauncherConfig {
             lightness: self.theme.unwrap_or_default(),
             color: self.style.unwrap_or_default(),
             alpha: self.c_ui_opacity(),
+            system_dark_mode: dark_light::detect()
+                .map(|n| n == dark_light::Mode::Dark)
+                .unwrap_or_default(),
         }
     }
 }

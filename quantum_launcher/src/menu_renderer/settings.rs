@@ -75,8 +75,6 @@ impl MenuLauncherSettings {
     fn view_ui_tab<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {
         const SETTING_WIDTH: u16 = 180;
 
-        let (light, dark) = get_theme_selector(config);
-
         let ui_scale_apply = widget::row![
             widget::horizontal_space(),
             widget::button(widget::text("Apply").size(12))
@@ -93,7 +91,7 @@ impl MenuLauncherSettings {
 
         widget::column!(
             widget::column![widget::text("User Interface").size(20)].padding(PADDING_NOT_BOTTOM),
-            widget::row!["Theme: ", light, dark].spacing(5).align_y(Alignment::Center).padding([0, 10]),
+            widget::row!["Theme: ", get_theme_selector(config)].spacing(5).align_y(Alignment::Center).padding([0, 10]),
             widget::column!["Color scheme:", get_color_scheme_selector().wrap()]
                 .padding(iced::Padding::new(10.0).top(5.0))
                 .spacing(5),
@@ -161,9 +159,9 @@ pub fn get_color_scheme_selector() -> widget::Row<'static, Message, LauncherThem
         widget::button(widget::text(color.to_string()).size(14))
             .style(|theme: &LauncherTheme, s| {
                 LauncherTheme {
-                    lightness: theme.lightness,
                     color: *color,
                     alpha: 1.0,
+                    ..*theme
                 }
                 .style_button(s, StyleButton::Round)
             })

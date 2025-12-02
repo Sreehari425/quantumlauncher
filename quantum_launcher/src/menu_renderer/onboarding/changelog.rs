@@ -27,6 +27,12 @@ pub fn changelog<'a>() -> Element<'a> {
         "- Tweaked and rearranged many menus/messages.",
         ].spacing(5),
 
+        widget::text("Themes").size(32),
+        widget::column![
+            widget::text("- Added \"Adwaita\" (GNOME-inspired greyish color scheme)"),
+            widget::text("- Added \"Auto\" light/dark mode (syncs with system theme)"),
+        ].spacing(5),
+
         widget::text("Mod Menu").size(32),
         widget::column![
             widget::text("Revamped the mod menu, now with:"),

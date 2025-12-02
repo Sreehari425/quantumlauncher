@@ -10,10 +10,11 @@ use tokio::io::AsyncWriteExt;
 use crate::{
     message_handler::{SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT},
     state::{
-        AutoSaveKind, CustomJarState, GameProcess, LaunchTabId, Launcher, ManageModsMessage,
-        MenuExportInstance, MenuLaunch, MenuLauncherUpdate, MenuLicense, MenuWelcome, Message,
-        ProgressBar, State,
+        AutoSaveKind, CustomJarState, GameProcess, LaunchTabId, Launcher, LauncherSettingsMessage,
+        ManageModsMessage, MenuExportInstance, MenuLaunch, MenuLauncherUpdate, MenuLicense,
+        MenuWelcome, Message, ProgressBar, State,
     },
+    stylesheet::styles::LauncherThemeLightness,
 };
 
 impl Launcher {
@@ -142,22 +143,23 @@ impl Launcher {
             },
             Message::CoreTick => {
                 self.tick_timer = self.tick_timer.wrapping_add(1);
-                let mut tasks = self.images.get_imgs_to_load();
-                let command = self.tick();
-                tasks.push(command);
+                let mut tasks = self.images.task_get_imgs_to_load();
+                tasks.push(self.tick());
+                tasks.push(self.task_read_system_theme());
 
                 // HOOK: Decorations
-                // let max_command = iced::window::get_latest()
-                //     .and_then(iced::window::get_maximized)
-                //     .map(|m| Message::Window(WindowMessage::IsMaximized(m)));
-                // tasks.push(max_command);
+                // tasks.push(
+                //     iced::window::get_latest()
+                //         .and_then(iced::window::get_maximized)
+                //         .map(|m| Message::Window(WindowMessage::IsMaximized(m))),
+                // );
 
-                if self
+                let custom_jars_changed = self
                     .custom_jar
                     .as_ref()
                     .and_then(|n| n.recv.try_recv().ok())
-                    .is_some()
-                {
+                    .is_some();
+                if custom_jars_changed {
                     tasks.push(CustomJarState::load());
                 }
 
@@ -463,6 +465,26 @@ impl Launcher {
             }
         }
         Task::none()
+    }
+
+    fn task_read_system_theme(&mut self) -> Task<Message> {
+        const INTERVAL: usize = 4;
+
+        let is_auto_theme = self
+            .config
+            .theme
+            .is_none_or(|n| n == LauncherThemeLightness::Auto);
+        let interval = self.tick_timer.is_multiple_of(INTERVAL);
+
+        if is_auto_theme && interval {
+            Task::perform(tokio::task::spawn_blocking(|| dark_light::detect()), |n| {
+                Message::LauncherSettings(LauncherSettingsMessage::LoadedSystemTheme(
+                    n.strerr().map(|n| n.strerr()).flatten(),
+                ))
+            })
+        } else {
+            Task::none()
+        }
     }
 
     pub fn load_edit_instance(&mut self, new_tab: Option<LaunchTabId>) {

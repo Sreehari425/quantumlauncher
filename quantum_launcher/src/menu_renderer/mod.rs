@@ -331,7 +331,7 @@ impl MenuLauncherUpdate {
     }
 }
 
-pub fn get_theme_selector(config: &'_ LauncherConfig) -> (Element<'_>, Element<'_>) {
+pub fn get_theme_selector(config: &LauncherConfig) -> Element<'static> {
     const PADDING: iced::Padding = iced::Padding {
         top: 5.0,
         bottom: 5.0,
@@ -342,53 +342,29 @@ pub fn get_theme_selector(config: &'_ LauncherConfig) -> (Element<'_>, Element<'
     let td = |t: &LauncherTheme| t.style_text(Color::Mid);
 
     let theme = config.theme.unwrap_or_default();
-    let (light, dark): (Element, Element) = match theme {
-        LauncherThemeLightness::Dark => (
-            widget::button(
-                widget::row![
-                    icon_manager::mode_light_with_size(14),
-                    widget::text("Light").size(14)
-                ]
-                .spacing(5),
-            )
-            .on_press(Message::LauncherSettings(
-                LauncherSettingsMessage::ThemePicked(LauncherThemeLightness::Light),
-            ))
-            .into(),
-            widget::container(
-                widget::row![
-                    icon_manager::mode_dark_with_size(14).style(td),
-                    widget::text("Dark").size(14)
-                ]
-                .spacing(5),
-            )
-            .padding(PADDING)
-            .into(),
-        ),
-        LauncherThemeLightness::Light => (
-            widget::container(
-                widget::row![
-                    icon_manager::mode_light_with_size(14).style(td),
-                    widget::text("Light").size(14)
-                ]
-                .spacing(5),
-            )
-            .padding(PADDING)
-            .into(),
-            widget::button(
-                widget::row![
-                    icon_manager::mode_dark_with_size(14),
-                    widget::text("Dark").size(14)
-                ]
-                .spacing(5),
-            )
-            .on_press(Message::LauncherSettings(
-                LauncherSettingsMessage::ThemePicked(LauncherThemeLightness::Dark),
-            ))
-            .into(),
-        ),
-    };
-    (light, dark)
+    widget::row(LauncherThemeLightness::ALL.iter().map(|n| {
+        let name = widget::text(n.to_string()).size(14);
+        let icon = match n {
+            LauncherThemeLightness::Light => icon_manager::mode_light_with_size(14),
+            LauncherThemeLightness::Dark => icon_manager::mode_dark_with_size(14),
+            LauncherThemeLightness::Auto => icon_manager::update_with_size(14),
+        };
+
+        if *n == theme {
+            widget::container(widget::row![icon.style(td), name].spacing(5))
+                .padding(PADDING)
+                .into()
+        } else {
+            widget::button(widget::row![icon, name].spacing(5))
+                .on_press(Message::LauncherSettings(
+                    LauncherSettingsMessage::ThemePicked(*n),
+                ))
+                .into()
+        }
+    }))
+    .spacing(5)
+    .wrap()
+    .into()
 }
 
 fn back_to_launch_screen(is_server: Option<bool>, message: Option<String>) -> Message {

@@ -68,12 +68,14 @@ paste = "1"
 rfd = { workspace = true }
 
 # Terminal
-terminal_size = "0.4"
 owo-colors = { workspace = true }
 clap = { version = "4", features = ["help", "derive"] }
+terminal_size = "0.4"
+
+# OS APIs
 notify = "8"
-itertools = "0.14"
 open = "5.3.2"
+dark-light = "2"
 
 # iced::widget::markdown doesn't have inline
 # HTML support, so I made my own renderer.

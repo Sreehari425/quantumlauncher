@@ -29,7 +29,7 @@ impl ImageState {
         }
     }
 
-    pub fn get_imgs_to_load(&mut self) -> Vec<Task<Message>> {
+    pub fn task_get_imgs_to_load(&mut self) -> Vec<Task<Message>> {
         let mut commands = Vec::new();
 
         for url in self.to_load.lock().unwrap().drain() {
