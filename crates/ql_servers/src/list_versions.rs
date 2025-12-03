@@ -38,6 +38,7 @@ pub async fn list() -> Result<(Vec<ListEntry>, String), JsonDownloadError> {
                     return Some(ListEntry {
                         name: n.id,
                         is_server: true,
+                        is_snapshot: n.r#type == "snapshot",
                     });
                 }
                 if n.id.starts_with("a1.") {
@@ -59,6 +60,7 @@ pub async fn list() -> Result<(Vec<ListEntry>, String), JsonDownloadError> {
                 Some(ListEntry {
                     name: n.id,
                     is_server: true,
+                    is_snapshot: n.r#type == "snapshot",
                 })
             })
             .collect(),

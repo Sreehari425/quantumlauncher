@@ -23,6 +23,7 @@ pub async fn list_versions() -> Result<(Vec<ListEntry>, String), JsonDownloadErr
             .map(|n| ListEntry {
                 name: n.id,
                 is_server: false,
+                is_snapshot: n.r#type == "snapshot",
             })
             .collect(),
         latest,

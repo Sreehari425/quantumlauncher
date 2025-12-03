@@ -121,7 +121,9 @@ fn setup_dir() {
         .parent()
         .unwrap()
         .join("QuantumLauncher");
-    std::env::set_var("QL_DIR", new_dir);
+    unsafe {
+        std::env::set_var("QL_DIR", new_dir);
+    }
 }
 
 async fn create_instance(version: String) -> Result<(), DownloadError> {
@@ -130,6 +132,7 @@ async fn create_instance(version: String) -> Result<(), DownloadError> {
         ListEntry {
             name: version,
             is_server: false,
+            is_snapshot: false,
         },
         None,
         false,

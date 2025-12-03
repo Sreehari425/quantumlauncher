@@ -372,6 +372,7 @@ async fn create_minecraft_instance(
     let version = ListEntry {
         name: version,
         is_server: false,
+        is_snapshot: false, // no big deal here
     };
     let (d_send, d_recv) = std::sync::mpsc::channel();
     if let Some(sender) = sender.clone() {

@@ -191,7 +191,11 @@ then go to "Mods->Add File""#,
                     .version_list_cache
                     .latest_stable
                     .clone()
-                    .map(|name| ListEntry { name, is_server }))
+                    .map(|name| ListEntry {
+                        name,
+                        is_server,
+                        is_snapshot: false,
+                    }))
                 .unwrap();
             let instance_name = if instance_name.trim().is_empty() {
                 version.name.clone()

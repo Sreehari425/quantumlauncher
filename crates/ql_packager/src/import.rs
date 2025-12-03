@@ -113,6 +113,7 @@ async fn import_quantumlauncher(
     let version = ListEntry {
         name: version_json.id.clone(),
         is_server: instance_info.is_server,
+        is_snapshot: version_json.r#type == "snapshot",
     };
 
     let (d_send, d_recv) = std::sync::mpsc::channel();

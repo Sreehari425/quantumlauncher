@@ -296,16 +296,14 @@ impl InstanceSelection {
     }
 }
 
-/// An enum representing a Minecraft version.
-///
-/// # Fields
-/// - `name`: The name of the version according to
-///   [BetterJSONs](https://mcphackers.org/BetterJSONs/version_manifest_v2.json)
-/// - `is_classic_server`: Whether it is a Minecraft Classic entry
+/// A struct representing information about a Minecraft version
 #[derive(Debug, Clone)]
 pub struct ListEntry {
     pub name: String,
     pub is_server: bool,
+    /// For UI display purposes only,
+    /// feel free to put `false`
+    pub is_snapshot: bool,
 }
 
 impl Display for ListEntry {
