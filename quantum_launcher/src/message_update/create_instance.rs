@@ -1,4 +1,4 @@
-use iced::Task;
+use iced::{widget::scrollable::AbsoluteOffset, Task};
 use ql_core::{
     pt, DownloadProgress, InstanceSelection, IntoStringError, JsonDownloadError, ListEntry,
 };
@@ -24,7 +24,7 @@ impl Launcher {
                 return self.go_to_create_screen(is_server)
             }
             CreateInstanceMessage::VersionsLoaded(result, is_server) => {
-                self.create_instance_finish_loading_versions_list(result, is_server);
+                return self.create_instance_finish_loading_versions_list(result, is_server);
             }
             CreateInstanceMessage::VersionSelected(ver) => {
                 iflet!(self, selected_version; {
@@ -132,33 +132,45 @@ then go to "Mods->Add File""#,
         &mut self,
         result: Result<(Vec<ListEntry>, String), String>,
         is_server: bool,
-    ) {
+    ) -> Task<Message> {
         match result {
             Ok((versions, latest)) => {
                 self.version_list_cache.list = Some(versions.clone());
                 self.version_list_cache.latest_stable = Some(latest.clone());
 
                 if let State::Create(MenuCreateInstance::LoadingList { .. }) = &self.state {
+                    let mut offset = 0.0;
+                    let len = versions.len();
+
                     self.state = State::Create(MenuCreateInstance::Choosing {
                         instance_name: String::new(),
                         selected_version: versions
                             .iter()
-                            .find(|n| n.name == latest)
-                            .cloned()
+                            .enumerate()
+                            .find(|n| n.1.name == latest)
+                            .map(|n| {
+                                offset = n.0 as f32 / len as f32;
+                                n.1.clone()
+                            })
                             .unwrap_or_else(|| ListEntry::new(latest)),
                         download_assets: true,
                         search_box: String::new(),
                         show_category_dropdown: false,
                         is_server,
                     });
+
+                    return create_instance_scroll_to(offset);
                 }
             }
             Err(n) => self.set_error(n),
         }
+        Task::none()
     }
 
     pub fn go_to_create_screen(&mut self, is_server: bool) -> Task<Message> {
         if let Some(list) = &self.version_list_cache.list {
+            let mut offset = 10.0;
+
             self.state = State::Create(MenuCreateInstance::Choosing {
                 instance_name: String::new(),
                 selected_version: self
@@ -166,10 +178,15 @@ then go to "Mods->Add File""#,
                     .latest_stable
                     .as_ref()
                     .map(|latest| {
+                        let len = list.len();
                         list.iter()
-                            .find(|n| n.name == *latest)
-                            .cloned()
-                            .unwrap_or_else(|| ListEntry::new(latest.clone()))
+                            .enumerate()
+                            .find(|n| n.1.name == *latest)
+                            .map(|n| {
+                                offset = n.0 as f32 / len as f32;
+                                n.1.clone()
+                            })
+                            .unwrap_or_else(|| ListEntry::new(latest.to_owned()))
                     })
                     .or_else(|| list.first().cloned())
                     .unwrap(),
@@ -178,7 +195,7 @@ then go to "Mods->Add File""#,
                 show_category_dropdown: false,
                 is_server,
             });
-            Task::none()
+            create_instance_scroll_to(offset)
         } else {
             let msg = move |n: Result<(Vec<ListEntry>, String), JsonDownloadError>| {
                 Message::CreateInstance(CreateInstanceMessage::VersionsLoaded(
@@ -259,4 +276,14 @@ then go to "Mods->Add File""#,
         }
         Task::none()
     }
+}
+
+fn create_instance_scroll_to(offset: f32) -> Task<Message> {
+    iced::widget::scrollable::scroll_to(
+        iced::widget::scrollable::Id::new("MenuCreateInstance:sidebar"),
+        AbsoluteOffset {
+            x: 0.0,
+            y: ((offset * 47600.0) - 200.0).clamp(0.0, f32::INFINITY),
+        },
+    )
 }

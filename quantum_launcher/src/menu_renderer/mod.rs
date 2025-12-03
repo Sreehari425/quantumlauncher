@@ -174,6 +174,7 @@ fn sidebar_button<'a, A: PartialEq>(
 }
 
 fn sidebar<'a>(
+    id: &'static str,
     header: Option<Element<'static>>,
     children: impl IntoIterator<Item = Element<'a>>,
 ) -> widget::Container<'a, Message, LauncherTheme> {
@@ -185,6 +186,7 @@ fn sidebar<'a>(
             widget::scrollable(widget::column(children))
                 .style(LauncherTheme::style_scrollable_flat_extra_dark)
                 .height(Length::Fill)
+                .id(iced::widget::scrollable::Id::new(id))
         ]
         .spacing(10),
     )
@@ -343,6 +345,7 @@ impl MenuLicense {
     pub fn view(&'_ self) -> Element<'_> {
         widget::row![
             sidebar(
+                "MenuLicense:sidebar",
                 Some(
                     back_button()
                         .on_press(Message::LauncherSettings(

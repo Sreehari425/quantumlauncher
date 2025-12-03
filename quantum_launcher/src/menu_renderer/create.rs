@@ -52,7 +52,7 @@ impl MenuCreateInstance {
                                 clear_selection: false,
                                 is_server: Some(*is_server),
                             }),
-                        widget::button(icon_manager::three_lines())
+                        widget::button(icon_manager::filter())
                             .padding(pb)
                             .style(move |t: &LauncherTheme, s| t.style_button(
                                 s,
@@ -135,15 +135,11 @@ impl MenuCreateInstance {
         is_server: bool,
     ) -> widget::Column<'static, Message, LauncherTheme> {
         let already_exists = existing_instances.is_some_and(|n| n.contains(instance_name));
+        let ts = |t: &LauncherTheme| t.style_text(Color::SecondLight);
 
         column![
-            row![
-                widget::text!("Create {}", if is_server { "Server" } else { "Instance" })
-                    .size(20),
-                widget::horizontal_space(),
-                button_with_icon(icon_manager::folder_with_size(14), "Import Instance", 14)
-                    .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
-            ],
+            widget::text!("Create {}", if is_server { "Server" } else { "Instance" })
+                .size(24),
             row![
                 widget::text("Name:").size(18),
                 {
@@ -161,14 +157,24 @@ impl MenuCreateInstance {
                 widget::text("If disabled, creating instance will be MUCH faster, but no sound or music will play in-game").size(12),
                 Position::Bottom
             ),
-            get_create_button(already_exists),
             widget::horizontal_rule(1),
             column![
-                widget::text("- To install Fabric/Forge/OptiFine/etc and mods, click on Mods after installing the instance").size(12),
+                widget::text("- To install Fabric/Forge/OptiFine/etc and mods, click on Mods after installing the instance").size(12).style(ts),
                 row!(
-                    widget::text("- To sideload your own custom JARs, create an instance with a similar version, then go to").size(12),
-                    widget::text(" \"Edit->Custom Jar File\"").size(12)
+                    widget::text("- To sideload your own custom JARs, create an instance with a similar version, then go to").size(12).style(ts),
+                    widget::text(" \"Edit->Custom Jar File\"").size(12).style(ts)
                 ).wrap(),
+            ].spacing(5),
+            widget::vertical_space(),
+            row![
+                widget::horizontal_space(),
+                tooltip(
+                    widget::button(icon_manager::zip_file()).padding(iced::Padding::new(8.0).left(12.0).right(12.0))
+                    .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
+                    "Import Instance...",
+                    Position::Top
+                ),
+                get_create_button(already_exists),
             ].spacing(5)
         ].push_maybe({
             let real_platform = if cfg!(target_arch = "x86") { "x86_64" } else { "aarch64" };
@@ -189,6 +195,7 @@ impl MenuCreateInstance {
         searchbox: &str,
     ) -> widget::Container<'a, Message, LauncherTheme> {
         sidebar(
+            "MenuCreateInstance:sidebar",
             Some(header),
             versions
                 .into_iter()
@@ -227,10 +234,9 @@ impl MenuCreateInstance {
 }
 
 fn get_create_button(already_exists: bool) -> Element<'static> {
-    let create_button = button_with_icon(icon_manager::create(), "Create Instance", 16)
-        .on_press_maybe(
-            (!already_exists).then_some(Message::CreateInstance(CreateInstanceMessage::Start)),
-        );
+    let create_button = button_with_icon(icon_manager::create(), "Create", 16).on_press_maybe(
+        (!already_exists).then_some(Message::CreateInstance(CreateInstanceMessage::Start)),
+    );
 
     if already_exists {
         tooltip(
