@@ -476,7 +476,7 @@ impl Launcher {
     pub fn update_launcher_settings(&mut self, msg: LauncherSettingsMessage) -> Task<Message> {
         match msg {
             LauncherSettingsMessage::ThemePicked(theme) => {
-                self.config.theme = Some(theme.clone());
+                self.config.theme = Some(theme);
                 self.theme.lightness = theme;
             }
             LauncherSettingsMessage::Open => {

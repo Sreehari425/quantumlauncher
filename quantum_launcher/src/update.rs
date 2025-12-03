@@ -477,9 +477,9 @@ impl Launcher {
         let interval = self.tick_timer.is_multiple_of(INTERVAL);
 
         if is_auto_theme && interval {
-            Task::perform(tokio::task::spawn_blocking(|| dark_light::detect()), |n| {
+            Task::perform(tokio::task::spawn_blocking(dark_light::detect), |n| {
                 Message::LauncherSettings(LauncherSettingsMessage::LoadedSystemTheme(
-                    n.strerr().map(|n| n.strerr()).flatten(),
+                    n.strerr().and_then(|n| n.strerr()),
                 ))
             })
         } else {
