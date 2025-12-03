@@ -63,7 +63,7 @@ impl Preset {
     /// installed in the `instance`.
     ///
     /// This packages the contents of
-    /// `.minecraft/mods` and `.minecraft/config`
+    /// `.minecraft/mods` and optionally `.minecraft/config`
     /// into a `.qmp` file (a specialized ZIP file).
     ///
     /// You have to manually provide which of the
@@ -71,12 +71,16 @@ impl Preset {
     /// argument. You *can't* leave it empty, or nothing
     /// will generate.
     ///
+    /// If `include_config` is true, the `config/` directory
+    /// will be included in the preset.
+    ///
     /// This returns a `Result` of `Vec<u8>`, containing
     /// the bytes of the final `.qmp` file that you can save
     /// anywhere you want.
     pub async fn generate(
         instance: InstanceSelection,
         selected_mods: HashSet<SelectedMod>,
+        include_config: bool,
     ) -> Result<Vec<u8>, ModError> {
         let dot_minecraft = instance.get_dot_minecraft_path();
         let mods_dir = dot_minecraft.join("mods");
@@ -124,7 +128,7 @@ impl Preset {
                 .map_err(|n| ModError::ZipIoError(n, name.clone()))?;
         }
 
-        if config_dir.is_dir() {
+        if include_config && config_dir.is_dir() {
             add_dir_to_zip_recursive(&config_dir, &mut zip, PathBuf::from("config")).await?;
         }
 
