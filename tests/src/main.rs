@@ -129,11 +129,7 @@ fn setup_dir() {
 async fn create_instance(version: String) -> Result<(), DownloadError> {
     match ql_instances::create_instance(
         version.clone(),
-        ListEntry {
-            name: version,
-            is_server: false,
-            is_snapshot: false,
-        },
+        ListEntry::new(version, false),
         None,
         false,
     )

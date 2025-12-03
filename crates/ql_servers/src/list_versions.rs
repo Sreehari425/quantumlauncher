@@ -1,5 +1,5 @@
 use chrono::DateTime;
-use ql_core::{err, json::Manifest, JsonDownloadError, ListEntry};
+use ql_core::{err, json::Manifest, JsonDownloadError, ListEntry, ListEntryKind};
 
 /// Retrieves a list of available server versions to download.
 ///
@@ -36,9 +36,9 @@ pub async fn list() -> Result<(Vec<ListEntry>, String), JsonDownloadError> {
                     }
 
                     return Some(ListEntry {
-                        name: n.id,
                         is_server: true,
-                        is_snapshot: n.r#type == "snapshot",
+                        kind: ListEntryKind::Classic,
+                        name: n.id,
                     });
                 }
                 if n.id.starts_with("a1.") {
@@ -57,11 +57,7 @@ pub async fn list() -> Result<(Vec<ListEntry>, String), JsonDownloadError> {
                     }
                 }
 
-                Some(ListEntry {
-                    name: n.id,
-                    is_server: true,
-                    is_snapshot: n.r#type == "snapshot",
-                })
+                Some(ListEntry::with_kind(n.id, true, &n.r#type))
             })
             .collect(),
         latest,

@@ -139,11 +139,7 @@ pub fn create_instance(
     runtime: &tokio::runtime::Runtime,
     servers: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let entry = ListEntry {
-        name: version,
-        is_server: servers,
-        is_snapshot: false,
-    };
+    let entry = ListEntry::new(version, servers);
     if servers {
         runtime.block_on(ql_servers::create_server(instance_name, entry, None))?;
     } else {

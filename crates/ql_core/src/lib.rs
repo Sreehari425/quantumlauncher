@@ -301,14 +301,98 @@ impl InstanceSelection {
 pub struct ListEntry {
     pub name: String,
     pub is_server: bool,
-    /// For UI display purposes only,
-    /// feel free to put `false`
-    pub is_snapshot: bool,
+    /// For UI display purposes only
+    pub kind: ListEntryKind,
+}
+
+impl ListEntry {
+    #[must_use]
+    pub fn new(name: String, is_server: bool) -> Self {
+        Self {
+            kind: ListEntryKind::guess(&name),
+            name,
+            is_server,
+        }
+    }
+
+    pub fn with_kind(name: String, is_server: bool, ty: &str) -> Self {
+        Self {
+            kind: ListEntryKind::calculate(&name, ty),
+            name,
+            is_server,
+        }
+    }
+
+    #[must_use]
+    pub fn kind(&self) -> ListEntryKind {
+        todo!()
+    }
 }
 
 impl Display for ListEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ListEntryKind {
+    Release,
+    Snapshot,
+    Preclassic,
+    Classic,
+    Indev,
+    Infdev,
+    Alpha,
+    Beta,
+    AprilFools,
+    Special,
+}
+
+impl ListEntryKind {
+    fn guess(id: &str) -> Self {
+        if id.starts_with("b1.") {
+            ListEntryKind::Beta
+        } else if id.starts_with("a1.") {
+            ListEntryKind::Alpha
+        } else if id.starts_with("inf-") {
+            ListEntryKind::Infdev
+        } else if id.starts_with("in-") {
+            ListEntryKind::Indev
+        } else if id.starts_with("pc-") {
+            ListEntryKind::Preclassic
+        } else if id.starts_with("c0.") {
+            ListEntryKind::Classic
+        } else if id.contains("w") {
+            ListEntryKind::Snapshot
+        } else {
+            ListEntryKind::Release
+        }
+    }
+
+    #[must_use]
+    fn calculate(id: &str, ty: &str) -> Self {
+        if ty == "special" {
+            ListEntryKind::Special
+        } else if ty == "april-fools" {
+            ListEntryKind::AprilFools
+        } else if id.starts_with("b1.") {
+            ListEntryKind::Beta
+        } else if id.starts_with("a1.") {
+            ListEntryKind::Alpha
+        } else if id.starts_with("inf-") {
+            ListEntryKind::Infdev
+        } else if id.starts_with("in-") {
+            ListEntryKind::Indev
+        } else if id.starts_with("pc-") {
+            ListEntryKind::Preclassic
+        } else if id.starts_with("c0.") {
+            ListEntryKind::Classic
+        } else if ty == "snapshot" {
+            ListEntryKind::Snapshot
+        } else {
+            ListEntryKind::Release
+        }
     }
 }
 

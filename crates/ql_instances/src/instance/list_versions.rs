@@ -20,11 +20,7 @@ pub async fn list_versions() -> Result<(Vec<ListEntry>, String), JsonDownloadErr
         manifest
             .versions
             .into_iter()
-            .map(|n| ListEntry {
-                name: n.id,
-                is_server: false,
-                is_snapshot: n.r#type == "snapshot",
-            })
+            .map(|n| ListEntry::with_kind(n.id, false, &n.r#type))
             .collect(),
         latest,
     ))
