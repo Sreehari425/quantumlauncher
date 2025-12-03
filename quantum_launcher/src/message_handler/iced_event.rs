@@ -3,16 +3,16 @@ use crate::message_update::MSG_RESIZE;
 use crate::state::{
     CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage, LauncherSettingsTab,
     MenuCreateInstance, MenuEditJarMods, MenuEditMods, MenuEditPresets, MenuExportInstance,
-    MenuInstallFabric, MenuInstallOptifine, MenuLaunch, MenuLauncherSettings, MenuLauncherUpdate,
-    MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, MenuServerCreate, Message, State,
+    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLaunch, MenuLauncherSettings,
+    MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, Message, State,
 };
 use iced::{
     keyboard::{self, key::Named, Key},
     Task,
 };
 use ql_core::jarmod::JarMods;
-use ql_core::{err, info, info_no_log, jarmod::JarMod, InstanceSelection};
-use std::ffi::{OsStr, OsString};
+use ql_core::{err, jarmod::JarMod, pt_no_log, InstanceSelection};
+use std::ffi::OsStr;
 use std::path::Path;
 
 impl Launcher {
@@ -22,11 +22,8 @@ impl Launcher {
         match event {
             iced::Event::Window(event) => match event {
                 iced::window::Event::CloseRequested => {
-                    info_no_log!("Shutting down launcher (1)");
+                    pt_no_log!("Closing...");
                     std::process::exit(0);
-                }
-                iced::window::Event::Closed => {
-                    info!("Shutting down launcher (2)");
                 }
                 iced::window::Event::Resized(size) => {
                     self.window_size = (size.width, size.height);
@@ -58,10 +55,11 @@ impl Launcher {
                         path.extension().map(OsStr::to_ascii_lowercase),
                         path.file_name().and_then(OsStr::to_str),
                     ) {
-                        return self.drag_and_drop(&path, extension, filename);
+                        return self.drag_and_drop(&path, &extension, filename);
                     }
                 }
-                iced::window::Event::RedrawRequested(_)
+                iced::window::Event::Closed
+                | iced::window::Event::RedrawRequested(_)
                 | iced::window::Event::Moved { .. }
                 | iced::window::Event::Opened { .. }
                 | iced::window::Event::Focused
@@ -74,11 +72,7 @@ impl Launcher {
                     modifiers,
                     ..
                 } => {
-                    if let iced::event::Status::Ignored = status {
-                        return self.handle_key_press(key, modifiers);
-                    } else {
-                        // FUTURE
-                    }
+                    return self.handle_key_press(key, modifiers, status);
                 }
                 keyboard::Event::KeyReleased { key, .. } => {
                     self.keys_pressed.remove(&key);
@@ -157,49 +151,75 @@ impl Launcher {
         Task::none()
     }
 
-    fn handle_key_press(&mut self, key: Key, modifiers: keyboard::Modifiers) -> Task<Message> {
-        if let Key::Named(Named::Escape) = key {
-            return self.key_escape_back(true).1;
+    fn handle_key_press(
+        &mut self,
+        key: Key,
+        modifiers: keyboard::Modifiers,
+        status: iced::event::Status,
+    ) -> Task<Message> {
+        let ignored = matches!(status, iced::event::Status::Ignored);
+        if ignored {
+            if let Key::Named(Named::Escape) = key {
+                return self.key_escape_back(true).1;
+            }
+            if let Key::Named(Named::ArrowUp) = key {
+                return self.key_change_selected_instance(false);
+            } else if let Key::Named(Named::ArrowDown) = key {
+                return self.key_change_selected_instance(true);
+            } else if let Key::Named(Named::Enter) = key {
+                if modifiers.command() {
+                    return self.launch_start();
+                }
+            } else if let Key::Named(Named::Backspace) = key {
+                if modifiers.command() {
+                    return Task::done(Message::LaunchKill);
+                }
+            }
         }
-        if let Key::Named(Named::ArrowUp) = key {
-            return self.key_change_selected_instance(false);
-        } else if let Key::Named(Named::ArrowDown) = key {
-            return self.key_change_selected_instance(true);
-        } else if let Key::Named(Named::Enter) = key {
-            if modifiers.command() {
-                return self.launch_start();
-            }
-        } else if let Key::Named(Named::Backspace) = key {
-            if modifiers.command() {
-                return Task::done(Message::LaunchKill);
-            }
-        } else if let Key::Character(ch) = &key {
+
+        if let Key::Character(ch) = &key {
             let msg = match (
                 ch.as_str(),
                 modifiers.command(),
                 modifiers.alt(),
+                ignored,
                 &self.state,
             ) {
-                ("q", true, _, _) => Message::CoreTryQuit,
-                ("a", true, _, State::EditMods(_)) => {
+                ("q", true, _, true, _) => Message::CoreTryQuit,
+                ("a", true, _, true, State::EditMods(_)) => {
                     Message::ManageMods(crate::state::ManageModsMessage::SelectAll)
                 }
-                ("a", true, _, State::EditJarMods(_)) => {
+
+                // Ctrl-F search in mods list
+                #[rustfmt::skip]
+                ("f", true, _, _, State::EditMods(MenuEditMods { search: Some(_), .. })) => {
+                    Message::ManageMods(crate::state::ManageModsMessage::SetSearch(None))
+                },
+                ("f", true, _, _, State::EditMods(_)) => Message::Multiple(vec![
+                    Message::ManageMods(crate::state::ManageModsMessage::SetSearch(Some(
+                        String::new(),
+                    ))),
+                    Message::CoreFocusNext,
+                ]),
+
+                ("a", true, _, true, State::EditJarMods(_)) => {
                     Message::ManageJarMods(crate::state::ManageJarModsMessage::SelectAll)
                 }
-                ("n", true, _, State::Launch(_)) => {
-                    Message::CreateInstance(CreateInstanceMessage::ScreenOpen)
+                ("n", true, _, _, State::Launch(n)) => {
+                    Message::CreateInstance(CreateInstanceMessage::ScreenOpen {
+                        is_server: n.is_viewing_server,
+                    })
                 }
-                ("1", ctrl, alt, State::Launch(_)) if ctrl | alt => {
+                ("1", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
                     Message::LaunchChangeTab(LaunchTabId::Buttons)
                 }
-                ("2", ctrl, alt, State::Launch(_)) if ctrl | alt => {
+                ("2", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
                     Message::LaunchChangeTab(LaunchTabId::Edit)
                 }
-                ("3", ctrl, alt, State::Launch(_)) if ctrl | alt => {
+                ("3", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
                     Message::LaunchChangeTab(LaunchTabId::Log)
                 }
-                (",", true, _, State::Launch(_)) => {
+                (",", true, _, _, State::Launch(_)) => {
                     Message::LauncherSettings(LauncherSettingsMessage::Open)
                 }
                 _ => Message::Nothing,
@@ -211,7 +231,7 @@ impl Launcher {
         Task::none()
     }
 
-    fn drag_and_drop(&mut self, path: &Path, extension: OsString, filename: &str) -> Task<Message> {
+    fn drag_and_drop(&mut self, path: &Path, extension: &OsStr, filename: &str) -> Task<Message> {
         if let State::EditMods(_) = &self.state {
             if extension == "jar" || extension == "disabled" {
                 self.load_jar_from_path(path, filename);
@@ -301,6 +321,10 @@ impl Launcher {
         let mut should_return_to_mods_screen = false;
         let mut should_return_to_download_screen = false;
 
+        if affect && self.hide_submenu() {
+            return (true, Task::none());
+        }
+
         match &self.state {
             State::ChangeLog
             | State::EditMods(MenuEditMods {
@@ -309,9 +333,6 @@ impl Launcher {
             })
             | State::Create(
                 MenuCreateInstance::LoadingList { .. } | MenuCreateInstance::Choosing { .. },
-            )
-            | State::ServerCreate(
-                MenuServerCreate::LoadingList | MenuServerCreate::Loaded { .. },
             )
             | State::Error { .. }
             | State::UpdateFound(MenuLauncherUpdate { progress: None, .. })
@@ -355,6 +376,9 @@ impl Launcher {
                 MenuRecommendedMods::Loaded { .. }
                 | MenuRecommendedMods::InstallALoader
                 | MenuRecommendedMods::NotSupported,
+            )
+            | State::InstallPaper(
+                MenuInstallPaper::Loading { .. } | MenuInstallPaper::Loaded { .. },
             ) => {
                 should_return_to_mods_screen = true;
             }
@@ -364,7 +388,7 @@ impl Launcher {
             State::ModsDownload(menu) if menu.mods_download_in_progress.is_empty() => {
                 should_return_to_mods_screen = true;
             }
-            State::InstallPaper
+            State::InstallPaper(_)
             | State::ExportInstance(_)
             | State::InstallForge(_)
             | State::InstallJava
@@ -375,7 +399,6 @@ impl Launcher {
             | State::Create(_)
             | State::ManagePresets(_)
             | State::ModsDownload(_)
-            | State::ServerCreate(_)
             | State::GenericMessage(_)
             | State::AccountLoginProgress(_)
             | State::ImportModpack(_)
@@ -415,10 +438,18 @@ impl Launcher {
         )
     }
 
-    fn hide_submenu(&mut self) {
+    fn hide_submenu(&mut self) -> bool {
         if let State::EditMods(menu) = &mut self.state {
-            menu.submenu1_shown = false;
+            if menu.modal.is_some() {
+                menu.modal = None;
+                return true;
+            }
+            if menu.search.is_some() {
+                menu.search = None;
+                return true;
+            }
         }
+        false
     }
 
     fn key_change_selected_instance(&mut self, down: bool) -> Task<Message> {

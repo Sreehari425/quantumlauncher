@@ -5,17 +5,18 @@ use std::{
 
 use crate::json_profiles::ProfileJson;
 use ql_core::{
+    constants::DEFAULT_RAM_MB_FOR_INSTANCE,
     do_jobs,
     file_utils::{self, LAUNCHER_DIR},
     impl_3_errs_jri, info,
-    json::{AssetIndexMap, InstanceConfigJson, Manifest, VersionDetails},
+    json::{
+        instance_config::VersionInfo, AssetIndex, InstanceConfigJson, Manifest, VersionDetails,
+    },
     pt, DownloadFileError, DownloadProgress, IntoIoError, IntoJsonError, IoError, JsonError,
     ListEntry, RequestError,
 };
 use thiserror::Error;
 use tokio::sync::Mutex;
-
-use super::constants::DEFAULT_RAM_MB_FOR_INSTANCE;
 
 const DOWNLOAD_ERR_PREFIX: &str = "while creating instance:\n";
 
@@ -139,7 +140,7 @@ impl GameDownloader {
 
     pub async fn download_assets(&self) -> Result<(), DownloadError> {
         info!("Downloading assets");
-        let asset_index: AssetIndexMap =
+        let asset_index: AssetIndex =
             file_utils::download_file_to_json(&self.version_json.assetIndex.url, false).await?;
 
         let assets_dir = LAUNCHER_DIR.join("assets");
@@ -193,7 +194,7 @@ impl GameDownloader {
 
     async fn save_asset_index(
         &self,
-        asset_index: &AssetIndexMap,
+        asset_index: &AssetIndex,
         current_assets_dir: &Path,
     ) -> Result<(), DownloadError> {
         let assets_indexes_path = current_assets_dir.join("indexes");
@@ -297,18 +298,6 @@ impl GameDownloader {
         Ok(())
     }
 
-    pub async fn create_version_json(&self) -> Result<(), DownloadError> {
-        let json_file_path = self.instance_dir.join("details.json");
-
-        tokio::fs::write(
-            &json_file_path,
-            serde_json::to_string(&self.version_json).json_to()?,
-        )
-        .await
-        .path(json_file_path)?;
-        Ok(())
-    }
-
     pub async fn create_config_json(&self) -> Result<(), DownloadError> {
         #[allow(deprecated)]
         let config_json = InstanceConfigJson {
@@ -327,6 +316,10 @@ impl GameDownloader {
             java_args_mode: None,
             pre_launch_prefix_mode: None,
             custom_jar: None,
+            mod_type_info: None,
+            version_info: Some(VersionInfo {
+                is_special_lwjgl3: self.version_json.id.ends_with("-lwjgl3"),
+            }),
             main_class_override: None,
         };
         let config_json = serde_json::to_string(&config_json).json_to()?;

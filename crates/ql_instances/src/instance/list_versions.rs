@@ -12,14 +12,19 @@ use ql_core::{json::Manifest, JsonDownloadError, ListEntry};
 /// an error will be logged but not returned (for smoother user experience),
 /// and instead the official (inferior) old version list will be downloaded
 /// from Mojang.
-pub async fn list_versions() -> Result<Vec<ListEntry>, JsonDownloadError> {
-    Ok(Manifest::download()
-        .await?
-        .versions
-        .into_iter()
-        .map(|n| ListEntry {
-            name: n.id,
-            is_classic_server: false,
-        })
-        .collect())
+pub async fn list_versions() -> Result<(Vec<ListEntry>, String), JsonDownloadError> {
+    let manifest = Manifest::download().await?;
+    let latest = manifest.get_latest_release().unwrap().id.clone();
+
+    Ok((
+        manifest
+            .versions
+            .into_iter()
+            .map(|n| ListEntry {
+                name: n.id,
+                is_server: false,
+            })
+            .collect(),
+        latest,
+    ))
 }

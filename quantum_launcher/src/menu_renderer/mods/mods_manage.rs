@@ -1,10 +1,7 @@
-use iced::widget::tooltip::Position;
-use iced::{widget, Alignment, Length};
-use ql_core::{InstanceSelection, SelectedMod};
-
-use crate::menu_renderer::{select_box, subbutton_with_icon, FONT_MONO};
-use crate::state::ImageState;
-use crate::stylesheet::styles::{BORDER_RADIUS, BORDER_WIDTH};
+use crate::menu_renderer::{ctxbox, select_box, subbutton_with_icon, FONT_MONO};
+use crate::message_handler::ForgeKind;
+use crate::state::{ImageState, InstallPaperMessage, MenuEditModsModal};
+use crate::stylesheet::widgets::StyleButton;
 use crate::{
     icon_manager,
     menu_renderer::{back_button, back_to_launch_screen, button_with_icon, tooltip, Element},
@@ -15,6 +12,10 @@ use crate::{
     },
     stylesheet::{color::Color, styles::LauncherTheme},
 };
+use iced::widget::tooltip::Position;
+use iced::{widget, Alignment, Length};
+use ql_core::json::InstanceConfigJson;
+use ql_core::{InstanceSelection, SelectedMod};
 
 pub const MODS_SIDEBAR_WIDTH: u16 = 190;
 
@@ -24,6 +25,7 @@ impl MenuEditMods {
         selected_instance: &'a InstanceSelection,
         tick_timer: usize,
         images: &'a ImageState,
+        window_height: f32,
     ) -> Element<'a> {
         if let Some(progress) = &self.mod_update_progress {
             return widget::column!(widget::text("Updating mods").size(20), progress.view())
@@ -45,7 +47,7 @@ impl MenuEditMods {
                 ))
             )
             .into()
-        } else if self.submenu1_shown {
+        } else if let Some(MenuEditModsModal::Submenu) = &self.modal {
             let submenu = widget::column![
                 ctx_button("Export list as text")
                     .on_press(Message::ManageMods(ManageModsMessage::ExportMenuOpen)),
@@ -63,15 +65,42 @@ impl MenuEditMods {
                 menu_main,
                 widget::row![
                     widget::Space::with_width(MODS_SIDEBAR_WIDTH + 30),
-                    widget::column![
-                        widget::Space::with_height(40),
-                        widget::container(submenu).padding(10).width(200).style(
-                            |t: &LauncherTheme| t.style_container_round_box(
-                                BORDER_WIDTH,
-                                Color::Dark,
-                                BORDER_RADIUS
-                            )
+                    widget::column![widget::Space::with_height(40), ctxbox(submenu).width(200)]
+                ]
+            )
+            .into()
+        } else if let Some(MenuEditModsModal::RightClick(id, (x, y))) = &self.modal {
+            widget::stack!(
+                menu_main,
+                widget::column![
+                    widget::Space::with_height(y.clamp(0.0, window_height - 130.0)),
+                    widget::row![
+                        widget::Space::with_width(*x),
+                        ctxbox(
+                            widget::column![
+                                ctx_button("Toggle").on_press(Message::ManageMods(
+                                    ManageModsMessage::ToggleSelected
+                                )),
+                                ctx_button("Delete").on_press(Message::ManageMods(
+                                    ManageModsMessage::DeleteSelected
+                                )),
+                                ctx_button("Mod Details").on_press_maybe(
+                                    self.mods.mods.get(&id.get_index_str()).map(|info| {
+                                        Message::Multiple(vec![
+                                            Message::InstallMods(InstallModsMessage::Open),
+                                            Message::InstallMods(
+                                                InstallModsMessage::ChangeBackend(id.get_backend()),
+                                            ),
+                                            Message::InstallMods(InstallModsMessage::SearchInput(
+                                                info.name.clone(),
+                                            )),
+                                        ])
+                                    })
+                                ),
+                            ]
+                            .spacing(4)
                         )
+                        .width(200)
                     ]
                 ]
             )
@@ -88,16 +117,37 @@ impl MenuEditMods {
     ) -> widget::Scrollable<'a, Message, LauncherTheme> {
         widget::scrollable(
             widget::column!(
-                back_button().on_press(back_to_launch_screen(selected_instance, None)),
+                widget::row![
+                    back_button().on_press(back_to_launch_screen(
+                        Some(selected_instance.is_server()),
+                        None
+                    )),
+                    tooltip(
+                        button_with_icon(icon_manager::folder_with_size(14), "Open", 14)
+                            .on_press_with(|| {
+                                Message::CoreOpenPath(
+                                    selected_instance.get_dot_minecraft_path().join("mods"),
+                                )
+                            }),
+                        widget::text("Open Mods Folder").size(12),
+                        Position::Bottom
+                    )
+                ]
+                .spacing(5),
                 self.get_mod_installer_buttons(selected_instance),
                 widget::column!(
-                    button_with_icon(icon_manager::download_with_size(14), "Download Content", 15)
+                    button_with_icon(icon_manager::download_with_size(14), "Download Content", 14)
                         .on_press(Message::InstallMods(InstallModsMessage::Open)),
-                    button_with_icon(icon_manager::jar_file(), "Jarmod Patches", 15)
-                        .on_press(Message::ManageJarMods(ManageJarModsMessage::Open))
+                    button_with_icon(icon_manager::jar_file(), "Jarmod Patches", 14)
+                        .on_press(Message::ManageJarMods(ManageJarModsMessage::Open)),
+                    tooltip(
+                        button_with_icon(icon_manager::blank_file(), "Add File", 14)
+                            .on_press(Message::ManageMods(ManageModsMessage::AddFile(false))),
+                        widget::text("Includes mods and modpacks").size(12),
+                        Position::Bottom
+                    ),
                 )
                 .spacing(5),
-                Self::open_mod_folder_button(selected_instance),
                 self.get_mod_update_pane(tick_timer),
             )
             .padding(10)
@@ -172,10 +222,9 @@ impl MenuEditMods {
                     )
                     .spacing(5),
                     widget::row!(
-                        install_ldr("Forge")
-                            .on_press(Message::InstallForgeStart { is_neoforge: false }),
+                        install_ldr("Forge").on_press(Message::InstallForge(ForgeKind::Normal)),
                         install_ldr("NeoForge")
-                            .on_press(Message::InstallForgeStart { is_neoforge: true })
+                            .on_press(Message::InstallForge(ForgeKind::NeoForge))
                     )
                     .spacing(5),
                     install_ldr("OptiFine")
@@ -195,10 +244,9 @@ impl MenuEditMods {
                     )
                     .spacing(5),
                     widget::row!(
-                        install_ldr("Forge")
-                            .on_press(Message::InstallForgeStart { is_neoforge: false }),
+                        install_ldr("Forge").on_press(Message::InstallForge(ForgeKind::Normal)),
                         install_ldr("NeoForge")
-                            .on_press(Message::InstallForgeStart { is_neoforge: true })
+                            .on_press(Message::InstallForge(ForgeKind::NeoForge))
                     )
                     .spacing(5),
                     widget::row!(
@@ -206,48 +254,31 @@ impl MenuEditMods {
                         widget::button("Spigot").width(97)
                     )
                     .spacing(5),
-                    install_ldr("Paper").on_press(Message::InstallPaperStart),
+                    install_ldr("Paper")
+                        .on_press(Message::InstallPaper(InstallPaperMessage::ScreenOpen)),
                 )
                 .spacing(5)
                 .into(),
             },
 
-            "Forge" => widget::column!(
-                tooltip(
-                    widget::button(widget::text("Install OptiFine with Forge").size(14)),
-                    "Coming in a future launcher version...",
-                    Position::Bottom
-                ),
-                Self::get_uninstall_panel(
-                    &self.config.mod_type,
-                    Message::UninstallLoaderForgeStart,
+            "Forge" => widget::Column::new()
+                .push_maybe(
+                    (!selected_instance.is_server())
+                        .then(|| Self::get_optifine_install_button(&self.config)),
                 )
-            )
-            .spacing(5)
-            .into(),
+                .push(Self::get_uninstall_panel(&self.config.mod_type))
+                .spacing(5)
+                .into(),
             "OptiFine" => widget::column!(
-                tooltip(
-                    widget::button(widget::text("Install Forge with OptiFine").size(14)),
-                    "Coming in a future launcher version...",
-                    Position::Bottom
-                ),
-                Self::get_uninstall_panel(
-                    &self.config.mod_type,
-                    Message::UninstallLoaderOptiFineStart,
-                ),
+                widget::button(widget::text("Install Forge with OptiFine").size(14))
+                    .on_press(Message::InstallForge(ForgeKind::OptiFine)),
+                Self::get_uninstall_panel(&self.config.mod_type,),
             )
             .spacing(5)
             .into(),
 
-            "NeoForge" => {
-                Self::get_uninstall_panel(&self.config.mod_type, Message::UninstallLoaderForgeStart)
-            }
-            "Fabric" | "Quilt" => Self::get_uninstall_panel(
-                &self.config.mod_type,
-                Message::UninstallLoaderFabricStart,
-            ),
-            "Paper" => {
-                Self::get_uninstall_panel(&self.config.mod_type, Message::UninstallLoaderPaperStart)
+            "NeoForge" | "Fabric" | "Quilt" | "Paper" => {
+                Self::get_uninstall_panel(&self.config.mod_type).into()
             }
 
             _ => {
@@ -256,32 +287,51 @@ impl MenuEditMods {
         }
     }
 
-    fn get_uninstall_panel(mod_type: &'_ str, uninstall_loader_message: Message) -> Element<'_> {
+    fn get_optifine_install_button(
+        config: &InstanceConfigJson,
+    ) -> widget::Button<'_, Message, LauncherTheme> {
+        if let Some(optifine) = config
+            .mod_type_info
+            .as_ref()
+            .and_then(|n| n.optifine_jar.as_deref())
+        {
+            widget::button(
+                widget::row![
+                    icon_manager::delete_with_size(14),
+                    widget::text("Uninstall OptiFine").size(14)
+                ]
+                .align_y(iced::alignment::Vertical::Center)
+                .spacing(11)
+                .padding(2),
+            )
+            .on_press_with(|| {
+                Message::UninstallLoaderConfirm(
+                    Box::new(Message::ManageMods(ManageModsMessage::DeleteOptiforge(
+                        optifine.to_owned(),
+                    ))),
+                    "OptiFine".to_owned(),
+                )
+            })
+        } else {
+            widget::button(widget::text("Install OptiFine with Forge").size(14))
+                .on_press(Message::InstallOptifine(InstallOptifineMessage::ScreenOpen))
+        }
+    }
+
+    fn get_uninstall_panel(mod_type: &'_ str) -> widget::Button<'_, Message, LauncherTheme> {
         widget::button(
             widget::row![
                 icon_manager::delete_with_size(14),
-                widget::text!("Uninstall {mod_type}").size(15)
+                widget::text!("Uninstall {mod_type}").size(14)
             ]
             .align_y(iced::alignment::Vertical::Center)
             .spacing(11)
-            .padding(3),
+            .padding(2),
         )
         .on_press(Message::UninstallLoaderConfirm(
-            Box::new(uninstall_loader_message),
+            Box::new(Message::UninstallLoaderStart),
             mod_type.to_owned(),
         ))
-        .into()
-    }
-
-    fn open_mod_folder_button(selected_instance: &'_ InstanceSelection) -> Element<'_> {
-        let path = {
-            let path = selected_instance.get_dot_minecraft_path().join("mods");
-            path.exists().then_some(path)
-        };
-
-        button_with_icon(icon_manager::folder_with_size(14), "Open Mods Folder", 15)
-            .on_press_maybe(path.map(Message::CoreOpenPath))
-            .into()
     }
 
     fn get_mod_list<'a>(&'a self, images: &'a ImageState) -> Element<'a> {
@@ -314,6 +364,7 @@ impl MenuEditMods {
                     )
                     .push(
                         widget::row![
+                            // Hamburger dropdown
                             widget::button(
                                 widget::row![icon_manager::three_lines_with_size(12)]
                                     .align_y(iced::alignment::Vertical::Center)
@@ -322,19 +373,33 @@ impl MenuEditMods {
                             .style(|t: &LauncherTheme, s| {
                                 t.style_button(s, crate::stylesheet::widgets::StyleButton::RoundDark)
                             })
-                            .on_press(Message::ManageMods(ManageModsMessage::ToggleSubmenu1)),
-                            tooltip(
-                                widget::button(
-                                    widget::row![icon_manager::blank_file_with_size(12)]
-                                        .align_y(iced::alignment::Vertical::Center)
-                                        .padding(1),
-                                )
-                                .style(|t: &LauncherTheme, s| {
-                                    t.style_button(s, crate::stylesheet::widgets::StyleButton::RoundDark)
-                                }).on_press(Message::ManageMods(ManageModsMessage::AddFile(false))),
-                                widget::text("Import mod or modpack").size(12),
-                                Position::Bottom
+                            .on_press(Message::ManageMods(ManageModsMessage::SetModal(self.modal.is_none().then_some(MenuEditModsModal::Submenu)))),
+
+                            // Search button
+                            widget::button(
+                                widget::row![icon_manager::three_lines_with_size(12)]
+                                    .align_y(iced::alignment::Vertical::Center)
+                                    .padding(1),
+                            )
+                            .style(|t: &LauncherTheme, s| {
+                                t.style_button(s, if self.search.is_some() {
+                                    StyleButton::Round
+                                } else {
+                                    StyleButton::RoundDark
+                                })
+                            }).on_press(
+                                if self.search.is_some() {
+                                    Message::ManageMods(ManageModsMessage::SetSearch(None))
+                                } else {
+                                    Message::Multiple(vec![
+                                        Message::ManageMods(ManageModsMessage::SetSearch(
+                                            Some(String::new())
+                                        )),
+                                        Message::CoreFocusNext
+                                    ])
+                                }
                             ),
+
                             subbutton_with_icon(icon_manager::delete_with_size(12), "Delete")
                             .on_press_maybe((!self.selected_mods.is_empty()).then_some(Message::ManageMods(ManageModsMessage::DeleteSelected))),
                             subbutton_with_icon(icon_manager::toggle_off_with_size(12), "Toggle")
@@ -354,6 +419,13 @@ impl MenuEditMods {
                     } else {
                         widget::text!("{} mods selected", self.selected_mods.len())
                     }.size(12).style(|t: &LauncherTheme| t.style_text(Color::Mid)))
+                    .push_maybe(if let Some(search) = &self.search {
+                        Some(widget::text_input("Search...", search).size(14).on_input(|msg|
+                            Message::ManageMods(ManageModsMessage::SetSearch(Some(msg)))
+                        ))
+                    } else {
+                        None
+                    })
                     .padding(10)
                     .spacing(10),
                 widget::responsive(|s| self.get_mod_list_contents(s, images)),
@@ -372,6 +444,12 @@ impl MenuEditMods {
         widget::scrollable(widget::column({
             self.sorted_mods_list
                 .iter()
+                .filter(|n| {
+                    let Some(search) = &self.search else {
+                        return true;
+                    };
+                    n.name().to_lowercase().contains(&search.to_lowercase())
+                })
                 .map(|mod_list_entry| self.get_mod_entry(mod_list_entry, size, images))
         }))
         .direction(widget::scrollable::Direction::Both {
@@ -414,7 +492,8 @@ impl MenuEditMods {
                     });
 
                     let image: Element = if let Some(url) = &config.icon_url {
-                        images.view(url, Some(ICON_SIZE), no_icon)
+                        // SVGs cause absurd lag in large lists of mods
+                        images.view_bitmap(url, Some(ICON_SIZE), no_icon)
                     } else {
                         no_icon
                     };
@@ -457,7 +536,7 @@ impl MenuEditMods {
 
                             let measured: f32 = (config.installed_version.len() as f32) * 7.2;
                             let occupied =
-                                measured + self.width_name + PADDING.left + PADDING.right + 20.0;
+                                measured + self.width_name + PADDING.left + PADDING.right + 100.0;
                             let space = size.width - occupied;
                             (space > -10.0).then_some(widget::Space::with_width(space))
                         })
@@ -472,16 +551,27 @@ impl MenuEditMods {
                     )
                     .padding(0);
 
-                    if is_enabled {
+                    let checkbox: Element = if is_enabled {
                         checkbox.into()
                     } else {
-                        tooltip(
-                            checkbox,
-                            "Disabled",
-                            widget::tooltip::Position::FollowCursor,
-                        )
+                        tooltip(checkbox, "Disabled", Position::FollowCursor).into()
+                    };
+
+                    let rightclick = Message::ManageMods(ManageModsMessage::RightClick(id.clone()));
+
+                    widget::mouse_area(checkbox)
+                        .on_right_press(if self.selected_mods.len() > 1 && self.is_selected(&id) {
+                            rightclick
+                        } else {
+                            Message::Multiple(vec![
+                                Message::ManageMods(ManageModsMessage::ToggleCheckbox(
+                                    config.name.clone(),
+                                    Some(id.clone()),
+                                )),
+                                rightclick,
+                            ])
+                        })
                         .into()
-                    }
                 } else {
                     widget::row![
                         widget::text("(dependency) ")
@@ -530,20 +620,15 @@ impl MenuEditMods {
                 if is_enabled {
                     checkbox.into()
                 } else {
-                    tooltip(
-                        checkbox,
-                        "Disabled",
-                        widget::tooltip::Position::FollowCursor,
-                    )
-                    .into()
+                    tooltip(checkbox, "Disabled", Position::FollowCursor).into()
                 }
             }
         }
     }
 }
 
-fn install_ldr(fabric: &str) -> widget::Button<'_, Message, LauncherTheme> {
-    widget::button(fabric).width(97)
+fn install_ldr(loader: &str) -> widget::Button<'_, Message, LauncherTheme> {
+    widget::button(loader).width(97)
 }
 
 fn ctx_button(e: &'_ str) -> widget::Button<'_, Message, LauncherTheme> {

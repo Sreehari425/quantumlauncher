@@ -1,9 +1,8 @@
 use std::{
     collections::HashSet,
     ffi::OsStr,
-    fs::Metadata,
     io::{Cursor, Write},
-    path::{Path, PathBuf},
+    path::{Path, PathBuf, MAIN_SEPARATOR},
     sync::LazyLock,
 };
 
@@ -11,14 +10,13 @@ use futures::StreamExt;
 use reqwest::header::InvalidHeaderValue;
 use serde::de::DeserializeOwned;
 use thiserror::Error;
-use tokio::fs::DirEntry;
 use tokio_util::io::StreamReader;
 use walkdir::WalkDir;
 use zip::{write::FileOptions, ZipArchive, ZipWriter};
 
 use crate::{
     error::{DownloadFileError, IoError},
-    info_no_log, retry, IntoIoError, IntoJsonError, JsonDownloadError, CLIENT, WEBSITE,
+    retry, IntoIoError, IntoJsonError, JsonDownloadError, CLIENT, WEBSITE,
 };
 
 /// The path to the QuantumLauncher root folder.
@@ -52,7 +50,21 @@ pub static LAUNCHER_DIR: LazyLock<PathBuf> = LazyLock::new(|| get_launcher_dir()
 /// - if the launcher directory could not be created (permissions issue)
 #[allow(clippy::doc_markdown)]
 pub fn get_launcher_dir() -> Result<PathBuf, IoError> {
-    let launcher_directory = if let Some(n) = check_qlportable_file() {
+    let launcher_directory = if let Ok(n) = std::env::var("QL_DIR") {
+        #[allow(unused_mut)]
+        if let Ok(mut n) = std::fs::canonicalize(&n) {
+            #[cfg(target_os = "windows")]
+            {
+                let s = n.to_string_lossy();
+                if let Some(s) = s.strip_prefix("\\\\?\\") {
+                    n = PathBuf::from(s);
+                }
+            }
+            n
+        } else {
+            PathBuf::from(n)
+        }
+    } else if let Some(n) = check_qlportable_file() {
         strip_verbatim_prefix(&std::fs::canonicalize(&n.path).unwrap_or(n.path))
     } else {
         dirs::data_dir()
@@ -433,52 +445,6 @@ pub fn create_symlink(src: &Path, dest: &Path) -> Result<(), IoError> {
     }
 }
 
-pub async fn clean_dir(path: &str) -> Result<(), IoError> {
-    const SIZE_LIMIT_BYTES: u64 = 100 * 1024 * 1024; // 100 MB
-
-    let dir = get_launcher_dir()?.join(path);
-    if !dir.is_dir() {
-        tokio::fs::create_dir_all(&dir).await.path(dir)?;
-        return Ok(());
-    }
-    let mut total_size = 0;
-    let mut files: Vec<(DirEntry, Metadata)> = Vec::new();
-
-    let mut read_dir = tokio::fs::read_dir(&dir).await.dir(&dir)?;
-
-    while let Some(entry) = read_dir.next_entry().await.dir(&dir)? {
-        let metadata = entry.metadata().await.path(entry.path())?;
-        if metadata.is_file() {
-            total_size += metadata.len();
-            files.push((entry, metadata));
-        }
-    }
-
-    if total_size <= SIZE_LIMIT_BYTES {
-        return Ok(());
-    }
-
-    info_no_log!(
-        "Exceeded {} MB, cleaning up {dir:?}",
-        SIZE_LIMIT_BYTES / (1024 * 1024)
-    );
-    files.sort_unstable_by_key(|(_, metadata)| {
-        metadata.modified().unwrap_or(std::time::SystemTime::now())
-    });
-
-    for (file, metadata) in files {
-        let path = file.path();
-        tokio::fs::remove_file(&path).await.path(path)?;
-        total_size -= metadata.len();
-
-        if total_size <= SIZE_LIMIT_BYTES {
-            break;
-        }
-    }
-
-    Ok(())
-}
-
 /// Recursively copies the contents of
 /// the `src` dir to the `dst` dir.
 ///
@@ -680,7 +646,11 @@ pub fn extract_zip_archive<R: std::io::Read + std::io::Seek, P: AsRef<Path>>(
 pub async fn zip_directory_to_bytes<P: AsRef<Path>>(dir: P) -> std::io::Result<Vec<u8>> {
     let mut buffer = Cursor::new(Vec::new());
     let mut zip = ZipWriter::new(&mut buffer);
-    let options = FileOptions::<()>::default().unix_permissions(0o755);
+
+    let file_options = FileOptions::<()>::default().unix_permissions(0o755);
+    let dir_options = FileOptions::<()>::default()
+        .unix_permissions(0o755)
+        .compression_method(zip::CompressionMethod::Stored);
 
     let dir = dir.as_ref();
     let base_path = dir;
@@ -689,13 +659,23 @@ pub async fn zip_directory_to_bytes<P: AsRef<Path>>(dir: P) -> std::io::Result<V
         let entry = entry?;
         let path = entry.path();
 
-        if path.is_file() {
-            let relative_path = path
-                .strip_prefix(base_path)
-                .map_err(std::io::Error::other)?;
-            let name_in_zip = relative_path.to_string_lossy().replace('\\', "/"); // For Windows compatibility
+        let relative_path = path
+            .strip_prefix(base_path)
+            .map_err(std::io::Error::other)?;
+        let mut name_in_zip = relative_path.to_string_lossy().to_string();
+        // .replace('\\', "/");
 
-            zip.start_file(name_in_zip, options)?;
+        if path.is_dir() {
+            // Add directory entries with trailing slash (required for Java jar loading)
+            if !name_in_zip.is_empty() {
+                if !name_in_zip.ends_with(MAIN_SEPARATOR) {
+                    name_in_zip.push(MAIN_SEPARATOR);
+                }
+                zip.start_file(name_in_zip, dir_options)?;
+            }
+        } else {
+            // Add file
+            zip.start_file(name_in_zip, file_options)?;
             let bytes = tokio::fs::read(path)
                 .await
                 .path(path)
@@ -708,10 +688,11 @@ pub async fn zip_directory_to_bytes<P: AsRef<Path>>(dir: P) -> std::io::Result<V
     Ok(buffer.into_inner())
 }
 
-/// Used for moving the launcher dir from .config to .local
+/// Used for moving the launcher dir from `.config` to `.local`.
 /// Gets the old location of the launcher dir using the same methods as before the
-/// migration so if the user have overwriten it using `$XGD_CONFIG_DIR` we dont lose track of it
+/// migration so if the user have overwritten it using `$XGD_CONFIG_DIR` we don't lose track of it.
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+#[must_use]
 pub fn migration_legacy_launcher_dir() -> Option<PathBuf> {
     if check_qlportable_file().is_some() {
         return None;
@@ -719,9 +700,10 @@ pub fn migration_legacy_launcher_dir() -> Option<PathBuf> {
     Some(dirs::config_dir()?.join("QuantumLauncher"))
 }
 
-/// used for moving the launcher dir from .config to .local
-/// same as `get_launcher_dir` but doesnt create the folder if not found.
+/// Used for moving the launcher dir from `.config` to `.local`.
+/// Same as `get_launcher_dir` but doesn't create the folder if not found.
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+#[must_use]
 pub fn migration_launcher_dir() -> Option<PathBuf> {
     if check_qlportable_file().is_some() {
         return None;

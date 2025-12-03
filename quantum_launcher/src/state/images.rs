@@ -35,10 +35,10 @@ impl ImageState {
         let mut commands = Vec::new();
 
         let mut images_to_load = self.to_load.lock().unwrap();
+        images_to_load.retain(|n, _| !n.is_empty());
 
         for (url, is_icon) in images_to_load.iter() {
-            if !self.downloads_in_progress.contains(url) {
-                self.downloads_in_progress.insert(url.to_owned());
+            if self.downloads_in_progress.insert(url.to_owned()) {
                 commands.push(Task::perform(
                     ql_mod_manager::store::download_image(url.to_owned(), *is_icon),
                     Message::CoreImageDownloaded,
@@ -65,6 +65,28 @@ impl ImageState {
             } else {
                 e.into()
             }
+        } else {
+            let mut to_load = self.to_load.lock().unwrap();
+            to_load.insert(url.to_owned(), size.is_some());
+            fallback
+        }
+    }
+
+    pub fn view_bitmap<'a>(
+        &self,
+        url: &str,
+        size: Option<u16>,
+        fallback: Element<'a>,
+    ) -> Element<'a> {
+        if let Some(handle) = self.bitmap.get(url) {
+            let e = widget::image(handle.clone());
+            if let Some(s) = size {
+                e.width(s).height(s).into()
+            } else {
+                e.into()
+            }
+        } else if self.svg.contains_key(url) {
+            fallback
         } else {
             let mut to_load = self.to_load.lock().unwrap();
             to_load.insert(url.to_owned(), size.is_some());

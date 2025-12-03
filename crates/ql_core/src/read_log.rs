@@ -13,7 +13,10 @@ use tokio::{
     process::{Child, ChildStderr, ChildStdout},
 };
 
-use ql_core::{err, json::VersionDetails, IoError, JsonError, JsonFileError};
+use crate::{
+    err, json::VersionDetails, InstanceSelection, IoError, JsonError, JsonFileError,
+    REDACT_SENSITIVE_INFO,
+};
 
 /// Reads log output from the given instance
 /// and sends it to the given sender.
@@ -40,14 +43,14 @@ use ql_core::{err, json::VersionDetails, IoError, JsonError, JsonFileError};
 ///   disconnecting the channel
 /// - Tokio *somehow* fails to read the `stdout` or `stderr`
 #[allow(clippy::missing_panics_doc)]
-pub async fn read_logs(
+pub(crate) async fn read_logs(
     stdout: ChildStdout,
     stderr: ChildStderr,
     child: Arc<Mutex<Child>>,
     sender: Option<Sender<LogLine>>,
-    instance_name: String,
+    instance: InstanceSelection,
     censors: Vec<String>,
-) -> Result<(ExitStatus, String), ReadError> {
+) -> Result<(ExitStatus, InstanceSelection, Option<Diagnostic>), ReadError> {
     // TODO: Use the "newfangled" approach of the Modrinth launcher:
     // https://github.com/modrinth/code/blob/main/packages/app-lib/src/state/process.rs#L208
     //
@@ -56,39 +59,37 @@ pub async fn read_logs(
     // Also, the Modrinth app is GNU GPLv3 so I guess it's
     // safe for me to take some code.
 
-    let uses_xml = is_xml(&instance_name).await?;
+    let uses_xml = !instance.is_server() && is_xml(instance.get_name()).await?;
 
     let mut stdout_reader = BufReader::new(stdout).lines();
     let mut stderr_reader = BufReader::new(stderr).lines();
 
     let mut xml_cache = String::new();
+    let mut log_raw = Vec::new();
 
     let mut has_errored = false;
 
     loop {
-        let status = {
-            // If the child has failed to lock
-            // (because the `Mutex` was poisoned)
-            // then we know something else has panicked,
-            // so might as well panic too.
-            //
-            // WTF: (this is a metaphor for real life lol)
+        {
             let mut child = child.lock().unwrap();
-            child.try_wait()
+            if let Ok(Some(status)) = child.try_wait() {
+                // Game has exited.
+                let diag = Diagnostic::generate_from_log(&log_raw);
+                return Ok((status, instance, diag));
+            }
         };
-        if let Ok(Some(status)) = status {
-            // Game has exited.
-            return Ok((status, instance_name));
-        }
 
         tokio::select! {
             line = stdout_reader.next_line() => {
                 if let Some(mut line) = line? {
                     line = censor(&line, &censors);
                     if uses_xml {
-                        xml_parse(sender.as_ref(), &mut xml_cache, &line, &mut has_errored);
+                        xml_parse(sender.as_ref(), &mut xml_cache, &line, &mut has_errored, &mut log_raw);
                     } else {
-                        line.push('\n');
+                        if !line.ends_with('\n') {
+                            line.push('\n');
+                        }
+                        log_raw.push(line.clone());
                         send(sender.as_ref(), LogLine::Message(line));
                     }
                 } // else EOF
@@ -96,7 +97,9 @@ pub async fn read_logs(
             line = stderr_reader.next_line() => {
                 if let Some(mut line) = line? {
                     line = censor(&line, &censors);
-                    line.push('\n');
+                    if !line.ends_with('\n') {
+                        line.push('\n');
+                    }
                     send(sender.as_ref(), LogLine::Error(line));
                 }
             }
@@ -105,9 +108,13 @@ pub async fn read_logs(
 }
 
 fn censor(input: &str, censors: &[String]) -> String {
-    censors.iter().fold(input.to_string(), |acc, censor| {
-        acc.replace(censor, "[REDACTED]")
-    })
+    if *REDACT_SENSITIVE_INFO.lock().unwrap() {
+        censors.iter().fold(input.to_string(), |acc, censor| {
+            acc.replace(censor, "[REDACTED]")
+        })
+    } else {
+        input.to_string()
+    }
 }
 
 fn send(sender: Option<&Sender<LogLine>>, msg: LogLine) {
@@ -132,6 +139,7 @@ fn xml_parse(
     xml_cache: &mut String,
     line: &str,
     has_errored: &mut bool,
+    log_raw: &mut Vec<String>,
 ) {
     if !line.starts_with("  </log4j:Event>") {
         xml_cache.push_str(line);
@@ -146,6 +154,7 @@ fn xml_parse(
         Some(start) if start > 0 => {
             let other_text = xml[..start].trim();
             if !other_text.is_empty() {
+                log_raw.push(other_text.to_owned());
                 send(sender, LogLine::Message(other_text.to_owned()));
             }
             &xml[start..]
@@ -153,34 +162,30 @@ fn xml_parse(
         _ => &xml,
     };
 
-    if let Ok(log_event) = quick_xml::de::from_str(text) {
-        send(sender, LogLine::Info(log_event));
-        xml_cache.clear();
-    } else {
+    match quick_xml::de::from_str::<LogEvent>(text).or_else(|_| {
         let no_unicode = any_ascii::any_ascii(text);
-        match quick_xml::de::from_str(&no_unicode) {
-            Ok(log_event) => {
-                send(sender, LogLine::Info(log_event));
-                xml_cache.clear();
-            }
-            Err(err) => {
-                // Prevents HORRIBLE log spam
-                // I once had a user complain about a 35 GB logs folder
-                // because this thing printed the same error again and again
-                if !*has_errored {
-                    err!("Could not parse XML: {err}\n{text}\n");
-                    *has_errored = true;
-                }
+        quick_xml::de::from_str::<LogEvent>(&no_unicode)
+    }) {
+        Ok(mut log_event) => {
+            log_event.fix_tabs();
+            log_raw.push(log_event.to_string());
+            send(sender, LogLine::Info(log_event));
+            xml_cache.clear();
+        }
+        Err(err) => {
+            // Prevents HORRIBLE log spam
+            // I once had a user complain about a 35 GB logs folder
+            // because this thing printed the same error again and again
+            if !*has_errored {
+                err!("Could not parse XML: {err}\n{text}\n");
+                *has_errored = true;
             }
         }
     }
 }
 
 async fn is_xml(instance_name: &str) -> Result<bool, ReadError> {
-    let json = VersionDetails::load(&ql_core::InstanceSelection::Instance(
-        instance_name.to_owned(),
-    ))
-    .await?;
+    let json = VersionDetails::load(&InstanceSelection::Instance(instance_name.to_owned())).await?;
 
     Ok(json.logging.is_some())
 }
@@ -231,6 +236,8 @@ pub enum ReadError {
     IoError(#[from] IoError),
     #[error("{READ_ERR_PREFIX}{0}")]
     Json(#[from] JsonError),
+    #[error("{0}")]
+    Diagnostic(#[from] Diagnostic),
 }
 
 impl From<JsonFileError> for ReadError {
@@ -238,6 +245,37 @@ impl From<JsonFileError> for ReadError {
         match value {
             JsonFileError::SerdeError(err) => err.into(),
             JsonFileError::Io(err) => err.into(),
+        }
+    }
+}
+
+#[derive(Debug, Error, Clone)]
+pub enum Diagnostic {
+    #[error("xrandr isn't installed on your system!\nInstall it from your package manager (apt, dnf, pacman, pkg, etc.)")]
+    XrandrNotInstalled,
+    #[error("Not enough stack size allocated! Add this to Java arguments:\n-Dorg.lwjgl.system.stackSize=256")]
+    OutOfStackSpace,
+}
+
+impl Diagnostic {
+    pub fn generate_from_log(log: &[String]) -> Option<Diagnostic> {
+        fn c(log: &[String], msg: &str) -> bool {
+            log.iter().any(|n| n.contains(msg))
+        }
+
+        if c(log, "out of stack space")
+            || c(log, "OutOfMemoryError: unable to create new native thread")
+        {
+            Some(Diagnostic::OutOfStackSpace)
+        } else if c(log, "java.lang.ArrayIndexOutOfBoundsException")
+            && c(
+                log,
+                "org.lwjgl.opengl.LinuxDisplay.getAvailableDisplayModes",
+            )
+        {
+            Some(Diagnostic::XrandrNotInstalled)
+        } else {
+            None
         }
     }
 }
@@ -313,6 +351,12 @@ impl LogEvent {
             _ = writeln!(out, "\nCaused by {throwable}");
         }
         out
+    }
+
+    pub fn fix_tabs(&mut self) {
+        if let Some(message) = &mut self.message {
+            *message = message.replace('\t', "\n\t");
+        }
     }
 }
 

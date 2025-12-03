@@ -9,7 +9,7 @@
 //! - Interacting with Modrinth and Curseforge API to
 //!   search, install, uninstall and update mods.
 //! - Packaging mods into single-file presets
-//!   (see [`PresetJson`] for more info)
+//!   (see [`Preset`] for more info)
 //! ## Installing and uninstalling:
 //! - Fabric
 //! - Forge
@@ -18,9 +18,9 @@
 //! - NeoForge
 //! - Paper (for servers)
 
-#![allow(clippy::missing_errors_doc)]
-#![allow(clippy::doc_markdown)]
 #![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
 
 /// Installers and Uninstallers for loaders (Fabric/Forge/Optifine/Quilt/Paper).
 pub mod loaders;

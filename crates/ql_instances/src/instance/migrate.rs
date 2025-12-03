@@ -4,7 +4,8 @@ use std::{
 };
 
 use ql_core::{
-    info, json::version::LibraryDownloads, IntoIoError, CLASSPATH_SEPARATOR, LAUNCHER_VERSION_NAME,
+    info, json::version::LibraryDownloads, IntoIoError, CLASSPATH_SEPARATOR, LAUNCHER_DIR,
+    LAUNCHER_VERSION_NAME,
 };
 
 use crate::{download::GameDownloader, LAUNCHER_VERSION};
@@ -20,6 +21,18 @@ impl GameLauncher {
         self.migrate_natives(&version).await?;
         self.migrate_classpath_to_relative(&version).await?;
 
+        if version <= ver(0, 4, 2)
+            && (cfg!(target_os = "windows") || cfg!(target_os = "macos"))
+            && self.version_json.uses_java_8()
+        {
+            // Mojang sneakily updated their Java 8 to fix certs.
+            // Let's redownload it.
+            let java_dir = LAUNCHER_DIR.join("java_installs/java_8");
+            if java_dir.is_dir() {
+                tokio::fs::remove_dir_all(&java_dir).await.path(&java_dir)?;
+            }
+        }
+
         Ok(())
     }
 
@@ -29,11 +42,8 @@ impl GameLauncher {
     /// You can compare it with [`LAUNCHER_VERSION`] to
     /// see if the user upgraded to a new version.
     ///
-    /// Note: after this call, the old version is only
-    /// in-memory in the return value.
-    /// The version file will have been updated.
-    ///
-    /// Essentially, you can only call this once.
+    /// Note: **you can only call this once**
+    /// before the version value gets overwritten.
     async fn migrate_get_version(&self) -> Result<semver::Version, GameLaunchError> {
         let launcher_version_path = self.instance_dir.join("launcher_version.txt");
         let mut version = if launcher_version_path.exists() {
@@ -62,14 +72,7 @@ impl GameLauncher {
 
     /// Download missing native libraries (affects launcher version 0.1 and 0.2)
     async fn migrate_natives(&self, version: &semver::Version) -> Result<(), GameLaunchError> {
-        let v0_3 = semver::Version {
-            major: 0,
-            minor: 3,
-            patch: 0,
-            pre: semver::Prerelease::EMPTY,
-            build: semver::BuildMetadata::EMPTY,
-        };
-        if version < &v0_3 {
+        if version < &ver(0, 3, 0) {
             self.migrate_download_missing_native_libs().await?;
         }
         Ok(())
@@ -79,13 +82,7 @@ impl GameLauncher {
         &self,
         version: &semver::Version,
     ) -> Result<(), GameLaunchError> {
-        let v0_4_0 = semver::Version {
-            major: 0,
-            minor: 4,
-            patch: 0,
-            pre: semver::Prerelease::EMPTY,
-            build: semver::BuildMetadata::EMPTY,
-        };
+        let v0_4_0 = ver(0, 4, 0);
 
         let c_path = self.instance_dir.join("forge/classpath.txt");
         if !c_path.exists() {
@@ -141,7 +138,7 @@ impl GameLauncher {
         info!("Downloading missing native libraries");
 
         for library in &self.version_json.libraries {
-            if !GameDownloader::download_libraries_library_is_allowed(library) {
+            if !library.is_allowed() {
                 continue;
             }
 
@@ -259,4 +256,14 @@ fn classpath_v0_3_1_to_v0_4(input: &str) -> String {
     }
 
     parts.join(":")
+}
+
+const fn ver(major: u64, minor: u64, patch: u64) -> semver::Version {
+    semver::Version {
+        major,
+        minor,
+        patch,
+        pre: semver::Prerelease::EMPTY,
+        build: semver::BuildMetadata::EMPTY,
+    }
 }

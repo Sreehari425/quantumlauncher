@@ -28,6 +28,8 @@ impl Manifest {
     /// # Errors
     /// Returns an error if either file cannot be downloaded or parsed into JSON.
     pub async fn download() -> Result<Manifest, JsonDownloadError> {
+        const LAST_BETTERJSONS: &str = "25w44a";
+
         // An out-of-date but curated manifest
         const OLDER_VERSIONS_JSON: &str =
             "https://mcphackers.org/BetterJSONs/version_manifest_v2.json";
@@ -52,11 +54,11 @@ impl Manifest {
         // Removes newer versions from out-of-date manifest
         // if it ever gets updated, to not mess up the list.
         older_manifest.versions =
-            exclude_versions_after(&older_manifest.versions, |n| n.id == "25w14craftmine");
+            exclude_versions_after(&older_manifest.versions, |n| n.id == LAST_BETTERJSONS);
         // Add newer versions (that lack fixes/polish) to the manifest
         older_manifest.versions.splice(
             0..0,
-            include_versions_after(&newer_manifest.versions, |n| n.id == "25w14craftmine"),
+            include_versions_after(&newer_manifest.versions, |n| n.id == LAST_BETTERJSONS),
         );
 
         Ok(older_manifest)
