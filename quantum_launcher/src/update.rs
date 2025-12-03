@@ -460,9 +460,6 @@ impl Launcher {
                     }
                 }
             }
-            Message::LoadSaves(_instance_name) => {
-                // FIXME: This message is currently unused - loading is triggered by tab change
-            }
             Message::SavesLoaded(instance_name, result) => {
                 match result {
                     Ok(saves) => {
@@ -474,6 +471,7 @@ impl Launcher {
                         self.saves_cache.insert(instance_name, Vec::new());
                     }
                 }
+            }
             Message::CoreFocusNext => {
                 return iced::widget::focus_next();
             }

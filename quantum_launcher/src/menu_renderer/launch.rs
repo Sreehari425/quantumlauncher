@@ -1,8 +1,8 @@
 use iced::advanced::text::Wrapping;
 use iced::keyboard::Modifiers;
-use iced::widget::tooltip::Position;
-use iced::{widget, Length,Padding};
 use iced::widget::image::Handle;
+use iced::widget::tooltip::Position;
+use iced::{widget, Alignment, Length, Padding};
 use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
 
 use crate::menu_renderer::underline;
@@ -475,7 +475,7 @@ impl Launcher {
                 return widget::image(handle).width(32).height(32).into();
             }
         }
-        
+
         // Fallback to folder icon
         icon_manager::folder().into()
     }
@@ -548,12 +548,19 @@ impl Launcher {
                 .collect();
 
             let saves_grid = widget::scrollable(widget::column(saves_list).spacing(2))
+                .style(|t: &LauncherTheme, s| t.style_scrollable_flat_dark(s))
                 .width(Length::Fill)
                 .height(Length::Fill);
 
+            let len = saves.len();
+
             widget::column![
                 widget::row![
-                    widget::text(format!("Found {} saves", saves.len())).size(16),
+                    widget::text(format!(
+                        "Found {len} save{}",
+                        if len < 2 { "" } else { "s" }
+                    ))
+                    .size(20),
                     widget::horizontal_space(),
                     button_with_icon(icon_manager::folder(), "Open Saves Folder", 14).on_press(
                         Message::CoreOpenPath(match selected_instance {
@@ -564,6 +571,7 @@ impl Launcher {
                         })
                     )
                 ]
+                .align_y(Alignment::Center)
                 .padding(10)
                 .spacing(10),
                 widget::horizontal_rule(1),
@@ -616,15 +624,20 @@ fn get_sidebar_new_button(menu: &MenuLaunch) -> widget::Button<'_, Message, Laun
 }
 
 fn get_tab_selector<'a>(selected_instance_s: Option<&'a str>, menu: &'a MenuLaunch) -> Element<'a> {
-    let tab_bar = widget::row(
-        [
+    let tabs: &[LaunchTabId] = if menu.is_viewing_server {
+        &[LaunchTabId::Buttons, LaunchTabId::Edit, LaunchTabId::Log]
+    } else {
+        &[
             LaunchTabId::Buttons,
             LaunchTabId::Edit,
             LaunchTabId::Saves,
             LaunchTabId::Log,
         ]
-        .into_iter()
-        .map(|n| render_tab_button(n, menu)),
+    };
+    let tab_bar = widget::row(
+        tabs.into_iter()
+            .copied()
+            .map(|n| render_tab_button(n, menu)),
     )
     .wrap();
 
