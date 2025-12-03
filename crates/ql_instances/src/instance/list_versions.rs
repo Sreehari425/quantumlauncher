@@ -1,4 +1,4 @@
-use ql_core::{json::Manifest, JsonDownloadError, ListEntry};
+use ql_core::{json::Manifest, JsonDownloadError, ListEntry, ListEntryKind};
 
 /// Returns a list of every downloadable version of Minecraft.
 /// Sources the list from Mojang and Omniarchive (combined).
@@ -20,7 +20,11 @@ pub async fn list_versions() -> Result<(Vec<ListEntry>, String), JsonDownloadErr
         manifest
             .versions
             .into_iter()
-            .map(|n| ListEntry::with_kind(n.id, false, &n.r#type))
+            .map(|n| ListEntry {
+                kind: ListEntryKind::calculate(&n.id, &n.r#type),
+                supports_server: n.supports_server(),
+                name: n.id,
+            })
             .collect(),
         latest,
     ))

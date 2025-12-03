@@ -369,7 +369,7 @@ async fn create_minecraft_instance(
     instance_name: &str,
     version: String,
 ) -> Result<(), InstancePackageError> {
-    let version = ListEntry::new(version, false);
+    let version = ListEntry::new(version);
     let (d_send, d_recv) = std::sync::mpsc::channel();
     if let Some(sender) = sender.clone() {
         std::thread::spawn(move || {

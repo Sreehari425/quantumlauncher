@@ -98,19 +98,20 @@ then go to "Mods->Add File""#,
     ) {
         match result {
             Ok((versions, latest)) => {
-                if is_server {
-                    self.version_list_cache.server = Some(versions.clone());
-                } else {
-                    self.version_list_cache.client = Some(versions.clone());
-                }
-                self.version_list_cache.latest_stable = Some(latest);
-                let combo_state = iced::widget::combo_box::State::new(versions.clone());
+                self.version_list_cache.list = Some(versions.clone());
+                self.version_list_cache.latest_stable = Some(latest.clone());
+
                 if let State::Create(MenuCreateInstance::LoadingList { .. }) = &self.state {
                     self.state = State::Create(MenuCreateInstance::Choosing {
                         instance_name: String::new(),
-                        selected_version: None,
+                        selected_version: versions
+                            .iter()
+                            .find(|n| n.name == latest)
+                            .cloned()
+                            .unwrap_or_else(|| ListEntry::new(latest)),
                         download_assets: true,
-                        combo_state: Box::new(combo_state),
+                        search_box: None,
+                        show_category_dropdown: false,
                         is_server,
                     });
                 }
@@ -120,13 +121,24 @@ then go to "Mods->Add File""#,
     }
 
     pub fn go_to_create_screen(&mut self, is_server: bool) -> Task<Message> {
-        if let Some(versions) = self.version_list_cache.client.clone() {
-            let combo_state = iced::widget::combo_box::State::new(versions.clone());
+        if let Some(list) = &self.version_list_cache.list {
             self.state = State::Create(MenuCreateInstance::Choosing {
                 instance_name: String::new(),
-                selected_version: None,
+                selected_version: self
+                    .version_list_cache
+                    .latest_stable
+                    .as_ref()
+                    .map(|latest| {
+                        list.iter()
+                            .find(|n| n.name == *latest)
+                            .cloned()
+                            .unwrap_or_else(|| ListEntry::new(latest.clone()))
+                    })
+                    .or_else(|| list.first().cloned())
+                    .unwrap(),
                 download_assets: true,
-                combo_state: Box::new(combo_state),
+                search_box: None,
+                show_category_dropdown: false,
                 is_server,
             });
             Task::none()
@@ -137,12 +149,7 @@ then go to "Mods->Add File""#,
                     is_server,
                 ))
             };
-            let (task, handle) = if is_server {
-                Task::perform(ql_servers::list(), msg)
-            } else {
-                Task::perform(ql_instances::list_versions(), msg)
-            }
-            .abortable();
+            let (task, handle) = Task::perform(ql_instances::list_versions(), msg).abortable();
 
             self.state = State::Create(MenuCreateInstance::LoadingList {
                 _handle: handle.abort_on_drop(),
@@ -157,7 +164,7 @@ then go to "Mods->Add File""#,
             selected_version, ..
         }) = &mut self.state
         {
-            *selected_version = Some(entry);
+            *selected_version = entry;
         }
     }
 
@@ -185,14 +192,7 @@ then go to "Mods->Add File""#,
                 progress: DownloadProgress::DownloadingJsonManifest,
             };
 
-            let version = selected_version
-                .clone()
-                .or(self
-                    .version_list_cache
-                    .latest_stable
-                    .clone()
-                    .map(|name| ListEntry::new(name, is_server)))
-                .unwrap();
+            let version = selected_version.clone();
             let instance_name = if instance_name.trim().is_empty() {
                 version.name.clone()
             } else {

@@ -110,11 +110,7 @@ async fn import_quantumlauncher(
     pt!("Name: {} ", instance_info.instance_name);
     pt!("Version : {}", version_json.get_id());
     pt!("Exceptions : {:?} ", instance_info.exceptions);
-    let version = ListEntry::with_kind(
-        version_json.id.clone(),
-        instance_info.is_server,
-        &version_json.r#type,
-    );
+    let version = ListEntry::with_kind(version_json.id.clone(), &version_json.r#type);
 
     let (d_send, d_recv) = std::sync::mpsc::channel();
     if let Some(sender) = sender.clone() {

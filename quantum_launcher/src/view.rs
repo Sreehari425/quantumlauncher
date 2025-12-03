@@ -105,8 +105,8 @@ impl Launcher {
                 self.window_state.size.1,
             ),
             State::Create(menu) => menu.view(
-                self.client_list.as_ref(),
-                self.version_list_cache.latest_stable.as_deref(),
+                self.client_list.as_deref(),
+                self.version_list_cache.list.as_deref(),
             ),
             State::ConfirmAction {
                 msg1,

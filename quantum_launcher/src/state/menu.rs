@@ -298,10 +298,12 @@ pub enum MenuCreateInstance {
     },
     Choosing {
         is_server: bool,
+        search_box: Option<String>,
+        show_category_dropdown: bool,
+        // Instance info:
+        selected_version: ListEntry,
         instance_name: String,
-        selected_version: Option<ListEntry>,
         download_assets: bool,
-        combo_state: Box<iced::widget::combo_box::State<ListEntry>>,
     },
     DownloadingInstance(ProgressBar<DownloadProgress>),
     ImportingInstance(ProgressBar<GenericProgress>),

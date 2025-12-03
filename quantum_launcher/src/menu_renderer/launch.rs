@@ -633,10 +633,6 @@ fn view_info_message(
 ) -> Option<widget::Container<'_, Message, LauncherTheme>> {
     (!menu.message.is_empty()).then_some(
         widget::container(widget::row![
-            widget::text(&menu.message)
-                .width(Length::Fill)
-                .size(12)
-                .style(|t: &LauncherTheme| t.style_text(Color::SecondLight)),
             widget::button(
                 icon_manager::win_close()
                     .style(|t: &LauncherTheme| t.style_text(Color::Mid))
@@ -648,8 +644,12 @@ fn view_info_message(
                 message: None,
                 clear_selection: false,
                 is_server: Some(menu.is_viewing_server)
-            })
+            }),
+            widget::text(&menu.message)
+                .size(12)
+                .style(|t: &LauncherTheme| t.style_text(Color::SecondLight)),
         ])
+        .width(Length::Fill)
         .padding(10)
         .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark)),
     )

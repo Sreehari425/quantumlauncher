@@ -12,7 +12,10 @@
 //! - Logging macros
 //! - And much more
 
-use crate::read_log::{read_logs, Diagnostic, LogLine, ReadError};
+use crate::{
+    json::manifest::Version,
+    read_log::{read_logs, Diagnostic, LogLine, ReadError},
+};
 use futures::StreamExt;
 use json::VersionDetails;
 use regex::Regex;
@@ -297,29 +300,29 @@ impl InstanceSelection {
 }
 
 /// A struct representing information about a Minecraft version
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ListEntry {
     pub name: String,
-    pub is_server: bool,
+    pub supports_server: bool,
     /// For UI display purposes only
     pub kind: ListEntryKind,
 }
 
 impl ListEntry {
     #[must_use]
-    pub fn new(name: String, is_server: bool) -> Self {
+    pub fn new(name: String) -> Self {
         Self {
             kind: ListEntryKind::guess(&name),
+            supports_server: Version::guess_if_supports_server(&name),
             name,
-            is_server,
         }
     }
 
-    pub fn with_kind(name: String, is_server: bool, ty: &str) -> Self {
+    pub fn with_kind(name: String, ty: &str) -> Self {
         Self {
             kind: ListEntryKind::calculate(&name, ty),
+            supports_server: Version::guess_if_supports_server(&name),
             name,
-            is_server,
         }
     }
 
@@ -335,7 +338,7 @@ impl Display for ListEntry {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ListEntryKind {
     Release,
     Snapshot,
@@ -371,7 +374,7 @@ impl ListEntryKind {
     }
 
     #[must_use]
-    fn calculate(id: &str, ty: &str) -> Self {
+    pub fn calculate(id: &str, ty: &str) -> Self {
         if ty == "special" {
             ListEntryKind::Special
         } else if ty == "april-fools" {

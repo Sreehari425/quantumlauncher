@@ -100,8 +100,7 @@ impl CustomJarState {
 
 #[derive(Debug, Clone, Default)]
 pub struct VersionListCache {
-    pub client: Option<Vec<ListEntry>>,
-    pub server: Option<Vec<ListEntry>>,
+    pub list: Option<Vec<ListEntry>>,
     pub latest_stable: Option<String>,
 }
 

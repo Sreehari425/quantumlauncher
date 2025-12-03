@@ -5,8 +5,8 @@ use super::{
     back_button, button_with_icon, get_theme_selector, sidebar_button, underline, Element, DISCORD,
     GITHUB,
 };
-use crate::menu_renderer::back_to_launch_screen;
 use crate::menu_renderer::edit_instance::{get_args_list, resolution_dialog};
+use crate::menu_renderer::{back_to_launch_screen, sidebar, PADDING_NOT_BOTTOM};
 use crate::{
     config::LauncherConfig,
     icon_manager,
@@ -19,12 +19,7 @@ use crate::{
 };
 
 const SETTINGS_SPACING: f32 = 10.0;
-const PADDING_NOT_BOTTOM: iced::Padding = iced::Padding {
-    top: 10.0,
-    bottom: 0.0,
-    left: 10.0,
-    right: 10.0,
-};
+
 const PADDING_LEFT: iced::Padding = iced::Padding {
     top: 0.0,
     right: 0.0,
@@ -35,41 +30,44 @@ const PADDING_LEFT: iced::Padding = iced::Padding {
 impl MenuLauncherSettings {
     pub fn view<'a>(&'a self, config: &'a LauncherConfig, window_size: (f32, f32)) -> Element<'a> {
         widget::row![
-            widget::container(
-                widget::column![
-                    widget::column!(back_button().on_press(back_to_launch_screen(None, None)))
-                        .padding(PADDING_NOT_BOTTOM),
-                    widget::row![
-                        icon_manager::settings_with_size(20),
-                        widget::text("Settings").size(20),
+            sidebar(
+                Some(
+                    widget::column![
+                        back_button().on_press(back_to_launch_screen(None, None)),
+                        Self::get_heading()
                     ]
-                    .padding(iced::Padding {
-                        top: 5.0,
-                        right: 0.0,
-                        bottom: 2.0,
-                        left: 10.0,
-                    })
-                    .spacing(10),
-                    widget::column(LauncherSettingsTab::ALL.iter().map(|tab| {
-                        let text = widget::text(tab.to_string());
-                        sidebar_button(
-                            tab,
-                            &self.selected_tab,
-                            text,
-                            Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(*tab)),
-                        )
-                    }))
-                ]
-                .spacing(10)
-            )
-            .height(Length::Fill)
-            .width(180)
-            .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),
+                    .spacing(10)
+                    .into()
+                ),
+                LauncherSettingsTab::ALL.iter().map(|tab| {
+                    let text = widget::text(tab.to_string());
+                    sidebar_button(
+                        tab,
+                        &self.selected_tab,
+                        text,
+                        Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(*tab)),
+                    )
+                })
+            ),
             widget::scrollable(self.selected_tab.view(config, self, window_size))
                 .width(Length::Fill)
                 .style(LauncherTheme::style_scrollable_flat_dark)
         ]
         .into()
+    }
+
+    fn get_heading() -> widget::Row<'static, Message, LauncherTheme> {
+        widget::row![
+            icon_manager::settings_with_size(20),
+            widget::text("Settings").size(20),
+        ]
+        .padding(iced::Padding {
+            top: 5.0,
+            right: 0.0,
+            bottom: 2.0,
+            left: 10.0,
+        })
+        .spacing(10)
     }
 
     fn view_ui_tab<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {
@@ -246,16 +244,13 @@ Example: Use 'prime-run' to force NVIDIA GPU usage on Linux with Optimus graphic
             .spacing(SETTINGS_SPACING)
             .into(),
             LauncherSettingsTab::About => {
-                let gpl3_button =
-                    // widget::button(widget::rich_text![widget::span("GNU GPLv3 License").underline(true)].size(12))
-
-                    // An Iced bug (or maybe some dumb mistake I made),
-                    // putting underlines in buttons the "official" way makes them unclickable.
-
-                    widget::button(underline(widget::text("GNU GPLv3 License").size(12), Color::Light))
-                        .padding(0)
-                        .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatDark))
-                        .on_press(Message::LicenseChangeTab(crate::state::LicenseTab::Gpl3));
+                let gpl3_button = widget::button(underline(
+                    widget::text("GNU GPLv3 License").size(12),
+                    Color::Light,
+                ))
+                .padding(0)
+                .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatDark))
+                .on_press(Message::LicenseChangeTab(crate::state::LicenseTab::Gpl3));
 
                 let links = widget::row![
                     button_with_icon(icon_manager::globe(), "Website", 16)
