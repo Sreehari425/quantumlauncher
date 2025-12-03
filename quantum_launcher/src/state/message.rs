@@ -57,6 +57,7 @@ pub enum CreateInstanceMessage {
     SearchInput(String),
     SearchSubmit,
     ContextMenuToggle,
+    CategoryToggle(ql_core::ListEntryKind),
 
     Start,
     End(Res<InstanceSelection>),

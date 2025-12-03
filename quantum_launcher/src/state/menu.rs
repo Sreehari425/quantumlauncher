@@ -300,6 +300,7 @@ pub enum MenuCreateInstance {
         is_server: bool,
         search_box: String,
         show_category_dropdown: bool,
+        selected_categories: HashSet<ql_core::ListEntryKind>,
         // Instance info:
         selected_version: ListEntry,
         instance_name: String,

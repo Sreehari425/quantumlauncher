@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use iced::{
     widget::{self, column, row, tooltip::Position},
     Alignment, Length,
@@ -39,7 +41,7 @@ impl MenuCreateInstance {
                 search_box,
                 is_server,
                 show_category_dropdown,
-                ..
+                selected_categories,
             } => {
                 let pb = iced::Padding::new(7.0).left(10.0).right(10.0);
                 let opened_controls = *show_category_dropdown;
@@ -86,6 +88,7 @@ impl MenuCreateInstance {
                     *is_server,
                     header.into(),
                     search_box,
+                    selected_categories,
                 );
 
                 let view = row![
@@ -105,7 +108,7 @@ impl MenuCreateInstance {
                         widget::Space::with_width(97),
                         widget::column![
                             widget::Space::with_height(50),
-                            ctxbox(widget::column!["Hi"])
+                            ctxbox(Self::get_category_dropdown(selected_categories))
                         ]
                     ]))
                     .into()
@@ -193,6 +196,7 @@ impl MenuCreateInstance {
         is_server: bool,
         header: Element<'static>,
         searchbox: &str,
+        selected_categories: &HashSet<ListEntryKind>,
     ) -> widget::Container<'a, Message, LauncherTheme> {
         sidebar(
             "MenuCreateInstance:sidebar",
@@ -201,6 +205,7 @@ impl MenuCreateInstance {
                 .into_iter()
                 .flatten()
                 .filter(|n| n.supports_server || !is_server)
+                .filter(|n| selected_categories.contains(&n.kind))
                 .filter(|n| {
                     searchbox.trim().is_empty()
                         || n.name
@@ -230,6 +235,26 @@ impl MenuCreateInstance {
                     )
                 }),
         )
+    }
+
+    fn get_category_dropdown(
+        selected_categories: &HashSet<ListEntryKind>,
+    ) -> widget::Column<'static, Message, LauncherTheme> {
+        let mut col = column![widget::text("Version Types:").size(14)].spacing(5);
+
+        for kind in ListEntryKind::all() {
+            let is_checked = selected_categories.contains(kind);
+            col = col.push(
+                widget::checkbox(kind.to_string(), is_checked)
+                    .text_size(13)
+                    .size(13)
+                    .on_toggle(move |_| {
+                        Message::CreateInstance(CreateInstanceMessage::CategoryToggle(*kind))
+                    }),
+            );
+        }
+
+        col
     }
 }
 

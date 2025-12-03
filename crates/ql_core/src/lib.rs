@@ -338,7 +338,7 @@ impl Display for ListEntry {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ListEntryKind {
     Release,
     Snapshot,
@@ -350,6 +350,50 @@ pub enum ListEntryKind {
     Beta,
     AprilFools,
     Special,
+}
+
+impl std::fmt::Display for ListEntryKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ListEntryKind::Release => write!(f, "Release"),
+            ListEntryKind::Snapshot => write!(f, "Snapshot"),
+            ListEntryKind::Preclassic => write!(f, "Pre-classic"),
+            ListEntryKind::Classic => write!(f, "Classic"),
+            ListEntryKind::Indev => write!(f, "Indev"),
+            ListEntryKind::Infdev => write!(f, "Infdev"),
+            ListEntryKind::Alpha => write!(f, "Alpha"),
+            ListEntryKind::Beta => write!(f, "Beta"),
+            ListEntryKind::AprilFools => write!(f, "April Fools"),
+            ListEntryKind::Special => write!(f, "Special"),
+        }
+    }
+}
+
+impl ListEntryKind {
+    /// Returns all possible version categories
+    #[must_use]
+    pub const fn all() -> &'static [ListEntryKind] {
+        &[
+            ListEntryKind::Release,
+            ListEntryKind::Snapshot,
+            ListEntryKind::Beta,
+            ListEntryKind::Alpha,
+            ListEntryKind::Infdev,
+            ListEntryKind::Indev,
+            ListEntryKind::Classic,
+            ListEntryKind::Preclassic,
+            ListEntryKind::AprilFools,
+            ListEntryKind::Special,
+        ]
+    }
+
+    /// Returns the default selected categories (Release only)
+    #[must_use]
+    pub fn default_selected() -> std::collections::HashSet<ListEntryKind> {
+        let mut set = std::collections::HashSet::new();
+        set.insert(ListEntryKind::Release);
+        set
+    }
 }
 
 impl ListEntryKind {
@@ -396,6 +440,20 @@ impl ListEntryKind {
         } else {
             ListEntryKind::Release
         }
+    }
+
+    /// Returns true if this is a "old" version category
+    #[must_use]
+    pub const fn is_old(&self) -> bool {
+        matches!(
+            self,
+            ListEntryKind::Alpha
+                | ListEntryKind::Beta
+                | ListEntryKind::Classic
+                | ListEntryKind::Preclassic
+                | ListEntryKind::Indev
+                | ListEntryKind::Infdev
+        )
     }
 }
 
