@@ -1,15 +1,16 @@
 use iced::{futures::executor::block_on, Task};
 use ql_core::{
     err, err_no_log, file_utils::DirItem, info_no_log, open_file_explorer, InstanceSelection,
-    IntoIoError, IntoStringError, LOGGER,
+    IntoIoError, IntoStringError, LAUNCHER_DIR, LOGGER,
 };
 use ql_instances::UpdateCheckInfo;
 use std::fmt::Write;
 use tokio::io::AsyncWriteExt;
 
 use crate::state::{
-    CustomJarState, GameProcess, LaunchTabId, Launcher, ManageModsMessage, MenuExportInstance,
-    MenuLaunch, MenuLauncherUpdate, MenuLicense, MenuWelcome, Message, ProgressBar, State,
+    dir_watch, CustomJarState, GameProcess, LaunchTabId, Launcher, ManageModsMessage,
+    MenuExportInstance, MenuLaunch, MenuLauncherUpdate, MenuLicense, MenuWelcome, Message,
+    ProgressBar, SavesInfo, State,
 };
 
 impl Launcher {
@@ -63,7 +64,8 @@ impl Launcher {
             Message::RecommendedMods(message) => return self.update_recommended_mods(message),
             Message::LaunchInstanceSelected { name, is_server } => {
                 self.selected_instance = Some(InstanceSelection::new(&name, is_server));
-                self.load_edit_instance(None);
+                self.load_tab_edit_instance(None);
+                return self.load_tab_saves(None, true);
             }
             Message::LauncherSettings(msg) => return self.update_launcher_settings(msg),
             Message::InstallOptifine(msg) => return self.update_install_optifine(msg),
@@ -285,30 +287,8 @@ impl Launcher {
             }
             Message::CoreEvent(event, status) => return self.iced_event(event, status),
             Message::LaunchChangeTab(launch_tab_id) => {
-                self.load_edit_instance(Some(launch_tab_id));
-
-                // Load saves when switching to Saves tab
-                if launch_tab_id == LaunchTabId::Saves {
-                    if let Some(instance) = &self.selected_instance {
-                        let instance_name = instance.get_name().to_owned();
-                        // Only load if not already cached
-                        if !self.saves_cache.contains_key(&instance_name) {
-                            let instance_clone = instance.clone();
-                            return Task::perform(
-                                async move {
-                                    let instance_name = instance_clone.get_name().to_owned();
-                                    let result = ql_core::saves::read_saves_info(&instance_clone)
-                                        .await
-                                        .strerr();
-                                    (instance_name, result)
-                                },
-                                |(instance_name, result)| {
-                                    Message::SavesLoaded(instance_name, result)
-                                },
-                            );
-                        }
-                    }
-                }
+                self.load_tab_edit_instance(Some(launch_tab_id));
+                return self.load_tab_saves(Some(launch_tab_id), false);
             }
             Message::CoreLogToggle => {
                 self.is_log_open = !self.is_log_open;
@@ -461,15 +441,21 @@ impl Launcher {
                 }
             }
             Message::SavesLoaded(instance_name, result) => {
-                match result {
-                    Ok(saves) => {
-                        self.saves_cache.insert(instance_name, saves);
-                    }
-                    Err(err) => {
-                        err!("Failed to load saves for '{}': {}", instance_name, err);
-                        // Insert empty list to prevent repeated loading attempts
-                        self.saves_cache.insert(instance_name, Vec::new());
-                    }
+                if let State::Launch(menu) = &mut self.state {
+                    menu.tab_saves = Some(result.and_then(|list| {
+                        let (recv, watcher) = dir_watch(
+                            LAUNCHER_DIR
+                                .join("instances")
+                                .join(&instance_name)
+                                .join(".minecraft/saves"),
+                        )
+                        .strerr()?;
+                        Ok(SavesInfo {
+                            watcher,
+                            recv,
+                            list,
+                        })
+                    }))
                 }
             }
             Message::CoreFocusNext => {
@@ -479,9 +465,34 @@ impl Launcher {
         Task::none()
     }
 
-    pub fn load_edit_instance(&mut self, new_tab: Option<LaunchTabId>) {
+    pub fn load_tab_saves(
+        &mut self,
+        launch_tab_id: Option<LaunchTabId>,
+        force: bool,
+    ) -> Task<Message> {
+        let State::Launch(menu) = &mut self.state else {
+            return Task::none();
+        };
+
+        if let (Some(instance), LaunchTabId::Saves) =
+            (&self.selected_instance, launch_tab_id.unwrap_or(menu.tab))
+        {
+            let name = instance.get_name().to_owned();
+
+            if force || menu.tab_saves.is_none() {
+                return Task::perform(ql_core::saves::read_saves_info(name.clone()), move |r| {
+                    Message::SavesLoaded(name.clone(), r.strerr())
+                });
+            }
+        }
+        Task::none()
+    }
+
+    pub fn load_tab_edit_instance(&mut self, new_tab: Option<LaunchTabId>) {
         if let State::Launch(MenuLaunch {
-            tab, edit_instance, ..
+            tab,
+            tab_edit_instance: edit_instance,
+            ..
         }) = &mut self.state
         {
             if let (LaunchTabId::Edit, Some(selected_instance)) =

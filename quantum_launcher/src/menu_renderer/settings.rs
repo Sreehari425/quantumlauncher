@@ -2,8 +2,9 @@ use iced::{widget, Length};
 use ql_core::{LAUNCHER_DIR, WEBSITE};
 
 use super::{
-    back_button, button_with_icon, get_theme_selector, sidebar_button, underline, Element, DISCORD,
-    GITHUB,
+    get_theme_selector,
+    ui::{back_button, button_with_icon, sidebar_button, underline},
+    Element, DISCORD, GITHUB,
 };
 use crate::menu_renderer::back_to_launch_screen;
 use crate::menu_renderer::edit_instance::{

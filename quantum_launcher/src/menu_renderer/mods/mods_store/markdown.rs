@@ -19,7 +19,7 @@ use comrak::nodes::NodeValue;
 use iced::widget;
 
 use crate::{
-    menu_renderer::{link, Element},
+    menu_renderer::{ui::link, Element},
     state::{ImageState, MenuModsDownload, Message},
 };
 

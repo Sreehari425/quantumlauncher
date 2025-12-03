@@ -5,7 +5,10 @@ use ql_core::SelectedMod;
 
 use crate::{
     icon_manager,
-    menu_renderer::{back_button, button_with_icon, Element},
+    menu_renderer::{
+        ui::{back_button, button_with_icon},
+        Element,
+    },
     state::{
         EditPresetsMessage, ManageModsMessage, MenuEditPresets, MenuRecommendedMods, Message,
         ModListEntry, SelectedState,

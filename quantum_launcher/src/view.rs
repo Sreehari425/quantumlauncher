@@ -4,7 +4,7 @@ use ql_core::LOGGER;
 use crate::{
     icon_manager,
     menu_renderer::{
-        button_with_icon, changelog, tooltip, view_account_login, view_confirm, view_error,
+        ui::{button_with_icon, tooltip}, changelog, view_account_login, view_confirm, view_error,
         view_log_upload_result, Element, FONT_MONO,
     },
     state::{Launcher, Message, State},

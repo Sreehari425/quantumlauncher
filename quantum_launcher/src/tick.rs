@@ -22,7 +22,7 @@ impl Launcher {
     pub fn tick(&mut self) -> Task<Message> {
         match &mut self.state {
             State::Launch(MenuLaunch {
-                edit_instance, tab, ..
+                tab_edit_instance: edit_instance, tab, ..
             }) => {
                 if let Some(receiver) = &mut self.java_recv {
                     if receiver.tick() {

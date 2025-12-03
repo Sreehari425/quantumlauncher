@@ -1,6 +1,6 @@
 use crate::{
     icon_manager,
-    menu_renderer::{button_with_icon, FONT_MONO},
+    menu_renderer::{ui::button_with_icon, FONT_MONO},
     state::{CustomJarState, EditInstanceMessage, MenuEditInstance, Message, NONE_JAR_NAME},
     stylesheet::{color::Color, styles::LauncherTheme},
 };

@@ -70,8 +70,7 @@ pub struct Launcher {
 
     pub processes: HashMap<InstanceSelection, GameProcess>,
     pub logs: HashMap<InstanceSelection, InstanceLog>,
-    pub saves_cache: HashMap<String, Vec<ql_core::saves::Save>>,
-  
+
     pub window_size: (f32, f32),
     pub mouse_pos: (f32, f32),
 
@@ -197,7 +196,6 @@ impl Launcher {
 
             logs: HashMap::new(),
             processes: HashMap::new(),
-            saves_cache: HashMap::new(),
 
             keys_pressed: HashSet::new(),
             mod_updates_checked: HashMap::new(),
@@ -261,7 +259,6 @@ impl Launcher {
 
             logs: HashMap::new(),
             processes: HashMap::new(),
-            saves_cache: HashMap::new(),
             accounts: HashMap::new(),
             keys_pressed: HashSet::new(),
             mod_updates_checked: HashMap::new(),

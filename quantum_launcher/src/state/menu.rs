@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
+    sync::mpsc,
     time::Instant,
 };
 
@@ -10,7 +11,7 @@ use ql_core::{
     jarmod::JarMods,
     json::{InstanceConfigJson, VersionDetails},
     DownloadProgress, GenericProgress, InstanceSelection, ListEntry, ModId, OptifineUniqueVersion,
-    SelectedMod, StoreBackendType,
+    Save, SelectedMod, StoreBackendType,
 };
 use ql_mod_manager::loaders::paper::PaperVersion;
 use ql_mod_manager::{
@@ -48,8 +49,10 @@ impl std::fmt::Display for LaunchTabId {
 pub struct MenuLaunch {
     pub message: String,
     pub login_progress: Option<ProgressBar<GenericProgress>>,
+
     pub tab: LaunchTabId,
-    pub edit_instance: Option<MenuEditInstance>,
+    pub tab_edit_instance: Option<MenuEditInstance>,
+    pub tab_saves: Option<Result<SavesInfo, String>>,
 
     pub sidebar_width: u16,
     pub sidebar_height: f32,
@@ -71,7 +74,8 @@ impl MenuLaunch {
         Self {
             message,
             tab: LaunchTabId::default(),
-            edit_instance: None,
+            tab_edit_instance: None,
+            tab_saves: None,
             login_progress: None,
             sidebar_width: SIDEBAR_WIDTH_DEFAULT as u16,
             sidebar_height: 100.0,
@@ -81,6 +85,12 @@ impl MenuLaunch {
             is_uploading_mclogs: false,
         }
     }
+}
+
+pub struct SavesInfo {
+    pub watcher: notify::RecommendedWatcher,
+    pub recv: mpsc::Receiver<notify::Event>,
+    pub list: Vec<Save>,
 }
 
 /// The screen where you can edit an instance/server.
