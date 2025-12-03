@@ -484,6 +484,8 @@ impl Launcher {
                     Message::SavesLoaded(name.clone(), r.strerr())
                 });
             }
+        } else if force {
+            menu.tab_saves = None;
         }
         Task::none()
     }

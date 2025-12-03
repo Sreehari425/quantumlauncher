@@ -560,9 +560,9 @@ fn get_saves_list_entry(i: usize, save: &ql_core::Save) -> Element<'static> {
         theme.style_container_sharp_box(
             0.0,
             if is_even {
-                Color::Dark
-            } else {
                 Color::ExtraDark
+            } else {
+                Color::Dark
             },
         )
     })
