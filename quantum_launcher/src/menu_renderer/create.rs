@@ -6,7 +6,9 @@ use ql_core::{ListEntry, ListEntryKind};
 
 use crate::{
     icon_manager,
-    menu_renderer::{back_button, button_with_icon, sidebar, sidebar_button, tooltip, Element},
+    menu_renderer::{
+        back_button, button_with_icon, ctxbox, sidebar, sidebar_button, tooltip, Element,
+    },
     state::{CreateInstanceMessage, MenuCreateInstance, Message},
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
@@ -40,63 +42,73 @@ impl MenuCreateInstance {
                 ..
             } => {
                 let pb = iced::Padding::new(7.0).left(10.0).right(10.0);
-                let opened_search = search_box.is_some();
                 let opened_controls = *show_category_dropdown;
-                let header = column![row![
-                    back_button()
-                        .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
-                        .on_press(Message::LaunchScreenOpen {
-                            message: None,
-                            clear_selection: false,
-                            is_server: Some(*is_server),
-                        }),
-                    widget::button(icon_manager::three_lines())
-                        .padding(pb)
-                        .style(move |t: &LauncherTheme, s| t.style_button(
-                            s,
-                            if opened_search {
-                                StyleButton::Round
-                            } else {
-                                StyleButton::RoundDark
-                            }
-                        )),
-                    widget::button(icon_manager::three_lines())
-                        .padding(pb)
-                        .style(move |t: &LauncherTheme, s| t.style_button(
-                            s,
-                            if opened_controls {
-                                StyleButton::Round
-                            } else {
-                                StyleButton::RoundDark
-                            }
-                        ))
+                let header = column![
+                    row![
+                        back_button()
+                            .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
+                            .on_press(Message::LaunchScreenOpen {
+                                message: None,
+                                clear_selection: false,
+                                is_server: Some(*is_server),
+                            }),
+                        widget::button(icon_manager::three_lines())
+                            .padding(pb)
+                            .style(move |t: &LauncherTheme, s| t.style_button(
+                                s,
+                                if opened_controls {
+                                    StyleButton::Round
+                                } else {
+                                    StyleButton::RoundDark
+                                }
+                            ))
+                            .on_press(Message::CreateInstance(
+                                CreateInstanceMessage::ContextMenuToggle
+                            ))
+                    ]
+                    .spacing(5),
+                    widget::text_input("Search...", search_box)
+                        .size(14)
+                        .on_input(|t| {
+                            Message::CreateInstance(CreateInstanceMessage::SearchInput(t))
+                        })
+                        .on_submit(Message::CreateInstance(CreateInstanceMessage::SearchSubmit)),
                 ]
-                .spacing(5)]
-                .spacing(5)
                 .push_maybe(
-                    search_box
-                        .as_deref()
-                        .map(|t| widget::text_input("Search...", t)),
-                );
+                    (!search_box.trim().is_empty())
+                        .then_some(widget::text("Search Results:").size(12)),
+                )
+                .spacing(10);
 
                 let sidebar = Self::get_sidebar_contents(
                     versions,
                     selected_version,
                     *is_server,
                     header.into(),
+                    search_box,
                 );
 
-                row![
+                let view = row![
                     sidebar,
                     Self::get_main_page(
                         selected_version,
                         instance_name,
                         *download_assets,
-                        existing_instances
+                        existing_instances,
+                        *is_server
                     )
                 ]
-                .width(Length::Fill)
-                .into()
+                .width(Length::Fill);
+
+                widget::stack!(view,)
+                    .push_maybe(show_category_dropdown.then_some(widget::row![
+                        widget::Space::with_width(97),
+                        widget::column![
+                            widget::Space::with_height(50),
+                            ctxbox(widget::column!["Hi"])
+                        ]
+                    ]))
+                    .into()
             }
             MenuCreateInstance::DownloadingInstance(progress) => column![
                 widget::text("Downloading Instance..").size(20),
@@ -120,20 +132,26 @@ impl MenuCreateInstance {
         instance_name: &String,
         download_assets: bool,
         existing_instances: Option<&[String]>,
+        is_server: bool,
     ) -> widget::Column<'static, Message, LauncherTheme> {
         let already_exists = existing_instances.is_some_and(|n| n.contains(instance_name));
 
         column![
-            button_with_icon(icon_manager::folder_with_size(14), "Import Instance", 14)
-                .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
             row![
-                widget::text("Name:").width(100).size(18),
+                widget::text!("Create {}", if is_server { "Server" } else { "Instance" })
+                    .size(20),
+                widget::horizontal_space(),
+                button_with_icon(icon_manager::folder_with_size(14), "Import Instance", 14)
+                    .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
+            ],
+            row![
+                widget::text("Name:").size(18),
                 {
                     let placeholder = selected_version.name.as_str();
                     widget::text_input(placeholder, instance_name)
                         .on_input(|n| Message::CreateInstance(CreateInstanceMessage::NameInput(n)))
                 }
-            ].align_y(Alignment::Center),
+            ].spacing(10).align_y(Alignment::Center),
 
             tooltip(
                 row![
@@ -168,6 +186,7 @@ impl MenuCreateInstance {
         selected_version: &'a ListEntry,
         is_server: bool,
         header: Element<'static>,
+        searchbox: &str,
     ) -> widget::Container<'a, Message, LauncherTheme> {
         sidebar(
             Some(header),
@@ -175,12 +194,18 @@ impl MenuCreateInstance {
                 .into_iter()
                 .flatten()
                 .filter(|n| n.supports_server || !is_server)
+                .filter(|n| {
+                    searchbox.trim().is_empty()
+                        || n.name
+                            .to_lowercase()
+                            .contains(&searchbox.trim().to_lowercase())
+                })
                 .map(|n| {
                     let label = widget::text(&n.name)
                         .size(if n.kind == ListEntryKind::Snapshot {
                             14
                         } else {
-                            16
+                            15
                         })
                         .style(|t: &LauncherTheme| {
                             t.style_text(if n.kind == ListEntryKind::Snapshot {

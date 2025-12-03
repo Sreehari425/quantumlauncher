@@ -78,7 +78,7 @@ pub fn underline<'a>(
         widget::column![
             widget::vertical_space(),
             widget::horizontal_rule(1).style(move |t: &LauncherTheme| t.style_rule(color, 1)),
-            widget::Space::with_height(0.8),
+            widget::Space::with_height(1),
         ]
     )
 }
@@ -167,7 +167,7 @@ fn sidebar_button<'a, A: PartialEq>(
                     n.style_button(status, StyleButton::FlatExtraDark)
                 })
                 .width(Length::Fill),
-            Color::Mid,
+            Color::SecondDark,
         )
         .into()
     }

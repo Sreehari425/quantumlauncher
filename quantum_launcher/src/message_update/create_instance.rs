@@ -7,6 +7,16 @@ use crate::state::{
     CreateInstanceMessage, Launcher, MenuCreateInstance, Message, ProgressBar, State,
 };
 
+macro_rules! iflet {
+    ($self:ident, $( $field:ident ),* ; $block:block) => {
+        if let State::Create(MenuCreateInstance::Choosing {
+            $( $field, )* ..
+        }) = &mut $self.state {
+            $block
+        }
+    };
+}
+
 impl Launcher {
     pub fn update_create_instance(&mut self, message: CreateInstanceMessage) -> Task<Message> {
         match message {
@@ -16,8 +26,35 @@ impl Launcher {
             CreateInstanceMessage::VersionsLoaded(result, is_server) => {
                 self.create_instance_finish_loading_versions_list(result, is_server);
             }
-            CreateInstanceMessage::VersionSelected(selected_version) => {
-                self.select_created_instance_version(selected_version);
+            CreateInstanceMessage::VersionSelected(ver) => {
+                iflet!(self, selected_version; {
+                    *selected_version = ver;
+                });
+            }
+            CreateInstanceMessage::SearchInput(t) => {
+                iflet!(self, search_box; {
+                    *search_box = t;
+                });
+            }
+            CreateInstanceMessage::SearchSubmit => {
+                iflet!(self, search_box, selected_version, is_server; {
+                    if let Some(sel) = self.version_list_cache.list
+                        .as_deref()
+                        .unwrap()
+                        .iter()
+                        .filter(|n| n.supports_server || !*is_server)
+                        .find(|n|
+                            search_box.trim().is_empty()
+                            || n.name.trim().to_lowercase().contains(&search_box.trim().to_lowercase())
+                        ) {
+                        *selected_version = sel.clone();
+                    }
+                })
+            }
+            CreateInstanceMessage::ContextMenuToggle => {
+                iflet!(self, show_category_dropdown; {
+                    *show_category_dropdown = !*show_category_dropdown;
+                })
             }
             CreateInstanceMessage::NameInput(name) => self.update_created_instance_name(name),
             CreateInstanceMessage::Start => return self.create_instance(),
@@ -110,7 +147,7 @@ then go to "Mods->Add File""#,
                             .cloned()
                             .unwrap_or_else(|| ListEntry::new(latest)),
                         download_assets: true,
-                        search_box: None,
+                        search_box: String::new(),
                         show_category_dropdown: false,
                         is_server,
                     });
@@ -137,7 +174,7 @@ then go to "Mods->Add File""#,
                     .or_else(|| list.first().cloned())
                     .unwrap(),
                 download_assets: true,
-                search_box: None,
+                search_box: String::new(),
                 show_category_dropdown: false,
                 is_server,
             });
@@ -156,15 +193,6 @@ then go to "Mods->Add File""#,
             });
 
             task
-        }
-    }
-
-    fn select_created_instance_version(&mut self, entry: ListEntry) {
-        if let State::Create(MenuCreateInstance::Choosing {
-            selected_version, ..
-        }) = &mut self.state
-        {
-            *selected_version = entry;
         }
     }
 

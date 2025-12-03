@@ -54,6 +54,10 @@ pub enum CreateInstanceMessage {
     NameInput(String),
     ChangeAssetToggle(bool),
 
+    SearchInput(String),
+    SearchSubmit,
+    ContextMenuToggle,
+
     Start,
     End(Res<InstanceSelection>),
     Cancel,

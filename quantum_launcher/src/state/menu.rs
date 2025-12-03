@@ -298,7 +298,7 @@ pub enum MenuCreateInstance {
     },
     Choosing {
         is_server: bool,
-        search_box: Option<String>,
+        search_box: String,
         show_category_dropdown: bool,
         // Instance info:
         selected_version: ListEntry,

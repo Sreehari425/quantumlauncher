@@ -149,6 +149,10 @@ impl Launcher {
                     ))),
                     Message::CoreFocusNext,
                 ]),
+                ("f", true, _, _, State::Create(MenuCreateInstance::Choosing { .. }))
+                | ("/", _, _, true, State::Create(MenuCreateInstance::Choosing { .. })) => {
+                    Message::CoreFocusNext
+                }
 
                 ("a", true, _, true, State::EditJarMods(_)) => {
                     Message::ManageJarMods(crate::state::ManageJarModsMessage::SelectAll)
@@ -408,6 +412,15 @@ impl Launcher {
             }
             if menu.search.is_some() {
                 menu.search = None;
+                return true;
+            }
+        } else if let State::Create(MenuCreateInstance::Choosing {
+            show_category_dropdown,
+            ..
+        }) = &mut self.state
+        {
+            if *show_category_dropdown {
+                *show_category_dropdown = false;
                 return true;
             }
         }
