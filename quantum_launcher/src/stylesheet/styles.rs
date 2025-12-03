@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::stylesheet::color::{ADWAITA_DARK, ADWAITA_LIGHT};
 
 use super::{
-    color::{Color, BROWN, CATPPUCCIN, PURPLE, SKY_BLUE, TEAL},
+    color::{Color, BROWN, CATPPUCCIN, HALLOWEEN, PURPLE, SKY_BLUE, TEAL},
     widgets::{IsFlat, StyleButton, StyleScrollable},
 };
 
@@ -23,6 +23,7 @@ pub enum LauncherThemeColor {
     SkyBlue,
     Catppuccin,
     Teal,
+    Halloween,
     Adwaita,
     #[default]
     #[serde(other)]
@@ -36,6 +37,7 @@ impl LauncherThemeColor {
         Self::SkyBlue,
         Self::Catppuccin,
         Self::Teal,
+        Self::Halloween,
         Self::Adwaita,
     ];
 }
@@ -51,6 +53,7 @@ impl Display for LauncherThemeColor {
                 LauncherThemeColor::SkyBlue => "Sky Blue",
                 LauncherThemeColor::Catppuccin => "Catppuccin",
                 LauncherThemeColor::Teal => "Teal",
+                LauncherThemeColor::Halloween => "Halloween",
                 LauncherThemeColor::Adwaita => "Adwaita",
             },
         )
@@ -67,6 +70,7 @@ impl FromStr for LauncherThemeColor {
             "Sky Blue" => LauncherThemeColor::SkyBlue,
             "Catppuccin" => LauncherThemeColor::Catppuccin,
             "Teal" => LauncherThemeColor::Teal,
+            "Halloween" => LauncherThemeColor::Halloween,
             "Adwaita" => LauncherThemeColor::Adwaita,
             _ => {
                 err!("Unknown style: {s:?}");
@@ -161,6 +165,7 @@ impl LauncherTheme {
             LauncherThemeColor::SkyBlue => &SKY_BLUE,
             LauncherThemeColor::Catppuccin => &CATPPUCCIN,
             LauncherThemeColor::Teal => &TEAL,
+            LauncherThemeColor::Halloween => &HALLOWEEN,
             LauncherThemeColor::Adwaita => unreachable!(),
         }
     }
