@@ -1,6 +1,7 @@
 use iced::{widget::scrollable::AbsoluteOffset, Task};
 use ql_core::{
     pt, DownloadProgress, InstanceSelection, IntoStringError, JsonDownloadError, ListEntry,
+    ListEntryKind,
 };
 
 use crate::state::{
@@ -37,12 +38,13 @@ impl Launcher {
                 });
             }
             CreateInstanceMessage::SearchSubmit => {
-                iflet!(self, search_box, selected_version, is_server; {
+                iflet!(self, search_box, selected_version, is_server, selected_categories; {
                     if let Some(sel) = self.version_list_cache.list
                         .as_deref()
                         .unwrap()
                         .iter()
                         .filter(|n| n.supports_server || !*is_server)
+                        .filter(|n| selected_categories.contains(&n.kind))
                         .find(|n|
                             search_box.trim().is_empty()
                             || n.name.trim().to_lowercase().contains(&search_box.trim().to_lowercase())
@@ -54,6 +56,18 @@ impl Launcher {
             CreateInstanceMessage::ContextMenuToggle => {
                 iflet!(self, show_category_dropdown; {
                     *show_category_dropdown = !*show_category_dropdown;
+                })
+            }
+            CreateInstanceMessage::CategoryToggle(kind) => {
+                iflet!(self, selected_categories; {
+                    if selected_categories.contains(&kind) {
+                        // Don't allow removing the last category
+                        if selected_categories.len() > 1 {
+                            selected_categories.remove(&kind);
+                        }
+                    } else {
+                        selected_categories.insert(kind);
+                    }
                 })
             }
             CreateInstanceMessage::NameInput(name) => self.update_created_instance_name(name),
@@ -156,6 +170,7 @@ then go to "Mods->Add File""#,
                         download_assets: true,
                         search_box: String::new(),
                         show_category_dropdown: false,
+                        selected_categories: ListEntryKind::default_selected(),
                         is_server,
                     });
 
@@ -193,6 +208,7 @@ then go to "Mods->Add File""#,
                 download_assets: true,
                 search_box: String::new(),
                 show_category_dropdown: false,
+                selected_categories: ListEntryKind::default_selected(),
                 is_server,
             });
             create_instance_scroll_to(offset)
