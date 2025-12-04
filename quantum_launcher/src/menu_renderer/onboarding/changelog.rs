@@ -22,23 +22,37 @@ pub fn changelog<'a>() -> Element<'a> {
         widget::text("UX").size(32),
 
         widget::column![
-        "- The Create Instance screen now auto-fills the version and name by default.",
-        "- Export mods as a text list for easy manual sharing, with optional links and instance details.",
-        "- Tweaked and rearranged many menus/messages.",
+        "- Export mods as a text list for easy manual sharing, with optional links and instance details",
+        "- Tweaked and rearranged many menus/messages",
+        "- You can now choose whether to include configuration in mod presets (thanks @Sreehari425)"
         ].spacing(5),
 
         widget::text("Themes").size(32),
         widget::column![
-            widget::text("- Added \"Adwaita\" (GNOME-inspired greyish color scheme)"),
-            widget::text("- Added \"Auto\" light/dark mode (syncs with system theme)"),
+            widget::text("- Added Auto light/dark mode (syncs with system)"),
+            widget::text("- Added themes:"),
+            widget::text("    - \"Adwaita\" greyish theme (GNOME-inspired)").size(14),
+            widget::text("    - \"Halloween\" orange/amber theme (thanks @Sreehari425)").size(14),
         ].spacing(5),
+
+        widget::text("Create Instance").size(32),
+        widget::column![
+            widget::text("Overhauled the Create Instance screen, now with:"),
+            widget::text("- Sidebar to view versions clearer"),
+            widget::text("- Filters for release/snapshot/beta/... (thanks @Sreehari425)"),
+            widget::text("- Search bar"),
+            widget::text("- Auto-filling version and name by default"),
+        ],
 
         widget::text("Mod Menu").size(32),
         widget::column![
-            widget::text("Revamped the mod menu, now with:"),
+            widget::text("Overhauled the mod menu, now with:"),
             widget::text("- Icons and Search!"),
             widget::text("- Easy bulk-selection (ctrl-a, shift/ctrl+click)"),
             widget::text("- Better aesthetics and layout"),
+            widget::text("Also:"),
+            widget::text("- Added option to include/exclude configuration in mod presets (thanks @Sreehari425)"),
+            widget::text("- Added EXPERIMENTAL importing of MultiMC presets"),
         ].spacing(5),
 
         widget::image(IMG_MANAGE_MODS.clone()).height(400),

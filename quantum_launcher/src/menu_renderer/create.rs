@@ -25,8 +25,12 @@ impl MenuCreateInstance {
             MenuCreateInstance::LoadingList { .. } => column![
                 row![
                     back_button().on_press(Message::CreateInstance(CreateInstanceMessage::Cancel)),
-                    button_with_icon(icon_manager::folder_with_size(14), "Import Instance", 14)
-                        .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
+                    tooltip(
+                        button_with_icon(icon_manager::folder_with_size(14), "Import Instance", 14)
+                            .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
+                        "This is VERY experimental right now",
+                        Position::Top
+                    )
                 ]
                 .spacing(5),
                 widget::text("Loading version list...").size(20),
