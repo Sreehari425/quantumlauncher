@@ -29,7 +29,7 @@ impl Launcher {
                 },
             ) => {
                 let sidebar_width = menu.get_sidebar_width();
-                self.config.sidebar_width = Some(sidebar_width as u64);
+                self.config.ui_sidebar_width = Some(sidebar_width as u64);
 
                 if let Some(receiver) = &mut self.java_recv {
                     if receiver.tick() {

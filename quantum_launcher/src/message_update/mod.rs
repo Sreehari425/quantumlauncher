@@ -476,14 +476,14 @@ impl Launcher {
     pub fn update_launcher_settings(&mut self, msg: LauncherSettingsMessage) -> Task<Message> {
         match msg {
             LauncherSettingsMessage::ThemePicked(theme) => {
-                self.config.theme = Some(theme);
+                self.config.ui_mode = Some(theme);
                 self.theme.lightness = theme;
             }
             LauncherSettingsMessage::Open => {
                 self.go_to_launcher_settings();
             }
             LauncherSettingsMessage::ColorSchemePicked(color) => {
-                self.config.style = Some(color);
+                self.config.ui_theme = Some(color);
                 self.theme.color = color;
             }
             LauncherSettingsMessage::UiScale(scale) => {
@@ -526,7 +526,7 @@ impl Launcher {
                 }
             }
             LauncherSettingsMessage::ToggleAntialiasing(t) => {
-                self.config.antialiasing = Some(t);
+                self.config.ui_antialiasing = Some(t);
             }
             LauncherSettingsMessage::ToggleWindowSize(t) => {
                 self.config

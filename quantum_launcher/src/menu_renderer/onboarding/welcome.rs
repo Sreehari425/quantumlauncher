@@ -4,8 +4,8 @@ use crate::{
     config::LauncherConfig,
     icon_manager,
     menu_renderer::{
-        button_with_icon, center_x, get_theme_selector, settings::get_color_scheme_selector,
-        Element, DISCORD,
+        button_with_icon, center_x, get_mode_selector, settings::get_theme_selector, Element,
+        DISCORD,
     },
     state::{AccountMessage, MenuWelcome, Message},
 };
@@ -31,14 +31,14 @@ impl MenuWelcome {
                 widget::row![
                     widget::horizontal_space(),
                     "Select Theme:",
-                    get_theme_selector(config),
+                    get_mode_selector(config),
                     widget::horizontal_space(),
                 ]
                 .spacing(10),
                 widget::row![
                     widget::horizontal_space(),
                     "Select Color Scheme:",
-                    get_color_scheme_selector().wrap(),
+                    get_theme_selector().wrap(),
                     widget::horizontal_space(),
                 ]
                 .spacing(10),

@@ -234,7 +234,7 @@ impl MenuLauncherUpdate {
     }
 }
 
-pub fn get_theme_selector(config: &LauncherConfig) -> Element<'static> {
+pub fn get_mode_selector(config: &LauncherConfig) -> Element<'static> {
     const PADDING: iced::Padding = iced::Padding {
         top: 5.0,
         bottom: 5.0,
@@ -244,7 +244,7 @@ pub fn get_theme_selector(config: &LauncherConfig) -> Element<'static> {
 
     let td = |t: &LauncherTheme| t.style_text(Color::Mid);
 
-    let theme = config.theme.unwrap_or_default();
+    let theme = config.ui_mode.unwrap_or_default();
     widget::row(LauncherThemeLightness::ALL.iter().map(|n| {
         let name = widget::text(n.to_string()).size(14);
         let icon = match n {

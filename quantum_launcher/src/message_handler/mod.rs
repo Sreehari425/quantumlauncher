@@ -292,7 +292,7 @@ impl Launcher {
                 None => MenuLaunch::default(),
             };
             menu_launch.is_viewing_server = true;
-            if let Some(width) = self.config.sidebar_width {
+            if let Some(width) = self.config.ui_sidebar_width {
                 menu_launch.resize_sidebar(width as f32, self.window_state.size.0);
             }
             self.state = State::Launch(menu_launch);

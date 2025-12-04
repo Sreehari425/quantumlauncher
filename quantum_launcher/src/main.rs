@@ -177,7 +177,7 @@ fn main() {
             antialiasing: config
                 .as_ref()
                 .ok()
-                .and_then(|n| n.antialiasing)
+                .and_then(|n| n.ui_antialiasing)
                 .unwrap_or(true),
             ..Default::default()
         })

@@ -32,12 +32,14 @@ pub struct LauncherConfig {
     )]
     pub java_installs: Option<Vec<String>>,
 
-    /// The theme (Light/Dark) set by the user.
+    /// UI mode (Light/Dark/Auto) set by the user.
     // Since: v0.3
-    pub theme: Option<LauncherThemeLightness>,
-    /// UI color scheme
+    #[serde(rename = "theme")]
+    pub ui_mode: Option<LauncherThemeLightness>,
+    /// UI color theme
     // Since: v0.3
-    pub style: Option<LauncherThemeColor>,
+    #[serde(rename = "style")]
+    pub ui_theme: Option<LauncherThemeColor>,
 
     /// The version that the launcher was last time
     /// you opened it
@@ -48,7 +50,8 @@ pub struct LauncherConfig {
     /// (which shows the list of instances). You can
     /// drag it around to resize it.
     // Since: v0.4
-    pub sidebar_width: Option<u64>,
+    #[serde(rename = "sidebar_width")]
+    pub ui_sidebar_width: Option<u64>,
     /// A list of Minecraft accounts logged into the launcher.
     ///
     /// `String (username) : ConfigAccount { uuid: String, skin: None (unimplemented) }`
@@ -80,7 +83,8 @@ pub struct LauncherConfig {
     ///
     /// Default: `true`
     // Since: v0.4.2
-    pub antialiasing: Option<bool>,
+    #[serde(rename = "antialiasing")]
+    pub ui_antialiasing: Option<bool>,
     /// Many launcher window related config options.
     // Since: v0.4.2
     pub window: Option<WindowProperties>,
@@ -97,14 +101,14 @@ impl Default for LauncherConfig {
         #[allow(deprecated)]
         Self {
             username: String::new(),
-            theme: None,
-            style: None,
+            ui_mode: None,
+            ui_theme: None,
             version: Some(LAUNCHER_VERSION_NAME.to_owned()),
-            sidebar_width: Some(SIDEBAR_WIDTH_DEFAULT),
+            ui_sidebar_width: Some(SIDEBAR_WIDTH_DEFAULT),
             accounts: None,
             ui_scale: None,
             java_installs: Some(Vec::new()),
-            antialiasing: Some(true),
+            ui_antialiasing: Some(true),
             account_selected: None,
             window: None,
             global_settings: None,
@@ -147,8 +151,8 @@ impl LauncherConfig {
                 return LauncherConfig::create(&config_path);
             }
         };
-        if config.antialiasing.is_none() {
-            config.antialiasing = Some(true);
+        if config.ui_antialiasing.is_none() {
+            config.ui_antialiasing = Some(true);
         }
 
         #[allow(deprecated)]
@@ -216,8 +220,8 @@ impl LauncherConfig {
 
     pub fn c_theme(&self) -> LauncherTheme {
         LauncherTheme {
-            lightness: self.theme.unwrap_or_default(),
-            color: self.style.unwrap_or_default(),
+            lightness: self.ui_mode.unwrap_or_default(),
+            color: self.ui_theme.unwrap_or_default(),
             alpha: self.c_ui_opacity(),
             system_dark_mode: dark_light::detect()
                 .map(|n| n == dark_light::Mode::Dark)

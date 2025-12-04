@@ -472,7 +472,7 @@ impl Launcher {
 
         let is_auto_theme = self
             .config
-            .theme
+            .ui_mode
             .is_none_or(|n| n == LauncherThemeLightness::Auto);
         let interval = self.tick_timer.is_multiple_of(INTERVAL);
 

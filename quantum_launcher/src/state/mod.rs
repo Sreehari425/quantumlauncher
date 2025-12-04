@@ -133,7 +133,7 @@ impl Launcher {
             MenuLaunch::default()
         };
 
-        if let Some(sidebar_width) = config.sidebar_width {
+        if let Some(sidebar_width) = config.ui_sidebar_width {
             launch.resize_sidebar(sidebar_width as f32, window_width);
         }
 
@@ -272,7 +272,7 @@ impl Launcher {
             Some(message) => MenuLaunch::with_message(message.to_string()),
             None => MenuLaunch::default(),
         };
-        if let Some(width) = self.config.sidebar_width {
+        if let Some(width) = self.config.ui_sidebar_width {
             menu_launch.resize_sidebar(width as f32, self.window_state.size.0);
         }
         self.state = State::Launch(menu_launch);
