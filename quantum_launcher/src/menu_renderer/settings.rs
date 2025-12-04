@@ -1,8 +1,10 @@
+use std::sync::LazyLock;
+
 use iced::{widget, Alignment, Length};
 use ql_core::{LAUNCHER_DIR, WEBSITE};
 
 use super::{
-    back_button, button_with_icon, get_theme_selector, sidebar_button, underline, Element, DISCORD,
+    back_button, button_with_icon, get_mode_selector, sidebar_button, underline, Element, DISCORD,
     GITHUB,
 };
 use crate::menu_renderer::edit_instance::{get_args_list, resolution_dialog};
@@ -18,17 +20,14 @@ use crate::{
     },
 };
 
+pub static IMG_ICED: LazyLock<widget::image::Handle> = LazyLock::new(|| {
+    widget::image::Handle::from_bytes(include_bytes!("../../../assets/iced.png").as_slice())
+});
+
 const SETTINGS_SPACING: f32 = 10.0;
 
-const PADDING_LEFT: iced::Padding = iced::Padding {
-    top: 0.0,
-    right: 0.0,
-    bottom: 0.0,
-    left: 10.0,
-};
-
 impl MenuLauncherSettings {
-    pub fn view<'a>(&'a self, config: &'a LauncherConfig, window_size: (f32, f32)) -> Element<'a> {
+    pub fn view<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {
         widget::row![
             sidebar(
                 "MenuLauncherSettings:sidebar",
@@ -50,7 +49,7 @@ impl MenuLauncherSettings {
                     )
                 })
             ),
-            widget::scrollable(self.selected_tab.view(config, self, window_size))
+            widget::scrollable(self.selected_tab.view(config, self))
                 .width(Length::Fill)
                 .style(LauncherTheme::style_scrollable_flat_dark)
         ]
@@ -90,8 +89,8 @@ impl MenuLauncherSettings {
 
         widget::column!(
             widget::column![widget::text("User Interface").size(20)].padding(PADDING_NOT_BOTTOM),
-            widget::row!["Theme: ", get_theme_selector(config)].spacing(5).align_y(Alignment::Center).padding([0, 10]),
-            widget::column!["Color scheme:", get_color_scheme_selector().wrap()]
+            widget::row!["Mode: ", get_mode_selector(config)].spacing(5).align_y(Alignment::Center).padding([0, 10]),
+            widget::column!["Theme:", get_theme_selector().wrap()]
                 .padding(iced::Padding::new(10.0).top(5.0))
                 .spacing(5),
             widget::row![
@@ -134,7 +133,7 @@ impl MenuLauncherSettings {
                 // widget::text("Use custom window borders and close/minimize/maximize buttons").size(12),
                 // widget::Space::with_height(5),
 
-                widget::checkbox("Antialiasing (UI) - Requires Restart", config.antialiasing.unwrap_or(true))
+                widget::checkbox("Antialiasing (UI) - Requires Restart", config.ui_antialiasing.unwrap_or(true))
                     .on_toggle(|n| Message::LauncherSettings(
                         LauncherSettingsMessage::ToggleAntialiasing(n)
                     )),
@@ -153,7 +152,7 @@ impl MenuLauncherSettings {
     }
 }
 
-pub fn get_color_scheme_selector() -> widget::Row<'static, Message, LauncherTheme> {
+pub fn get_theme_selector() -> widget::Row<'static, Message, LauncherTheme> {
     widget::row(LauncherThemeColor::ALL.iter().map(|color| {
         widget::button(widget::text(color.to_string()).size(14))
             .style(|theme: &LauncherTheme, s| {
@@ -177,7 +176,6 @@ impl LauncherSettingsTab {
         &'a self,
         config: &'a LauncherConfig,
         menu: &'a MenuLauncherSettings,
-        window_size: (f32, f32),
     ) -> Element<'a> {
         match self {
             LauncherSettingsTab::UserInterface => menu.view_ui_tab(config),
@@ -261,12 +259,6 @@ Example: Use 'prime-run' to force NVIDIA GPU usage on Linux with Optimus graphic
                     button_with_icon(icon_manager::discord(), "Discord", 16)
                         .on_press(Message::CoreOpenLink(DISCORD.to_owned())),
                 ]
-                .padding(iced::Padding {
-                    top: 0.0,
-                    right: 0.0,
-                    bottom: 10.0,
-                    left: 10.0,
-                })
                 .spacing(5)
                 .wrap();
 
@@ -275,7 +267,6 @@ Example: Use 'prime-run' to force NVIDIA GPU usage on Linux with Optimus graphic
                     widget::button("Welcome Screen").on_press(Message::CoreOpenIntro),
                     widget::button("Licenses").on_press(Message::LicenseOpen),
                 ]
-                .padding(PADDING_LEFT)
                 .spacing(5)
                 .wrap();
 
@@ -284,20 +275,15 @@ Example: Use 'prime-run' to force NVIDIA GPU usage on Linux with Optimus graphic
                         widget::text("About QuantumLauncher").size(20),
                         "Copyright 2025 Mrmayman & Contributors"
                     ]
-                    .spacing(5)
-                    .padding(PADDING_NOT_BOTTOM),
+                    .spacing(5),
                     menus,
                     links,
-                    widget::column![
-                        "Made with:",
-                        widget::button(widget::iced(window_size.1 / 12.0))
-                            .on_press(Message::CoreOpenLink("https://iced.rs".to_owned()))
-                            .padding(5)
-                            .style(|n: &LauncherTheme, status| n
-                                .style_button(status, StyleButton::Flat))
-                    ]
-                    .padding(10)
-                    .spacing(5),
+                    widget::button(widget::image(IMG_ICED.clone()).height(40))
+                        .on_press(Message::CoreOpenLink("https://iced.rs".to_owned()))
+                        .padding(5)
+                        .style(
+                            |n: &LauncherTheme, status| n.style_button(status, StyleButton::Flat)
+                        ),
                     widget::horizontal_rule(1),
                     widget::column![
                         widget::row![
@@ -327,6 +313,7 @@ Every new user motivates me to keep working on this :)"
                     })
                     .spacing(5),
                 ]
+                .padding(10)
                 .spacing(SETTINGS_SPACING)
                 .into()
             }

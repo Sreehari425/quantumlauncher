@@ -122,7 +122,7 @@ impl Launcher {
                 .spacing(10)
                 .into(),
             State::ModsDownload(menu) => menu.view(&self.images, self.tick_timer),
-            State::LauncherSettings(menu) => menu.view(&self.config, self.window_state.size),
+            State::LauncherSettings(menu) => menu.view(&self.config),
             State::InstallPaper(menu) => menu.view(self.tick_timer),
             State::ChangeLog => {
                 let back_msg = Message::LaunchScreenOpen {
