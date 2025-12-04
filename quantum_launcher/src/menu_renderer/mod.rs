@@ -106,7 +106,7 @@ pub fn back_button<'a>() -> widget::Button<'a, Message, LauncherTheme> {
 }
 
 pub fn ctxbox<'a>(inner: impl Into<Element<'a>>) -> widget::Container<'a, Message, LauncherTheme> {
-    widget::container(inner)
+    widget::container(widget::mouse_area(inner))
         .padding(10)
         .style(|t: &LauncherTheme| {
             t.style_container_round_box(BORDER_WIDTH, Color::Dark, BORDER_RADIUS)

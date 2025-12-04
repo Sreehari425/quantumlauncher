@@ -51,8 +51,8 @@ pub fn changelog<'a>() -> Element<'a> {
             widget::text("- Easy bulk-selection (ctrl-a, shift/ctrl+click)"),
             widget::text("- Better aesthetics and layout"),
             widget::text("Also:"),
+            widget::text("- Added EXPERIMENTAL importing of MultiMC/PrismLauncher instances"),
             widget::text("- Added option to include/exclude configuration in mod presets (thanks @Sreehari425)"),
-            widget::text("- Added EXPERIMENTAL importing of MultiMC presets"),
         ].spacing(5),
 
         widget::image(IMG_MANAGE_MODS.clone()).height(400),

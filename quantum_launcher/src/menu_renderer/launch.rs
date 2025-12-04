@@ -69,7 +69,7 @@ impl Launcher {
             widget::row![
                 // Enable/Disable the below `widget::column![]` code to
                 // toggle the experimental server manager
-                widget::column![
+                /*widget::column![
                     widget::vertical_space(),
                     widget::button(if menu.is_viewing_server {
                         "View Instances..."
@@ -81,7 +81,7 @@ impl Launcher {
                         clear_selection: false,
                         is_server: Some(!menu.is_viewing_server),
                     }),
-                ],
+                ],*/
                 get_footer_text(),
             ],
         ]

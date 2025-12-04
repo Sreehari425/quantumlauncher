@@ -23,16 +23,7 @@ impl MenuCreateInstance {
     ) -> Element<'a> {
         match self {
             MenuCreateInstance::LoadingList { .. } => column![
-                row![
-                    back_button().on_press(Message::CreateInstance(CreateInstanceMessage::Cancel)),
-                    tooltip(
-                        button_with_icon(icon_manager::folder_with_size(14), "Import Instance", 14)
-                            .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
-                        "This is VERY experimental right now",
-                        Position::Top
-                    )
-                ]
-                .spacing(5),
+                back_button().on_press(Message::CreateInstance(CreateInstanceMessage::Cancel)),
                 widget::text("Loading version list...").size(20),
             ]
             .padding(10)
@@ -178,7 +169,7 @@ impl MenuCreateInstance {
                 tooltip(
                     widget::button(icon_manager::zip_file()).padding(iced::Padding::new(8.0).left(12.0).right(12.0))
                     .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
-                    "Import Instance...",
+                    widget::text("Import Instance... (VERY EXPERIMENTAL right now)").size(14),
                     Position::Top
                 ),
                 get_create_button(already_exists),
