@@ -455,6 +455,7 @@ pub struct MenuEditPresets {
     pub selected_mods: HashSet<SelectedMod>,
     pub selected_state: SelectedState,
     pub is_building: bool,
+    pub include_config: bool,
 
     pub progress: Option<ProgressBar<GenericProgress>>,
     pub sorted_mods_list: Vec<ModListEntry>,

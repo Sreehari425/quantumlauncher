@@ -181,6 +181,7 @@ pub enum EditPresetsMessage {
     Open,
     ToggleCheckbox((String, ModId), bool),
     ToggleCheckboxLocal(String, bool),
+    ToggleIncludeConfig(bool),
     SelectAll,
     BuildYourOwn,
     BuildYourOwnEnd(Res<Vec<u8>>),

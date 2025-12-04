@@ -45,13 +45,23 @@ impl Launcher {
             EditPresetsMessage::SelectAll => {
                 self.preset_select_all();
             }
+            EditPresetsMessage::ToggleIncludeConfig(enable) => {
+                iflet_manage_preset!(self, include_config, {
+                    *include_config = enable;
+                });
+            }
             EditPresetsMessage::BuildYourOwn => {
-                iflet_manage_preset!(self, selected_mods, is_building, {
+                iflet_manage_preset!(self, selected_mods, is_building, include_config, {
                     *is_building = true;
                     let selected_instance = self.selected_instance.clone().unwrap();
                     let selected_mods = selected_mods.clone();
+                    let include_config = *include_config;
                     return Task::perform(
-                        ql_mod_manager::Preset::generate(selected_instance, selected_mods),
+                        ql_mod_manager::Preset::generate(
+                            selected_instance,
+                            selected_mods,
+                            include_config,
+                        ),
                         |n| Message::EditPresets(EditPresetsMessage::BuildYourOwnEnd(n.strerr())),
                     );
                 });
@@ -127,6 +137,7 @@ impl Launcher {
             selected_mods,
             selected_state: SelectedState::All,
             is_building: false,
+            include_config: true,
             progress: None,
             sorted_mods_list: menu.sorted_mods_list.clone(),
             drag_and_drop_hovered: false,
