@@ -1,10 +1,8 @@
 use std::sync::mpsc::Sender;
 
 use ql_core::{
-    info,
-    json::version::VersionDetails,
-    DownloadProgress, GenericProgress, InstanceSelection, IntoIoError, ListEntry, LAUNCHER_DIR,
-    LAUNCHER_VERSION_NAME,
+    info, json::version::VersionDetails, DownloadProgress, GenericProgress, InstanceSelection,
+    IntoIoError, ListEntry, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
 };
 
 mod downloader;
@@ -12,6 +10,7 @@ mod libraries;
 
 pub use downloader::DownloadError;
 pub(crate) use downloader::GameDownloader;
+pub use libraries::extract_zip_file;
 
 /// Creates a Minecraft instance.
 ///
@@ -101,7 +100,10 @@ pub async fn redownload_natives(
     instance: &InstanceSelection,
     progress_sender: Option<Sender<GenericProgress>>,
 ) -> Result<(), DownloadError> {
-    info!("Starting redownload of natives for instance: {}", instance.get_name());
+    info!(
+        "Starting redownload of natives for instance: {}",
+        instance.get_name()
+    );
 
     let instance_dir = instance.get_instance_path();
     let version_json = VersionDetails::load(instance).await?;
@@ -162,7 +164,10 @@ pub async fn redownload_natives(
         });
     }
 
-    info!("Finished redownloading natives for instance: {}", instance.get_name());
+    info!(
+        "Finished redownloading natives for instance: {}",
+        instance.get_name()
+    );
 
     Ok(())
 }

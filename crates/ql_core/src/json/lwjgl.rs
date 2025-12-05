@@ -14,6 +14,135 @@ const LWJGL3_MAVEN_METADATA_URL: &str =
 const LWJGL2_MAVEN_METADATA_URL: &str =
     "https://repo1.maven.org/maven2/org/lwjgl/lwjgl/lwjgl/maven-metadata.xml";
 
+/// LWJGL 3.x modules that Minecraft uses
+pub const LWJGL3_MODULES: &[&str] = &[
+    "lwjgl",
+    "lwjgl-freetype",
+    "lwjgl-glfw",
+    "lwjgl-jemalloc",
+    "lwjgl-openal",
+    "lwjgl-opengl",
+    "lwjgl-stb",
+    "lwjgl-tinyfd",
+];
+
+/// LWJGL 2.x modules that old Minecraft uses
+pub const LWJGL2_MODULES: &[&str] = &["lwjgl", "lwjgl_util"];
+
+/// Get the native classifier for the current platform (LWJGL 3.x)
+#[must_use]
+pub fn get_native_classifier() -> Option<&'static str> {
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    return Some("natives-linux");
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    return Some("natives-linux-arm64");
+    #[cfg(all(target_os = "linux", target_arch = "arm"))]
+    return Some("natives-linux-arm32");
+
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    return Some("natives-windows");
+    #[cfg(all(target_os = "windows", target_arch = "x86"))]
+    return Some("natives-windows-x86");
+    #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
+    return Some("natives-windows-arm64");
+
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    return Some("natives-macos");
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    return Some("natives-macos-arm64");
+
+    #[cfg(not(any(
+        all(
+            target_os = "linux",
+            any(target_arch = "x86_64", target_arch = "aarch64", target_arch = "arm")
+        ),
+        all(
+            target_os = "windows",
+            any(target_arch = "x86_64", target_arch = "x86", target_arch = "aarch64")
+        ),
+        all(
+            target_os = "macos",
+            any(target_arch = "x86_64", target_arch = "aarch64")
+        ),
+    )))]
+    return None;
+}
+
+/// Get the native classifier for the current platform (LWJGL 2.x)
+/// LWJGL 2.x uses different naming: natives-osx instead of natives-macos
+#[must_use]
+pub fn get_native_classifier_lwjgl2() -> Option<&'static str> {
+    #[cfg(target_os = "linux")]
+    return Some("natives-linux");
+
+    #[cfg(target_os = "windows")]
+    return Some("natives-windows");
+
+    #[cfg(target_os = "macos")]
+    return Some("natives-osx");
+
+    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
+    return None;
+}
+
+/// Check if a version is LWJGL 3.x (vs 2.x)
+#[must_use]
+pub fn is_lwjgl3(version: &str) -> bool {
+    version.starts_with('3')
+}
+
+/// Get the Maven group ID for an LWJGL version
+#[must_use]
+pub fn get_lwjgl_group(version: &str) -> &'static str {
+    if is_lwjgl3(version) {
+        "org.lwjgl"
+    } else {
+        "org.lwjgl.lwjgl"
+    }
+}
+
+/// Get the modules needed for an LWJGL version
+#[must_use]
+pub fn get_lwjgl_modules(version: &str) -> &'static [&'static str] {
+    if is_lwjgl3(version) {
+        LWJGL3_MODULES
+    } else {
+        LWJGL2_MODULES
+    }
+}
+
+/// Build a Maven URL for an LWJGL library
+#[must_use]
+pub fn build_lwjgl_maven_url(
+    group: &str,
+    artifact: &str,
+    version: &str,
+    classifier: Option<&str>,
+) -> String {
+    let group_path = group.replace('.', "/");
+    let filename = match classifier {
+        Some(c) => format!("{artifact}-{version}-{c}.jar"),
+        None => format!("{artifact}-{version}.jar"),
+    };
+    format!("https://repo1.maven.org/maven2/{group_path}/{artifact}/{version}/{filename}")
+}
+
+/// Build a library path for an LWJGL library (local storage)
+#[must_use]
+pub fn build_lwjgl_library_path(
+    group: &str,
+    artifact: &str,
+    version: &str,
+    classifier: Option<&str>,
+) -> String {
+    let group_path = group.replace('.', "/");
+    let filename = match classifier {
+        Some(c) => format!("{artifact}-{version}-{c}.jar"),
+        None => format!("{artifact}-{version}.jar"),
+    };
+    format!("{group_path}/{artifact}/{version}/{filename}")
+}
+
 /// A wrapper around a list of available LWJGL versions.
 #[derive(Debug, Clone)]
 pub struct LwjglVersionList {

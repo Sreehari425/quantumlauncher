@@ -50,6 +50,9 @@ pub enum GameLaunchError {
         "{GAME_ERR_PREFIX}error upgrading forge install (removing prefix)\n{FORGE_UPGRADE_MESSAGE}"
     )]
     ForgeInstallUpgradeStripPrefixError,
+    
+    #[error("{GAME_ERR_PREFIX}zip extraction error: {0}")]
+    ZipExtract(#[from] zip::result::ZipError),
 }
 
 const FORGE_UPGRADE_MESSAGE: &str = r"outdated forge install. Please uninstall and reinstall.

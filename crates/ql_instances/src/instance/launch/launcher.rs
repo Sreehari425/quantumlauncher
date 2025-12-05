@@ -497,12 +497,17 @@ impl GameLauncher {
     }
 
     pub async fn get_class_path(
-        &self,
+        &mut self,
         fabric_json: Option<&FabricJSON>,
         forge_json: Option<&forge::JsonDetails>,
         optifine_json: Option<&(JsonOptifine, PathBuf)>,
         main_class: &str,
     ) -> Result<String, GameLaunchError> {
+        // Download custom LWJGL natives if a custom version is set.
+        // This must be done before building the classpath to ensure
+        // natives are available and match the JAR version.
+        self.download_custom_lwjgl_natives().await?;
+
         // `class_path` is the actual classpath argument
         // string that will be passed to Minecraft as a Java argument.
         let mut class_path = String::new();
@@ -896,10 +901,21 @@ impl GameLauncher {
         // Download the file
         match file_utils::download_file_to_bytes(&url, false).await {
             Ok(bytes) => {
-                tokio::fs::write(target_path, bytes)
+                tokio::fs::write(target_path, &bytes)
                     .await
                     .path(target_path)?;
                 info!("Downloaded custom LWJGL library to {:?}", target_path);
+
+                // If this is a natives JAR, extract it to the natives folder
+                if classifier.is_some_and(|c| c.contains("natives")) {
+                    let natives_path = self.instance_dir.join("libraries/natives");
+                    tokio::fs::create_dir_all(&natives_path)
+                        .await
+                        .path(&natives_path)?;
+
+                    info!("Extracting natives from custom LWJGL to {:?}", natives_path);
+                    crate::download::extract_zip_file(&bytes, &natives_path)?;
+                }
             }
             Err(e) => {
                 err!(
@@ -911,6 +927,129 @@ impl GameLauncher {
             }
         }
 
+        Ok(())
+    }
+
+    /// Download and extract all LWJGL natives for the custom version.
+    /// This ensures natives match the JAR version to prevent crashes.
+    async fn download_custom_lwjgl_natives(&mut self) -> Result<(), GameLaunchError> {
+        use ql_core::json::lwjgl::{
+            get_lwjgl_group, get_lwjgl_modules, get_native_classifier,
+            get_native_classifier_lwjgl2, is_lwjgl3,
+        };
+
+        let Some(custom_version) = &self.config_json.lwjgl_version else {
+            return Ok(());
+        };
+        let custom_version = custom_version.clone();
+
+        // Get appropriate native classifier for this LWJGL version
+        let native_classifier = if is_lwjgl3(&custom_version) {
+            get_native_classifier()
+        } else {
+            get_native_classifier_lwjgl2()
+        };
+
+        let Some(native_classifier) = native_classifier else {
+            err!("Unsupported platform for LWJGL natives");
+            return Ok(());
+        };
+
+        let natives_path = self.instance_dir.join("libraries/natives");
+        tokio::fs::create_dir_all(&natives_path)
+            .await
+            .path(&natives_path)?;
+
+        let group = get_lwjgl_group(&custom_version);
+        let modules = get_lwjgl_modules(&custom_version);
+
+        info!(
+            "Downloading custom LWJGL {} natives for {} modules",
+            custom_version,
+            modules.len()
+        );
+
+        let total_modules = modules.len();
+        let mut current_module = 0;
+
+        for module in modules {
+            // LWJGL 2.x has different native artifact naming
+            let (artifact, classifier) = if is_lwjgl3(&custom_version) {
+                (*module, native_classifier)
+            } else {
+                // LWJGL 2.x: org.lwjgl.lwjgl:lwjgl-platform:VERSION:natives-OS
+                // The natives are in lwjgl-platform, not individual modules
+                if *module == "lwjgl" {
+                    ("lwjgl-platform", native_classifier)
+                } else {
+                    continue; // Skip lwjgl_util, no natives needed
+                }
+            };
+
+            let url = build_maven_url(group, artifact, &custom_version, Some(classifier));
+            let target_path = self.instance_dir.join("libraries").join(build_library_path(
+                group,
+                artifact,
+                &custom_version,
+                Some(classifier),
+            ));
+
+            current_module += 1;
+
+            // Send progress update
+            if let Some(sender) = &self.java_install_progress_sender {
+                let _ = sender.send(GenericProgress {
+                    done: current_module,
+                    total: total_modules,
+                    message: Some(format!(
+                        "Downloading LWJGL {}: {}",
+                        custom_version, artifact
+                    )),
+                    has_finished: false,
+                });
+            }
+
+            // Check if already downloaded
+            if target_path.exists() {
+                info!("Custom LWJGL native already exists: {:?}", target_path);
+                continue;
+            }
+
+            info!("Downloading custom LWJGL native: {}", url);
+
+            // Create parent directories
+            if let Some(parent) = target_path.parent() {
+                tokio::fs::create_dir_all(parent).await.path(parent)?;
+            }
+
+            match file_utils::download_file_to_bytes(&url, false).await {
+                Ok(bytes) => {
+                    tokio::fs::write(&target_path, &bytes)
+                        .await
+                        .path(&target_path)?;
+
+                    // Extract to natives folder
+                    info!("Extracting custom LWJGL native to {:?}", natives_path);
+                    crate::download::extract_zip_file(&bytes, &natives_path)?;
+                }
+                Err(e) => {
+                    err!("Failed to download custom LWJGL native from {}: {}", url, e);
+                    // Continue with other modules - some might not have natives
+                }
+            }
+        }
+
+        // Send completion progress
+        if let Some(sender) = &self.java_install_progress_sender {
+            let _ = sender.send(GenericProgress {
+                done: total_modules,
+                total: total_modules,
+                message: Some(format!("LWJGL {} natives ready", custom_version)),
+                has_finished: true,
+            });
+        }
+
+        info!("Finished downloading custom LWJGL natives");
         Ok(())
     }
 
