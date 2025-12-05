@@ -46,6 +46,7 @@ impl std::fmt::Display for LaunchTabId {
 pub struct MenuLaunch {
     pub message: String,
     pub login_progress: Option<ProgressBar<GenericProgress>>,
+    pub redownload_natives_progress: Option<ProgressBar<GenericProgress>>,
     pub tab: LaunchTabId,
     pub edit_instance: Option<MenuEditInstance>,
 
@@ -71,6 +72,7 @@ impl MenuLaunch {
             tab: LaunchTabId::default(),
             edit_instance: None,
             login_progress: None,
+            redownload_natives_progress: None,
             sidebar_width: SIDEBAR_WIDTH_DEFAULT as u16,
             sidebar_height: 100.0,
             sidebar_dragging: false,

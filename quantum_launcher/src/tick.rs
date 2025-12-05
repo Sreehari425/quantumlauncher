@@ -22,13 +22,21 @@ impl Launcher {
     pub fn tick(&mut self) -> Task<Message> {
         match &mut self.state {
             State::Launch(MenuLaunch {
-                edit_instance, tab, ..
+                edit_instance,
+                tab,
+                redownload_natives_progress,
+                ..
             }) => {
                 if let Some(receiver) = &mut self.java_recv {
                     if receiver.tick() {
                         self.state = State::InstallJava;
                         return Task::none();
                     }
+                }
+
+                // Tick the redownload natives progress bar
+                if let Some(progress) = redownload_natives_progress {
+                    progress.tick();
                 }
 
                 let mut commands = Vec::new();

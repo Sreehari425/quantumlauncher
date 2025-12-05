@@ -18,6 +18,7 @@ impl MenuEditInstance {
         &'a self,
         selected_instance: &InstanceSelection,
         jar_choices: Option<&'a CustomJarState>,
+        is_redownloading_natives: bool,
     ) -> Element<'a> {
         let ts = |n: &LauncherTheme| n.style_text(Color::SecondLight);
 
@@ -66,8 +67,25 @@ impl MenuEditInstance {
                     .spacing(5)
                 ).width(Length::Fill).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),
                 widget::container(
+                    widget::column![
+                        widget::text("Redownload Natives").size(16),
+                        widget::text(
+                            "Re-download native libraries (LWJGL, OpenAL, etc.) for this instance.\nUseful if the game crashes with missing or corrupted natives."
+                        ).size(12).style(ts),
+                        button_with_icon(icon_manager::download(), 
+                            if is_redownloading_natives { "Redownloading..." } else { "Redownload Natives" }, 
+                            14
+                        )
+                            .on_press_maybe((!is_redownloading_natives).then_some(
+                                Message::EditInstance(EditInstanceMessage::RedownloadNativesStart)
+                            )),
+                    ]
+                    .padding(10)
+                    .spacing(5)
+                ).width(Length::Fill).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::Dark)),
+                widget::container(
                     self.item_mem_alloc(),
-                ).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::Dark)),
+                ).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),
                 widget::container(
                     widget::Column::new()
                     .push_maybe((!selected_instance.is_server()).then_some(widget::column![

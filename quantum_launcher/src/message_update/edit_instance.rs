@@ -9,7 +9,7 @@ use crate::{
     message_handler::format_memory,
     state::{
         dir_watch, get_entries, CustomJarState, EditInstanceMessage, EditLwjglMessage, Launcher,
-        MenuEditInstance, MenuLaunch, Message, State, ADD_JAR_NAME, NONE_JAR_NAME,
+        MenuEditInstance, MenuLaunch, Message, ProgressBar, State, ADD_JAR_NAME, NONE_JAR_NAME,
         OPEN_FOLDER_JAR_NAME, REMOVE_JAR_NAME,
     },
 };
@@ -317,6 +317,12 @@ impl Launcher {
             }
             EditInstanceMessage::LwjglScreenOpen => {
                 return Ok(self.open_lwjgl_screen());
+            }
+            EditInstanceMessage::RedownloadNativesStart => {
+                return Ok(self.start_redownload_natives());
+            }
+            EditInstanceMessage::RedownloadNativesEnd(result) => {
+                self.finish_redownload_natives(result);
             }
         }
         Ok(Task::none())
@@ -637,5 +643,53 @@ impl Launcher {
                 Err(e) => Message::ShowScreen(format!("Failed to save LWJGL config: {e}")),
             },
         )
+    }
+
+    /// Starts the redownload of native libraries for the selected instance
+    fn start_redownload_natives(&mut self) -> Task<Message> {
+        let Some(instance) = self.selected_instance.clone() else {
+            return Task::none();
+        };
+
+        // Set up the progress bar
+        let (sender, receiver) = std::sync::mpsc::channel();
+        
+        if let State::Launch(MenuLaunch { 
+            message, 
+            redownload_natives_progress,
+            .. 
+        }) = &mut self.state {
+            *message = "Redownloading natives...".to_owned();
+            *redownload_natives_progress = Some(ProgressBar::with_recv(receiver));
+        }
+
+        Task::perform(
+            async move {
+                ql_instances::redownload_natives(&instance, Some(sender)).await?;
+                Ok::<_, ql_instances::DownloadError>(())
+            },
+            |result| Message::EditInstance(EditInstanceMessage::RedownloadNativesEnd(result.strerr())),
+        )
+    }
+
+    /// Handles the result of redownloading natives
+    fn finish_redownload_natives(&mut self, result: Result<(), String>) {
+        // Clear the progress bar
+        if let State::Launch(MenuLaunch { 
+            redownload_natives_progress,
+            message,
+            .. 
+        }) = &mut self.state {
+            *redownload_natives_progress = None;
+            
+            match result {
+                Ok(()) => {
+                    *message = "Successfully redownloaded natives!".to_owned();
+                }
+                Err(e) => {
+                    *message = format!("Failed to redownload natives: {e}");
+                }
+            }
+        }
     }
 }

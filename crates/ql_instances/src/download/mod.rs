@@ -1,7 +1,10 @@
 use std::sync::mpsc::Sender;
 
 use ql_core::{
-    info, DownloadProgress, IntoIoError, ListEntry, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
+    info,
+    json::version::VersionDetails,
+    DownloadProgress, GenericProgress, InstanceSelection, IntoIoError, ListEntry, LAUNCHER_DIR,
+    LAUNCHER_VERSION_NAME,
 };
 
 mod downloader;
@@ -80,4 +83,86 @@ pub async fn create_instance(
     info!("Finished creating instance: {instance_name}");
 
     Ok(instance_name)
+}
+
+/// Redownloads native libraries for an existing instance.
+///
+/// This function deletes the existing natives folder and re-downloads
+/// all native libraries from scratch. Useful when natives are corrupted
+/// or when switching platforms.
+///
+/// # Arguments
+/// - `instance` : The instance selection (client or server)
+/// - `progress_sender` : Optional sender for progress updates
+///
+/// # Errors
+/// Returns a [`DownloadError`] if the redownload fails.
+pub async fn redownload_natives(
+    instance: &InstanceSelection,
+    progress_sender: Option<Sender<GenericProgress>>,
+) -> Result<(), DownloadError> {
+    info!("Starting redownload of natives for instance: {}", instance.get_name());
+
+    let instance_dir = instance.get_instance_path();
+    let version_json = VersionDetails::load(instance).await?;
+
+    // Delete existing natives folder
+    let natives_path = instance_dir.join("libraries/natives");
+    if natives_path.exists() {
+        info!("Removing existing natives folder");
+        tokio::fs::remove_dir_all(&natives_path)
+            .await
+            .path(&natives_path)?;
+    }
+
+    // Create fresh natives directory
+    tokio::fs::create_dir_all(&natives_path)
+        .await
+        .path(&natives_path)?;
+
+    // Create a game downloader with the existing instance
+    let game_downloader = GameDownloader::with_existing_instance(
+        version_json,
+        instance_dir.clone(),
+        None, // We'll use GenericProgress instead
+    );
+
+    // Count total libraries for progress
+    let total_libs = game_downloader.version_json.libraries.len();
+    let mut current = 0;
+
+    // Re-download libraries (this will re-extract natives)
+    for library in &game_downloader.version_json.libraries {
+        if !library.is_allowed() {
+            continue;
+        }
+
+        game_downloader.download_library(library, None).await?;
+
+        current += 1;
+        if let Some(sender) = &progress_sender {
+            let _ = sender.send(GenericProgress {
+                done: current,
+                total: total_libs,
+                message: Some(format!("Redownloading library {current}/{total_libs}")),
+                has_finished: false,
+            });
+        }
+    }
+
+    // Run library extras (e.g., FreeBSD LWJGL2 natives)
+    game_downloader.library_extras().await?;
+
+    if let Some(sender) = &progress_sender {
+        let _ = sender.send(GenericProgress {
+            done: total_libs,
+            total: total_libs,
+            message: Some("Finished redownloading natives".to_string()),
+            has_finished: true,
+        });
+    }
+
+    info!("Finished redownloading natives for instance: {}", instance.get_name());
+
+    Ok(())
 }

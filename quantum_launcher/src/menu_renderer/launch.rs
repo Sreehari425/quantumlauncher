@@ -77,13 +77,14 @@ impl Launcher {
         .spacing(5);
 
         let tab_body = if let Some(selected) = &self.selected_instance {
+            let is_redownloading = menu.redownload_natives_progress.is_some();
             match menu.tab {
                 LaunchTabId::Buttons => {
                     let main_buttons = widget::row![
                         if menu.is_viewing_server {
-                            self.get_server_play_button().into()
+                            self.get_server_play_button(is_redownloading).into()
                         } else {
-                            self.get_client_play_button()
+                            self.get_client_play_button(is_redownloading)
                         },
                         self.get_mods_button(selected_instance_s),
                         Self::get_files_button(selected),
@@ -108,8 +109,12 @@ impl Launcher {
                 }
                 LaunchTabId::Log => self.get_log_pane(menu).into(),
                 LaunchTabId::Edit => {
-                    if let Some(menu) = &menu.edit_instance {
-                        menu.view(selected, self.custom_jar.as_ref())
+                    if let Some(edit_menu) = &menu.edit_instance {
+                        edit_menu.view(
+                            selected, 
+                            self.custom_jar.as_ref(),
+                            menu.redownload_natives_progress.is_some()
+                        )
                     } else {
                         widget::column!(
                             "Error: Could not read config json!",
@@ -364,12 +369,14 @@ impl Launcher {
             || self.accounts_selected.as_deref() == Some(OFFLINE_ACCOUNT_NAME))
     }
 
-    fn get_client_play_button(&'_ self) -> Element<'_> {
+    fn get_client_play_button(&'_ self, is_redownloading: bool) -> Element<'_> {
         let play_button = button_with_icon(icon_manager::play(), "Play", 16).width(98);
 
         let is_account_selected = self.is_account_selected();
 
-        if self.config.username.is_empty() && !is_account_selected {
+        if is_redownloading {
+            tooltip(play_button, "Redownloading natives...", Position::Bottom).into()
+        } else if self.config.username.is_empty() && !is_account_selected {
             tooltip(play_button, "Username is empty!", Position::Bottom).into()
         } else if self.config.username.contains(' ') && !is_account_selected {
             tooltip(play_button, "Username contains spaces!", Position::Bottom).into()
@@ -410,13 +417,19 @@ impl Launcher {
             .width(97)
     }
 
-    fn get_server_play_button<'a>(&self) -> iced::widget::Tooltip<'a, Message, LauncherTheme> {
+    fn get_server_play_button<'a>(&self, is_redownloading: bool) -> iced::widget::Tooltip<'a, Message, LauncherTheme> {
         match &self.selected_instance {
             Some(n) if self.processes.contains_key(n) => tooltip(
                 button_with_icon(icon_manager::play(), "Stop", 16)
                     .width(97)
                     .on_press(Message::LaunchKill),
                 shortcut_ctrl("Escape"),
+                Position::Bottom,
+            ),
+            _ if is_redownloading => tooltip(
+                button_with_icon(icon_manager::play(), "Start", 16)
+                    .width(97),
+                "Redownloading natives...",
                 Position::Bottom,
             ),
             _ => tooltip(
@@ -437,6 +450,23 @@ impl Launcher {
 fn view_info_message(
     menu: &'_ MenuLaunch,
 ) -> Option<widget::Container<'_, Message, LauncherTheme>> {
+    // Show progress bar if redownloading natives
+    if let Some(progress) = &menu.redownload_natives_progress {
+        return Some(
+            widget::container(
+                widget::column![
+                    widget::text(&menu.message)
+                        .size(12)
+                        .style(|t: &LauncherTheme| t.style_text(Color::SecondLight)),
+                    progress.view()
+                ]
+                .spacing(5)
+            )
+            .padding(10)
+            .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark)),
+        );
+    }
+
     (!menu.message.is_empty()).then_some(
         widget::container(widget::row![
             widget::text(&menu.message)

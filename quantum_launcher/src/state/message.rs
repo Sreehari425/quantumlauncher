@@ -94,6 +94,11 @@ pub enum EditInstanceMessage {
 
     /// Open the LWJGL version selection screen
     LwjglScreenOpen,
+
+    /// Start redownloading native libraries
+    RedownloadNativesStart,
+    /// Redownload natives finished
+    RedownloadNativesEnd(Res),
 }
 
 /// Messages for the LWJGL version selection screen
