@@ -148,6 +148,7 @@ impl Launcher {
             }
             State::Welcome(menu) => menu.view(&self.config),
             State::EditJarMods(menu) => menu.view(self.instance()),
+            State::EditLwjgl(menu) => menu.view(),
             State::ImportModpack(progress) => {
                 widget::column![widget::text("Installing mods..."), progress.view()]
                     .padding(10)

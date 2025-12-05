@@ -16,6 +16,7 @@ use crate::{
 };
 
 mod edit_instance;
+mod edit_lwjgl;
 mod launch;
 mod log;
 mod login;

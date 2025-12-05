@@ -774,17 +774,26 @@ impl GameLauncher {
             }
             classpath_entries.insert(name);
         }
-        let library_path = self
-            .instance_dir
-            .join("libraries")
-            .join(artifact.get_path());
+
+        // Check if we need to apply LWJGL version override
+        let (library_path, did_override) = self
+            .get_lwjgl_override_path(name, &artifact.get_path())
+            .await?;
+
+        let library_path = self.instance_dir.join("libraries").join(&library_path);
 
         if !library_path.exists() {
-            pt!("library {library_path:?} not found! Downloading...");
-            if let Err(err) = downloader.download_library(library, Some(artifact)).await {
-                err!("Couldn't download library! Skipping...\n{err}");
-            } else if !library_path.exists() {
-                err!("Library still doesn't exist... failed?")
+            if did_override {
+                // Download custom LWJGL version from Maven
+                self.download_custom_lwjgl_library(name, &library_path)
+                    .await?;
+            } else {
+                pt!("library {library_path:?} not found! Downloading...");
+                if let Err(err) = downloader.download_library(library, Some(artifact)).await {
+                    err!("Couldn't download library! Skipping...\n{err}");
+                } else if !library_path.exists() {
+                    err!("Library still doesn't exist... failed?")
+                }
             }
         }
         #[allow(unused_mut)]
@@ -812,6 +821,96 @@ impl GameLauncher {
 
         class_path.push_str(library_path);
         class_path.push(CLASSPATH_SEPARATOR);
+        Ok(())
+    }
+
+    /// Returns (path, did_override) - if LWJGL override is set, returns the modified path
+    async fn get_lwjgl_override_path(
+        &self,
+        name: &str,
+        original_path: &str,
+    ) -> Result<(String, bool), GameLaunchError> {
+        let Some(custom_version) = &self.config_json.lwjgl_version else {
+            return Ok((original_path.to_owned(), false));
+        };
+
+        // Check if this is an LWJGL library (both 2.x and 3.x)
+        // LWJGL 3.x: org.lwjgl:lwjgl:VERSION or org.lwjgl:lwjgl-opengl:VERSION etc
+        // LWJGL 2.x: org.lwjgl.lwjgl:lwjgl:VERSION
+        if !name.starts_with("org.lwjgl") {
+            return Ok((original_path.to_owned(), false));
+        }
+
+        // Parse the library name to extract components
+        // Format: group:artifact:version or group:artifact:version:classifier
+        let parts: Vec<&str> = name.split(':').collect();
+        if parts.len() < 3 {
+            return Ok((original_path.to_owned(), false));
+        }
+
+        let group = parts[0];
+        let artifact = parts[1];
+        let _old_version = parts[2];
+        let classifier = parts.get(3).copied();
+
+        // Build new path with custom version
+        let new_path = build_library_path(group, artifact, custom_version, classifier);
+
+        info!(
+            "LWJGL override: {} -> {} (version {})",
+            original_path, new_path, custom_version
+        );
+
+        Ok((new_path, true))
+    }
+
+    /// Download a custom LWJGL library from Maven Central
+    async fn download_custom_lwjgl_library(
+        &self,
+        name: &str,
+        target_path: &Path,
+    ) -> Result<(), GameLaunchError> {
+        let Some(custom_version) = &self.config_json.lwjgl_version else {
+            return Ok(());
+        };
+
+        let parts: Vec<&str> = name.split(':').collect();
+        if parts.len() < 3 {
+            return Ok(());
+        }
+
+        let group = parts[0];
+        let artifact = parts[1];
+        let classifier = parts.get(3).copied();
+
+        // Build Maven URL
+        let url = build_maven_url(group, artifact, custom_version, classifier);
+
+        info!("Downloading custom LWJGL library from: {}", url);
+
+        // Create parent directories
+        if let Some(parent) = target_path.parent() {
+            tokio::fs::create_dir_all(parent).await.path(parent)?;
+        }
+
+        // Download the file
+        match file_utils::download_file_to_bytes(&url, false).await {
+            Ok(bytes) => {
+                tokio::fs::write(target_path, bytes)
+                    .await
+                    .path(target_path)?;
+                info!("Downloaded custom LWJGL library to {:?}", target_path);
+            }
+            Err(e) => {
+                err!(
+                    "Failed to download custom LWJGL library from {}: {}",
+                    url,
+                    e
+                );
+                // Don't fail - the game might still work without this specific library
+            }
+        }
+
         Ok(())
     }
 
@@ -1088,4 +1187,28 @@ fn deduplicate_game_args(arr1: &[String], arr2: &[String]) -> Vec<String> {
 
     // HashMap -> Vec<String> (key, value, key, value, ...)
     result
+}
+
+/// Build a library path from Maven coordinates
+/// Format: group/artifact/version/artifact-version[-classifier].jar
+fn build_library_path(
+    group: &str,
+    artifact: &str,
+    version: &str,
+    classifier: Option<&str>,
+) -> String {
+    let group_path = group.replace('.', "/");
+    match classifier {
+        Some(c) => format!("{group_path}/{artifact}/{version}/{artifact}-{version}-{c}.jar"),
+        None => format!("{group_path}/{artifact}/{version}/{artifact}-{version}.jar"),
+    }
+}
+
+/// Build a Maven Central URL for downloading a library
+fn build_maven_url(group: &str, artifact: &str, version: &str, classifier: Option<&str>) -> String {
+    let path = build_library_path(group, artifact, version, classifier);
+
+    // LWJGL 3.x is at org.lwjgl, LWJGL 2.x is at org.lwjgl.lwjgl
+    // Both are on Maven Central
+    format!("https://repo1.maven.org/maven2/{path}")
 }

@@ -302,6 +302,27 @@ impl MenuInstallFabric {
     }
 }
 
+/// Menu state for the LWJGL version selection screen
+pub enum MenuEditLwjgl {
+    /// Loading LWJGL versions from Maven
+    Loading {
+        _handle: iced::task::Handle,
+        /// Currently selected version before opening the screen
+        initial_version: Option<String>,
+    },
+    /// Loaded and ready to select
+    Loaded {
+        /// List of available versions from Maven
+        versions: Vec<String>,
+        /// Currently selected version (None = default from game)
+        selected: Option<String>,
+        /// Original version from config (for comparison)
+        initial_version: Option<String>,
+        /// Whether we're currently applying/downloading
+        is_applying: bool,
+    },
+}
+
 pub enum MenuInstallPaper {
     Loading {
         _handle: iced::task::Handle,
@@ -488,6 +509,9 @@ pub enum State {
     InstallFabric(MenuInstallFabric),
     InstallForge(MenuInstallForge),
     InstallOptifine(MenuInstallOptifine),
+
+    /// LWJGL version selection screen
+    EditLwjgl(MenuEditLwjgl),
 
     InstallJava,
 

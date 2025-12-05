@@ -50,8 +50,24 @@ impl MenuEditInstance {
                     self.item_custom_jar(jar_choices)
                 ).width(Length::Fill).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::Dark)),
                 widget::container(
+                    widget::column![
+                        widget::text("LWJGL Version Override").size(16),
+                        widget::text(
+                            "Override the LWJGL (graphics library) version used by the game."
+                        ).size(12).style(ts),
+                        widget::text(format!(
+                            "Current: {}",
+                            self.config.lwjgl_version.as_deref().unwrap_or("Default (game version)")
+                        )).size(14),
+                        button_with_icon(icon_manager::settings(), "Change LWJGL Version", 14)
+                            .on_press(Message::EditInstance(EditInstanceMessage::LwjglScreenOpen)),
+                    ]
+                    .padding(10)
+                    .spacing(5)
+                ).width(Length::Fill).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),
+                widget::container(
                     self.item_mem_alloc(),
-                ).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),
+                ).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::Dark)),
                 widget::container(
                     widget::Column::new()
                     .push_maybe((!selected_instance.is_server()).then_some(widget::column![

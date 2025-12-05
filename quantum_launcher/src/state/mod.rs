@@ -65,6 +65,7 @@ pub struct Launcher {
     pub accounts_selected: Option<String>,
 
     pub version_list_cache: VersionListCache,
+    pub lwjgl_versions_cache: Option<Vec<String>>,
     pub client_list: Option<Vec<String>>,
     pub server_list: Option<Vec<String>>,
 
@@ -191,6 +192,7 @@ impl Launcher {
             server_list: None,
             java_recv: None,
             version_list_cache: VersionListCache::default(),
+            lwjgl_versions_cache: None,
             selected_instance: None,
             custom_jar: None,
 
@@ -265,6 +267,7 @@ impl Launcher {
 
             images: ImageState::default(),
             version_list_cache: VersionListCache::default(),
+            lwjgl_versions_cache: None,
             window_size: (window_width, window_height),
             accounts_dropdown: vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()],
             accounts_selected: Some(OFFLINE_ACCOUNT_NAME.to_owned()),

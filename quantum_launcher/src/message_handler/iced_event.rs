@@ -343,7 +343,8 @@ impl Launcher {
             | State::LoginAlternate(MenuLoginAlternate {
                 is_loading: false, ..
             })
-            | State::Welcome(_) => {
+            | State::Welcome(_)
+            | State::EditLwjgl(_) => {
                 should_return_to_main_screen = true;
             }
             State::License(_) => {

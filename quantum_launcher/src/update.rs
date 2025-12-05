@@ -103,6 +103,7 @@ impl Launcher {
                 Ok(n) => return n,
                 Err(err) => self.set_error(err),
             },
+            Message::EditLwjgl(message) => return self.update_edit_lwjgl(message),
             Message::InstallFabric(message) => return self.update_install_fabric(message),
             Message::CoreOpenLink(dir) => open_file_explorer(&dir),
             Message::CoreOpenPath(dir) => {

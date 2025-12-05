@@ -91,6 +91,22 @@ pub enum EditInstanceMessage {
     CustomJarPathChanged(String),
     CustomJarLoaded(Res<Vec<String>>),
     AutoSetMainClassToggle(bool),
+
+    /// Open the LWJGL version selection screen
+    LwjglScreenOpen,
+}
+
+/// Messages for the LWJGL version selection screen
+#[derive(Debug, Clone)]
+pub enum EditLwjglMessage {
+    /// LWJGL version list loaded from Maven
+    VersionsLoaded(Res<Vec<String>>),
+    /// User selected a version (None = default)
+    VersionSelected(Option<String>),
+    /// User clicked apply - save and re-download LWJGL libs
+    Apply,
+    /// Go back to edit instance screen
+    Back,
 }
 
 #[derive(Debug, Clone)]
@@ -282,6 +298,7 @@ pub enum Message {
     Account(AccountMessage),
     CreateInstance(CreateInstanceMessage),
     EditInstance(EditInstanceMessage),
+    EditLwjgl(EditLwjglMessage),
     ManageMods(ManageModsMessage),
     ExportMods(ExportModsMessage),
     ManageJarMods(ManageJarModsMessage),

@@ -8,9 +8,9 @@ use ql_core::{
 use crate::{
     message_handler::format_memory,
     state::{
-        dir_watch, get_entries, CustomJarState, EditInstanceMessage, Launcher, MenuEditInstance,
-        MenuLaunch, Message, State, ADD_JAR_NAME, NONE_JAR_NAME, OPEN_FOLDER_JAR_NAME,
-        REMOVE_JAR_NAME,
+        dir_watch, get_entries, CustomJarState, EditInstanceMessage, EditLwjglMessage, Launcher,
+        MenuEditInstance, MenuLaunch, Message, State, ADD_JAR_NAME, NONE_JAR_NAME,
+        OPEN_FOLDER_JAR_NAME, REMOVE_JAR_NAME,
     },
 };
 
@@ -315,6 +315,9 @@ impl Launcher {
                     custom_jar.autoset_main_class = t;
                 }
             }
+            EditInstanceMessage::LwjglScreenOpen => {
+                return Ok(self.open_lwjgl_screen());
+            }
         }
         Ok(Task::none())
     }
@@ -496,5 +499,143 @@ impl Launcher {
         {
             menu.config.get_launch_prefix().remove(idx);
         }
+    }
+
+    /// Opens the LWJGL version selection screen.
+    /// Uses cached versions if available, otherwise fetches from Maven.
+    fn open_lwjgl_screen(&mut self) -> Task<Message> {
+        use crate::state::MenuEditLwjgl;
+        use ql_core::json::LwjglVersionList;
+
+        // Get current LWJGL version from instance config
+        let current_lwjgl_version = if let State::Launch(MenuLaunch {
+            edit_instance: Some(menu),
+            ..
+        }) = &self.state
+        {
+            menu.config.lwjgl_version.clone()
+        } else {
+            None
+        };
+
+        // If we have cached versions, use them
+        if let Some(versions) = &self.lwjgl_versions_cache {
+            self.state = State::EditLwjgl(MenuEditLwjgl::Loaded {
+                versions: versions.clone(),
+                selected: current_lwjgl_version.clone(),
+                initial_version: current_lwjgl_version,
+                is_applying: false,
+            });
+            return Task::none();
+        }
+
+        // Otherwise fetch from Maven
+        let (task, handle) = Task::perform(
+            async { LwjglVersionList::download().await.map(|n| n.versions) },
+            |n| Message::EditLwjgl(EditLwjglMessage::VersionsLoaded(n.strerr())),
+        )
+        .abortable();
+
+        self.state = State::EditLwjgl(MenuEditLwjgl::Loading {
+            _handle: handle.abort_on_drop(),
+            initial_version: current_lwjgl_version,
+        });
+
+        task
+    }
+
+    /// Handles all EditLwjgl messages
+    pub fn update_edit_lwjgl(&mut self, message: EditLwjglMessage) -> Task<Message> {
+        use crate::state::MenuEditLwjgl;
+
+        match message {
+            EditLwjglMessage::VersionsLoaded(result) => match result {
+                Ok(versions) => {
+                    // Cache the versions
+                    self.lwjgl_versions_cache = Some(versions.clone());
+
+                    // Get initial version from current state
+                    let initial = if let State::EditLwjgl(MenuEditLwjgl::Loading {
+                        initial_version,
+                        ..
+                    }) = &self.state
+                    {
+                        initial_version.clone()
+                    } else {
+                        None
+                    };
+
+                    self.state = State::EditLwjgl(MenuEditLwjgl::Loaded {
+                        versions,
+                        selected: initial.clone(),
+                        initial_version: initial,
+                        is_applying: false,
+                    });
+                }
+                Err(err) => self.set_error(err),
+            },
+            EditLwjglMessage::VersionSelected(version) => {
+                if let State::EditLwjgl(MenuEditLwjgl::Loaded { selected, .. }) = &mut self.state {
+                    *selected = version;
+                }
+            }
+            EditLwjglMessage::Apply => {
+                return self.apply_lwjgl_version();
+            }
+            EditLwjglMessage::Back => {
+                return self.go_to_launch_screen_and_edit();
+            }
+        }
+        Task::none()
+    }
+
+    /// Go back to launch screen and reopen the edit instance menu
+    fn go_to_launch_screen_and_edit(&mut self) -> Task<Message> {
+        // First, go back to launch screen
+        let task = self.go_to_launch_screen::<String>(None);
+
+        // Re-open the edit instance panel if we have a selected instance
+        if let Some(instance) = &self.selected_instance {
+            if let State::Launch(MenuLaunch { edit_instance, .. }) = &mut self.state {
+                if let Err(e) = Self::load_edit_instance_inner(edit_instance, instance) {
+                    err!("Failed to reload edit instance: {e}");
+                }
+            }
+        }
+
+        task
+    }
+
+    fn apply_lwjgl_version(&mut self) -> Task<Message> {
+        use crate::state::MenuEditLwjgl;
+
+        let State::EditLwjgl(MenuEditLwjgl::Loaded { selected, .. }) = &self.state else {
+            return Task::none();
+        };
+
+        let new_version = selected.clone();
+        let Some(instance) = self.selected_instance.clone() else {
+            return Task::none();
+        };
+
+        // Save the new LWJGL version to config
+        Task::perform(
+            async move {
+                let instance_dir = instance.get_instance_path();
+                let mut config = InstanceConfigJson::read_from_dir(&instance_dir).await?;
+                config.lwjgl_version = new_version;
+                let config_path = instance_dir.join("config.json");
+                let config_str = serde_json::to_string_pretty(&config)
+                    .map_err(|e| ql_core::JsonError::To { error: e })?;
+                tokio::fs::write(&config_path, config_str)
+                    .await
+                    .path(config_path)?;
+                Ok::<_, ql_core::JsonFileError>(())
+            },
+            |result| match result {
+                Ok(()) => Message::EditLwjgl(EditLwjglMessage::Back),
+                Err(e) => Message::ShowScreen(format!("Failed to save LWJGL config: {e}")),
+            },
+        )
     }
 }
