@@ -33,23 +33,6 @@ macro_rules! iflet_config {
         iflet_config!($state, $field : $field, $body);
     };
 
-    ($state:expr, get, $field:ident, $body:block) => {
-        if let State::Launch(MenuLaunch {
-            edit_instance: Some(MenuEditInstance {
-                config: InstanceConfigJson {
-                    $field,
-                    ..
-                },
-                ..
-            }),
-            ..
-        }) = $state
-        {
-            let $field = $field.get_or_insert_with(Default::default);
-            $body
-        }
-    };
-
     ($state:expr, prefix, |$prefix:ident| $body:block) => {
         iflet_config!($state, global_settings: global_settings, {
             let global_settings =
@@ -111,13 +94,13 @@ impl Launcher {
                 });
             }
             EditInstanceMessage::JavaArgs(msg) => {
-                iflet_config!(&mut self.state, java_args: Some(args), {
-                    msg.apply(args);
+                iflet_config!(&mut self.state, java_args, {
+                    msg.apply(java_args.get_or_insert_with(Vec::new));
                 });
             }
             EditInstanceMessage::GameArgs(msg) => {
-                iflet_config!(&mut self.state, game_args: Some(args), {
-                    msg.apply(args);
+                iflet_config!(&mut self.state, game_args, {
+                    msg.apply(game_args.get_or_insert_with(Vec::new));
                 });
             }
             EditInstanceMessage::PreLaunchPrefix(msg) => {
