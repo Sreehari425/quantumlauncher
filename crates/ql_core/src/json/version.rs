@@ -180,6 +180,7 @@ impl VersionDetails {
         }
     }
 
+    #[must_use]
     pub fn is_after_or_eq(&self, release_time: &str) -> bool {
         match (
             DateTime::parse_from_rfc3339(&self.releaseTime),
@@ -291,6 +292,7 @@ pub struct Library {
 }
 
 impl Library {
+    #[must_use]
     pub fn get_artifact(&self) -> Option<LibraryDownloadArtifact> {
         match (&self.name, self.downloads.as_ref(), self.url.as_ref()) {
             (

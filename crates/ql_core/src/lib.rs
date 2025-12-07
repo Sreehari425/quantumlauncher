@@ -12,6 +12,8 @@
 //! - Logging macros
 //! - And much more
 
+#![allow(clippy::missing_errors_doc)]
+
 use crate::{
     json::manifest::Version,
     read_log::{read_logs, Diagnostic, LogLine, ReadError},
@@ -557,6 +559,7 @@ impl OptifineUniqueVersion {
             .and_then(|n| Self::from_version(n.get_id()))
     }
 
+    #[must_use]
     pub fn from_version(version: &str) -> Option<Self> {
         match version {
             "1.5.2" => Some(OptifineUniqueVersion::V1_5_2),
@@ -637,6 +640,7 @@ pub struct LaunchedProcess {
 type ReadLogOut = Result<(ExitStatus, InstanceSelection, Option<Diagnostic>), ReadError>;
 
 impl LaunchedProcess {
+    #[must_use]
     pub fn read_logs(
         &self,
         censors: Vec<String>,

@@ -41,8 +41,7 @@ pub struct LauncherConfig {
     #[serde(rename = "style")]
     pub ui_theme: Option<LauncherThemeColor>,
 
-    /// The version that the launcher was last time
-    /// you opened it
+    /// The launcher version when you last opened it
     // Since: v0.3
     pub version: Option<String>,
 
@@ -198,8 +197,7 @@ impl LauncherConfig {
     }
 
     pub fn c_launch_prefix(&mut self) -> &mut Vec<String> {
-        self.global_settings
-            .get_or_insert_with(GlobalSettings::default)
+        self.c_global()
             .pre_launch_prefix
             .get_or_insert_with(Vec::new)
     }
@@ -220,6 +218,15 @@ impl LauncherConfig {
                 .map(|n| n == dark_light::Mode::Dark)
                 .unwrap_or_default(),
         }
+    }
+
+    pub fn c_window(&mut self) -> &mut WindowProperties {
+        self.window.get_or_insert_with(WindowProperties::default)
+    }
+
+    pub fn c_global(&mut self) -> &mut GlobalSettings {
+        self.global_settings
+            .get_or_insert_with(GlobalSettings::default)
     }
 }
 

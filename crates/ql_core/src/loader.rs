@@ -66,6 +66,7 @@ impl Loader {
         (!self.is_vanilla()).then_some(self)
     }
 
+    #[must_use]
     pub fn is_vanilla(self) -> bool {
         matches!(self, Loader::Vanilla)
     }

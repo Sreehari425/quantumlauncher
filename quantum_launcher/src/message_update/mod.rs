@@ -505,16 +505,7 @@ impl Launcher {
                 }
             }
             LauncherSettingsMessage::ClearJavaInstalls => {
-                self.state = State::ConfirmAction {
-                    msg1: "delete auto-installed Java files".to_owned(),
-                    msg2: "They will get reinstalled automatically as needed".to_owned(),
-                    yes: Message::LauncherSettings(
-                        LauncherSettingsMessage::ClearJavaInstallsConfirm,
-                    ),
-                    no: Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(
-                        state::LauncherSettingsTab::Internal,
-                    )),
-                }
+                self.confirm_clear_java_installs();
             }
             LauncherSettingsMessage::ClearJavaInstallsConfirm => {
                 return Task::perform(ql_instances::delete_java_installs(), |()| Message::Nothing);
@@ -529,30 +520,13 @@ impl Launcher {
                 self.config.ui_antialiasing = Some(t);
             }
             LauncherSettingsMessage::ToggleWindowSize(t) => {
-                self.config
-                    .window
-                    .get_or_insert_with(Default::default)
-                    .save_window_size = t;
+                self.config.c_window().save_window_size = t;
             }
             LauncherSettingsMessage::DefaultMinecraftWidthChanged(input) => {
-                self.config
-                    .global_settings
-                    .get_or_insert_with(Default::default)
-                    .window_width = if input.trim().is_empty() {
-                    None
-                } else {
-                    input.trim().parse::<u32>().ok()
-                };
+                self.config.c_global().window_width = input.trim().parse::<u32>().ok();
             }
             LauncherSettingsMessage::DefaultMinecraftHeightChanged(input) => {
-                self.config
-                    .global_settings
-                    .get_or_insert_with(Default::default)
-                    .window_height = if input.trim().is_empty() {
-                    None
-                } else {
-                    input.trim().parse::<u32>().ok()
-                };
+                self.config.c_global().window_height = input.trim().parse::<u32>().ok();
             }
             LauncherSettingsMessage::GlobalJavaArgs(msg) => {
                 msg.apply(self.config.extra_java_args.get_or_insert_with(Vec::new));
@@ -576,11 +550,22 @@ impl Launcher {
                     self.theme.system_dark_mode = mode == dark_light::Mode::Dark;
                 }
                 Err(err) => {
-                    err_no_log!("while loading system theme: {err}")
+                    err_no_log!("while loading system theme: {err}");
                 }
             },
         }
         Task::none()
+    }
+
+    fn confirm_clear_java_installs(&mut self) {
+        self.state = State::ConfirmAction {
+            msg1: "delete auto-installed Java files".to_owned(),
+            msg2: "They will get reinstalled automatically as needed".to_owned(),
+            yes: Message::LauncherSettings(LauncherSettingsMessage::ClearJavaInstallsConfirm),
+            no: Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(
+                state::LauncherSettingsTab::Internal,
+            )),
+        }
     }
 
     pub fn go_to_launcher_settings(&mut self) {

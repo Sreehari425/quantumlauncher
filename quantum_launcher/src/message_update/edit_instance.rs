@@ -209,39 +209,7 @@ impl Launcher {
             }
             EditInstanceMessage::CustomJarLoaded(items) => match items {
                 Ok(items) => {
-                    match &mut self.custom_jar {
-                        Some(cx) => {
-                            cx.choices = items.clone();
-                        }
-                        None => {
-                            let (recv, watcher) = match dir_watch(LAUNCHER_DIR.join("custom_jars"))
-                            {
-                                Ok(n) => n,
-                                Err(err) => {
-                                    err!("Couldn't load list of custom jars (2)! {err}");
-                                    return Ok(Task::none());
-                                }
-                            };
-                            self.custom_jar = Some(CustomJarState {
-                                choices: items.clone(),
-                                recv,
-                                _watcher: watcher,
-                            })
-                        }
-                    }
-                    // If the currently selected jar got deleted/renamed
-                    // then unselect it
-                    if let State::Launch(MenuLaunch {
-                        edit_instance: Some(menu),
-                        ..
-                    }) = &mut self.state
-                    {
-                        if let Some(jar) = &menu.config.custom_jar {
-                            if !items.contains(&jar.name) {
-                                menu.config.custom_jar = None;
-                            }
-                        }
-                    }
+                    return Ok(self.loaded_custom_jar(items));
                 }
                 Err(err) => err!("Couldn't load list of custom jars (1)! {err}"),
             },
@@ -264,6 +232,42 @@ impl Launcher {
             }
         }
         Ok(Task::none())
+    }
+
+    fn loaded_custom_jar(&mut self, items: Vec<String>) -> Task<Message> {
+        match &mut self.custom_jar {
+            Some(cx) => {
+                cx.choices = items.clone();
+            }
+            None => {
+                let (recv, watcher) = match dir_watch(LAUNCHER_DIR.join("custom_jars")) {
+                    Ok(n) => n,
+                    Err(err) => {
+                        err!("Couldn't load list of custom jars (2)! {err}");
+                        return Task::none();
+                    }
+                };
+                self.custom_jar = Some(CustomJarState {
+                    choices: items.clone(),
+                    recv,
+                    _watcher: watcher,
+                });
+            }
+        }
+        // If the currently selected jar got deleted/renamed
+        // then unselect it
+        if let State::Launch(MenuLaunch {
+            edit_instance: Some(menu),
+            ..
+        }) = &mut self.state
+        {
+            if let Some(jar) = &menu.config.custom_jar {
+                if !items.contains(&jar.name) {
+                    menu.config.custom_jar = None;
+                }
+            }
+        }
+        Task::none()
     }
 
     fn add_custom_jar(&mut self) -> Task<Message> {

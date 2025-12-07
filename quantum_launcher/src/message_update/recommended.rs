@@ -10,42 +10,7 @@ impl Launcher {
     pub fn update_recommended_mods(&mut self, msg: RecommendedModMessage) -> Task<Message> {
         match msg {
             RecommendedModMessage::Open => {
-                let config = if let State::EditMods(menu) = &self.state {
-                    menu.config.clone()
-                } else {
-                    match block_on(InstanceConfigJson::read(self.instance())) {
-                        Ok(n) => n,
-                        Err(err) => {
-                            self.set_error(err);
-                            return Task::none();
-                        }
-                    }
-                };
-
-                let (sender, recv) = std::sync::mpsc::channel();
-                let progress = ProgressBar::with_recv(recv);
-
-                self.state = State::RecommendedMods(MenuRecommendedMods::Loading {
-                    progress,
-                    config: config.clone(),
-                });
-
-                let loader = config.mod_type;
-                if loader.is_vanilla() {
-                    self.state = State::RecommendedMods(MenuRecommendedMods::InstallALoader);
-                    return Task::none();
-                }
-                let ids = RECOMMENDED_MODS.to_owned();
-
-                return Task::perform(
-                    RecommendedMod::get_compatible_mods(
-                        ids,
-                        self.selected_instance.clone().unwrap(),
-                        loader,
-                        sender,
-                    ),
-                    |n| Message::RecommendedMods(RecommendedModMessage::ModCheckResult(n.strerr())),
-                );
+                return self.go_to_recommended_mods();
             }
             RecommendedModMessage::ModCheckResult(res) => match res {
                 Ok(mods) => {
@@ -127,6 +92,41 @@ impl Launcher {
             }
         }
         Task::none()
+    }
+
+    fn go_to_recommended_mods(&mut self) -> Task<Message> {
+        let config = if let State::EditMods(menu) = &self.state {
+            menu.config.clone()
+        } else {
+            match block_on(InstanceConfigJson::read(self.instance())) {
+                Ok(n) => n,
+                Err(err) => {
+                    self.set_error(err);
+                    return Task::none();
+                }
+            }
+        };
+        let (sender, recv) = std::sync::mpsc::channel();
+        let progress = ProgressBar::with_recv(recv);
+        self.state = State::RecommendedMods(MenuRecommendedMods::Loading {
+            progress,
+            config: config.clone(),
+        });
+        let loader = config.mod_type;
+        if loader.is_vanilla() {
+            self.state = State::RecommendedMods(MenuRecommendedMods::InstallALoader);
+            return Task::none();
+        }
+        let ids = RECOMMENDED_MODS.to_owned();
+        Task::perform(
+            RecommendedMod::get_compatible_mods(
+                ids,
+                self.selected_instance.clone().unwrap(),
+                loader,
+                sender,
+            ),
+            |n| Message::RecommendedMods(RecommendedModMessage::ModCheckResult(n.strerr())),
+        )
     }
 }
 

@@ -1,9 +1,9 @@
 use crate::message_update::MSG_RESIZE;
 use crate::state::{
     CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage, LauncherSettingsTab,
-    MenuCreateInstance, MenuEditJarMods, MenuEditMods, MenuEditPresets, MenuExportInstance,
-    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLauncherSettings,
-    MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, Message, State,
+    MenuCreateInstance, MenuEditMods, MenuEditPresets, MenuExportInstance, MenuInstallFabric,
+    MenuInstallOptifine, MenuInstallPaper, MenuLauncherSettings, MenuLauncherUpdate,
+    MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, Message, State,
 };
 use iced::{
     keyboard::{self, key::Named, Key},
@@ -231,17 +231,13 @@ impl Launcher {
             } else {
                 Task::none()
             }
-        } else if let State::EditJarMods(MenuEditJarMods {
-            jarmods: Some(jarmods),
-            ..
-        }) = &mut self.state
-        {
+        } else if let State::EditJarMods(menu) = &mut self.state {
             if extension == "jar" || extension == "zip" {
                 Self::load_jarmods_from_path(
                     self.selected_instance.as_ref().unwrap(),
                     path,
                     filename,
-                    jarmods,
+                    &mut menu.jarmods,
                 );
             }
             Task::none()

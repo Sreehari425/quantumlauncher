@@ -54,6 +54,7 @@ impl Library {
         })
     }
 
+    #[must_use]
     pub fn is_allowed(&self) -> bool {
         crate::json::version::Library {
             downloads: None,
@@ -66,6 +67,7 @@ impl Library {
         .is_allowed()
     }
 
+    #[must_use]
     pub fn is_lwjgl2(&self) -> bool {
         self.name.contains("org.lwjgl.lwjgl:") && self.name.contains(":2.")
     }

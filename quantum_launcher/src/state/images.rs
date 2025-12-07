@@ -36,7 +36,7 @@ impl ImageState {
             if url.is_empty() {
                 continue;
             }
-            if self.downloads_in_progress.insert(url.to_owned()) {
+            if self.downloads_in_progress.insert(url.clone()) {
                 commands.push(Task::perform(
                     ql_mod_manager::store::download_image(url.clone()),
                     Message::CoreImageDownloaded,

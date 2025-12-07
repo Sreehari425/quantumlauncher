@@ -201,7 +201,7 @@ impl ServerLauncher {
                 args.lines()
                     .flat_map(str::split_whitespace)
                     .filter(|l| !l.is_empty())
-                    .map(|n| n.to_owned()),
+                    .map(str::to_owned),
             );
         }
 

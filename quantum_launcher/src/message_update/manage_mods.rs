@@ -8,7 +8,7 @@ use ql_mod_manager::store::ModIndex;
 use std::{collections::HashSet, path::PathBuf};
 
 use crate::state::{
-    ExportModsMessage, Launcher, ManageJarModsMessage, ManageModsMessage,
+    AutoSaveKind, ExportModsMessage, Launcher, ManageJarModsMessage, ManageModsMessage,
     MenuCurseforgeManualDownload, MenuEditJarMods, MenuEditMods, MenuEditModsModal, Message,
     ProgressBar, SelectedState, State,
 };
@@ -20,6 +20,12 @@ impl Launcher {
             ManageModsMessage::ScreenOpenWithoutUpdate => {
                 return self.go_to_edit_mods_menu(false);
             }
+
+            ManageModsMessage::AddFileDone(Err(err))
+            | ManageModsMessage::DeleteFinished(Err(err))
+            | ManageModsMessage::LocalDeleteFinished(Err(err))
+            | ManageModsMessage::ToggleFinished(Err(err))
+            | ManageModsMessage::UpdateModsFinished(Err(err)) => self.set_error(err),
 
             ManageModsMessage::ToggleCheckbox(name, id) => {
                 if let State::EditMods(menu) = &mut self.state {
@@ -79,62 +85,18 @@ impl Launcher {
                 }
             }
             ManageModsMessage::AddFile(delete_file) => {
-                if let Some(paths) = rfd::FileDialog::new()
-                    .add_filter("Mod/Modpack", &["jar", "zip", "mrpack", "qmp"])
-                    .set_title("Add Mod, Modpack or Preset")
-                    .pick_files()
-                {
-                    let (sender, receiver) = std::sync::mpsc::channel();
-                    let selected_instance = self.selected_instance.as_ref().unwrap();
-
-                    self.state = State::ImportModpack(ProgressBar::with_recv(receiver));
-                    self.mod_updates_checked.remove(selected_instance);
-
-                    // Modpacks being imported
-                    if paths
-                        .iter()
-                        .filter_map(|n| n.extension())
-                        .any(|n| !n.eq_ignore_ascii_case("jar"))
-                    {
-                        self.mod_updates_checked.remove(selected_instance);
-                    }
-
-                    let files_task = Task::perform(
-                        ql_mod_manager::add_files(
-                            self.selected_instance.clone().unwrap(),
-                            paths.clone(),
-                            Some(sender),
-                        ),
-                        move |n| Message::ManageMods(ManageModsMessage::AddFileDone(n.strerr())),
-                    );
-                    return if delete_file {
-                        files_task.chain(Task::perform(
-                            async move {
-                                for path in paths {
-                                    _ = tokio::fs::remove_file(&path).await;
-                                }
-                            },
-                            |()| Message::Nothing,
-                        ))
-                    } else {
-                        files_task
-                    };
-                }
+                return self.add_file_select(delete_file);
             }
-            ManageModsMessage::AddFileDone(n) => match n {
-                Ok(unsupported) => {
-                    if !unsupported.is_empty() {
-                        self.state =
-                            State::CurseforgeManualDownload(MenuCurseforgeManualDownload {
-                                unsupported,
-                                is_store: false,
-                                delete_mods: true,
-                            });
-                    }
-                    return self.go_to_edit_mods_menu(false);
+            ManageModsMessage::AddFileDone(Ok(unsupported)) => {
+                if !unsupported.is_empty() {
+                    self.state = State::CurseforgeManualDownload(MenuCurseforgeManualDownload {
+                        unsupported,
+                        is_store: false,
+                        delete_mods: true,
+                    });
                 }
-                Err(err) => self.set_error(err),
-            },
+                return self.go_to_edit_mods_menu(false);
+            }
             ManageModsMessage::DeleteSelected => {
                 if let State::EditMods(menu) = &mut self.state {
                     let selected_instance = self.selected_instance.clone().unwrap();
@@ -189,82 +151,28 @@ impl Launcher {
                     Message::ManageMods(ManageModsMessage::LocalDeleteFinished(n))
                 });
             }
-            ManageModsMessage::DeleteFinished(result) => match result {
-                Ok(_) => {
-                    if let State::EditMods(menu) = &mut self.state {
-                        menu.selected_mods.clear();
-                    }
-                    self.update_mod_index();
+            ManageModsMessage::DeleteFinished(Ok(_)) => {
+                if let State::EditMods(menu) = &mut self.state {
+                    menu.selected_mods.clear();
                 }
-                Err(err) => self.set_error(err),
-            },
-            ManageModsMessage::LocalDeleteFinished(result) => {
-                if let Err(err) = result {
-                    self.set_error(err);
-                }
+                self.update_mod_index();
             }
+            ManageModsMessage::LocalDeleteFinished(Ok(())) => {}
             ManageModsMessage::LocalIndexLoaded(hash_set) => {
                 if let State::EditMods(menu) = &mut self.state {
                     menu.locally_installed_mods = hash_set;
                 }
             }
-            ManageModsMessage::ToggleSelected => {
-                if let State::EditMods(menu) = &mut self.state {
-                    let (ids_downloaded, ids_local) = menu.get_kinds_of_ids();
-                    let instance_name = self.selected_instance.clone().unwrap();
+            ManageModsMessage::ToggleSelected => return self.manage_mods_toggle_selected(),
 
-                    // menu.selected_mods.clear();
-                    // menu.selected_state = SelectedState::None;
-
-                    menu.selected_mods.retain(|n| {
-                        if let SelectedMod::Local { file_name } = n {
-                            !ids_local.contains(file_name)
-                        } else {
-                            true
-                        }
-                    });
-                    menu.selected_mods
-                        .extend(ids_local.iter().map(|n| SelectedMod::Local {
-                            file_name: ql_mod_manager::store::flip_filename(n),
-                        }));
-
-                    let toggle_downloaded = Task::perform(
-                        ql_mod_manager::store::toggle_mods(
-                            ids_downloaded.clone(),
-                            instance_name.clone(),
-                        ),
-                        |n| Message::ManageMods(ManageModsMessage::ToggleFinished(n.strerr())),
-                    );
-                    let toggle_local = Task::perform(
-                        ql_mod_manager::store::toggle_mods_local(ids_local, instance_name.clone()),
-                        |n| Message::ManageMods(ManageModsMessage::ToggleFinished(n.strerr())),
-                    )
-                    .chain(MenuEditMods::update_locally_installed_mods(
-                        &menu.mods,
-                        &instance_name,
-                    ));
-
-                    return Task::batch([toggle_downloaded, toggle_local]);
-                }
-            }
-            ManageModsMessage::ToggleFinished(err) => {
-                if let Err(err) = err {
-                    self.set_error(err);
-                } else {
-                    self.update_mod_index();
-                }
-            }
+            ManageModsMessage::ToggleFinished(Ok(())) => self.update_mod_index(),
             ManageModsMessage::UpdateMods => return self.update_mods(),
-            ManageModsMessage::UpdateModsFinished(result) => {
-                if let Err(err) = result {
-                    self.set_error(err);
-                } else {
-                    self.mod_updates_checked
-                        .insert(self.selected_instance.clone().unwrap(), Vec::new());
-                    self.update_mod_index();
-                    if let State::EditMods(menu) = &mut self.state {
-                        menu.available_updates.clear();
-                    }
+            ManageModsMessage::UpdateModsFinished(Ok(())) => {
+                self.mod_updates_checked
+                    .insert(self.selected_instance.clone().unwrap(), Vec::new());
+                self.update_mod_index();
+                if let State::EditMods(menu) = &mut self.state {
+                    menu.available_updates.clear();
                 }
             }
             ManageModsMessage::UpdateCheckResult(updates) => {
@@ -395,6 +303,90 @@ impl Launcher {
         Task::none()
     }
 
+    fn manage_mods_toggle_selected(&mut self) -> Task<Message> {
+        let State::EditMods(menu) = &mut self.state else {
+            return Task::none();
+        };
+        let (ids_downloaded, ids_local) = menu.get_kinds_of_ids();
+        let instance_name = self.selected_instance.clone().unwrap();
+
+        // menu.selected_mods.clear();
+        // menu.selected_state = SelectedState::None;
+
+        menu.selected_mods.retain(|n| {
+            if let SelectedMod::Local { file_name } = n {
+                !ids_local.contains(file_name)
+            } else {
+                true
+            }
+        });
+        menu.selected_mods
+            .extend(ids_local.iter().map(|n| SelectedMod::Local {
+                file_name: ql_mod_manager::store::flip_filename(n),
+            }));
+
+        let toggle_downloaded = Task::perform(
+            ql_mod_manager::store::toggle_mods(ids_downloaded.clone(), instance_name.clone()),
+            |n| Message::ManageMods(ManageModsMessage::ToggleFinished(n.strerr())),
+        );
+        let toggle_local = Task::perform(
+            ql_mod_manager::store::toggle_mods_local(ids_local, instance_name.clone()),
+            |n| Message::ManageMods(ManageModsMessage::ToggleFinished(n.strerr())),
+        )
+        .chain(MenuEditMods::update_locally_installed_mods(
+            &menu.mods,
+            &instance_name,
+        ));
+
+        Task::batch([toggle_downloaded, toggle_local])
+    }
+
+    fn add_file_select(&mut self, delete_file: bool) -> Task<Message> {
+        let Some(paths) = rfd::FileDialog::new()
+            .add_filter("Mod/Modpack", &["jar", "zip", "mrpack", "qmp"])
+            .set_title("Add Mod, Modpack or Preset")
+            .pick_files()
+        else {
+            return Task::none();
+        };
+
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let selected_instance = self.selected_instance.as_ref().unwrap();
+
+        self.state = State::ImportModpack(ProgressBar::with_recv(receiver));
+        self.mod_updates_checked.remove(selected_instance);
+
+        // Modpacks being imported
+        if paths
+            .iter()
+            .filter_map(|n| n.extension())
+            .any(|n| !n.eq_ignore_ascii_case("jar"))
+        {
+            self.mod_updates_checked.remove(selected_instance);
+        }
+
+        let files_task = Task::perform(
+            ql_mod_manager::add_files(
+                self.selected_instance.clone().unwrap(),
+                paths.clone(),
+                Some(sender),
+            ),
+            move |n| Message::ManageMods(ManageModsMessage::AddFileDone(n.strerr())),
+        );
+        if delete_file {
+            files_task.chain(Task::perform(
+                async move {
+                    for path in paths {
+                        _ = tokio::fs::remove_file(&path).await;
+                    }
+                },
+                |()| Message::Nothing,
+            ))
+        } else {
+            files_task
+        }
+    }
+
     fn get_delete_mods_command(
         selected_instance: InstanceSelection,
         menu: &MenuEditMods,
@@ -428,28 +420,18 @@ impl Launcher {
 
     pub fn update_manage_jar_mods(&mut self, msg: ManageJarModsMessage) -> Task<Message> {
         match msg {
-            ManageJarModsMessage::Open => {
-                self.state = State::EditJarMods(MenuEditJarMods {
-                    jarmods: None,
-                    selected_state: SelectedState::None,
-                    selected_mods: HashSet::new(),
-                    drag_and_drop_hovered: false,
-                    free_for_autosave: true,
-                });
-
-                let instance = self.selected_instance.clone().unwrap();
-                return Task::perform(async move { JarMods::get(&instance).await }, |n| {
-                    Message::ManageJarMods(ManageJarModsMessage::Loaded(n.strerr()))
-                });
-            }
-            ManageJarModsMessage::Loaded(Err(err)) => {
-                self.set_error(err);
-            }
-            ManageJarModsMessage::Loaded(Ok(jarmods)) => {
-                if let State::EditJarMods(menu) = &mut self.state {
-                    menu.jarmods = Some(jarmods);
+            ManageJarModsMessage::Open => match block_on(JarMods::get(self.instance())) {
+                Ok(jarmods) => {
+                    self.state = State::EditJarMods(MenuEditJarMods {
+                        jarmods,
+                        selected_state: SelectedState::None,
+                        selected_mods: HashSet::new(),
+                        drag_and_drop_hovered: false,
+                    });
+                    self.autosave.remove(&AutoSaveKind::Jarmods);
                 }
-            }
+                Err(err) => self.set_error(err),
+            },
             ManageJarModsMessage::AddFile => {
                 self.manage_jarmods_add_file_from_picker();
             }
@@ -470,8 +452,8 @@ impl Launcher {
                     self.set_error(format!("While autosaving jarmods index: {err}"));
                 } else if let State::EditJarMods(menu) = &mut self.state {
                     // Some cleanup of jarmods state may happen during autosave
-                    menu.jarmods = Some(jarmods);
-                    menu.free_for_autosave = true;
+                    menu.jarmods = jarmods;
+                    self.autosave.remove(&AutoSaveKind::Jarmods);
                 }
             }
 
@@ -483,16 +465,12 @@ impl Launcher {
     }
 
     fn manage_jarmods_move_up_or_down(&mut self, msg: &ManageJarModsMessage) {
-        if let State::EditJarMods(MenuEditJarMods {
-            jarmods: Some(jarmods),
-            selected_mods,
-            ..
-        }) = &mut self.state
-        {
-            let mut selected: Vec<usize> = selected_mods
+        if let State::EditJarMods(menu) = &mut self.state {
+            let mut selected: Vec<usize> = menu
+                .selected_mods
                 .iter()
                 .filter_map(|selected_name| {
-                    jarmods
+                    menu.jarmods
                         .mods
                         .iter()
                         .enumerate()
@@ -505,18 +483,18 @@ impl Launcher {
             }
 
             for i in selected {
-                if i < jarmods.mods.len() {
+                if i < menu.jarmods.mods.len() {
                     match msg {
                         ManageJarModsMessage::MoveUp => {
                             if i > 0 {
-                                let removed = jarmods.mods.remove(i);
-                                jarmods.mods.insert(i - 1, removed);
+                                let removed = menu.jarmods.mods.remove(i);
+                                menu.jarmods.mods.insert(i - 1, removed);
                             }
                         }
                         ManageJarModsMessage::MoveDown => {
-                            if i + 1 < jarmods.mods.len() {
-                                let removed = jarmods.mods.remove(i);
-                                jarmods.mods.insert(i + 1, removed);
+                            if i + 1 < menu.jarmods.mods.len() {
+                                let removed = menu.jarmods.mods.remove(i);
+                                menu.jarmods.mods.insert(i + 1, removed);
                             }
                         }
                         _ => {}
@@ -524,7 +502,7 @@ impl Launcher {
                 } else {
                     err!(
                         "Out of bounds in jarmods move up/down: !({i} < len:{})",
-                        jarmods.mods.len()
+                        menu.jarmods.mods.len()
                     );
                 }
             }
@@ -532,39 +510,34 @@ impl Launcher {
     }
 
     fn manage_jarmods_select_all(&mut self) {
-        if let State::EditJarMods(MenuEditJarMods {
-            jarmods: Some(jarmods),
-            selected_state,
-            selected_mods,
-            ..
-        }) = &mut self.state
-        {
-            match selected_state {
+        if let State::EditJarMods(menu) = &mut self.state {
+            match menu.selected_state {
                 SelectedState::All => {
-                    selected_mods.clear();
-                    *selected_state = SelectedState::None;
+                    menu.selected_mods.clear();
+                    menu.selected_state = SelectedState::None;
                 }
                 SelectedState::Some | SelectedState::None => {
-                    *selected_mods = jarmods
+                    menu.selected_mods = menu
+                        .jarmods
                         .mods
                         .iter()
                         .map(|mod_info| mod_info.filename.clone())
                         .collect();
-                    *selected_state = SelectedState::All;
+                    menu.selected_state = SelectedState::All;
                 }
             }
         }
     }
 
     fn manage_jarmods_toggle_selected(&mut self) {
-        if let State::EditJarMods(MenuEditJarMods {
-            jarmods: Some(jarmods),
-            selected_mods,
-            ..
-        }) = &mut self.state
-        {
-            for selected in selected_mods.iter() {
-                if let Some(jarmod) = jarmods.mods.iter_mut().find(|n| n.filename == *selected) {
+        if let State::EditJarMods(menu) = &mut self.state {
+            for selected in menu.selected_mods.iter() {
+                if let Some(jarmod) = menu
+                    .jarmods
+                    .mods
+                    .iter_mut()
+                    .find(|n| n.filename == *selected)
+                {
                     jarmod.enabled = !jarmod.enabled;
                 }
             }
@@ -572,12 +545,7 @@ impl Launcher {
     }
 
     fn manage_jarmods_delete_selected(&mut self) {
-        if let State::EditJarMods(MenuEditJarMods {
-            jarmods: Some(jarmods),
-            selected_mods,
-            ..
-        }) = &mut self.state
-        {
+        if let State::EditJarMods(menu) = &mut self.state {
             let jarmods_path = self
                 .selected_instance
                 .as_ref()
@@ -585,14 +553,15 @@ impl Launcher {
                 .get_instance_path()
                 .join("jarmods");
 
-            for selected in selected_mods.iter() {
-                if let Some(n) = jarmods
+            for selected in menu.selected_mods.iter() {
+                if let Some(n) = menu
+                    .jarmods
                     .mods
                     .iter()
                     .enumerate()
                     .find_map(|(i, n)| (n.filename == *selected).then_some(i))
                 {
-                    jarmods.mods.remove(n);
+                    menu.jarmods.mods.remove(n);
                 }
 
                 let path = jarmods_path.join(selected);
@@ -601,7 +570,7 @@ impl Launcher {
                 }
             }
 
-            selected_mods.clear();
+            menu.selected_mods.clear();
         }
     }
 

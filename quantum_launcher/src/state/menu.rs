@@ -278,11 +278,10 @@ pub struct MenuExportMods {
 }
 
 pub struct MenuEditJarMods {
-    pub jarmods: Option<JarMods>,
+    pub jarmods: JarMods,
     pub selected_state: SelectedState,
     pub selected_mods: HashSet<String>,
     pub drag_and_drop_hovered: bool,
-    pub free_for_autosave: bool,
 }
 
 pub enum MenuCreateInstance {

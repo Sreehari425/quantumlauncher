@@ -175,6 +175,7 @@ pub fn print_to_storage(msg: &str, t: LogType) {
     }
 }
 
+#[must_use]
 pub fn is_print() -> bool {
     if let Some(l) = &*LOGGER {
         l.lock().unwrap().config.terminal

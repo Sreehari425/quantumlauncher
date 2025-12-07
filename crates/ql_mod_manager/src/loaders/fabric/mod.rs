@@ -112,8 +112,7 @@ pub async fn install_server(
             Loader::Quilt
         } else {
             Loader::Fabric
-        }
-        .to_owned(),
+        },
         Some(ModTypeInfo {
             version: Some(loader_version),
             backend_implementation: if let BackendType::Fabric | BackendType::Quilt = backend {
@@ -217,8 +216,7 @@ pub async fn install_client(
             Loader::Quilt
         } else {
             Loader::Fabric
-        }
-        .to_owned(),
+        },
         Some(ModTypeInfo {
             version: Some(loader_version),
             backend_implementation: if let BackendType::Fabric | BackendType::Quilt = backend {

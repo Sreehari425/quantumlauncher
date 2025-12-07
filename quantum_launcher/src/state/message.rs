@@ -126,7 +126,7 @@ pub enum ManageModsMessage {
     CurseforgeManualToggleDelete(bool),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum ExportModsMessage {
     ExportAsPlainText,
     ExportAsMarkdown,
@@ -137,7 +137,6 @@ pub enum ExportModsMessage {
 #[derive(Debug, Clone)]
 pub enum ManageJarModsMessage {
     Open,
-    Loaded(Res<JarMods>),
     ToggleCheckbox(String, bool),
     DeleteSelected,
     AddFile,

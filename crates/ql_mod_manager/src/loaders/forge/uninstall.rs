@@ -64,8 +64,7 @@ async fn uninstall_client(instance: &str) -> Result<(), String> {
         }
     } else {
         Loader::Vanilla
-    }
-    .to_owned();
+    };
     config.save_to_dir(&instance_dir).await.strerr()?;
 
     Ok(())

@@ -102,15 +102,13 @@ impl Launcher {
                 );
             }
             State::EditJarMods(menu) => {
-                if menu.free_for_autosave {
-                    if let Some(mut jarmods) = menu.jarmods.clone() {
-                        let selected_instance = self.selected_instance.clone().unwrap();
-                        menu.free_for_autosave = false;
-                        return Task::perform(
-                            async move { (jarmods.save(&selected_instance).await.strerr(), jarmods) },
-                            |n| Message::ManageJarMods(ManageJarModsMessage::AutosaveFinished(n)),
-                        );
-                    }
+                if self.autosave.insert(AutoSaveKind::Jarmods) {
+                    let mut jarmods = menu.jarmods.clone();
+                    let selected_instance = self.selected_instance.clone().unwrap();
+                    return Task::perform(
+                        async move { (jarmods.save(&selected_instance).await.strerr(), jarmods) },
+                        |n| Message::ManageJarMods(ManageJarModsMessage::AutosaveFinished(n)),
+                    );
                 }
             }
             State::InstallOptifine(menu) => match menu {

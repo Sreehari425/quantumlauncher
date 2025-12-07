@@ -112,6 +112,7 @@ pub struct Version {
 }
 
 impl Version {
+    #[must_use]
     pub fn guess_if_supports_server(id: &str) -> bool {
         if id.starts_with("inf-") || id.starts_with("in-") || id.starts_with("pc-") {
             return false;
