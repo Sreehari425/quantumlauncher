@@ -1,10 +1,11 @@
 use std::fmt::{Display, Formatter};
 use std::path::Path;
 
+use ql_core::impl_3_errs_jri;
 use ql_core::{
-    file_utils, impl_3_errs_jri, info,
+    file_utils, info,
     json::{instance_config::ModTypeInfo, VersionDetails},
-    pt, IntoIoError, IntoJsonError, IoError, JsonError, RequestError, LAUNCHER_DIR,
+    pt, IntoIoError, IntoJsonError, IoError, JsonError, Loader, RequestError, LAUNCHER_DIR,
 };
 use serde::Deserialize;
 use thiserror::Error;
@@ -72,7 +73,7 @@ pub async fn install(instance_name: String, version: PaperVer) -> Result<(), Pap
 
     change_instance_type(
         &server_dir,
-        "Paper".to_owned(),
+        Loader::Paper,
         Some(ModTypeInfo {
             version: Some(version.id.to_string()),
             backend_implementation: None,
@@ -84,22 +85,6 @@ pub async fn install(instance_name: String, version: PaperVer) -> Result<(), Pap
     pt!("Done");
     Ok(())
 }
-
-const PAPER_INSTALL_ERR_PREFIX: &str = "while installing Paper for Minecraft server:\n";
-
-#[derive(Debug, Error)]
-pub enum PaperInstallerError {
-    #[error("{PAPER_INSTALL_ERR_PREFIX}{0}")]
-    Request(#[from] RequestError),
-    #[error("{PAPER_INSTALL_ERR_PREFIX}{0}")]
-    Io(#[from] IoError),
-    #[error("{PAPER_INSTALL_ERR_PREFIX}json error: {0}")]
-    Json(#[from] JsonError),
-    #[error("{PAPER_INSTALL_ERR_PREFIX}no matching paper version found for {0}")]
-    NoMatchingVersionFound(String),
-}
-
-impl_3_errs_jri!(PaperInstallerError, Json, Request, Io);
 
 pub async fn get_list_of_versions(
     version: String,
@@ -171,7 +156,23 @@ pub async fn uninstall(instance_name: String) -> Result<(), PaperInstallerError>
     let path = server_dir.join("world_the_end");
     tokio::fs::remove_dir_all(&path).await.path(path)?;
 
-    change_instance_type(&server_dir, "Vanilla".to_owned(), None).await?;
+    change_instance_type(&server_dir, Loader::Vanilla, None).await?;
 
     Ok(())
 }
+
+const PAPER_INSTALL_ERR_PREFIX: &str = "while installing Paper for Minecraft server:\n";
+
+#[derive(Debug, Error)]
+pub enum PaperInstallerError {
+    #[error("{PAPER_INSTALL_ERR_PREFIX}{0}")]
+    Request(#[from] RequestError),
+    #[error("{PAPER_INSTALL_ERR_PREFIX}{0}")]
+    Io(#[from] IoError),
+    #[error("{PAPER_INSTALL_ERR_PREFIX}json error: {0}")]
+    Json(#[from] JsonError),
+    #[error("{PAPER_INSTALL_ERR_PREFIX}no matching paper version found for {0}")]
+    NoMatchingVersionFound(String),
+}
+
+impl_3_errs_jri!(PaperInstallerError, Json, Request, Io);

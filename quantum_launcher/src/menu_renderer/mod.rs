@@ -3,18 +3,18 @@ use iced::{widget, Alignment, Length};
 use ql_core::{Progress, WEBSITE};
 
 use crate::state::ImageState;
-use crate::stylesheet::styles::{BORDER_RADIUS, BORDER_WIDTH};
+use crate::stylesheet::styles::{LauncherThemeLightness, BORDER_RADIUS, BORDER_WIDTH};
 use crate::{
     config::LauncherConfig,
     icon_manager,
     state::{
-        AccountMessage, CreateInstanceMessage, InstallModsMessage, LauncherSettingsMessage,
-        LicenseTab, ManageModsMessage, MenuCreateInstance, MenuCurseforgeManualDownload,
-        MenuLauncherUpdate, MenuLicense, Message, ProgressBar,
+        AccountMessage, InstallModsMessage, LauncherSettingsMessage, LicenseTab, ManageModsMessage,
+        MenuCurseforgeManualDownload, MenuLauncherUpdate, MenuLicense, Message, ProgressBar,
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
 
+mod create;
 mod edit_instance;
 mod launch;
 mod log;
@@ -29,8 +29,16 @@ pub const DISCORD: &str = "https://discord.gg/bWqRaSXar5";
 pub const GITHUB: &str = "https://github.com/Mrmayman/quantumlauncher";
 
 pub const FONT_MONO: iced::Font = iced::Font::with_name("JetBrains Mono");
+pub const FONT_DEFAULT: iced::Font = iced::Font::with_name("Inter");
 
 pub type Element<'a> = iced::Element<'a, Message, LauncherTheme>;
+
+const PADDING_NOT_BOTTOM: iced::Padding = iced::Padding {
+    top: 10.0,
+    bottom: 0.0,
+    left: 10.0,
+    right: 10.0,
+};
 
 pub fn select_box<'a>(
     e: impl Into<Element<'a>>,
@@ -70,7 +78,7 @@ pub fn underline<'a>(
         widget::column![
             widget::vertical_space(),
             widget::horizontal_rule(1).style(move |t: &LauncherTheme| t.style_rule(color, 1)),
-            widget::Space::with_height(0.8),
+            widget::Space::with_height(1),
         ]
     )
 }
@@ -98,7 +106,7 @@ pub fn back_button<'a>() -> widget::Button<'a, Message, LauncherTheme> {
 }
 
 pub fn ctxbox<'a>(inner: impl Into<Element<'a>>) -> widget::Container<'a, Message, LauncherTheme> {
-    widget::container(inner)
+    widget::container(widget::mouse_area(inner))
         .padding(10)
         .style(|t: &LauncherTheme| {
             t.style_container_round_box(BORDER_WIDTH, Color::Dark, BORDER_RADIUS)
@@ -110,14 +118,13 @@ pub fn subbutton_with_icon<'a>(
     text: &'a str,
 ) -> widget::Button<'a, Message, LauncherTheme> {
     widget::button(
-        widget::row![icon.into(), widget::text(text).size(12)]
+        widget::row![icon.into()]
+            .push_maybe((!text.is_empty()).then_some(widget::text(text).size(12)))
             .align_y(iced::alignment::Vertical::Center)
             .spacing(8)
             .padding(1),
     )
-    .style(|t: &LauncherTheme, s| {
-        t.style_button(s, crate::stylesheet::widgets::StyleButton::RoundDark)
-    })
+    .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
 }
 
 pub fn button_with_icon<'a>(
@@ -129,7 +136,7 @@ pub fn button_with_icon<'a>(
         widget::row![icon.into(), widget::text(text).size(size)]
             .align_y(iced::alignment::Vertical::Center)
             .spacing(10)
-            .padding(3),
+            .padding([2, 3]),
     )
 }
 
@@ -153,145 +160,45 @@ fn sidebar_button<'a, A: PartialEq>(
             .padding(5)
             .into()
     } else {
-        widget::button(text)
-            .on_press(message)
-            .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatExtraDark))
-            .width(Length::Fill)
-            .into()
+        underline(
+            widget::button(text)
+                .on_press(message)
+                .style(|n: &LauncherTheme, status| {
+                    n.style_button(status, StyleButton::FlatExtraDark)
+                })
+                .width(Length::Fill),
+            Color::SecondDark,
+        )
+        .into()
     }
+}
+
+fn tsubtitle(t: &LauncherTheme) -> widget::text::Style {
+    t.style_text(Color::SecondLight)
+}
+
+fn sidebar<'a>(
+    id: &'static str,
+    header: Option<Element<'static>>,
+    children: impl IntoIterator<Item = Element<'a>>,
+) -> widget::Container<'a, Message, LauncherTheme> {
+    widget::container(
+        widget::column![
+            widget::Column::new()
+                .push_maybe(header)
+                .padding(PADDING_NOT_BOTTOM),
+            widget::scrollable(widget::column(children))
+                .style(LauncherTheme::style_scrollable_flat_extra_dark)
+                .height(Length::Fill)
+                .id(iced::widget::scrollable::Id::new(id))
+        ]
+        .spacing(10),
+    )
+    .width(190)
+    .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark))
 }
 
 impl ImageState {}
-
-impl MenuCreateInstance {
-    pub fn view(&'_ self, list: Option<&Vec<String>>, latest_stable: Option<&str>) -> Element<'_> {
-        match self {
-            MenuCreateInstance::LoadingList { .. } => widget::column![
-                widget::row![
-                    back_button().on_press(Message::CreateInstance(CreateInstanceMessage::Cancel)),
-                    button_with_icon(icon_manager::folder_with_size(14), "Import Instance", 14)
-                        .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
-                ]
-                .spacing(5),
-                widget::text("Loading version list...").size(20),
-            ]
-            .padding(10)
-            .spacing(10)
-            .into(),
-            MenuCreateInstance::Choosing {
-                instance_name,
-                selected_version,
-                download_assets,
-                combo_state,
-                is_server,
-                ..
-            } => {
-                let already_exists = list.is_some_and(|n| n.contains(instance_name));
-                let create_button = get_create_button(already_exists);
-
-                widget::scrollable(
-                    widget::column![
-                        widget::row![
-                            back_button()
-                                .on_press(
-                                    Message::LaunchScreenOpen {
-                                        message: None,
-                                        clear_selection: false,
-                                        is_server: Some(*is_server),
-                                    }
-                                ),
-                            button_with_icon(icon_manager::folder_with_size(14), "Import Instance", 14)
-                                .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
-                        ]
-                        .spacing(5),
-
-                        widget::row![
-                            widget::text("Version:").width(100).size(18),
-                            widget::combo_box(combo_state, &latest_stable.map(|n| format!("{n} (latest)")).unwrap_or_else(|| "Pick a version...".to_owned()), selected_version.as_ref(), |version| {
-                                Message::CreateInstance(CreateInstanceMessage::VersionSelected(version))
-                            }),
-                        ].align_y(Alignment::Center),
-                        widget::row![
-                            widget::text("Name:").width(100).size(18),
-                            {
-                                let placeholder = selected_version.as_ref().map(|n| n.name.as_str()).or(latest_stable).unwrap_or("Enter name...");
-                                widget::text_input(placeholder, instance_name)
-                                    .on_input(|n| Message::CreateInstance(CreateInstanceMessage::NameInput(n)))
-                            }
-                        ].align_y(Alignment::Center),
-
-                        tooltip(
-                            widget::row![
-                                widget::Space::with_width(5),
-                                widget::checkbox("Download assets?", *download_assets).text_size(14).size(14).on_toggle(|t| Message::CreateInstance(CreateInstanceMessage::ChangeAssetToggle(t)))
-                            ],
-                            widget::text("If disabled, creating instance will be MUCH faster, but no sound or music will play in-game").size(12),
-                            Position::Bottom
-                        ),
-                        create_button,
-                        widget::horizontal_rule(1),
-                        widget::column![
-                            widget::text("- To install Fabric/Forge/OptiFine/etc and mods, click on Mods after installing the instance").size(12),
-                            widget::row!(
-                                widget::text("- To sideload your own custom JARs, create an instance with a similar version, then go to").size(12),
-                                widget::text(" \"Edit->Custom Jar File\"").size(12)
-                            ).wrap(),
-                        ].spacing(5)
-                    ].push_maybe(
-                        {
-                            let real_platform = if cfg!(target_arch = "x86") { "x86_64" } else { "aarch64" };
-                            (cfg!(target_os = "linux") && (cfg!(target_arch = "x86") || cfg!(target_arch = "arm")))
-                                .then_some(
-                                    widget::column![
-                                    // WARN: Linux i686 and arm32
-                                    widget::text("Warning: On your platform (Linux 32 bit) only Minecraft 1.16.5 and below are supported.").size(20),
-                                    widget::text!("If your computer isn't outdated, you might have wanted to download QuantumLauncher 64 bit ({real_platform})"),
-                                ]
-                                )
-                        })
-                        .spacing(10)
-                        .padding(10),
-                )
-                .style(LauncherTheme::style_scrollable_flat_dark)
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .into()
-            }
-            MenuCreateInstance::DownloadingInstance(progress) => widget::column![
-                widget::text("Downloading Instance..").size(20),
-                progress.view()
-            ]
-            .padding(10)
-            .spacing(5)
-            .into(),
-            MenuCreateInstance::ImportingInstance(progress) => widget::column![
-                widget::text("Importing Instance..").size(20),
-                progress.view()
-            ]
-            .padding(10)
-            .spacing(5)
-            .into(),
-        }
-    }
-}
-
-fn get_create_button(already_exists: bool) -> Element<'static> {
-    let create_button = button_with_icon(icon_manager::create(), "Create Instance", 16)
-        .on_press_maybe(
-            (!already_exists).then_some(Message::CreateInstance(CreateInstanceMessage::Start)),
-        );
-
-    if already_exists {
-        tooltip(
-            create_button,
-            "An instance with that name already exists!",
-            Position::FollowCursor,
-        )
-        .into()
-    } else {
-        create_button.into()
-    }
-}
 
 impl MenuLauncherUpdate {
     pub fn view(&'_ self) -> Element<'_> {
@@ -331,7 +238,7 @@ impl MenuLauncherUpdate {
     }
 }
 
-pub fn get_theme_selector(config: &'_ LauncherConfig) -> (Element<'_>, Element<'_>) {
+pub fn get_mode_selector(config: &LauncherConfig) -> Element<'static> {
     const PADDING: iced::Padding = iced::Padding {
         top: 5.0,
         bottom: 5.0,
@@ -339,46 +246,31 @@ pub fn get_theme_selector(config: &'_ LauncherConfig) -> (Element<'_>, Element<'
         left: 10.0,
     };
 
-    let theme = config.theme.as_deref().unwrap_or("Dark");
-    let (light, dark): (Element, Element) = if theme == "Dark" {
-        (
-            widget::button(widget::text("Light").size(14))
-                .on_press(Message::LauncherSettings(
-                    LauncherSettingsMessage::ThemePicked("Light".to_owned()),
-                ))
-                .into(),
-            widget::container(widget::text("Dark").size(14))
-                .padding(PADDING)
-                .into(),
-        )
-    } else {
-        (
-            widget::container(widget::text("Light").size(14))
-                .padding(PADDING)
-                .into(),
-            widget::button(widget::text("Dark").size(14))
-                .on_press(Message::LauncherSettings(
-                    LauncherSettingsMessage::ThemePicked("Dark".to_owned()),
-                ))
-                .into(),
-        )
-    };
-    (light, dark)
-}
+    let td = |t: &LauncherTheme| t.style_text(Color::Mid);
 
-fn get_color_schemes(config: &'_ LauncherConfig) -> Element<'_> {
-    // HOOK: Add more themes
-    let styles = [
-        "Brown".to_owned(),
-        "Purple".to_owned(),
-        "Sky Blue".to_owned(),
-        "Catppuccin".to_owned(),
-        "Teal".to_owned(),
-    ];
+    let theme = config.ui_mode.unwrap_or_default();
+    widget::row(LauncherThemeLightness::ALL.iter().map(|n| {
+        let name = widget::text(n.to_string()).size(14);
+        let icon = match n {
+            LauncherThemeLightness::Light => icon_manager::mode_light_with_size(14),
+            LauncherThemeLightness::Dark => icon_manager::mode_dark_with_size(14),
+            LauncherThemeLightness::Auto => icon_manager::update_with_size(14),
+        };
 
-    widget::pick_list(styles, config.style.clone(), |n| {
-        Message::LauncherSettings(LauncherSettingsMessage::ColorSchemePicked(n))
-    })
+        if *n == theme {
+            widget::container(widget::row![icon.style(td), name].spacing(5))
+                .padding(PADDING)
+                .into()
+        } else {
+            widget::button(widget::row![icon, name].spacing(5))
+                .on_press(Message::LauncherSettings(
+                    LauncherSettingsMessage::ThemePicked(*n),
+                ))
+                .into()
+        }
+    }))
+    .spacing(5)
+    .wrap()
     .into()
 }
 
@@ -456,35 +348,33 @@ impl MenuCurseforgeManualDownload {
 impl MenuLicense {
     pub fn view(&'_ self) -> Element<'_> {
         widget::row![
-            self.view_sidebar(),
+            sidebar(
+                "MenuLicense:sidebar",
+                Some(
+                    back_button()
+                        .on_press(Message::LauncherSettings(
+                            LauncherSettingsMessage::ChangeTab(
+                                crate::state::LauncherSettingsTab::About
+                            ),
+                        ))
+                        .into()
+                ),
+                LicenseTab::ALL.iter().map(|tab| {
+                    let text = widget::text(tab.to_string());
+                    sidebar_button(
+                        tab,
+                        &self.selected_tab,
+                        text,
+                        Message::LicenseChangeTab(*tab),
+                    )
+                }),
+            ),
             widget::scrollable(
                 widget::text_editor(&self.content)
                     .on_action(Message::LicenseAction)
                     .style(LauncherTheme::style_text_editor_flat_extra_dark)
             )
             .style(LauncherTheme::style_scrollable_flat_dark)
-        ]
-        .into()
-    }
-
-    fn view_sidebar(&'_ self) -> Element<'_> {
-        widget::column![
-            widget::column![back_button().on_press(Message::LauncherSettings(
-                LauncherSettingsMessage::ChangeTab(crate::state::LauncherSettingsTab::About)
-            ))]
-            .padding(10),
-            widget::container(widget::column(LicenseTab::ALL.iter().map(|tab| {
-                let text = widget::text(tab.to_string());
-                sidebar_button(
-                    tab,
-                    &self.selected_tab,
-                    text,
-                    Message::LicenseChangeTab(*tab),
-                )
-            })))
-            .height(Length::Fill)
-            .width(200)
-            .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark))
         ]
         .into()
     }

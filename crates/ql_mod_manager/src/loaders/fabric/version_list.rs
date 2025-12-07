@@ -133,10 +133,11 @@ impl FabricVersionList {
     #[must_use]
     pub fn get_specific(self, backend: BackendType) -> Option<List> {
         match (self, backend) {
-            (FabricVersionList::Beta173 { ornithe_mc, .. }, BackendType::OrnitheMCFabric)
-            | (FabricVersionList::Both { ornithe_mc, .. }, BackendType::OrnitheMCFabric) => {
-                Some(ornithe_mc)
-            }
+            (
+                FabricVersionList::Beta173 { ornithe_mc, .. }
+                | FabricVersionList::Both { ornithe_mc, .. },
+                BackendType::OrnitheMCFabric,
+            ) => Some(ornithe_mc),
 
             (FabricVersionList::Beta173 { cursed_legacy, .. }, BackendType::CursedLegacy) => {
                 Some(cursed_legacy)

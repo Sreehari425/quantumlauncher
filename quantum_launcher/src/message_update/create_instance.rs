@@ -1,11 +1,22 @@
-use iced::Task;
+use iced::{widget::scrollable::AbsoluteOffset, Task};
 use ql_core::{
     pt, DownloadProgress, InstanceSelection, IntoStringError, JsonDownloadError, ListEntry,
+    ListEntryKind,
 };
 
 use crate::state::{
     CreateInstanceMessage, Launcher, MenuCreateInstance, Message, ProgressBar, State,
 };
+
+macro_rules! iflet {
+    ($self:ident, $( $field:ident ),* ; $block:block) => {
+        if let State::Create(MenuCreateInstance::Choosing {
+            $( $field, )* ..
+        }) = &mut $self.state {
+            $block
+        }
+    };
+}
 
 impl Launcher {
     pub fn update_create_instance(&mut self, message: CreateInstanceMessage) -> Task<Message> {
@@ -14,10 +25,50 @@ impl Launcher {
                 return self.go_to_create_screen(is_server)
             }
             CreateInstanceMessage::VersionsLoaded(result, is_server) => {
-                self.create_instance_finish_loading_versions_list(result, is_server);
+                return self.create_instance_finish_loading_versions_list(result, is_server);
             }
-            CreateInstanceMessage::VersionSelected(selected_version) => {
-                self.select_created_instance_version(selected_version);
+            CreateInstanceMessage::VersionSelected(ver) => {
+                iflet!(self, selected_version; {
+                    *selected_version = ver;
+                });
+            }
+            CreateInstanceMessage::SearchInput(t) => {
+                iflet!(self, search_box; {
+                    *search_box = t;
+                });
+            }
+            CreateInstanceMessage::SearchSubmit => {
+                iflet!(self, search_box, selected_version, is_server, selected_categories; {
+                    if let Some(sel) = self.version_list_cache.list
+                        .as_deref()
+                        .unwrap()
+                        .iter()
+                        .filter(|n| n.supports_server || !*is_server)
+                        .filter(|n| selected_categories.contains(&n.kind))
+                        .find(|n|
+                            search_box.trim().is_empty()
+                            || n.name.trim().to_lowercase().contains(&search_box.trim().to_lowercase())
+                        ) {
+                        *selected_version = sel.clone();
+                    }
+                })
+            }
+            CreateInstanceMessage::ContextMenuToggle => {
+                iflet!(self, show_category_dropdown; {
+                    *show_category_dropdown = !*show_category_dropdown;
+                })
+            }
+            CreateInstanceMessage::CategoryToggle(kind) => {
+                iflet!(self, selected_categories; {
+                    if selected_categories.contains(&kind) {
+                        // Don't allow removing the last category
+                        if selected_categories.len() > 1 {
+                            selected_categories.remove(&kind);
+                        }
+                    } else {
+                        selected_categories.insert(kind);
+                    }
+                })
             }
             CreateInstanceMessage::NameInput(name) => self.update_created_instance_name(name),
             CreateInstanceMessage::Start => return self.create_instance(),
@@ -95,41 +146,72 @@ then go to "Mods->Add File""#,
         &mut self,
         result: Result<(Vec<ListEntry>, String), String>,
         is_server: bool,
-    ) {
+    ) -> Task<Message> {
         match result {
             Ok((versions, latest)) => {
-                if is_server {
-                    self.version_list_cache.server = Some(versions.clone());
-                } else {
-                    self.version_list_cache.client = Some(versions.clone());
-                }
-                self.version_list_cache.latest_stable = Some(latest);
-                let combo_state = iced::widget::combo_box::State::new(versions.clone());
+                self.version_list_cache.list = Some(versions.clone());
+                self.version_list_cache.latest_stable = Some(latest.clone());
+
                 if let State::Create(MenuCreateInstance::LoadingList { .. }) = &self.state {
+                    let mut offset = 0.0;
+                    let len = versions.len();
+
                     self.state = State::Create(MenuCreateInstance::Choosing {
                         instance_name: String::new(),
-                        selected_version: None,
+                        selected_version: versions
+                            .iter()
+                            .enumerate()
+                            .find(|n| n.1.name == latest)
+                            .map(|n| {
+                                offset = n.0 as f32 / len as f32;
+                                n.1.clone()
+                            })
+                            .unwrap_or_else(|| ListEntry::new(latest)),
                         download_assets: true,
-                        combo_state: Box::new(combo_state),
+                        search_box: String::new(),
+                        show_category_dropdown: false,
+                        selected_categories: ListEntryKind::default_selected(),
                         is_server,
                     });
+
+                    return create_instance_scroll_to(offset);
                 }
             }
             Err(n) => self.set_error(n),
         }
+        Task::none()
     }
 
     pub fn go_to_create_screen(&mut self, is_server: bool) -> Task<Message> {
-        if let Some(versions) = self.version_list_cache.client.clone() {
-            let combo_state = iced::widget::combo_box::State::new(versions.clone());
+        if let Some(list) = &self.version_list_cache.list {
+            let mut offset = 10.0;
+
             self.state = State::Create(MenuCreateInstance::Choosing {
                 instance_name: String::new(),
-                selected_version: None,
+                selected_version: self
+                    .version_list_cache
+                    .latest_stable
+                    .as_ref()
+                    .map(|latest| {
+                        let len = list.len();
+                        list.iter()
+                            .enumerate()
+                            .find(|n| n.1.name == *latest)
+                            .map(|n| {
+                                offset = n.0 as f32 / len as f32;
+                                n.1.clone()
+                            })
+                            .unwrap_or_else(|| ListEntry::new(latest.to_owned()))
+                    })
+                    .or_else(|| list.first().cloned())
+                    .unwrap(),
                 download_assets: true,
-                combo_state: Box::new(combo_state),
+                search_box: String::new(),
+                show_category_dropdown: false,
+                selected_categories: ListEntryKind::default_selected(),
                 is_server,
             });
-            Task::none()
+            create_instance_scroll_to(offset)
         } else {
             let msg = move |n: Result<(Vec<ListEntry>, String), JsonDownloadError>| {
                 Message::CreateInstance(CreateInstanceMessage::VersionsLoaded(
@@ -137,27 +219,13 @@ then go to "Mods->Add File""#,
                     is_server,
                 ))
             };
-            let (task, handle) = if is_server {
-                Task::perform(ql_servers::list(), msg)
-            } else {
-                Task::perform(ql_instances::list_versions(), msg)
-            }
-            .abortable();
+            let (task, handle) = Task::perform(ql_instances::list_versions(), msg).abortable();
 
             self.state = State::Create(MenuCreateInstance::LoadingList {
                 _handle: handle.abort_on_drop(),
             });
 
             task
-        }
-    }
-
-    fn select_created_instance_version(&mut self, entry: ListEntry) {
-        if let State::Create(MenuCreateInstance::Choosing {
-            selected_version, ..
-        }) = &mut self.state
-        {
-            *selected_version = Some(entry);
         }
     }
 
@@ -185,14 +253,7 @@ then go to "Mods->Add File""#,
                 progress: DownloadProgress::DownloadingJsonManifest,
             };
 
-            let version = selected_version
-                .clone()
-                .or(self
-                    .version_list_cache
-                    .latest_stable
-                    .clone()
-                    .map(|name| ListEntry { name, is_server }))
-                .unwrap();
+            let version = selected_version.clone();
             let instance_name = if instance_name.trim().is_empty() {
                 version.name.clone()
             } else {
@@ -231,4 +292,14 @@ then go to "Mods->Add File""#,
         }
         Task::none()
     }
+}
+
+fn create_instance_scroll_to(offset: f32) -> Task<Message> {
+    iced::widget::scrollable::scroll_to(
+        iced::widget::scrollable::Id::new("MenuCreateInstance:sidebar"),
+        AbsoluteOffset {
+            x: 0.0,
+            y: ((offset * 47600.0) - 200.0).clamp(0.0, f32::INFINITY),
+        },
+    )
 }

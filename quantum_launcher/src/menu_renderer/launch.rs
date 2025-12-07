@@ -1,14 +1,13 @@
-use iced::advanced::text::Wrapping;
 use iced::keyboard::Modifiers;
 use iced::widget::tooltip::Position;
-use iced::{widget, Length, Padding};
+use iced::{widget, Alignment, Length, Padding};
 use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
 
-use crate::menu_renderer::underline;
+use crate::menu_renderer::{tsubtitle, underline, FONT_MONO};
+use crate::state::WindowMessage;
 use crate::{
     icon_manager,
     menu_renderer::DISCORD,
-    message_handler::SIDEBAR_DRAG_LEEWAY,
     state::{
         AccountMessage, CreateInstanceMessage, InstanceLog, LaunchTabId, Launcher,
         LauncherSettingsMessage, ManageModsMessage, MenuLaunch, Message, State, NEW_ACCOUNT_NAME,
@@ -19,7 +18,23 @@ use crate::{
 
 use super::{button_with_icon, shortcut_ctrl, tooltip, Element};
 
-pub const TAB_HEIGHT: f32 = 31.0;
+pub const TAB_BUTTON_WIDTH: f32 = 64.0;
+
+const fn tab_height(decor: bool) -> f32 {
+    if decor {
+        31.0
+    } else {
+        28.0
+    }
+}
+
+const fn decorh(decor: bool) -> f32 {
+    if decor {
+        0.0
+    } else {
+        32.0
+    }
+}
 
 impl Launcher {
     pub fn view_main_menu<'element>(
@@ -31,18 +46,14 @@ impl Launcher {
             .as_ref()
             .map(InstanceSelection::get_name);
 
-        let difference = self.mouse_pos.0 - f32::from(menu.sidebar_width);
-        let hovered = difference < SIDEBAR_DRAG_LEEWAY && difference > 0.0;
-
-        widget::row!(
-            self.get_sidebar(selected_instance_s, menu),
-            self.get_tab(selected_instance_s, menu)
-        )
-        .spacing(if hovered || menu.sidebar_dragging {
-            2
-        } else {
-            0
+        widget::pane_grid(&menu.sidebar_grid_state, |_, is_sidebar, _| {
+            if *is_sidebar {
+                self.get_sidebar(selected_instance_s, menu).into()
+            } else {
+                self.get_tab(selected_instance_s, menu).into()
+            }
         })
+        .on_resize(10, |t| Message::LaunchSidebarResize(t.ratio))
         .into()
     }
 
@@ -51,14 +62,14 @@ impl Launcher {
         selected_instance_s: Option<&'a str>,
         menu: &'a MenuLaunch,
     ) -> Element<'a> {
-        let tab_selector = get_tab_selector(selected_instance_s, menu);
+        let decor = self.config.c_window_decorations();
 
         let last_parts = widget::column![
             widget::horizontal_space(),
             widget::row![
                 // Enable/Disable the below `widget::column![]` code to
                 // toggle the experimental server manager
-                widget::column![
+                /*widget::column![
                     widget::vertical_space(),
                     widget::button(if menu.is_viewing_server {
                         "View Instances..."
@@ -70,7 +81,7 @@ impl Launcher {
                         clear_selection: false,
                         is_server: Some(!menu.is_viewing_server),
                     }),
-                ],
+                ],*/
                 get_footer_text(),
             ],
         ]
@@ -92,9 +103,16 @@ impl Launcher {
                     .wrap();
 
                     widget::column!(
+                        widget::row![widget::text(selected.get_name()).font(FONT_MONO).size(20),]
+                            .push_maybe({
+                                self.is_process_running(selected).then_some(tooltip(
+                                    icon_manager::play_with_size(20),
+                                    "Running...",
+                                    Position::Right,
+                                ))
+                            })
+                            .spacing(10),
                         main_buttons,
-                        widget::horizontal_rule(10)
-                            .style(|n: &LauncherTheme| n.style_rule(Color::SecondDark, 2)),
                         // widget::button("Export Instance").on_press(Message::ExportInstanceOpen),
                     )
                     .push_maybe(
@@ -103,7 +121,7 @@ impl Launcher {
                     )
                     .push(last_parts)
                     .padding(10)
-                    .spacing(5)
+                    .spacing(10)
                     .into()
                 }
                 LaunchTabId::Log => self.get_log_pane(menu).into(),
@@ -123,15 +141,23 @@ impl Launcher {
                 }
             }
         } else {
-            widget::column!("Select an instance", last_parts)
-                .padding(10)
-                .spacing(10)
-                .into()
+            widget::column!(
+                widget::text("Select an instance")
+                    .size(14)
+                    .style(|t: &LauncherTheme| t.style_text(Color::Mid)),
+                last_parts
+            )
+            .padding(10)
+            .spacing(10)
+            .into()
         };
 
-        widget::column!(tab_selector)
+        widget::column![menu.get_tab_selector(decor)]
             .push_maybe(view_info_message(menu))
-            .push(tab_body)
+            .push(
+                widget::container(tab_body)
+                    .style(|t: &LauncherTheme| t.style_container_bg(0.0, None)),
+            )
             .into()
     }
 
@@ -154,40 +180,44 @@ impl Launcher {
         &'element self,
         menu: &'element MenuLaunch,
     ) -> widget::Column<'element, Message, LauncherTheme> {
+        const TEXT_SIZE: f32 = 12.0;
+
         let scroll = if let State::Launch(MenuLaunch { log_scroll, .. }) = &self.state {
             *log_scroll
         } else {
             0
         };
 
-        if let Some(Some(InstanceLog {
+        let Some(InstanceLog {
             log: log_data,
             has_crashed,
             command,
-        })) = self
+        }) = self
             .selected_instance
             .as_ref()
-            .map(|selection| self.logs.get(selection))
-        {
-            const TEXT_SIZE: f32 = 12.0;
+            .and_then(|selection| self.logs.get(selection))
+        else {
+            return get_no_logs_message().padding(10).spacing(10);
+        };
 
-            let log = Self::view_launcher_log(
-                log_data.clone(),
-                TEXT_SIZE,
-                scroll,
-                Message::LaunchLogScroll,
-                Message::LaunchLogScrollAbsolute,
-                |msg| {
-                    widget::text(msg.clone())
-                        .font(iced::Font::with_name("JetBrains Mono"))
-                        .size(TEXT_SIZE)
-                        .width(Length::Fill)
-                        .into()
-                },
-                |msg| msg.clone(),
-            );
+        let log = Self::view_launcher_log(
+            log_data.clone(),
+            TEXT_SIZE,
+            scroll,
+            Message::LaunchLogScroll,
+            Message::LaunchLogScrollAbsolute,
+            |msg| {
+                widget::text(msg.clone())
+                    .font(iced::Font::with_name("JetBrains Mono"))
+                    .size(TEXT_SIZE)
+                    .width(Length::Fill)
+                    .into()
+            },
+            |msg| msg.clone(),
+        );
 
-            widget::column![widget::row!(
+        widget::column![
+            widget::row![
                 widget::button(widget::text("Copy Log").size(14)).on_press(Message::LaunchCopyLog),
                 widget::button(widget::text("Upload Log").size(14)).on_press_maybe(
                     (!log_data.is_empty() && !menu.is_uploading_mclogs)
@@ -195,34 +225,32 @@ impl Launcher {
                 ),
                 widget::button(widget::text("Join Discord").size(14))
                     .on_press(Message::CoreOpenLink(DISCORD.to_owned())),
-            )
-            .spacing(7)
-            .push_maybe(
-                has_crashed.then_some(
-                    widget::text!(
-                        "The {} has crashed!",
-                        if menu.is_viewing_server {
-                            "server"
-                        } else {
-                            "game"
-                        }
-                    )
-                    .size(18),
-                ),
-            )
-            .wrap()]
-            .push_maybe(
-                menu.is_viewing_server.then_some(
-                    widget::text_input("Enter command...", command)
-                        .on_input(Message::ServerCommandEdit)
-                        .on_submit(Message::ServerCommandSubmit)
-                        .width(190),
-                ),
-            )
-            .push(log)
-        } else {
-            get_no_logs_message()
-        }
+            ]
+            .spacing(7),
+            widget::text("Having issues? Copy and send the game log for support").size(12)
+        ]
+        .push_maybe(
+            has_crashed.then_some(
+                widget::text!(
+                    "The {} has crashed!",
+                    if menu.is_viewing_server {
+                        "server"
+                    } else {
+                        "game"
+                    }
+                )
+                .size(18),
+            ),
+        )
+        .push_maybe(
+            menu.is_viewing_server.then_some(
+                widget::text_input("Enter command...", command)
+                    .on_input(Message::ServerCommandEdit)
+                    .on_submit(Message::ServerCommandSubmit)
+                    .width(190),
+            ),
+        )
+        .push(log)
         .padding(10)
         .spacing(10)
     }
@@ -232,44 +260,38 @@ impl Launcher {
         selected_instance_s: Option<&'a str>,
         menu: &'a MenuLaunch,
     ) -> Element<'a> {
-        let difference = self.mouse_pos.0 - f32::from(menu.sidebar_width);
-
         let list = if menu.is_viewing_server {
             self.server_list.as_deref()
         } else {
             self.client_list.as_deref()
         };
 
-        let is_hovered = difference < SIDEBAR_DRAG_LEEWAY
-            && difference > 0.0
-            && (!self.is_log_open || (self.mouse_pos.1 < self.window_size.1 / 2.0));
+        let decor = self.config.c_window_decorations();
 
-        let list = widget::row!(if let Some(instances) = list {
-            widget::column![
-                get_sidebar_new_button(menu),
-                widget::scrollable(widget::column(instances.iter().map(|name| {
-                    let instance = InstanceSelection::new(name, menu.is_viewing_server);
-                    let playing_icon = if self.is_process_running(&instance) {
-                        Some(widget::row![
-                            widget::horizontal_space(),
-                            icon_manager::play(),
-                            widget::Space::with_width(10),
-                        ])
-                    } else {
-                        None
-                    };
+        let list = if let Some(instances) = list {
+            widget::column(instances.iter().map(|name| {
+                let playing_icon = if self
+                    .is_process_running(&InstanceSelection::new(name, menu.is_viewing_server))
+                {
+                    Some(widget::row![
+                        widget::horizontal_space(),
+                        icon_manager::play_with_size(15),
+                        widget::Space::with_width(10),
+                    ])
+                } else {
+                    None
+                };
 
-                    let text = widget::text(name)
-                        .size(15)
-                        .style(|t: &LauncherTheme| t.style_text(Color::SecondLight));
+                let text = widget::text(name).size(15).style(tsubtitle);
 
-                    let selector: Element = if selected_instance_s == Some(name) {
-                        widget::container(widget::row!(widget::Space::with_width(5), text))
-                            .style(LauncherTheme::style_container_selected_flat_button)
-                            .width(Length::Fill)
-                            .padding(5)
-                            .into()
-                    } else {
+                if selected_instance_s == Some(name) {
+                    widget::container(widget::row!(widget::Space::with_width(5), text))
+                        .style(LauncherTheme::style_container_selected_flat_button)
+                        .width(Length::Fill)
+                        .padding(5)
+                        .into()
+                } else {
+                    underline(
                         widget::button(widget::row![text].push_maybe(playing_icon))
                             .style(|n: &LauncherTheme, status| {
                                 n.style_button(status, StyleButton::FlatExtraDark)
@@ -278,35 +300,49 @@ impl Launcher {
                                 name: name.clone(),
                                 is_server: menu.is_viewing_server,
                             })
-                            .width(Length::Fill)
-                            .into()
-                    };
+                            .width(Length::Fill),
+                        Color::Dark,
+                    )
+                    .into()
+                }
+            }))
+        } else {
+            let dots = ".".repeat((self.tick_timer % 3) + 1);
+            widget::column![widget::text!("Loading{dots}")].padding(10)
+        };
 
-                    underline(selector, Color::Dark).into()
-                })))
+        let list = widget::column![
+            widget::scrollable(list)
                 .height(Length::Fill)
                 .style(LauncherTheme::style_scrollable_flat_extra_dark)
                 .id(widget::scrollable::Id::new("MenuLaunch:sidebar"))
                 .on_scroll(|n| {
                     let total = n.content_bounds().height - n.bounds().height;
-                    Message::LaunchScrollSidebar(total)
+                    Message::LaunchSidebarScroll(total)
                 }),
-                widget::horizontal_rule(1).style(|t: &LauncherTheme| t.style_rule(Color::Dark, 1)),
-                self.get_accounts_bar(menu),
-            ]
-            .spacing(5)
-        } else {
-            let dots = ".".repeat((self.tick_timer % 3) + 1);
-            widget::column![widget::text!("Loading{dots}")]
-        }
-        .width(menu.sidebar_width))
-        .push_maybe(is_hovered.then_some(
-            widget::vertical_rule(0).style(|n: &LauncherTheme| n.style_rule(Color::Mid, 4)),
-        ));
+            widget::horizontal_rule(1).style(|t: &LauncherTheme| t.style_rule(Color::Dark, 1)),
+            self.get_accounts_bar(menu),
+        ]
+        .spacing(5)
+        .width(Length::Fill);
 
-        widget::container(list)
-            .style(|n| n.style_container_sharp_box(0.0, Color::ExtraDark))
-            .into()
+        widget::column![
+            widget::mouse_area(
+                widget::container(get_sidebar_new_button(menu, decor))
+                    .align_y(Alignment::End)
+                    .width(Length::Fill)
+                    .height(tab_height(decor) + decorh(decor))
+                    .style(|t: &LauncherTheme| t.style_container_bg_semiround(
+                        [true, false, false, false],
+                        Some((Color::ExtraDark, t.alpha))
+                    ))
+            )
+            .on_press(Message::Window(WindowMessage::Dragged)),
+            widget::container(list)
+                .height(Length::Fill)
+                .style(|n| n.style_container_sharp_box(0.0, Color::ExtraDark))
+        ]
+        .into()
     }
 
     fn is_process_running(&self, name: &InstanceSelection) -> bool {
@@ -434,90 +470,59 @@ impl Launcher {
     }
 }
 
-fn view_info_message(
-    menu: &'_ MenuLaunch,
-) -> Option<widget::Container<'_, Message, LauncherTheme>> {
-    (!menu.message.is_empty()).then_some(
-        widget::container(widget::row![
-            widget::text(&menu.message)
-                .width(Length::Fill)
-                .size(12)
-                .style(|t: &LauncherTheme| t.style_text(Color::SecondLight)),
-            widget::button(
-                icon_manager::win_close()
-                    .style(|t: &LauncherTheme| t.style_text(Color::Mid))
-                    .size(14)
+impl MenuLaunch {
+    fn get_tab_selector(&'_ self, decor: bool) -> Element<'_> {
+        let tab_bar = widget::row(
+            [LaunchTabId::Buttons, LaunchTabId::Edit, LaunchTabId::Log]
+                .into_iter()
+                .map(|n| render_tab_button(n, decor, self)),
+        )
+        .align_y(Alignment::End)
+        .wrap();
+
+        let settings_button = widget::button(
+            widget::row![
+                widget::horizontal_space(),
+                icon_manager::settings_with_size(12),
+                widget::horizontal_space()
+            ]
+            .width(tab_height(decor) + 4.0)
+            .height(tab_height(decor) + 4.0)
+            .align_y(Alignment::Center),
+        )
+        .padding(0)
+        .style(|n, status| n.style_button(status, StyleButton::FlatExtraDark))
+        .on_press(Message::LauncherSettings(LauncherSettingsMessage::Open));
+
+        widget::mouse_area(
+            widget::container(
+                widget::row!(settings_button, tab_bar, widget::horizontal_space())
+                    // .push_maybe(window_handle_buttons)
+                    .height(tab_height(decor) + decorh(decor))
+                    .align_y(Alignment::End),
             )
-            .padding(0)
-            .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatExtraDark))
-            .on_press(Message::LaunchScreenOpen {
-                message: None,
-                clear_selection: false,
-                is_server: Some(menu.is_viewing_server)
-            })
-        ])
-        .padding(10)
-        .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark)),
-    )
-}
-
-fn get_sidebar_new_button(menu: &MenuLaunch) -> widget::Button<'_, Message, LauncherTheme> {
-    widget::button(
-        widget::row![icon_manager::create(), widget::text("New").size(16)]
-            .align_y(iced::alignment::Vertical::Center)
-            .height(TAB_HEIGHT - 10.0)
-            .spacing(10),
-    )
-    .style(|n, status| n.style_button(status, StyleButton::FlatDark))
-    .on_press(Message::CreateInstance(CreateInstanceMessage::ScreenOpen {
-        is_server: menu.is_viewing_server,
-    }))
-    .width(menu.sidebar_width)
-}
-
-fn get_tab_selector<'a>(selected_instance_s: Option<&'a str>, menu: &'a MenuLaunch) -> Element<'a> {
-    let tab_bar = widget::row(
-        [LaunchTabId::Buttons, LaunchTabId::Edit, LaunchTabId::Log]
-            .into_iter()
-            .map(|n| render_tab_button(n, menu)),
-    )
-    .wrap();
-
-    let settings_button = widget::button(
-        widget::row![
-            widget::horizontal_space(),
-            icon_manager::settings_with_size(13),
-            widget::horizontal_space()
-        ]
-        .height(Length::Fill)
-        .align_y(iced::Alignment::Center),
-    )
-    .width(TAB_HEIGHT)
-    .height(TAB_HEIGHT)
-    .style(|n, status| n.style_button(status, StyleButton::FlatExtraDark))
-    .on_press(Message::LauncherSettings(LauncherSettingsMessage::Open));
-
-    widget::container(
-        widget::row!(settings_button, tab_bar, widget::horizontal_space()).push_maybe(
-            selected_instance_s.map(|instance| {
-                // The top-right corner tiny text showing which instance you selected.
-                widget::column!(
-                    widget::Space::with_height(7),
-                    widget::text!("{instance}  ")
-                        .size(14)
-                        .style(|t: &LauncherTheme| t.style_text(Color::Mid))
-                        .wrapping(Wrapping::None),
+            .width(Length::Fill)
+            .style(move |n| {
+                n.style_container_bg_semiround(
+                    [false, !decor, false, false],
+                    Some((Color::ExtraDark, 1.0)),
                 )
-                .height(TAB_HEIGHT)
             }),
-        ),
-    )
-    .style(|n| n.style_container_sharp_box(0.0, Color::ExtraDark))
-    .into()
+        )
+        .on_press(Message::Window(WindowMessage::Dragged))
+        .into()
+    }
 }
 
-fn render_tab_button(tab: LaunchTabId, menu: &'_ MenuLaunch) -> Element<'_> {
-    let name = widget::text(tab.to_string());
+fn render_tab_button(tab: LaunchTabId, decor: bool, menu: &'_ MenuLaunch) -> Element<'_> {
+    let padding = Padding {
+        top: 5.0,
+        right: 5.0,
+        bottom: if decor { 5.0 } else { 7.0 },
+        left: 5.0,
+    };
+
+    let name = widget::text(tab.to_string()).size(15);
 
     let txt: Element = if let LaunchTabId::Log = tab {
         if menu.message.contains("crashed!") {
@@ -533,36 +538,48 @@ fn render_tab_button(tab: LaunchTabId, menu: &'_ MenuLaunch) -> Element<'_> {
 
     if menu.tab == tab {
         widget::container(txt)
-            .style(LauncherTheme::style_container_selected_flat_button)
-            .padding(5)
-            .width(70)
-            .height(TAB_HEIGHT)
+            .style(move |t: &LauncherTheme| {
+                if decor {
+                    t.style_container_selected_flat_button()
+                } else {
+                    t.style_container_selected_flat_button_semi([true, true, false, false])
+                }
+            })
+            .padding(padding)
+            .width(TAB_BUTTON_WIDTH)
+            .height(tab_height(decor) + 4.0)
+            .align_y(Alignment::End)
             .into()
     } else {
-        widget::button(txt)
-            .style(|n, status| n.style_button(status, StyleButton::FlatExtraDark))
-            .on_press(Message::LaunchChangeTab(tab))
-            .width(70)
-            .height(TAB_HEIGHT)
-            .into()
+        widget::button(
+            widget::row![txt]
+                .width(TAB_BUTTON_WIDTH)
+                .height(tab_height(decor) + 4.0)
+                .padding(padding)
+                .align_y(Alignment::End),
+        )
+        .style(move |n, status| {
+            n.style_button(
+                status,
+                StyleButton::SemiExtraDark([!decor, !decor, false, false]),
+            )
+        })
+        .on_press(Message::LaunchChangeTab(tab))
+        .padding(0)
+        .into()
     }
 }
 
 fn get_no_logs_message<'a>() -> widget::Column<'a, Message, LauncherTheme> {
     const BASE_MESSAGE: &str = "No logs found";
 
-    if cfg!(target_arch = "aarch64") || cfg!(target_arch = "x86") {
-        let experimental_message = widget::column!(
-            widget::text(
-                "Note: This version is experimental. If you want to get help join our discord"
-            ),
-            button_with_icon(icon_manager::chat(), "Join Discord", 16)
-                .on_press(Message::CoreOpenLink(DISCORD.to_owned())),
-        );
-        widget::column!(BASE_MESSAGE, experimental_message)
-    } else {
-        widget::column!(BASE_MESSAGE)
-    }
+    widget::column!(widget::text(BASE_MESSAGE).style(|t: &LauncherTheme| t.style_text(Color::Mid)))
+        // WARN: non x86_64
+        .push_maybe(cfg!(not(target_arch = "x86_64")).then_some(widget::text(
+            "Note: This version is experimental. If you want to get help join our discord",
+        )))
+        .width(Length::Fill)
+        .height(Length::Fill)
 }
 
 fn get_footer_text() -> widget::Column<'static, Message, LauncherTheme> {
@@ -580,5 +597,56 @@ fn get_footer_text() -> widget::Column<'static, Message, LauncherTheme> {
                 .size(10)
                 .style(|t: &LauncherTheme| t.style_text(Color::Mid))
         ),
+    )
+}
+
+fn get_sidebar_new_button(
+    menu: &MenuLaunch,
+    decor: bool,
+) -> widget::Button<'_, Message, LauncherTheme> {
+    widget::button(
+        widget::row![icon_manager::create(), widget::text("New").size(15)]
+            .align_y(iced::alignment::Vertical::Center)
+            .height(tab_height(decor) - 6.0)
+            .spacing(10),
+    )
+    .style(move |n, status| {
+        n.style_button(
+            status,
+            if decor {
+                StyleButton::FlatDark
+            } else {
+                StyleButton::SemiDarkBorder([true, true, false, false])
+            },
+        )
+    })
+    .on_press(Message::CreateInstance(CreateInstanceMessage::ScreenOpen {
+        is_server: menu.is_viewing_server,
+    }))
+    .width(Length::Fill)
+}
+
+fn view_info_message(
+    menu: &'_ MenuLaunch,
+) -> Option<widget::Container<'_, Message, LauncherTheme>> {
+    (!menu.message.is_empty()).then_some(
+        widget::container(widget::row![
+            widget::button(
+                icon_manager::win_close()
+                    .style(|t: &LauncherTheme| t.style_text(Color::Mid))
+                    .size(14)
+            )
+            .padding(0)
+            .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatExtraDark))
+            .on_press(Message::LaunchScreenOpen {
+                message: None,
+                clear_selection: false,
+                is_server: Some(menu.is_viewing_server)
+            }),
+            widget::text(&menu.message).size(12).style(tsubtitle),
+        ])
+        .width(Length::Fill)
+        .padding(10)
+        .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark)),
     )
 }

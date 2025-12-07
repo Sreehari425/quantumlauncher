@@ -1,3 +1,4 @@
+use crate::stylesheet::styles::{LauncherTheme, LauncherThemeColor, LauncherThemeLightness};
 use crate::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use ql_core::json::GlobalSettings;
 use ql_core::{
@@ -6,25 +7,20 @@ use ql_core::{
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::Path};
 
-pub const SIDEBAR_WIDTH_DEFAULT: u32 = 190;
+pub const SIDEBAR_WIDTH: f32 = 0.33;
 
-/// The global launcher configuration.
-///
-/// This is stored in the launcher directory
-/// (`QuantumLauncher/`) as `config.json`.
+/// Global launcher configuration stored in
+/// `QuantumLauncher/config.json`.
 ///
 /// For more info on the launcher directory see
 /// <https://mrmayman.github.io/quantumlauncher#files-location>
 ///
 /// # Why `Option`?
 ///
-/// Note: many fields here are `Option`s. This is for
-/// backwards-compatibility, as if you upgrade from an older
-/// version without these fields, `serde` will safely serialize
-/// them as `None`.
-///
-/// So generally `None` is interpreted as a default value
-/// put there when migrating from a version without the feature.
+/// Many fields are `Option`s for backwards compatibility.
+/// If upgrading from an older version,
+/// `serde` will deserialize missing fields as `None`,
+/// which is treated as a default value.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LauncherConfig {
     /// The offline username set by the player when playing Minecraft.
@@ -36,30 +32,19 @@ pub struct LauncherConfig {
     )]
     pub java_installs: Option<Vec<String>>,
 
-    /// The theme (Light/Dark) set by the user.
+    /// UI mode (Light/Dark/Auto) set by the user.
     // Since: v0.3
-    pub theme: Option<String>,
-    /// The color scheme set by the user.
-    ///
-    /// Valid options are:
-    /// - Purple
-    /// - Brown
-    /// - Sky Blue
-    /// - Catppuccin
-    /// - Teal
+    #[serde(rename = "theme")]
+    pub ui_mode: Option<LauncherThemeLightness>,
+    /// UI color theme
     // Since: v0.3
-    pub style: Option<String>,
+    #[serde(rename = "style")]
+    pub ui_theme: Option<LauncherThemeColor>,
 
-    /// The version that the launcher was last time
-    /// you opened it.
+    /// The launcher version when you last opened it
     // Since: v0.3
     pub version: Option<String>,
 
-    /// The width of the sidebar in the main menu
-    /// (which shows the list of instances). You can
-    /// drag it around to resize it.
-    // Since: v0.4
-    pub sidebar_width: Option<u32>,
     /// A list of Minecraft accounts logged into the launcher.
     ///
     /// `String (username) : ConfigAccount { uuid: String, skin: None (unimplemented) }`
@@ -77,11 +62,10 @@ pub struct LauncherConfig {
 
     /// The scale of the UI, i.e. how big everything is.
     ///
-    /// - `(1.0-*)` A higher number means more zoomed in buttons, text
-    ///   and everything else (useful if you are on a high DPI display
-    ///   or have bad eyesight),
-    /// - `1.0` is the default value.
-    /// - `(0.x-1.0)` A lower number means zoomed out UI elements.
+    /// - above 1.0: More zoomed in buttons/text/etc.
+    ///   Useful for high DPI displays or bad eyesight
+    /// - 1.0: default
+    /// - 0.0-1.0: Zoomed out, smaller UI elements
     // Since: v0.4
     pub ui_scale: Option<f64>,
 
@@ -92,7 +76,8 @@ pub struct LauncherConfig {
     ///
     /// Default: `true`
     // Since: v0.4.2
-    pub antialiasing: Option<bool>,
+    #[serde(rename = "antialiasing")]
+    pub ui_antialiasing: Option<bool>,
     /// Many launcher window related config options.
     // Since: v0.4.2
     pub window: Option<WindowProperties>,
@@ -101,6 +86,7 @@ pub struct LauncherConfig {
     // Since: v0.4.2
     pub global_settings: Option<GlobalSettings>,
     pub extra_java_args: Option<Vec<String>>,
+    pub ui: Option<UiSettings>,
 }
 
 impl Default for LauncherConfig {
@@ -108,18 +94,18 @@ impl Default for LauncherConfig {
         #[allow(deprecated)]
         Self {
             username: String::new(),
-            theme: None,
-            style: None,
+            ui_mode: None,
+            ui_theme: None,
             version: Some(LAUNCHER_VERSION_NAME.to_owned()),
-            sidebar_width: Some(SIDEBAR_WIDTH_DEFAULT),
             accounts: None,
             ui_scale: None,
             java_installs: Some(Vec::new()),
-            antialiasing: Some(true),
+            ui_antialiasing: Some(true),
             account_selected: None,
             window: None,
             global_settings: None,
             extra_java_args: None,
+            ui: None,
         }
     }
 }
@@ -139,16 +125,26 @@ impl LauncherConfig {
             return LauncherConfig::create(&config_path);
         }
 
-        let config = std::fs::read_to_string(&config_path).path(&config_path)?;
+        let mut config = std::fs::read_to_string(&config_path).path(&config_path)?;
+        if config.is_empty() {
+            for _ in 0..5 {
+                config = std::fs::read_to_string(&config_path).path(&config_path)?;
+                if !config.is_empty() {
+                    break;
+                }
+            }
+        }
         let mut config: Self = match serde_json::from_str(&config) {
             Ok(config) => config,
             Err(err) => {
                 err!("Invalid launcher config! This may be a sign of corruption! Please report if this happens to you.\nError: {err}");
+                let old_path = LAUNCHER_DIR.join("config.json.bak");
+                _ = std::fs::copy(&config_path, &old_path);
                 return LauncherConfig::create(&config_path);
             }
         };
-        if config.antialiasing.is_none() {
-            config.antialiasing = Some(true);
+        if config.ui_antialiasing.is_none() {
+            config.ui_antialiasing = Some(true);
         }
 
         #[allow(deprecated)]
@@ -177,25 +173,60 @@ impl LauncherConfig {
         Ok(config)
     }
 
-    pub fn read_window_size(&mut self) -> (f32, f32) {
-        let window = self.window.get_or_insert_with(Default::default);
+    pub fn c_window_size(&self) -> (f32, f32) {
+        let window = self.window.clone().unwrap_or_default();
         let scale = self.ui_scale.unwrap_or(1.0) as f32;
         let window_width = window
             .width
             .filter(|_| window.save_window_size)
             .unwrap_or(WINDOW_WIDTH * scale);
-        let window_height = window
-            .height
-            .filter(|_| window.save_window_size)
-            .unwrap_or(WINDOW_HEIGHT * scale);
+        let window_height = window.height.filter(|_| window.save_window_size).unwrap_or(
+            (WINDOW_HEIGHT
+                + if self.c_window_decorations() {
+                    0.0
+                } else {
+                    30.0
+                })
+                * scale,
+        );
         (window_width, window_height)
     }
 
-    pub fn get_launch_prefix(&mut self) -> &mut Vec<String> {
-        self.global_settings
-            .get_or_insert_with(GlobalSettings::default)
+    pub fn c_ui_opacity(&self) -> f32 {
+        self.ui.as_ref().map_or(0.9, |n| n.window_opacity)
+    }
+
+    pub fn c_launch_prefix(&mut self) -> &mut Vec<String> {
+        self.c_global()
             .pre_launch_prefix
             .get_or_insert_with(Vec::new)
+    }
+
+    pub fn c_window_decorations(&self) -> bool {
+        self.ui
+            .as_ref()
+            .map(|n| matches!(n.window_decorations, UiWindowDecorations::System))
+            .unwrap_or(true) // change this to false when enabling the experimental decorations
+    }
+
+    pub fn c_theme(&self) -> LauncherTheme {
+        LauncherTheme {
+            lightness: self.ui_mode.unwrap_or_default(),
+            color: self.ui_theme.unwrap_or_default(),
+            alpha: self.c_ui_opacity(),
+            system_dark_mode: dark_light::detect()
+                .map(|n| n == dark_light::Mode::Dark)
+                .unwrap_or_default(),
+        }
+    }
+
+    pub fn c_window(&mut self) -> &mut WindowProperties {
+        self.window.get_or_insert_with(WindowProperties::default)
+    }
+
+    pub fn c_global(&mut self) -> &mut GlobalSettings {
+        self.global_settings
+            .get_or_insert_with(GlobalSettings::default)
     }
 }
 
@@ -265,3 +296,38 @@ impl Default for WindowProperties {
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub struct UiSettings {
+    pub window_decorations: UiWindowDecorations,
+    pub window_opacity: f32,
+}
+
+impl Default for UiSettings {
+    fn default() -> Self {
+        Self {
+            window_decorations: UiWindowDecorations::default(),
+            window_opacity: 0.9,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default)]
+pub enum UiWindowDecorations {
+    #[serde(rename = "system")]
+    #[default]
+    System,
+    #[serde(rename = "left")]
+    Left,
+    #[serde(rename = "right")]
+    Right,
+}
+
+/*impl Default for UiWindowDecorations {
+    fn default() -> Self {
+        #[cfg(target_os = "macos")]
+        return Self::Left;
+        #[cfg(not(target_os = "macos"))]
+        Self::Right
+    }
+}*/

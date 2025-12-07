@@ -2,111 +2,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{InstanceSelection, IntoIoError, IntoJsonError, JsonFileError};
-
-/// Configuration for using a custom Minecraft JAR file
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
-pub struct CustomJarConfig {
-    pub name: String,
-    pub autoset_main_class: bool,
-}
-
-/// Defines how instance Java arguments should interact with global Java arguments
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum JavaArgsMode {
-    /// Use global arguments only if instance arguments are empty,
-    /// as a *fallback*.
-    #[serde(rename = "fallback")]
-    Fallback,
-    /// Disable global arguments entirely,
-    /// **only** use instance arguments
-    #[serde(rename = "disable")]
-    Disable,
-    /// Combine global arguments with instance arguments,
-    /// using both together. (Default)
-    #[serde(rename = "combine")]
-    #[default]
-    Combine,
-}
-
-impl JavaArgsMode {
-    pub const ALL: [Self; 3] = [Self::Combine, Self::Disable, Self::Fallback];
-
-    #[must_use]
-    pub fn get_description(self) -> &'static str {
-        match self {
-            JavaArgsMode::Fallback => "Use global arguments only when instance has no arguments",
-            JavaArgsMode::Disable => "No global arguments are applied",
-            JavaArgsMode::Combine => {
-                "Global arguments are combined with instance arguments (default)"
-            }
-        }
-    }
-}
-
-impl std::fmt::Display for JavaArgsMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            JavaArgsMode::Fallback => write!(f, "Fallback"),
-            JavaArgsMode::Disable => write!(f, "Disable"),
-            JavaArgsMode::Combine => write!(f, "Combine (default)"),
-        }
-    }
-}
-
-/// Defines how instance pre-launch prefix commands should interact with global pre-launch prefix commands
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum PreLaunchPrefixMode {
-    /// Use global prefix only if instance prefix is empty
-    #[serde(rename = "fallback")]
-    Fallback,
-    /// Use instance prefix only, ignoring global prefix
-    #[serde(rename = "disable")]
-    Disable,
-    /// Combine global prefix + instance prefix
-    /// (in order)
-    #[serde(rename = "combine_global_local")]
-    #[default]
-    CombineGlobalLocal,
-    /// Combine instance prefix + global prefix
-    /// (in order)
-    #[serde(rename = "combine_local_global")]
-    CombineLocalGlobal,
-}
-
-impl PreLaunchPrefixMode {
-    pub const ALL: [Self; 4] = [
-        Self::CombineGlobalLocal,
-        Self::CombineLocalGlobal,
-        Self::Disable,
-        Self::Fallback,
-    ];
-
-    #[must_use]
-    pub fn get_description(self) -> &'static str {
-        match self {
-            PreLaunchPrefixMode::Fallback => "Use global prefix only when instance has no prefix",
-            PreLaunchPrefixMode::Disable => "Use only instance prefix, ignore global prefix",
-            PreLaunchPrefixMode::CombineGlobalLocal => {
-                "Combine global + instance prefix (global first, then instance)"
-            }
-            PreLaunchPrefixMode::CombineLocalGlobal => {
-                "Combine instance + global prefix (instance first, then global)"
-            }
-        }
-    }
-}
-
-impl std::fmt::Display for PreLaunchPrefixMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            PreLaunchPrefixMode::Fallback => write!(f, "Fallback"),
-            PreLaunchPrefixMode::Disable => write!(f, "Disable"),
-            PreLaunchPrefixMode::CombineGlobalLocal => write!(f, "Combine Global+Local (default)"),
-            PreLaunchPrefixMode::CombineLocalGlobal => write!(f, "Combine Local+Global"),
-        }
-    }
-}
+use crate::{InstanceSelection, IntoIoError, IntoJsonError, JsonFileError, Loader};
 
 /// Configuration for a specific instance.
 /// Not to be confused with [`crate::json::VersionDetails`]. That one
@@ -114,121 +10,73 @@ impl std::fmt::Display for PreLaunchPrefixMode {
 /// Quantum Launcher specific information.
 ///
 /// Stored in:
-/// - Client: `QuantumLauncher/instances/<instance_name>/config.json`
-/// - Server: `QuantumLauncher/servers/<instance_name>/config.json`
+/// - Client: `QuantumLauncher/instances/<NAME>/config.json`
+/// - Server: `QuantumLauncher/servers/<NAME>/config.json`
 ///
 /// See the documentation of each field for more information.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct InstanceConfigJson {
-    /// **Default: `"Vanilla"`**
-    ///
-    /// Can be one of:
-    /// - `"Vanilla"` (unmodded)
-    /// - `"Fabric"`
-    /// - `"Forge"`
-    /// - `"OptiFine"`
-    /// - `"Quilt"`
-    /// - `"NeoForge"`
-    /// - `"Paper"` (for servers)
-    pub mod_type: String,
+    /// Memory allocation in MB
+    // Since: v0.1
+    pub ram_in_mb: usize,
+    /// Path to custom `java` binary. Uses auto-installed Java if `None` or empty
+    // Since: v0.1
+    pub java_override: Option<String>,
+    /// **Default: `Vanilla` (meaning, no loader)**
+    // Since: v0.1
+    pub mod_type: Loader,
+
     pub mod_type_info: Option<ModTypeInfo>,
 
-    /// Path to custom `java` binary. Uses auto-installed Java if `None`.
-    pub java_override: Option<String>,
-    /// Memory allocation in MB.
-    pub ram_in_mb: usize,
     /// Show logs in launcher (`true`, default) or raw console output AKA `stdout`/`stderr` (`false`).
+    // Since: v0.3
     pub enable_logger: Option<bool>,
-
-    /// Extra JVM (Java) arguments.
+    /// Extra Java arguments
+    // Since: v0.3
     pub java_args: Option<Vec<String>>,
-    /// Extra game arguments.
+    /// Extra game arguments
+    // Since: v0.3
     pub game_args: Option<Vec<String>>,
 
     /// Previously used to indicate if a version was downloaded from Omniarchive
-    /// v0.3.1 - v0.4.1
+    // Since: v0.3.1 - v0.4.1
     #[deprecated(since = "0.4.2", note = "migrated to BetterJSONs, so no longer needed")]
     pub omniarchive: Option<serde_json::Value>,
 
-    /// Classic server mode. Default: `false`.
-    /// - `false` (default) if this is a client
-    ///   or a non-classic server
-    /// - `true` if this is a classic server
-    ///
-    /// Affects download and shutdown behavior.
-    /// (classic servers come in ZIP files and
-    /// cannot be stopped through `stop` command)
+    /// Classic server mode (default: `false`).
+    /// - `false`: client or non-classic server
+    /// - `true`: classic server (ZIP download, no `stop` command)
+    // Since: v0.3.1
     pub is_classic_server: Option<bool>,
-    /// Whether this is a server installation (default `false`).
+    /// Whether this is a server, not a client
     pub is_server: Option<bool>,
 
-    /// **Client Only**
-    ///
-    /// If true, then the Java Garbage Collector
-    /// will be modified through launch arguments,
-    /// for *different* performance.
-    ///
-    /// **Default: `false`**
-    ///
-    /// This doesn't specifically improve performance,
-    /// in fact from my testing it worsens them?:
-    ///
-    /// - Without these args I got 110-115 FPS average on vanilla
-    ///   Minecraft 1.20 in a new world.
-    ///
-    /// - With these args I got 105-110 FPS. So... yeah they aren't
-    ///   doing the job for me.
-    ///
-    /// But in different workloads this might improve performance.
-    ///
-    /// # Arguments
-    ///
-    /// The G1 garbage collector will be used.
-    /// Here are the specific arguments.
-    ///
-    /// - `-XX:+UnlockExperimentalVMOptions`
-    /// - `-XX:+UseG1GC`
-    /// - `-XX:G1NewSizePercent=20`
-    /// - `-XX:G1ReservePercent=20`
-    /// - `-XX:MaxGCPauseMillis=50`
-    /// - `-XX:G1HeapRegionSize=32M`
-    pub do_gc_tuning: Option<bool>,
-
-    /// Whether to close launcher after
-    /// the client (game) starts.
-    ///
-    /// **Default: `false`**
-    ///
-    /// Only enable this if you want one less
-    /// icon in your taskbar, as the impact of
-    /// leaving the launcher open is negligible
-    /// and a net positive.
+    /// Close launcher after client starts (default: `false`).
+    /// Enable to reduce taskbar icons; leaving it open has negligible impact.
+    // Since: v0.4
     pub close_on_start: Option<bool>,
-
+    // Since: v0.4.2
     pub global_settings: Option<GlobalSettings>,
 
-    /// How this instance's Java arguments interact with global Java arguments.
-    /// Default: `Combine`. See [`JavaArgsMode`] for more info.
-    pub java_args_mode: Option<JavaArgsMode>,
+    /// Whether global launcher-wide Java arguments will be used
+    /// (default: `true`)
+    pub global_java_args_enable: Option<bool>,
 
     /// Controls how this instance's pre-launch prefix commands interact with global pre-launch prefix.
     /// See [`PreLaunchPrefixMode`] documentation for more info.
     ///
-    /// **Default: `PreLaunchPrefixMode::CombineGlobalLocal`**
+    /// **Default: `CombineGlobalLocal`**
     pub pre_launch_prefix_mode: Option<PreLaunchPrefixMode>,
     /// **Client and Server**
-    ///
     /// Custom jar configuration for using alternative client/server jars.
-    /// When set, the launcher will use the specified custom jar instead of the default
-    /// Minecraft jar, but will use assets from the instance's configured version.
+    /// Replaces default Minecraft jar while using assets from the configured version.
     ///
-    /// This is useful for:
-    /// - Modified client jars (e.g., Cypress, Omniarchive special versions)
-    /// - Custom modded jars not available through official channels
-    /// - Client/server jars from external sources
+    /// Useful for:
+    /// - Modified client jars (e.g., Cypress, Omniarchive)
+    /// - Custom modded or external jars
     /// - Custom server implementations
     ///
-    /// **Default: `None`** (use official Minecraft jar)
+    /// **Default: `None`** (uses official Minecraft jar)
     pub custom_jar: Option<CustomJarConfig>,
     /// Information related to the currently-installed
     /// version of the game
@@ -312,47 +160,17 @@ impl InstanceConfigJson {
     ///
     /// The behavior depends on the instance's `java_args_mode`.
     /// See [`JavaArgsMode`] documentation for more info.
-    ///
-    /// Returns an empty vector if no arguments should be used.
     #[must_use]
+    #[allow(clippy::missing_panics_doc)] // Won't panic
     pub fn get_java_args(&self, global_args: &[String]) -> Vec<String> {
-        let mode = self
-            .java_args_mode
-            .as_ref()
-            .unwrap_or(&JavaArgsMode::Combine);
-        let instance_args = self.java_args.as_ref();
+        let use_global_args = self.global_java_args_enable.unwrap_or(true);
+        let mut instance_args = self.java_args.clone().unwrap_or_default();
 
-        let has_meaningful_instance_args =
-            instance_args.is_some_and(|args| args.iter().any(|arg| !arg.trim().is_empty()));
-
-        match mode {
-            // Use instance if meaningful, otherwise global
-            JavaArgsMode::Fallback => {
-                if has_meaningful_instance_args {
-                    instance_args.unwrap().clone()
-                } else {
-                    global_args.to_owned()
-                }
-            }
-            // Use instance args only, ignore global completely
-            JavaArgsMode::Disable => {
-                if has_meaningful_instance_args {
-                    instance_args.unwrap().clone()
-                } else {
-                    Vec::new()
-                }
-            }
-            // Combine both instance and global args
-            JavaArgsMode::Combine => {
-                let mut combined = Vec::new();
-                combined.extend(global_args.iter().filter(|n| !n.trim().is_empty()).cloned());
-                if has_meaningful_instance_args {
-                    combined.extend(instance_args.unwrap().iter().cloned());
-                }
-
-                combined
-            }
+        if use_global_args {
+            instance_args.extend(global_args.iter().filter(|n| !n.trim().is_empty()).cloned());
         }
+        instance_args.retain(|n| !n.trim().is_empty());
+        instance_args
     }
 
     pub fn get_launch_prefix(&mut self) -> &mut Vec<String> {
@@ -428,26 +246,80 @@ pub struct ModTypeInfo {
 /// and also have a global default.
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct GlobalSettings {
-    /// **Client Only**
-    ///
-    /// Custom window **width** for Minecraft (in windowed mode).
-    ///
-    /// When set, this will launch Minecraft with a specific window width
-    /// using the `--width` command line argument.
+    /// Custom window **width** for Minecraft in windowed mode
+    /// (**Client Only**)
+    // Since: v0.4.2
     pub window_width: Option<u32>,
-    /// **Client Only**
-    ///
-    /// Custom window **height** for Minecraft (in windowed mode).
-    ///
-    /// When set, this will launch Minecraft with a specific window height
-    /// using the `--height` command line argument.
+    /// Custom window **height** for Minecraft in windowed mode
+    /// (**Client Only**)
+    // Since: v0.4.2
     pub window_height: Option<u32>,
     /// This is an optional list of commands to prepend
     /// to the launch command (e.g., "prime-run" for NVIDIA GPU usage on Linux).
+    // Since: v0.4.3
     pub pre_launch_prefix: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VersionInfo {
     pub is_special_lwjgl3: bool,
+}
+
+/// Defines how instance pre-launch prefix commands should interact with global pre-launch prefix commands
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum PreLaunchPrefixMode {
+    /// Use global prefix only if instance prefix is empty
+    #[serde(rename = "fallback")]
+    Fallback,
+    /// Only use instance prefix
+    #[serde(rename = "disable")]
+    Disable,
+    /// Combine global prefix + instance prefix (in order)
+    #[serde(rename = "combine_global_local")]
+    #[default]
+    CombineGlobalLocal,
+    /// Combine instance prefix + global prefix (in order)
+    #[serde(rename = "combine_local_global")]
+    CombineLocalGlobal,
+}
+
+impl PreLaunchPrefixMode {
+    pub const ALL: &'static [Self] = &[
+        Self::CombineGlobalLocal,
+        Self::CombineLocalGlobal,
+        Self::Disable,
+        Self::Fallback,
+    ];
+
+    #[must_use]
+    pub fn get_description(self) -> &'static str {
+        match self {
+            PreLaunchPrefixMode::Fallback => "Use global prefix only when instance has no prefix",
+            PreLaunchPrefixMode::Disable => "Use only instance prefix, ignore global prefix",
+            PreLaunchPrefixMode::CombineGlobalLocal => {
+                "Combine global + instance prefix (global first, then instance)"
+            }
+            PreLaunchPrefixMode::CombineLocalGlobal => {
+                "Combine instance + global prefix (instance first, then global)"
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for PreLaunchPrefixMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PreLaunchPrefixMode::Fallback => write!(f, "Fallback"),
+            PreLaunchPrefixMode::Disable => write!(f, "Disable"),
+            PreLaunchPrefixMode::CombineGlobalLocal => write!(f, "Combine Global+Local (default)"),
+            PreLaunchPrefixMode::CombineLocalGlobal => write!(f, "Combine Local+Global"),
+        }
+    }
+}
+
+/// Configuration for using a custom Minecraft JAR file
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
+pub struct CustomJarConfig {
+    pub name: String,
+    pub autoset_main_class: bool,
 }

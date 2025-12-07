@@ -4,7 +4,8 @@ use crate::{
     config::LauncherConfig,
     icon_manager,
     menu_renderer::{
-        button_with_icon, center_x, get_color_schemes, get_theme_selector, Element, DISCORD,
+        button_with_icon, center_x, get_mode_selector, settings::get_theme_selector, Element,
+        DISCORD,
     },
     state::{AccountMessage, MenuWelcome, Message},
 };
@@ -24,39 +25,35 @@ impl MenuWelcome {
             .align_x(iced::alignment::Horizontal::Center)
             .spacing(10)
             .into(),
-            MenuWelcome::P2Theme => {
-                let style = get_color_schemes(config);
-                let (light, dark) = get_theme_selector(config);
-                widget::column![
-                    widget::vertical_space(),
-                    center_x(widget::text("Customize your launcher!").size(24)),
-                    widget::row![
-                        widget::horizontal_space(),
-                        "Select Theme:",
-                        widget::row![light, dark].spacing(5),
-                        widget::horizontal_space(),
-                    ]
-                    .spacing(10),
-                    widget::row![
-                        widget::horizontal_space(),
-                        "Select Color Scheme:",
-                        style,
-                        widget::horizontal_space(),
-                    ]
-                    .spacing(10),
-                    widget::Space::with_height(5),
-                    center_x("Oh, and also..."),
-                    center_x(
-                        button_with_icon(icon_manager::chat(), "Join our Discord", 16)
-                            .on_press(Message::CoreOpenLink(DISCORD.to_owned()))
-                    ),
-                    widget::Space::with_height(5),
-                    center_x(widget::button("Continue").on_press(Message::WelcomeContinueToAuth)),
-                    widget::vertical_space(),
+            MenuWelcome::P2Theme => widget::column![
+                widget::vertical_space(),
+                center_x(widget::text("Customize your launcher!").size(24)),
+                widget::row![
+                    widget::horizontal_space(),
+                    "Select Theme:",
+                    get_mode_selector(config),
+                    widget::horizontal_space(),
                 ]
-                .spacing(10)
-                .into()
-            }
+                .spacing(10),
+                widget::row![
+                    widget::horizontal_space(),
+                    "Select Color Scheme:",
+                    get_theme_selector().wrap(),
+                    widget::horizontal_space(),
+                ]
+                .spacing(10),
+                widget::Space::with_height(5),
+                center_x("Oh, and also..."),
+                center_x(
+                    button_with_icon(icon_manager::chat(), "Join our Discord", 16)
+                        .on_press(Message::CoreOpenLink(DISCORD.to_owned()))
+                ),
+                widget::Space::with_height(5),
+                center_x(widget::button("Continue").on_press(Message::WelcomeContinueToAuth)),
+                widget::vertical_space(),
+            ]
+            .spacing(10)
+            .into(),
             MenuWelcome::P3Auth => widget::column![
                 widget::vertical_space(),
                 center_x(

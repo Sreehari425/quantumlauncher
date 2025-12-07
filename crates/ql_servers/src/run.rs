@@ -7,7 +7,8 @@ use std::{
 use ql_core::{
     err, find_forge_shim_file, info,
     json::{InstanceConfigJson, VersionDetails},
-    no_window, pt, GenericProgress, InstanceSelection, IntoIoError, LaunchedProcess, LAUNCHER_DIR,
+    no_window, pt, GenericProgress, InstanceSelection, IntoIoError, LaunchedProcess, Loader,
+    LAUNCHER_DIR,
 };
 use ql_java_handler::{get_java_binary, JavaVersion};
 use tokio::process::Command;
@@ -95,7 +96,7 @@ impl ServerLauncher {
     }
 
     pub fn is_neoforge(&self) -> bool {
-        self.config.mod_type == "NeoForge"
+        self.config.mod_type == Loader::Neoforge
     }
 
     pub fn is_classic_server(&self) -> bool {
@@ -129,25 +130,33 @@ impl ServerLauncher {
         Ok(if let Some(custom_jar) = &self.config.custom_jar {
             // Should I prioritise Fabric/Forge/Paper over a custom JAR?
             PathBuf::from(&custom_jar.name)
-        } else if self.config.mod_type == "Fabric" || self.config.mod_type == "Quilt" {
-            self.dir.join("fabric-server-launch.jar")
-        } else if self.config.mod_type == "Forge" {
-            find_forge_shim_file(&self.dir)
-                .await
-                .ok_or(ServerError::NoForgeShimFound)?
-        } else if self.config.mod_type == "Paper" {
-            self.dir.join("paper_server.jar")
         } else {
-            self.dir.join("server.jar")
+            let regular = self.dir.join("server.jar");
+            match self.config.mod_type {
+                Loader::Fabric | Loader::Quilt => self.dir.join("fabric-server-launch.jar"),
+                Loader::Forge => find_forge_shim_file(&self.dir)
+                    .await
+                    .ok_or(ServerError::NoForgeShimFound)?,
+                Loader::Paper => self.dir.join("paper_server.jar"),
+                Loader::OptiFine => {
+                    debug_assert!(false, "Optifine can't run on servers");
+                    regular
+                }
+                Loader::Neoforge
+                | Loader::Vanilla
+                | Loader::Liteloader
+                | Loader::Modloader
+                | Loader::Rift => regular,
+            }
         })
     }
 
     pub async fn get_java_args(&self, jar: &Path) -> Result<Vec<String>, ServerError> {
         let mut java_args: Vec<String> = self.config.get_java_args(&[]);
         java_args.push(self.config.get_ram_argument());
-        if self.config.mod_type == "Forge" {
+        if self.config.mod_type == Loader::Forge {
             java_args.push("-Djava.net.preferIPv6Addresses=system".to_owned());
-        } else if self.config.mod_type == "Fabric" {
+        } else if self.config.mod_type == Loader::Fabric {
             if let Some(info) = self
                 .config
                 .mod_type_info
@@ -192,7 +201,7 @@ impl ServerLauncher {
                 args.lines()
                     .flat_map(str::split_whitespace)
                     .filter(|l| !l.is_empty())
-                    .map(|n| n.to_owned()),
+                    .map(str::to_owned),
             );
         }
 

@@ -131,14 +131,16 @@ fn check_qlportable_file() -> Option<QlDirInfo> {
             .map(|s| s.trim().to_lowercase())
             .collect();
 
-        if flags.contains("i_vulkan") {
-            std::env::set_var("WGPU_BACKEND", "vulkan");
-        } else if flags.contains("i_opengl") {
-            std::env::set_var("WGPU_BACKEND", "opengl");
-        } else if flags.contains("i_directx") {
-            std::env::set_var("WGPU_BACKEND", "dx12");
-        } else if flags.contains("i_metal") {
-            std::env::set_var("WGPU_BACKEND", "metal");
+        unsafe {
+            if flags.contains("i_vulkan") {
+                std::env::set_var("WGPU_BACKEND", "vulkan");
+            } else if flags.contains("i_opengl") {
+                std::env::set_var("WGPU_BACKEND", "opengl");
+            } else if flags.contains("i_directx") {
+                std::env::set_var("WGPU_BACKEND", "dx12");
+            } else if flags.contains("i_metal") {
+                std::env::set_var("WGPU_BACKEND", "metal");
+            }
         }
 
         let mut join_dir = !flags.contains("top");
@@ -349,6 +351,8 @@ pub async fn download_file_to_bytes_with_agent(
     retry(|| async { inner(url, user_agent).await }).await
 }
 
+/// # Errors
+/// If the HTTP response status is not a success code.
 pub fn check_for_success(response: &Response) -> Result<(), RequestError> {
     if response.status().is_success() {
         Ok(())
@@ -381,6 +385,7 @@ pub enum RequestError {
 }
 
 impl RequestError {
+    #[must_use]
     pub fn summary(&self) -> String {
         match self {
             RequestError::DownloadError { code, url } => {
@@ -599,22 +604,10 @@ pub async fn find_item_in_dir<F: FnMut(&Path, &str) -> bool>(
     Ok(None)
 }
 
-/// Extract a ZIP archive to a directory using the new zip crate API
+/// Extract a ZIP archive to a directory
 ///
-/// # Arguments
-/// * `reader` - A reader that implements Read + Seek (e.g., `Cursor<Vec<u8>>`)
-/// * `extract_to` - The target directory to extract files to
-/// * `strip_toplevel` - If true, removes common root directory (matches old zip-extract behavior)
-///
-/// # Examples
-/// ```rust
-/// # use ql_core::file_utils::extract_zip_archive;
-/// # use std::path::PathBuf;
-/// # async fn extract() -> Result<(), Box<dyn std::error::Error>> {
-/// let zip_data = vec![/* zip file bytes */];
-/// extract_zip_archive(std::io::Cursor::new(zip_data), &PathBuf::from("/path/to/extract"), true)?;
-/// # Ok(()) }
-/// ```
+/// Note: if `strip_toplevel` is true, this removes the common root directory
+/// (matches old `zip-extract` behavior).
 pub fn extract_zip_archive<R: std::io::Read + std::io::Seek, P: AsRef<Path>>(
     reader: R,
     extract_to: P,
@@ -623,18 +616,6 @@ pub fn extract_zip_archive<R: std::io::Read + std::io::Seek, P: AsRef<Path>>(
     let mut archive = ZipArchive::new(reader)?;
 
     if strip_toplevel {
-        // Strip away the root directory.
-        // i.e:
-        //
-        // my_archive/test.txt
-        // my_archive/something/
-        // my_archive/something/e.png
-        //
-        // to
-        //
-        // test.txt
-        // something/
-        // something/e.png
         archive.extract_unwrapped_root_dir(extract_to, zip::read::root_dir_common_filter)?;
     } else {
         archive.extract(extract_to)?;
@@ -700,10 +681,9 @@ pub fn migration_legacy_launcher_dir() -> Option<PathBuf> {
     Some(dirs::config_dir()?.join("QuantumLauncher"))
 }
 
-/// Used for moving the launcher dir from `.config` to `.local`.
-/// Same as `get_launcher_dir` but doesn't create the folder if not found.
-#[cfg(any(target_os = "linux", target_os = "freebsd"))]
+/// Same as [`get_launcher_dir`] but doesn't create the folder if not found.
 #[must_use]
+#[cfg(any(target_os = "linux", target_os = "freebsd"))]
 pub fn migration_launcher_dir() -> Option<PathBuf> {
     if check_qlportable_file().is_some() {
         return None;

@@ -5,7 +5,7 @@ use ql_core::SelectedMod;
 
 use crate::{
     icon_manager,
-    menu_renderer::{back_button, button_with_icon, Element},
+    menu_renderer::{back_button, button_with_icon, tsubtitle, Element},
     state::{
         EditPresetsMessage, ManageModsMessage, MenuEditPresets, MenuRecommendedMods, Message,
         ModListEntry, SelectedState,
@@ -51,8 +51,13 @@ other QuantumLauncher users"
 the option to export as
 Modrinth/Curseforge modpack"
                 )
-                .style(|t: &LauncherTheme| t.style_text(Color::SecondLight))
+                .style(tsubtitle)
                 .size(12),
+                widget::checkbox(
+                    "Include mod settings/configuration (config folder)",
+                    self.include_config
+                )
+                .on_toggle(|t| Message::EditPresets(EditPresetsMessage::ToggleIncludeConfig(t))),
                 button_with_icon(icon_manager::save(), "Build Preset", 16)
                     .on_press(Message::EditPresets(EditPresetsMessage::BuildYourOwn)),
             ]
