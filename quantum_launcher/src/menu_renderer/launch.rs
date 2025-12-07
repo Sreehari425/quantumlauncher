@@ -1,3 +1,4 @@
+use cfg_if::cfg_if;
 use iced::keyboard::Modifiers;
 use iced::widget::tooltip::Position;
 use iced::{widget, Alignment, Length, Padding};
@@ -583,6 +584,22 @@ fn get_no_logs_message<'a>() -> widget::Column<'a, Message, LauncherTheme> {
 }
 
 fn get_footer_text() -> widget::Column<'static, Message, LauncherTheme> {
+    cfg_if! (
+        if #[cfg(feature = "simulate_linux_arm64")] {
+            let subtext = "(Simulating Linux aarch64)";
+        } else if #[cfg(feature = "simulate_macos_arm64")] {
+            let subtext = "(Simulating macOS aarch64)";
+        } else if #[cfg(target_arch = "aarch64")] {
+            let subtext = "A Minecraft Launcher by Mrmayman\n(Running on aarch64)";
+        } else if #[cfg(target_arch = "arm")] {
+            let subtext = "A Minecraft Launcher by Mrmayman\n(Running on arm32)";
+        } else if #[cfg(target_arch = "x86")] {
+            let subtext = "You are running the 32 bit version.\nTry using the 64 bit version if possible.";
+        } else {
+            let subtext = "A Minecraft Launcher by Mrmayman";
+        }
+    );
+
     widget::column!(
         widget::vertical_space(),
         widget::row!(
@@ -593,7 +610,7 @@ fn get_footer_text() -> widget::Column<'static, Message, LauncherTheme> {
         ),
         widget::row!(
             widget::horizontal_space(),
-            widget::text("A Minecraft Launcher by Mrmayman")
+            widget::text(subtext)
                 .size(10)
                 .style(|t: &LauncherTheme| t.style_text(Color::Mid))
         ),
@@ -630,21 +647,25 @@ fn view_info_message(
     menu: &'_ MenuLaunch,
 ) -> Option<widget::Container<'_, Message, LauncherTheme>> {
     (!menu.message.is_empty()).then_some(
-        widget::container(widget::row![
-            widget::button(
-                icon_manager::win_close()
-                    .style(|t: &LauncherTheme| t.style_text(Color::Mid))
-                    .size(14)
-            )
-            .padding(0)
-            .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatExtraDark))
-            .on_press(Message::LaunchScreenOpen {
-                message: None,
-                clear_selection: false,
-                is_server: Some(menu.is_viewing_server)
-            }),
-            widget::text(&menu.message).size(12).style(tsubtitle),
-        ])
+        widget::container(
+            widget::row![
+                widget::button(
+                    icon_manager::win_close()
+                        .style(|t: &LauncherTheme| t.style_text(Color::Mid))
+                        .size(14)
+                )
+                .padding(0)
+                .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatExtraDark))
+                .on_press(Message::LaunchScreenOpen {
+                    message: None,
+                    clear_selection: false,
+                    is_server: Some(menu.is_viewing_server)
+                }),
+                widget::text(&menu.message).size(12).style(tsubtitle),
+            ]
+            .spacing(10)
+            .align_y(Alignment::Center),
+        )
         .width(Length::Fill)
         .padding(10)
         .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark)),

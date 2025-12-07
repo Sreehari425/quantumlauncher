@@ -13,7 +13,7 @@ use std::{
 )))]
 use ql_core::constants::OS_NAME;
 use ql_core::{
-    constants::OS_NAMES,
+    constants::*,
     do_jobs, err, file_utils, info,
     json::version::{
         Library, LibraryClassifier, LibraryDownloadArtifact, LibraryDownloads, LibraryExtract,

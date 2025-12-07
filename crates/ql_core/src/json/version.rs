@@ -1,12 +1,12 @@
 use std::{collections::BTreeMap, fmt::Debug, path::Path};
 
+use cfg_if::cfg_if;
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    constants::OS_NAMES, err, pt, InstanceSelection, IntoIoError, IntoJsonError, JsonFileError,
-    OS_NAME,
+    constants::*, err, pt, InstanceSelection, IntoIoError, IntoJsonError, JsonFileError, OS_NAME,
 };
 
 pub const V_PRECLASSIC_LAST: &str = "2009-05-16T11:48:00+00:00";
@@ -333,27 +333,28 @@ impl Library {
 
             for rule in rules {
                 if let Some(ref os) = rule.os {
-                    #[cfg(any(
-                        target_arch = "aarch64",
-                        target_arch = "arm",
-                        target_arch = "x86",
-                        feature = "simulate_linux_arm64",
-                        feature = "simulate_macos_arm64"
-                    ))]
-                    let target = format!("{OS_NAME}-{ARCH}");
-
-                    #[cfg(not(any(
-                        target_arch = "aarch64",
-                        target_arch = "arm",
-                        target_arch = "x86",
-                        feature = "simulate_linux_arm64",
-                        feature = "simulate_macos_arm64"
-                    )))]
-                    let target = OS_NAME;
-
-                    if os.name == target {
-                        allowed = rule.action == "allow";
-                    }
+                    cfg_if!(
+                        if #[cfg(any(
+                            target_arch = "aarch64",
+                            target_arch = "arm",
+                            target_arch = "x86",
+                            feature = "simulate_linux_arm64",
+                            feature = "simulate_macos_arm64"
+                        ))] {
+                            if os.name == format!("{OS_NAME}-{ARCH}") {
+                                allowed = rule.action == "allow";
+                            }
+                            if let Some(libname) = &self.name {
+                                if os.name == OS_NAME && libname.contains(ARCH) {
+                                    allowed = rule.action == "allow";
+                                }
+                            }
+                        } else {
+                            if os.name == OS_NAME {
+                                allowed = rule.action == "allow";
+                            }
+                        }
+                    );
 
                     #[cfg(any(
                         all(target_os = "macos", target_arch = "aarch64"),

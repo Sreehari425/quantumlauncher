@@ -3927,6 +3927,7 @@ name = "ql_core"
 version = "0.0.0"
 dependencies = [
  "any_ascii",
+ "cfg-if",
  "chrono",
  "dirs",
  "futures",
@@ -4046,6 +4047,7 @@ dependencies = [
 name = "quantum_launcher"
 version = "0.4.3"
 dependencies = [
+ "cfg-if",
  "chrono",
  "clap",
  "dark-light",

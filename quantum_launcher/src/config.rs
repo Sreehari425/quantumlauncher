@@ -143,16 +143,7 @@ impl LauncherConfig {
                 return LauncherConfig::create(&config_path);
             }
         };
-        if config.ui_antialiasing.is_none() {
-            config.ui_antialiasing = Some(true);
-        }
-
-        #[allow(deprecated)]
-        {
-            if config.java_installs.is_none() {
-                config.java_installs = Some(Vec::new());
-            }
-        }
+        config.fix();
 
         Ok(config)
     }
@@ -168,9 +159,28 @@ impl LauncherConfig {
     }
 
     fn create(path: &Path) -> Result<Self, JsonFileError> {
-        let config = LauncherConfig::default();
+        let mut config = LauncherConfig::default();
+        config.fix();
         std::fs::write(path, serde_json::to_string(&config).json_to()?.as_bytes()).path(path)?;
         Ok(config)
+    }
+
+    fn fix(&mut self) {
+        if self.ui_antialiasing.is_none() {
+            self.ui_antialiasing = Some(true);
+        }
+        if let (Some(accounts), Some(selected)) = (&self.accounts, &self.account_selected) {
+            if !accounts.contains_key(selected) {
+                self.account_selected = None;
+            }
+        }
+
+        #[allow(deprecated)]
+        {
+            if self.java_installs.is_none() {
+                self.java_installs = Some(Vec::new());
+            }
+        }
     }
 
     pub fn c_window_size(&self) -> (f32, f32) {

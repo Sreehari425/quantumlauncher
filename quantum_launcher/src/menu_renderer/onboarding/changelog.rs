@@ -83,6 +83,7 @@ pub fn changelog<'a>() -> Element<'a> {
             widget::text("- Instances from newer launcher versions can be opened in v0.4.1.").size(14),
             widget::text("- Backspace no longer kills running instances without Ctrl.").size(14),
             widget::text("- Added warning if xrandr isn't installed").size(14),
+            widget::text("- Improved ARM support for Linux and macOS, for 1.21 and above").size(14),
             widget::Space::with_height(5),
             widget::text("- Fixed the game log being a single-line mess.").size(14),
             widget::text("- Fixed \"java binary not found\" macOS error.").size(14),
