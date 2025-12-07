@@ -110,17 +110,9 @@ async fn write_config(
         is_classic_server: is_classic_server.then_some(true),
 
         omniarchive: None,
-
-        // # Doesn't affect servers:
-        // I could add GC tuning to servers too, but I can't find
-        // a way to measure performance on a server. Besides this setting
-        // makes performance worse on clients, so I guess it's same for servers?
-        do_gc_tuning: None,
-        // This won't do anything on servers. Who wants to lose their *only way*
-        // to control the server instantly after starting it?
         close_on_start: None,
         global_settings: None,
-        java_args_mode: None,
+        global_java_args_enable: None,
         custom_jar: None,
         pre_launch_prefix_mode: None,
         mod_type_info: None,

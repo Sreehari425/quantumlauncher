@@ -76,7 +76,7 @@ pub enum EditInstanceMessage {
     LoggingToggle(bool),
     CloseLauncherToggle(bool),
     JavaArgs(ListMessage),
-    JavaArgsModeChanged(ql_core::json::instance_config::JavaArgsMode),
+    JavaArgsModeChanged(bool),
     GameArgs(ListMessage),
     PreLaunchPrefix(ListMessage),
     PreLaunchPrefixModeChanged(ql_core::json::instance_config::PreLaunchPrefixMode),

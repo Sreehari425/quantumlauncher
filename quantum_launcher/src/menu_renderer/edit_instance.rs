@@ -6,11 +6,8 @@ use crate::{
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
-use iced::{widget, Length};
-use ql_core::json::{
-    instance_config::{JavaArgsMode, PreLaunchPrefixMode},
-    GlobalSettings,
-};
+use iced::{widget, Alignment, Length};
+use ql_core::json::{instance_config::PreLaunchPrefixMode, GlobalSettings};
 use ql_core::InstanceSelection;
 
 use super::Element;
@@ -108,28 +105,25 @@ impl MenuEditInstance {
                 .padding(10)
                 .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),
             ]
-        ).style(LauncherTheme::style_scrollable_flat_extra_dark).into()
+        ).style(LauncherTheme::style_scrollable_flat_extra_dark).spacing(1).into()
     }
 
     fn item_args(&self) -> widget::Column<'_, Message, LauncherTheme> {
-        let current_mode = self.config.java_args_mode.unwrap_or_default();
+        let current_mode = self.config.global_java_args_enable.unwrap_or(true);
 
         widget::column!(
-            widget::container(
-                widget::column![
-                    widget::text("Interaction with global arguments:").size(14),
-                    widget::pick_list(JavaArgsMode::ALL, Some(current_mode), |mode| {
-                        Message::EditInstance(EditInstanceMessage::JavaArgsModeChanged(mode))
+            widget::row![
+                widget::text("Java arguments:").size(20),
+                widget::horizontal_space(),
+                widget::checkbox("Apply global arguments  ", current_mode)
+                    .on_toggle(|t| {
+                        Message::EditInstance(EditInstanceMessage::JavaArgsModeChanged(t))
                     })
-                    .placeholder("Select mode...")
-                    .width(150)
-                    .text_size(14),
-                    Self::get_mode_description(current_mode),
-                ]
-                .padding(10)
-                .spacing(7)
-            ),
-            widget::text("Java arguments:").size(20),
+                    .style(|t: &LauncherTheme, s| t.style_checkbox(s, Some(Color::SecondLight)))
+                    .size(12)
+                    .text_size(12)
+            ]
+            .align_y(Alignment::Center),
             get_args_list(self.config.java_args.as_deref(), |n| Message::EditInstance(
                 EditInstanceMessage::JavaArgs(n)
             )),
@@ -138,6 +132,13 @@ impl MenuEditInstance {
                 EditInstanceMessage::GameArgs(n)
             )),
             widget::text("Pre-launch prefix:").size(20),
+            get_args_list(
+                self.config
+                    .global_settings
+                    .as_ref()
+                    .and_then(|n| n.pre_launch_prefix.as_deref()),
+                |n| Message::EditInstance(EditInstanceMessage::PreLaunchPrefix(n)),
+            ),
             widget::container(
                 widget::column![
                     widget::text("Interaction with global pre-launch prefix:").size(14),
@@ -160,25 +161,10 @@ impl MenuEditInstance {
                 .padding(10)
                 .spacing(7)
             ),
-            get_args_list(
-                self.config
-                    .global_settings
-                    .as_ref()
-                    .and_then(|n| n.pre_launch_prefix.as_deref()),
-                |n| Message::EditInstance(EditInstanceMessage::PreLaunchPrefix(n)),
-            ),
         )
         .padding(10)
         .spacing(10)
         .width(Length::Fill)
-    }
-
-    fn get_mode_description<'a>(mode: JavaArgsMode) -> widget::Text<'a, LauncherTheme> {
-        let description = mode.get_description();
-
-        widget::text(description)
-            .size(12)
-            .style(|theme: &LauncherTheme| theme.style_text(Color::SecondLight))
     }
 
     fn get_prefix_mode_description<'a>(
@@ -372,7 +358,8 @@ pub fn get_args_list<'a>(
             )
             .into()
         })),
-        button_with_icon(icon_manager::create(), "Add", 16).on_press(msg(ListMessage::Add))
+        button_with_icon(icon_manager::create_with_size(14), "Add", 14)
+            .on_press(msg(ListMessage::Add))
     ]
     .spacing(5)
     .into()

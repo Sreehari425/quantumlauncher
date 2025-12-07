@@ -107,8 +107,8 @@ impl Launcher {
                 }
             }
             EditInstanceMessage::JavaArgsModeChanged(mode) => {
-                iflet_config!(&mut self.state, java_args_mode, {
-                    *java_args_mode = Some(mode);
+                iflet_config!(&mut self.state, global_java_args_enable, {
+                    *global_java_args_enable = Some(mode);
                 });
             }
             EditInstanceMessage::JavaArgs(msg) => {

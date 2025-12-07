@@ -265,28 +265,6 @@ impl GameLauncher {
             ])
             .collect();
 
-        // I've disabled these for now because they make the
-        // FPS slightly worse (!) from my testing?
-        //
-        // These arguments are taken from
-        // https://github.com/alexivkin/minecraft-launcher/
-        // They mainly tune the garbage collector for better performance
-        // which I haven't felt anyway.
-        //
-        // - Without these args I got 110-115 FPS average
-        // on vanilla Minecraft 1.20 in a new world.
-        // - With these args I got 105-110 FPS.
-        //
-        // So... yeah they aren't doing the job for me.
-        if self.config_json.do_gc_tuning.unwrap_or(false) {
-            args.push("-XX:+UnlockExperimentalVMOptions".to_owned());
-            args.push("-XX:+UseG1GC".to_owned());
-            args.push("-XX:G1NewSizePercent=20".to_owned());
-            args.push("-XX:G1ReservePercent=20".to_owned());
-            args.push("-XX:MaxGCPauseMillis=50".to_owned());
-            args.push("-XX:G1HeapRegionSize=32M".to_owned());
-        }
-
         if auth.is_none_or(|n| !n.is_microsoft()) && self.version_json.id.starts_with("1.16") {
             // Fixes "Multiplayer is disabled" issue on 1.16.x
             args.push("-Dminecraft.api.auth.host=https://nope.invalid".to_owned());
