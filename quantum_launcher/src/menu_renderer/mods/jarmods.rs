@@ -24,11 +24,11 @@ impl MenuEditJarMods {
                                 button_with_icon(
                                     icon_manager::folder_with_size(14),
                                     "Open Folder",
-                                    15,
+                                    14,
                                 )
                                 .on_press(Message::CoreOpenPath(path))
                             },
-                            button_with_icon(icon_manager::create(), "Add file", 15)
+                            button_with_icon(icon_manager::create_with_size(14), "Add file", 14)
                                 .on_press(Message::ManageJarMods(ManageJarModsMessage::AddFile)),
                         ]
                         .spacing(5),

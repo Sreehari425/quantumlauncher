@@ -138,7 +138,7 @@ impl MenuEditMods {
                 self.get_mod_installer_buttons(selected_instance),
                 widget::column!(
                     button_with_icon(
-                        icon_manager::download_with_size(14),
+                        icon_manager::download_with_size(15),
                         "Download Content...",
                         14
                     )
@@ -341,9 +341,9 @@ impl MenuEditMods {
         if self.sorted_mods_list.is_empty() {
             return widget::column!(
                 "Download some mods to get started",
-                widget::button("View Recommended Mods").on_press(Message::RecommendedMods(
-                    crate::state::RecommendedModMessage::Open
-                ))
+                widget::button(widget::text("View Recommended Mods").size(14)).on_press(
+                    Message::RecommendedMods(crate::state::RecommendedModMessage::Open)
+                )
             )
             .spacing(10)
             .padding(10)
@@ -629,7 +629,7 @@ impl MenuEditMods {
 }
 
 fn install_ldr(loader: &str) -> widget::Button<'_, Message, LauncherTheme> {
-    widget::button(loader).width(97)
+    widget::button(widget::text(loader).size(14)).width(90)
 }
 
 fn ctx_button(e: &'_ str) -> widget::Button<'_, Message, LauncherTheme> {

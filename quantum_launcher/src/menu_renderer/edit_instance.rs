@@ -1,6 +1,6 @@
 use crate::{
     icon_manager,
-    menu_renderer::{button_with_icon, FONT_MONO},
+    menu_renderer::{button_with_icon, tsubtitle, FONT_MONO},
     state::{
         CustomJarState, EditInstanceMessage, ListMessage, MenuEditInstance, Message, NONE_JAR_NAME,
     },
@@ -111,7 +111,7 @@ impl MenuEditInstance {
 
         widget::column!(
             widget::row![
-                widget::text("Java arguments:").size(20),
+                "Java arguments:",
                 widget::horizontal_space(),
                 widget::checkbox("Apply global arguments  ", current_mode)
                     .on_toggle(|t| {
@@ -122,20 +122,25 @@ impl MenuEditInstance {
                     .text_size(12)
             ]
             .align_y(Alignment::Center),
-            get_args_list(self.config.java_args.as_deref(), |n| Message::EditInstance(
-                EditInstanceMessage::JavaArgs(n)
-            )),
-            widget::text("Game arguments:").size(20),
-            get_args_list(self.config.game_args.as_deref(), |n| Message::EditInstance(
-                EditInstanceMessage::GameArgs(n)
-            )),
-            widget::text("Pre-launch prefix:").size(20),
+            get_args_list(
+                self.config.java_args.as_deref(),
+                |n| Message::EditInstance(EditInstanceMessage::JavaArgs(n)),
+                true
+            ),
+            "Game arguments:",
+            get_args_list(
+                self.config.game_args.as_deref(),
+                |n| Message::EditInstance(EditInstanceMessage::GameArgs(n)),
+                true
+            ),
+            "Pre-launch prefix:",
             get_args_list(
                 self.config
                     .global_settings
                     .as_ref()
                     .and_then(|n| n.pre_launch_prefix.as_deref()),
                 |n| Message::EditInstance(EditInstanceMessage::PreLaunchPrefix(n)),
+                true
             ),
             widget::container(
                 widget::column![
@@ -152,27 +157,22 @@ impl MenuEditInstance {
                     .placeholder("Select mode...")
                     .width(200)
                     .text_size(14),
-                    Self::get_prefix_mode_description(
-                        self.config.pre_launch_prefix_mode.unwrap_or_default()
-                    ),
+                    widget::text(
+                        self.config
+                            .pre_launch_prefix_mode
+                            .unwrap_or_default()
+                            .get_description()
+                    )
+                    .size(12)
+                    .style(tsubtitle),
                 ]
                 .padding(10)
                 .spacing(7)
             ),
         )
         .padding(10)
-        .spacing(10)
+        .spacing(7)
         .width(Length::Fill)
-    }
-
-    fn get_prefix_mode_description<'a>(
-        mode: PreLaunchPrefixMode,
-    ) -> widget::Text<'a, LauncherTheme> {
-        let description = mode.get_description();
-
-        widget::text(description)
-            .size(12)
-            .style(|theme: &LauncherTheme| theme.style_text(Color::SecondLight))
     }
 
     fn item_mem_alloc(&self) -> widget::Column<'_, Message, LauncherTheme> {
@@ -315,44 +315,79 @@ pub fn resolution_dialog<'a>(
 pub fn get_args_list<'a>(
     args: Option<&'a [String]>,
     msg: impl Fn(ListMessage) -> Message + Clone + 'static,
+    bg_extradark: bool,
 ) -> Element<'a> {
     const ITEM_SIZE: u16 = 10;
 
     let args = args.unwrap_or_default();
+    fn opt<'a>(
+        icon: widget::Text<'a, LauncherTheme>,
+        bg_is_extra_dark: bool,
+    ) -> widget::Button<'a, Message, LauncherTheme> {
+        widget::button(icon)
+            .padding([6, 8])
+            .style(move |t: &LauncherTheme, s| {
+                t.style_button(
+                    s,
+                    if bg_is_extra_dark {
+                        StyleButton::FlatExtraDark
+                    } else {
+                        StyleButton::FlatDark
+                    },
+                )
+            })
+    }
 
-    widget::column![
-        widget::column(args.iter().enumerate().map(|(i, arg)| {
-            widget::row!(
-                widget::button(
-                    widget::row![icon_manager::delete_with_size(ITEM_SIZE)]
-                        .align_y(iced::Alignment::Center)
-                        .padding(5)
-                )
-                .on_press(msg(ListMessage::Delete(i))),
-                widget::button(
-                    widget::row![icon_manager::arrow_up_with_size(ITEM_SIZE)]
-                        .align_y(iced::Alignment::Center)
-                        .padding(5)
-                )
-                .on_press(msg(ListMessage::ShiftUp(i))),
-                widget::button(
-                    widget::row![icon_manager::arrow_down_with_size(ITEM_SIZE)]
-                        .align_y(iced::Alignment::Center)
-                        .padding(5)
-                )
-                .on_press(msg(ListMessage::ShiftDown(i))),
-                widget::text_input("Enter argument...", arg)
-                    .size(ITEM_SIZE + 8)
-                    .on_input({
-                        let msg = msg.clone();
-                        move |n| msg(ListMessage::Edit(n, i))
-                    })
-            )
-            .into()
-        })),
-        button_with_icon(icon_manager::create_with_size(14), "Add", 14)
-            .on_press(msg(ListMessage::Add))
-    ]
-    .spacing(5)
-    .into()
+    widget::Column::new()
+        .push_maybe(
+            (!args.is_empty()).then_some(widget::column(args.iter().enumerate().map(
+                |(i, arg)| {
+                    widget::row![
+                        opt(icon_manager::delete_with_size(ITEM_SIZE), bg_extradark)
+                            .on_press(msg(ListMessage::Delete(i))),
+                        opt(icon_manager::arrow_up_with_size(ITEM_SIZE), bg_extradark)
+                            .on_press(msg(ListMessage::ShiftUp(i))),
+                        opt(icon_manager::arrow_down_with_size(ITEM_SIZE), bg_extradark)
+                            .on_press(msg(ListMessage::ShiftDown(i))),
+                        widget::text_input("Enter argument...", arg)
+                            .size(ITEM_SIZE + 4)
+                            .on_input({
+                                let msg = msg.clone();
+                                move |n| msg(ListMessage::Edit(n, i))
+                            })
+                    ]
+                    .align_y(Alignment::Center)
+                    .into()
+                },
+            ))),
+        )
+        .push(get_args_list_add_button(msg, bg_extradark))
+        .spacing(5)
+        .into()
+}
+
+fn get_args_list_add_button(
+    msg: impl Fn(ListMessage) -> Message + Clone + 'static,
+    bg_extradark: bool,
+) -> widget::Button<'static, Message, LauncherTheme> {
+    widget::button(
+        widget::row![
+            icon_manager::create_with_size(13),
+            widget::text("Add").size(13)
+        ]
+        .align_y(iced::alignment::Vertical::Center)
+        .spacing(8)
+        .padding([1, 2]),
+    )
+    .style(move |t: &LauncherTheme, s| {
+        t.style_button(
+            s,
+            if bg_extradark {
+                StyleButton::RoundDark
+            } else {
+                StyleButton::Round
+            },
+        )
+    })
+    .on_press(msg(ListMessage::Add))
 }

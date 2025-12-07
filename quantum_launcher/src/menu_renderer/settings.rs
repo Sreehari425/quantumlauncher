@@ -180,15 +180,11 @@ impl LauncherSettingsTab {
         match self {
             LauncherSettingsTab::UserInterface => menu.view_ui_tab(config),
             LauncherSettingsTab::Internal => widget::column![
-                widget::column![
-                    widget::text("Game").size(20),
-                    button_with_icon(icon_manager::folder(), "Open Launcher Folder", 16)
-                        .on_press(Message::CoreOpenPath(LAUNCHER_DIR.clone()))
-                ]
-                .spacing(10)
-                .padding(10),
+                widget::text("Game").size(20),
+                button_with_icon(icon_manager::folder(), "Open Launcher Folder", 16)
+                    .on_press(Message::CoreOpenPath(LAUNCHER_DIR.clone())),
                 widget::horizontal_rule(1),
-                widget::column![resolution_dialog(
+                resolution_dialog(
                     config.global_settings.as_ref(),
                     |n| Message::LauncherSettings(
                         LauncherSettingsMessage::DefaultMinecraftWidthChanged(n)
@@ -196,51 +192,48 @@ impl LauncherSettingsTab {
                     |n| Message::LauncherSettings(
                         LauncherSettingsMessage::DefaultMinecraftHeightChanged(n)
                     ),
-                )]
-                .padding(10)
-                .spacing(10),
+                ),
                 widget::horizontal_rule(1),
-                widget::column![
-                    "Global Java Arguments:",
-                    get_args_list(config.extra_java_args.as_deref(), |msg| {
+                "Global Java Arguments:",
+                get_args_list(
+                    config.extra_java_args.as_deref(),
+                    |msg| {
                         Message::LauncherSettings(LauncherSettingsMessage::GlobalJavaArgs(msg))
-                    })
-                ]
-                .padding(10)
-                .spacing(5),
-                widget::column![
-                    "Global Pre-Launch Prefix:",
-                    widget::text(
-                        r"Commands to prepend to the game launch command.
-Example: Use 'prime-run' to force NVIDIA GPU usage on Linux with Optimus graphics."
-                    )
-                    .size(12)
-                    .style(|n: &LauncherTheme| n.style_text(Color::SecondLight)),
-                    get_args_list(
-                        config
-                            .global_settings
-                            .as_ref()
-                            .and_then(|n| n.pre_launch_prefix.as_deref()),
-                        |n| Message::LauncherSettings(
-                            LauncherSettingsMessage::GlobalPreLaunchPrefix(n)
-                        )
-                    ),
-                ]
-                .padding(10),
+                    },
+                    false
+                ),
+                "Global Pre-Launch Prefix:",
+                widget::text(
+                    "Commands to prepend to the game launch command.\nExample: Use 'prime-run' to force NVIDIA GPU usage on Linux with Optimus graphics."
+                )
+                .size(12)
+                .style(tsubtitle),
+                get_args_list(
+                    config
+                        .global_settings
+                        .as_ref()
+                        .and_then(|n| n.pre_launch_prefix.as_deref()),
+                    |n| Message::LauncherSettings(LauncherSettingsMessage::GlobalPreLaunchPrefix(
+                        n
+                    )),
+                    false
+                ),
                 widget::horizontal_rule(1),
-                widget::column![
+                widget::row![
                     button_with_icon(icon_manager::delete(), "Clear Java installs", 16).on_press(
                         Message::LauncherSettings(LauncherSettingsMessage::ClearJavaInstalls)
                     ),
                     widget::text(
                         "Might fix some Java problems.\nPerfectly safe, will be redownloaded."
                     )
+                    .style(tsubtitle)
                     .size(12),
                 ]
-                .padding(10)
-                .spacing(10),
+                .spacing(10)
+                .wrap(),
             ]
             .spacing(SETTINGS_SPACING)
+            .padding(10)
             .into(),
             LauncherSettingsTab::About => {
                 let gpl3_button = widget::button(underline(
