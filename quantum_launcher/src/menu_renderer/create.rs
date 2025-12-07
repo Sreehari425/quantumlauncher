@@ -151,8 +151,8 @@ impl MenuCreateInstance {
                     widget::Space::with_width(5),
                     widget::checkbox("Download assets?", download_assets).text_size(14).size(14).on_toggle(|t| Message::CreateInstance(CreateInstanceMessage::ChangeAssetToggle(t)))
                 ],
-                widget::text("If disabled, creating instance will be MUCH faster, but no sound or music will play in-game").size(12),
-                Position::Bottom
+                widget::text("If disabled, creating instance will be MUCH faster\nbut no sound or music will play").size(12),
+                Position::FollowCursor
             ),
             widget::horizontal_rule(1),
             column![

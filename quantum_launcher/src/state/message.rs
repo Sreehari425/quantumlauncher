@@ -7,8 +7,9 @@ use crate::{
 };
 use iced::widget;
 use ql_core::{
-    file_utils::DirItem, jarmod::JarMods, read_log::Diagnostic, InstanceSelection, LaunchedProcess,
-    ListEntry, Loader, ModId, StoreBackendType,
+    file_utils::DirItem, jarmod::JarMods, json::instance_config::PreLaunchPrefixMode,
+    read_log::Diagnostic, InstanceSelection, LaunchedProcess, ListEntry, Loader, ModId,
+    StoreBackendType,
 };
 use ql_instances::{
     auth::{
@@ -71,24 +72,31 @@ pub enum CreateInstanceMessage {
 #[derive(Debug, Clone)]
 pub enum EditInstanceMessage {
     ConfigSaved(Res),
+    ReinstallLibraries,
+    UpdateAssets,
+
     JavaOverride(String),
     MemoryChanged(f32),
     LoggingToggle(bool),
     CloseLauncherToggle(bool),
+    AutoSetMainClassToggle(bool),
+
     JavaArgs(ListMessage),
     JavaArgsModeChanged(bool),
     GameArgs(ListMessage),
+
     PreLaunchPrefix(ListMessage),
-    PreLaunchPrefixModeChanged(ql_core::json::instance_config::PreLaunchPrefixMode),
+    PreLaunchPrefixModeChanged(PreLaunchPrefixMode),
+
     RenameEdit(String),
     RenameApply,
     RenameToggle,
+
     WindowWidthChanged(String),
     WindowHeightChanged(String),
 
     CustomJarPathChanged(String),
     CustomJarLoaded(Res<Vec<String>>),
-    AutoSetMainClassToggle(bool),
 }
 
 #[derive(Debug, Clone)]
@@ -323,6 +331,7 @@ impl ListMessage {
 #[derive(Debug, Clone)]
 pub enum Message {
     Nothing,
+    Error(String),
     Multiple(Vec<Message>),
     ShowScreen(String),
 

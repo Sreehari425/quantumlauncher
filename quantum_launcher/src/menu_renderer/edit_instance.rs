@@ -18,6 +18,34 @@ impl MenuEditInstance {
         selected_instance: &InstanceSelection,
         jar_choices: Option<&'a CustomJarState>,
     ) -> Element<'a> {
+        let bottom_part: Element = match selected_instance {
+            InstanceSelection::Instance(_) => widget::column![
+                widget::row![
+                    button_with_icon(
+                        icon_manager::update_with_size(12),
+                        "Reinstall Libraries",
+                        12
+                    )
+                    .on_press(Message::EditInstance(
+                        EditInstanceMessage::ReinstallLibraries
+                    )),
+                    button_with_icon(icon_manager::update_with_size(12), "Update Assets", 12)
+                        .on_press(Message::EditInstance(EditInstanceMessage::UpdateAssets)),
+                ]
+                .spacing(5)
+                .wrap(),
+                button_with_icon(icon_manager::delete(), "Delete Instance", 16)
+                    .on_press(Message::DeleteInstanceMenu)
+            ]
+            .spacing(10)
+            .into(),
+            InstanceSelection::Server(_) => {
+                button_with_icon(icon_manager::delete(), "Delete Server", 16)
+                    .on_press(Message::DeleteInstanceMenu)
+                    .into()
+            }
+        };
+
         widget::scrollable(
             widget::column![
                 widget::container(
@@ -95,10 +123,7 @@ impl MenuEditInstance {
                 .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::Dark))
                 .padding(10)
                 .width(Length::Fill),
-                widget::container(
-                    button_with_icon(icon_manager::delete(), "Delete Instance", 16)
-                        .on_press(Message::DeleteInstanceMenu)
-                )
+                widget::container(bottom_part)
                 .width(Length::Fill)
                 .padding(10)
                 .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),

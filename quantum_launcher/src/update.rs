@@ -21,6 +21,7 @@ impl Launcher {
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Nothing | Message::CoreCleanComplete(Ok(())) => {}
+            Message::Error(err) => self.set_error(err),
             Message::Multiple(msgs) => {
                 let mut task = Task::none();
                 for msg in msgs {
