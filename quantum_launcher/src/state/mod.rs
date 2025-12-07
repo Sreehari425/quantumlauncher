@@ -15,7 +15,10 @@ use ql_core::{
 use ql_instances::auth::{ms::CLIENT_ID, AccountData, AccountType};
 use tokio::process::ChildStdin;
 
-use crate::{config::LauncherConfig, stylesheet::styles::LauncherTheme};
+use crate::{
+    config::{LauncherConfig, SIDEBAR_WIDTH},
+    stylesheet::styles::LauncherTheme,
+};
 
 mod images;
 mod menu;
@@ -133,9 +136,7 @@ impl Launcher {
             MenuLaunch::default()
         };
 
-        if let Some(sidebar_width) = config.ui_sidebar_width {
-            launch.resize_sidebar(sidebar_width as f32, window_width);
-        }
+        launch.resize_sidebar(SIDEBAR_WIDTH);
 
         let launch = State::Launch(launch);
 
@@ -272,9 +273,7 @@ impl Launcher {
             Some(message) => MenuLaunch::with_message(message.to_string()),
             None => MenuLaunch::default(),
         };
-        if let Some(width) = self.config.ui_sidebar_width {
-            menu_launch.resize_sidebar(width as f32, self.window_state.size.0);
-        }
+        menu_launch.resize_sidebar(SIDEBAR_WIDTH);
         self.state = State::Launch(menu_launch);
         Task::perform(get_entries(false), Message::CoreListLoaded)
     }

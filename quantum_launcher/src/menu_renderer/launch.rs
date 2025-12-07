@@ -330,7 +330,7 @@ impl Launcher {
             widget::mouse_area(
                 widget::container(get_sidebar_new_button(menu, decor))
                     .align_y(Alignment::End)
-                    .width(menu.get_sidebar_width())
+                    .width(Length::Fill)
                     .height(tab_height(decor) + decorh(decor))
                     .style(|t: &LauncherTheme| t.style_container_bg_semiround(
                         [true, false, false, false],

@@ -21,16 +21,11 @@ use crate::state::{
 impl Launcher {
     pub fn tick(&mut self) -> Task<Message> {
         match &mut self.state {
-            State::Launch(
-                ref menu @ MenuLaunch {
-                    ref edit_instance,
-                    ref tab,
-                    ..
-                },
-            ) => {
-                let sidebar_width = menu.get_sidebar_width();
-                self.config.ui_sidebar_width = Some(sidebar_width as u64);
-
+            State::Launch(MenuLaunch {
+                ref edit_instance,
+                ref tab,
+                ..
+            }) => {
                 if let Some(receiver) = &mut self.java_recv {
                     if receiver.tick() {
                         self.state = State::InstallJava;

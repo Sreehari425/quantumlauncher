@@ -7,7 +7,7 @@ use ql_core::{
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::Path};
 
-pub const SIDEBAR_WIDTH_DEFAULT: u64 = 190;
+pub const SIDEBAR_WIDTH: f32 = 0.33;
 
 /// Global launcher configuration stored in
 /// `QuantumLauncher/config.json`.
@@ -46,12 +46,6 @@ pub struct LauncherConfig {
     // Since: v0.3
     pub version: Option<String>,
 
-    /// The width of the sidebar in the main menu
-    /// (which shows the list of instances). You can
-    /// drag it around to resize it.
-    // Since: v0.4
-    #[serde(rename = "sidebar_width")]
-    pub ui_sidebar_width: Option<u64>,
     /// A list of Minecraft accounts logged into the launcher.
     ///
     /// `String (username) : ConfigAccount { uuid: String, skin: None (unimplemented) }`
@@ -104,7 +98,6 @@ impl Default for LauncherConfig {
             ui_mode: None,
             ui_theme: None,
             version: Some(LAUNCHER_VERSION_NAME.to_owned()),
-            ui_sidebar_width: Some(SIDEBAR_WIDTH_DEFAULT),
             accounts: None,
             ui_scale: None,
             java_installs: Some(Vec::new()),

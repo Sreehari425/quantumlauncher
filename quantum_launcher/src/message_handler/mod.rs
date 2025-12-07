@@ -1,3 +1,4 @@
+use crate::config::SIDEBAR_WIDTH;
 use crate::state::{GameProcess, MenuInstallOptifine};
 use crate::tick::sort_dependencies;
 use crate::{
@@ -292,9 +293,7 @@ impl Launcher {
                 None => MenuLaunch::default(),
             };
             menu_launch.is_viewing_server = true;
-            if let Some(width) = self.config.ui_sidebar_width {
-                menu_launch.resize_sidebar(width as f32, self.window_state.size.0);
-            }
+            menu_launch.resize_sidebar(SIDEBAR_WIDTH);
             self.state = State::Launch(menu_launch);
         }
         Task::perform(get_entries(true), Message::CoreListLoaded)

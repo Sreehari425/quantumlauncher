@@ -326,8 +326,8 @@ impl Launcher {
                     let window_width = self.window_state.size.0;
                     let ratio = ratio * window_width;
                     menu.resize_sidebar(
-                        ratio.clamp(SIDEBAR_LIMIT_LEFT, window_width - SIDEBAR_LIMIT_RIGHT),
-                        window_width,
+                        ratio.clamp(SIDEBAR_LIMIT_LEFT, window_width - SIDEBAR_LIMIT_RIGHT)
+                            / window_width,
                     );
                 }
             }

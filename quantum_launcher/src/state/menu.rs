@@ -3,7 +3,7 @@ use std::{
     time::Instant,
 };
 
-use crate::{config::SIDEBAR_WIDTH_DEFAULT, message_handler::get_locally_installed_mods};
+use crate::{config::SIDEBAR_WIDTH, message_handler::get_locally_installed_mods};
 use frostmark::MarkState;
 use iced::{
     widget::{self, scrollable::AbsoluteOffset},
@@ -22,7 +22,7 @@ use ql_mod_manager::{
     store::{CurseforgeNotAllowed, ModConfig, ModIndex, QueryType, RecommendedMod, SearchResult},
 };
 
-use crate::{state::ImageState, WINDOW_WIDTH};
+use crate::state::ImageState;
 
 use super::{ManageModsMessage, Message, ProgressBar};
 
@@ -55,7 +55,6 @@ pub struct MenuLaunch {
     pub tab: LaunchTabId,
     pub edit_instance: Option<MenuEditInstance>,
 
-    sidebar_width: u64,
     pub sidebar_scrolled: f32,
     pub sidebar_grid_state: widget::pane_grid::State<bool>,
     sidebar_split: Option<widget::pane_grid::Split>,
@@ -77,7 +76,7 @@ impl MenuLaunch {
         let sidebar_split = if let Some((_, split)) =
             sidebar_grid_state.split(widget::pane_grid::Axis::Vertical, pane, false)
         {
-            sidebar_grid_state.resize(split, SIDEBAR_WIDTH_DEFAULT as f32 / WINDOW_WIDTH);
+            sidebar_grid_state.resize(split, SIDEBAR_WIDTH);
             Some(split)
         } else {
             None
@@ -87,7 +86,6 @@ impl MenuLaunch {
             tab: LaunchTabId::default(),
             edit_instance: None,
             login_progress: None,
-            sidebar_width: SIDEBAR_WIDTH_DEFAULT,
             sidebar_scrolled: 100.0,
             is_viewing_server: false,
             sidebar_grid_state,
@@ -97,15 +95,10 @@ impl MenuLaunch {
         }
     }
 
-    pub fn resize_sidebar(&mut self, width: f32, window_width: f32) {
+    pub fn resize_sidebar(&mut self, width: f32) {
         if let Some(split) = self.sidebar_split {
-            self.sidebar_width = width as u64;
-            self.sidebar_grid_state.resize(split, width / window_width);
+            self.sidebar_grid_state.resize(split, width);
         }
-    }
-
-    pub fn get_sidebar_width(&self) -> f32 {
-        self.sidebar_width as f32
     }
 }
 
