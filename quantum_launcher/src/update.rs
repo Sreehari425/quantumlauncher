@@ -489,6 +489,11 @@ impl Launcher {
     }
 
     pub fn load_edit_instance(&mut self, new_tab: Option<LaunchTabId>) {
+        if let State::Launch(_) = &self.state {
+        } else {
+            _ = self.go_to_launch_screen(None::<String>);
+        }
+
         if let State::Launch(MenuLaunch {
             tab, edit_instance, ..
         }) = &mut self.state

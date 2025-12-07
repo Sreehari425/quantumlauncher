@@ -70,7 +70,7 @@ pub async fn create_server(
         is_classic_server = true;
 
         let archive = file_utils::download_file_to_bytes(&server.url, true).await?;
-        file_utils::extract_zip_archive(std::io::Cursor::new(archive), &server_dir, true)?;
+        file_utils::extract_zip_archive(std::io::Cursor::new(archive), &server_dir, true).await?;
 
         let old_path = server_dir.join("minecraft-server.jar");
         tokio::fs::rename(&old_path, &server_jar_path)

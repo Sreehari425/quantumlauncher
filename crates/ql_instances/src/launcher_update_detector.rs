@@ -192,7 +192,7 @@ pub async fn install_launcher_update(
         message: Some("Extracting new launcher".to_owned()),
         has_finished: false,
     });
-    file_utils::extract_zip_archive(std::io::Cursor::new(download_zip), exe_location, true)?;
+    file_utils::extract_zip_archive(std::io::Cursor::new(download_zip), exe_location, true).await?;
 
     // Should I, though?
     let rm_path = exe_location.join("README.md");

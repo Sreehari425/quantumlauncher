@@ -89,6 +89,7 @@ pub async fn repeat_stage(
 ) -> Result<(), String> {
     debug_assert!(!instance.is_server());
 
+    info!("Redownloading part of instance ({stage})");
     let instance_dir = instance.get_instance_path();
     let mut downloader = GameDownloader::with_existing_instance(
         VersionDetails::load(&instance).await.strerr()?,
@@ -119,6 +120,7 @@ pub async fn repeat_stage(
             unimplemented!()
         }
     }
+    info!("Finished redownloading");
 
     Ok(())
 }

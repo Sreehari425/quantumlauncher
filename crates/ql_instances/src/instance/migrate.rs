@@ -156,7 +156,7 @@ impl GameLauncher {
                 GameDownloader::migrate_extract_native_library(
                     &self.instance_dir,
                     library,
-                    &library_file,
+                    library_file,
                     artifact,
                 )
                 .await?;

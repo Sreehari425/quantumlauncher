@@ -104,7 +104,7 @@ pub async fn build(instance: &InstanceSelection) -> Result<PathBuf, JarModError>
     tokio::fs::create_dir_all(&tmp_dir).await.path(&tmp_dir)?;
 
     let original_jar_bytes = tokio::fs::read(&original_jar).await.path(&original_jar)?;
-    extract_zip_archive(std::io::Cursor::new(&original_jar_bytes), &tmp_dir, true)?;
+    extract_zip_archive(std::io::Cursor::new(original_jar_bytes), &tmp_dir, true).await?;
 
     for jar in &index.mods {
         if !jar.enabled {
@@ -114,7 +114,7 @@ pub async fn build(instance: &InstanceSelection) -> Result<PathBuf, JarModError>
         pt!("{}", jar.filename);
         let path = jarmods_dir.join(&jar.filename);
         let bytes = tokio::fs::read(&path).await.path(&path)?;
-        extract_zip_archive(std::io::Cursor::new(&bytes), &tmp_dir, true)?;
+        extract_zip_archive(std::io::Cursor::new(bytes), &tmp_dir, true).await?;
     }
 
     let meta_inf = tmp_dir.join("META-INF");

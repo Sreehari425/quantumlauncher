@@ -608,17 +608,27 @@ pub async fn find_item_in_dir<F: FnMut(&Path, &str) -> bool>(
 ///
 /// Note: if `strip_toplevel` is true, this removes the common root directory
 /// (matches old `zip-extract` behavior).
-pub fn extract_zip_archive<R: std::io::Read + std::io::Seek, P: AsRef<Path>>(
+pub async fn extract_zip_archive<
+    R: std::io::Read + std::io::Seek + Send + 'static,
+    P: AsRef<Path>,
+>(
     reader: R,
     extract_to: P,
     strip_toplevel: bool,
 ) -> Result<(), zip::result::ZipError> {
     let mut archive = ZipArchive::new(reader)?;
+    let extract_to = extract_to.as_ref().to_owned();
 
     if strip_toplevel {
-        archive.extract_unwrapped_root_dir(extract_to, zip::read::root_dir_common_filter)?;
+        tokio::task::spawn_blocking(move || {
+            archive.extract_unwrapped_root_dir(extract_to, zip::read::root_dir_common_filter)
+        })
+        .await
+        .unwrap()?;
     } else {
-        archive.extract(extract_to)?;
+        tokio::task::spawn_blocking(move || archive.extract(extract_to))
+            .await
+            .unwrap()?;
     }
 
     Ok(())

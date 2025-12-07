@@ -60,7 +60,7 @@ pub async fn import_instance(
             has_finished: false,
         });
     }
-    file_utils::extract_zip_archive(std::io::BufReader::new(zip_file), temp_dir, true)?;
+    file_utils::extract_zip_archive(std::io::BufReader::new(zip_file), temp_dir, true).await?;
 
     let try_ql = temp_dir.join("quantum-config.json");
     let try_mmc = temp_dir.join("mmc-pack.json");
