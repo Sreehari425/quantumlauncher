@@ -2,7 +2,7 @@ use iced::widget::tooltip::Position;
 use iced::{widget, Alignment, Length};
 use ql_core::{InstanceSelection, Loader, SelectedMod};
 
-use crate::menu_renderer::{ctxbox, select_box, subbutton_with_icon, FONT_MONO};
+use crate::menu_renderer::{ctxbox, select_box, subbutton_with_icon, tsubtitle, FONT_MONO};
 use crate::message_handler::ForgeKind;
 use crate::state::{ImageState, InstallPaperMessage, MenuEditModsModal};
 use crate::stylesheet::widgets::StyleButton;
@@ -580,9 +580,7 @@ impl MenuEditMods {
                         widget::text("(dependency) ")
                             .size(12)
                             .style(|t: &LauncherTheme| t.style_text(Color::Mid)),
-                        widget::text(&config.name)
-                            .size(13)
-                            .style(|t: &LauncherTheme| t.style_text(Color::SecondLight))
+                        widget::text(&config.name).size(13).style(tsubtitle)
                     ]
                     .padding(PADDING)
                     .into()

@@ -15,7 +15,6 @@ use crate::{
 };
 
 macro_rules! iflet_config {
-    // Match pattern with one field (e.g. java_args: Some(args))
     ($state:expr, $field:ident : $pat:pat, $body:block) => {
         if let State::Launch(MenuLaunch {
             edit_instance: Some(MenuEditInstance {

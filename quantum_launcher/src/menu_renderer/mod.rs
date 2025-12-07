@@ -173,6 +173,10 @@ fn sidebar_button<'a, A: PartialEq>(
     }
 }
 
+fn tsubtitle(t: &LauncherTheme) -> widget::text::Style {
+    t.style_text(Color::SecondLight)
+}
+
 fn sidebar<'a>(
     id: &'static str,
     header: Option<Element<'static>>,

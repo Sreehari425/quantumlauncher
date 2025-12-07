@@ -18,8 +18,6 @@ impl MenuEditInstance {
         selected_instance: &InstanceSelection,
         jar_choices: Option<&'a CustomJarState>,
     ) -> Element<'a> {
-        let ts = |n: &LauncherTheme| n.style_text(Color::SecondLight);
-
         widget::scrollable(
             widget::column![
                 widget::container(
@@ -75,7 +73,7 @@ impl MenuEditInstance {
                             widget::Space::with_height(5),
                             widget::checkbox("DEBUG: Enable log system (recommended)", self.config.enable_logger.unwrap_or(true))
                                 .on_toggle(|t| Message::EditInstance(EditInstanceMessage::LoggingToggle(t))),
-                            widget::text("Once disabled, logs will be printed in launcher STDOUT.\nRun the launcher executable from the terminal/command prompt to see it").size(12).style(ts),
+                            widget::text("Once disabled, logs will be printed in launcher STDOUT.\nRun the launcher executable from the terminal/command prompt to see it").size(12).style(tsubtitle),
                             widget::horizontal_space(),
                         ].spacing(5)
                     )
@@ -183,19 +181,17 @@ impl MenuEditInstance {
         // 2 ^ 13 = 8192 MB
         const MEM_8192_MB_IN_TWOS_EXPONENT: f32 = 13.0;
 
-        let ts = |n: &LauncherTheme| n.style_text(Color::SecondLight);
-
         widget::column![
             "Allocated memory",
             widget::text("For normal Minecraft, allocate 2 - 3 GB")
                 .size(12)
-                .style(ts),
+                .style(tsubtitle),
             widget::text("For old versions, allocate 512 MB - 1 GB")
                 .size(12)
-                .style(ts),
+                .style(tsubtitle),
             widget::text("For heavy modpacks/very high render distances, allocate 4 - 8 GB")
                 .size(12)
-                .style(ts),
+                .style(tsubtitle),
             widget::slider(
                 MEM_256_MB_IN_TWOS_EXPONENT..=MEM_8192_MB_IN_TWOS_EXPONENT,
                 self.slider_value,
@@ -226,8 +222,6 @@ impl MenuEditInstance {
         &'a self,
         jar_choices: Option<&'a CustomJarState>,
     ) -> widget::Column<'a, Message, LauncherTheme> {
-        let ts = |n: &LauncherTheme| n.style_text(Color::SecondLight);
-
         let picker: Element = if let Some(choices) = jar_choices {
             widget::pick_list(
                 choices.choices.as_slice(),
@@ -254,7 +248,7 @@ If you want to apply tweaks to your existing JAR file,
 use "Mods->Jar Mods""#
             )
             .size(12)
-            .style(ts),
+            .style(tsubtitle),
             widget::Space::with_height(2),
             picker,
             widget::Column::new().push_maybe(
@@ -262,7 +256,7 @@ use "Mods->Jar Mods""#
                     widget::column![
                         widget::text("Try this in case the game crashes otherwise")
                             .size(12)
-                            .style(ts),
+                            .style(tsubtitle),
                         widget::checkbox(
                             "Auto-set mainClass",
                             self.config
@@ -289,11 +283,9 @@ pub fn resolution_dialog<'a>(
     width: impl Fn(String) -> Message + 'a,
     height: impl Fn(String) -> Message + 'a,
 ) -> widget::Column<'a, Message, LauncherTheme> {
-    let ts = |n: &LauncherTheme| n.style_text(Color::SecondLight);
-
     widget::column![
         "Custom Game Window Size (px):",
-        widget::text("(Leave empty for default)\nCommon resolutions: 854x480, 1366x768, 1920x1080, 2560x1440, 3840x2160").size(12).style(ts),
+        widget::text("(Leave empty for default)\nCommon resolutions: 854x480, 1366x768, 1920x1080, 2560x1440, 3840x2160").size(12).style(tsubtitle),
         widget::row![
             widget::text("Width:").size(14),
             widget::text_input(

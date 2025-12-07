@@ -8,7 +8,7 @@ use super::{
     GITHUB,
 };
 use crate::menu_renderer::edit_instance::{get_args_list, resolution_dialog};
-use crate::menu_renderer::{back_to_launch_screen, sidebar, PADDING_NOT_BOTTOM};
+use crate::menu_renderer::{back_to_launch_screen, sidebar, tsubtitle, PADDING_NOT_BOTTOM};
 use crate::{
     config::LauncherConfig,
     icon_manager,
@@ -113,7 +113,7 @@ impl MenuLauncherSettings {
                 let ui_opacity = config.c_ui_opacity();
                 widget::column![
                     widget::row![
-                        widget::text!("Window Opacity ({ui_opacity:.2}x)").width(SETTING_WIDTH).size(15),
+                        widget::text!("Window Opacity ({ui_opacity:.2}x)").width(SETTING_WIDTH).size(15).style(tsubtitle),
                         widget::slider(0.5..=1.0, ui_opacity, |n| Message::LauncherSettings(
                             LauncherSettingsMessage::UiOpacity(n)
                         ))
@@ -137,7 +137,7 @@ impl MenuLauncherSettings {
                     .on_toggle(|n| Message::LauncherSettings(
                         LauncherSettingsMessage::ToggleAntialiasing(n)
                     )),
-                widget::text("Makes text/menus crisper. Also nudges the launcher into using your dedicated GPU for the User Interface").size(12),
+                widget::text("Makes text/menus crisper. Also nudges the launcher into using your dedicated GPU for the User Interface").size(12).style(tsubtitle),
                 widget::Space::with_height(5),
 
                 widget::checkbox("Remember window size", config.window.as_ref().is_none_or(|n| n.save_window_size))

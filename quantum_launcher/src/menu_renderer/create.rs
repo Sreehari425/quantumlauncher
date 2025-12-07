@@ -9,7 +9,7 @@ use ql_core::{ListEntry, ListEntryKind};
 use crate::{
     icon_manager,
     menu_renderer::{
-        back_button, button_with_icon, ctxbox, sidebar, sidebar_button, tooltip, Element,
+        back_button, button_with_icon, ctxbox, sidebar, sidebar_button, tooltip, tsubtitle, Element,
     },
     state::{CreateInstanceMessage, MenuCreateInstance, Message},
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
@@ -133,7 +133,6 @@ impl MenuCreateInstance {
         is_server: bool,
     ) -> widget::Column<'static, Message, LauncherTheme> {
         let already_exists = existing_instances.is_some_and(|n| n.contains(instance_name));
-        let ts = |t: &LauncherTheme| t.style_text(Color::SecondLight);
 
         column![
             widget::text!("Create {}", if is_server { "Server" } else { "Instance" })
@@ -157,10 +156,10 @@ impl MenuCreateInstance {
             ),
             widget::horizontal_rule(1),
             column![
-                widget::text("- To install Fabric/Forge/OptiFine/etc and mods, click on Mods after installing the instance").size(12).style(ts),
+                widget::text("- To install Fabric/Forge/OptiFine/etc and mods, click on Mods after installing the instance").size(12).style(tsubtitle),
                 row!(
-                    widget::text("- To sideload your own custom JARs, create an instance with a similar version, then go to").size(12).style(ts),
-                    widget::text(" \"Edit->Custom Jar File\"").size(12).style(ts)
+                    widget::text("- To sideload your own custom JARs, create an instance with a similar version, then go to").size(12).style(tsubtitle),
+                    widget::text(" \"Edit->Custom Jar File\"").size(12).style(tsubtitle)
                 ).wrap(),
             ].spacing(5),
             widget::vertical_space(),

@@ -3,7 +3,7 @@ use iced::widget::tooltip::Position;
 use iced::{widget, Alignment, Length, Padding};
 use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
 
-use crate::menu_renderer::{underline, FONT_MONO};
+use crate::menu_renderer::{tsubtitle, underline, FONT_MONO};
 use crate::state::WindowMessage;
 use crate::{
     icon_manager,
@@ -282,9 +282,7 @@ impl Launcher {
                     None
                 };
 
-                let text = widget::text(name)
-                    .size(15)
-                    .style(|t: &LauncherTheme| t.style_text(Color::SecondLight));
+                let text = widget::text(name).size(15).style(tsubtitle);
 
                 if selected_instance_s == Some(name) {
                     widget::container(widget::row!(widget::Space::with_width(5), text))
@@ -645,9 +643,7 @@ fn view_info_message(
                 clear_selection: false,
                 is_server: Some(menu.is_viewing_server)
             }),
-            widget::text(&menu.message)
-                .size(12)
-                .style(|t: &LauncherTheme| t.style_text(Color::SecondLight)),
+            widget::text(&menu.message).size(12).style(tsubtitle),
         ])
         .width(Length::Fill)
         .padding(10)
