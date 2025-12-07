@@ -113,13 +113,13 @@ impl MenuLauncherSettings {
                 let ui_opacity = config.c_ui_opacity();
                 widget::column![
                     widget::row![
-                        widget::text!("Window Opacity ({ui_opacity:.2}x)").width(SETTING_WIDTH).size(15).style(tsubtitle),
+                        widget::text!("Window Opacity ({ui_opacity:.2}x)").width(SETTING_WIDTH).size(15),
                         widget::slider(0.5..=1.0, ui_opacity, |n| Message::LauncherSettings(
                             LauncherSettingsMessage::UiOpacity(n)
                         ))
                         .step(0.1)
                     ].spacing(5).align_y(Alignment::Center),
-                    widget::text("Window background transparency\n0.5 (translucent) ..  1.0 (opaque)").size(12),
+                    widget::text("Window background transparency\n0.5 (translucent) ..  1.0 (opaque)").size(12).style(tsubtitle),
                 ]
                 .padding([0, 10])
                 .spacing(5)
