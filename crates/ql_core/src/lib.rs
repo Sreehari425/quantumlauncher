@@ -372,28 +372,25 @@ impl std::fmt::Display for ListEntryKind {
 }
 
 impl ListEntryKind {
-    /// Returns all possible version categories
-    #[must_use]
-    pub const fn all() -> &'static [ListEntryKind] {
-        &[
-            ListEntryKind::Release,
-            ListEntryKind::Snapshot,
-            ListEntryKind::Beta,
-            ListEntryKind::Alpha,
-            ListEntryKind::Infdev,
-            ListEntryKind::Indev,
-            ListEntryKind::Classic,
-            ListEntryKind::Preclassic,
-            ListEntryKind::AprilFools,
-            ListEntryKind::Special,
-        ]
-    }
+    pub const ALL: &'static [ListEntryKind] = &[
+        ListEntryKind::Release,
+        ListEntryKind::Snapshot,
+        ListEntryKind::Beta,
+        ListEntryKind::Alpha,
+        ListEntryKind::Infdev,
+        ListEntryKind::Indev,
+        ListEntryKind::Classic,
+        ListEntryKind::Preclassic,
+        ListEntryKind::AprilFools,
+        ListEntryKind::Special,
+    ];
 
     /// Returns the default selected categories (Release only)
     #[must_use]
     pub fn default_selected() -> std::collections::HashSet<ListEntryKind> {
         let mut set = std::collections::HashSet::new();
-        set.insert(ListEntryKind::Release);
+        set.extend(Self::ALL);
+        set.remove(&Self::Snapshot);
         set
     }
 }

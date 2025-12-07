@@ -236,7 +236,7 @@ impl MenuCreateInstance {
     ) -> widget::Column<'static, Message, LauncherTheme> {
         let mut col = column![widget::text("Version Types:").size(14)].spacing(5);
 
-        for kind in ListEntryKind::all() {
+        for kind in ListEntryKind::ALL {
             let is_checked = selected_categories.contains(kind);
             col = col.push(
                 widget::checkbox(kind.to_string(), is_checked)
