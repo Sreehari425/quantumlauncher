@@ -14,7 +14,7 @@ This script is used to run clippy with pedantic level (very strict).
 This script is used to list all the native libraries
 downloaded by the launcher, and their architecture.
 
-## `list_so_files.sh <instance_name>`
+## `list_natives_in_jar.sh <instance_name>`
 
 This script is used to list all the `.so` files that *could* be
 extracted and installed. Unlike the other script, this one lists
