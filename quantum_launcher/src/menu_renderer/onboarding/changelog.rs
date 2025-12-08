@@ -73,6 +73,7 @@ pub fn changelog<'a>() -> Element<'a> {
             widget::text("- Added global Java arguments"),
             widget::text("- Added custom jar override support"),
             widget::text("- File location on linux has moved from `~/.config` to `~/.local/share` (with auto-migration)"),
+            widget::text("- Added option to redownload libraries and assets"),
         ].spacing(5),
 
         widget::horizontal_rule(1),
