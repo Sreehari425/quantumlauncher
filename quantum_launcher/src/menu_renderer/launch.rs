@@ -4,6 +4,7 @@ use iced::widget::tooltip::Position;
 use iced::{widget, Alignment, Length, Padding};
 use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
 
+use crate::menu_renderer::onboarding::x86_warning;
 use crate::menu_renderer::{tsubtitle, underline, FONT_MONO};
 use crate::state::WindowMessage;
 use crate::{
@@ -142,12 +143,11 @@ impl Launcher {
                 }
             }
         } else {
-            widget::column!(
-                widget::text("Select an instance")
-                    .size(14)
-                    .style(|t: &LauncherTheme| t.style_text(Color::Mid)),
-                last_parts
-            )
+            widget::column!(widget::text("Select an instance")
+                .size(14)
+                .style(|t: &LauncherTheme| t.style_text(Color::Mid)))
+            .push_maybe(cfg!(target_arch = "x86").then(|| x86_warning()))
+            .push(last_parts)
             .padding(10)
             .spacing(10)
             .into()
