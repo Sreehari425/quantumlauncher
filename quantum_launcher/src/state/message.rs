@@ -329,6 +329,15 @@ impl ListMessage {
 }
 
 #[derive(Debug, Clone)]
+pub enum NotesMessage {
+    Loaded(Res<String>),
+    OpenEdit,
+    Edit(widget::text_editor::Action),
+    SaveEdit,
+    CancelEdit,
+}
+
+#[derive(Debug, Clone)]
 pub enum Message {
     Nothing,
     Error(String),
@@ -350,6 +359,7 @@ pub enum Message {
     EditPresets(EditPresetsMessage),
     LauncherSettings(LauncherSettingsMessage),
     RecommendedMods(RecommendedModMessage),
+    Notes(NotesMessage),
 
     LaunchInstanceSelected {
         name: String,
@@ -366,7 +376,6 @@ pub enum Message {
         is_server: Option<bool>,
     },
     LaunchChangeTab(LaunchTabId),
-    LaunchNotesLoaded(Res<String>),
 
     LaunchSidebarResize(f32),
     LaunchSidebarScroll(f32),

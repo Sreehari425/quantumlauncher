@@ -1,4 +1,5 @@
 use cfg_if::cfg_if;
+use frostmark::MarkWidget;
 use iced::keyboard::Modifiers;
 use iced::widget::tooltip::Position;
 use iced::widget::{horizontal_space, vertical_space};
@@ -6,7 +7,7 @@ use iced::{widget, Alignment, Length, Padding};
 use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
 
 use crate::menu_renderer::{tsubtitle, underline, FONT_MONO};
-use crate::state::WindowMessage;
+use crate::state::{InstanceNotes, NotesMessage, WindowMessage};
 use crate::{
     icon_manager,
     menu_renderer::DISCORD,
@@ -92,51 +93,9 @@ impl Launcher {
         let tab_body = if let Some(selected) = &self.selected_instance {
             match menu.tab {
                 LaunchTabId::Buttons => {
-                    let main_buttons = widget::row![
-                        if menu.is_viewing_server {
-                            self.get_server_play_button().into()
-                        } else {
-                            self.get_client_play_button()
-                        },
-                        self.get_mods_button(selected_instance_s),
-                        Self::get_files_button(selected),
-                    ]
-                    .spacing(5)
-                    .wrap();
-
-                    let is_running = self.is_process_running(selected);
-
-                    widget::column!(
-                        widget::row![widget::text(selected.get_name()).font(FONT_MONO).size(20)]
-                            .push_maybe(is_running.then_some(icon_manager::play_with_size(20)))
-                            .push_maybe(
-                                is_running.then_some(
-                                    widget::text("Running...").size(18).style(tsubtitle)
-                                )
-                            )
-                            .spacing(10),
-                        main_buttons,
-                        // widget::button("Export Instance").on_press(Message::ExportInstanceOpen),
-                        vertical_space(),
-                        widget::row![
-                            widget::button(
-                                widget::row![
-                                    icon_manager::edit_with_size(12),
-                                    widget::text("Notes").style(tsubtitle).size(12)
-                                ]
-                                .spacing(5)
-                                .align_y(Alignment::Center)
-                            )
-                            .padding([2, 4])
-                            .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::Flat)),
-                            last_parts
-                        ]
-                    )
-                    .padding(10)
-                    .spacing(10)
-                    .into()
+                    self.get_tab_main(selected_instance_s, menu, last_parts, selected)
                 }
-                LaunchTabId::Log => self.get_log_pane(menu).into(),
+                LaunchTabId::Log => self.get_tab_logs(menu).into(),
                 LaunchTabId::Edit => {
                     if let Some(menu) = &menu.edit_instance {
                         menu.view(selected, self.custom_jar.as_ref())
@@ -174,6 +133,81 @@ impl Launcher {
             .into()
     }
 
+    fn get_tab_main<'a>(
+        &'a self,
+        selected_instance_s: Option<&str>,
+        menu: &'a MenuLaunch,
+        last_parts: widget::Column<'a, Message, LauncherTheme>,
+        selected: &'a InstanceSelection,
+    ) -> Element<'a> {
+        let is_running = self.is_process_running(selected);
+
+        let main_buttons = widget::row![
+            if menu.is_viewing_server {
+                self.get_server_play_button().into()
+            } else {
+                self.get_client_play_button()
+            },
+            self.get_mods_button(selected_instance_s),
+            Self::get_files_button(selected),
+        ]
+        .spacing(5)
+        .wrap();
+
+        let notes: Element = match &menu.notes {
+            None => vertical_space().into(),
+            Some(InstanceNotes::Viewing { content, .. }) if content.is_empty() => {
+                vertical_space().into()
+            }
+            Some(InstanceNotes::Viewing { mark_state, .. }) => {
+                widget::scrollable(widget::column![MarkWidget::new(mark_state)].padding(5))
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .into()
+            }
+            Some(InstanceNotes::Editing { text_editor, .. }) => {
+                return widget::column!(
+                    widget::text("Editing Notes").size(20),
+                    widget::text_editor(text_editor)
+                        .size(14)
+                        .height(Length::Fill)
+                        .on_action(|a| Message::Notes(NotesMessage::Edit(a))),
+                    widget::row![
+                        button_with_icon(icon_manager::save_with_size(14), "Save", 14)
+                            .on_press(Message::Notes(NotesMessage::SaveEdit)),
+                        button_with_icon(icon_manager::win_close_with_size(14), "Cancel", 14)
+                            .on_press(Message::Notes(NotesMessage::CancelEdit)),
+                    ]
+                    .spacing(5)
+                )
+                .padding(10)
+                .spacing(10)
+                .into();
+            }
+        };
+
+        widget::column!(
+            widget::row![widget::text(selected.get_name()).font(FONT_MONO).size(20)]
+                .push_maybe(is_running.then_some(icon_manager::play_with_size(20)))
+                .push_maybe(
+                    is_running.then_some(widget::text("Running...").size(18).style(tsubtitle))
+                )
+                .spacing(10),
+            main_buttons,
+            // widget::button("Export Instance").on_press(Message::ExportInstanceOpen),
+            notes,
+            widget::row![
+                button_with_icon(icon_manager::edit_with_size(12), "Edit Notes", 12)
+                    .on_press(Message::Notes(NotesMessage::OpenEdit)),
+                last_parts
+            ]
+            .align_y(Alignment::End)
+        )
+        .padding(10)
+        .spacing(10)
+        .into()
+    }
+
     fn get_mods_button(
         &self,
         selected_instance_s: Option<&str>,
@@ -189,7 +223,7 @@ impl Launcher {
             .width(98)
     }
 
-    pub fn get_log_pane<'element>(
+    pub fn get_tab_logs<'element>(
         &'element self,
         menu: &'element MenuLaunch,
     ) -> widget::Column<'element, Message, LauncherTheme> {

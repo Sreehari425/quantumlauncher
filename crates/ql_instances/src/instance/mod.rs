@@ -14,8 +14,8 @@ pub mod notes {
         }
     }
 
-    pub async fn write(instance: InstanceSelection, notes: &str) -> Result<(), IoError> {
+    pub async fn write(instance: InstanceSelection, notes: String) -> Result<(), IoError> {
         let path = instance.get_instance_path().join("notes.md");
-        tokio::fs::write(&path, notes).await.path(&path)
+        tokio::fs::write(&path, &notes).await.path(&path)
     }
 }

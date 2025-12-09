@@ -104,23 +104,8 @@ impl Launcher {
         status: iced::event::Status,
     ) -> Task<Message> {
         let ignored = matches!(status, iced::event::Status::Ignored);
-        if ignored {
-            if let Key::Named(Named::Escape) = key {
-                return self.key_escape_back(true).1;
-            }
-            if let Key::Named(Named::ArrowUp) = key {
-                return self.key_change_selected_instance(false);
-            } else if let Key::Named(Named::ArrowDown) = key {
-                return self.key_change_selected_instance(true);
-            } else if let Key::Named(Named::Enter) = key {
-                if modifiers.command() {
-                    return self.launch_start();
-                }
-            } else if let Key::Named(Named::Backspace) = key {
-                if modifiers.command() {
-                    return Task::done(Message::LaunchKill);
-                }
-            }
+        if let (Key::Named(Named::Escape), true) = (key.clone(), ignored) {
+            return self.key_escape_back(true).1;
         }
 
         if let Key::Character(ch) = &key {
@@ -191,7 +176,7 @@ impl Launcher {
             } else if let Key::Named(Named::ArrowDown) = key {
                 return Task::done(Message::LicenseChangeTab(menu.selected_tab.next()));
             }
-        } else if let State::Launch(_) = &self.state {
+        } else if let (State::Launch(_), true) = (&self.state, ignored) {
             if let Key::Named(Named::ArrowUp) = key {
                 return self.key_change_selected_instance(false);
             } else if let Key::Named(Named::ArrowDown) = key {
@@ -493,18 +478,23 @@ impl Launcher {
             0
         };
 
-        if did_scroll {
-            self.load_edit_instance(None);
-        }
-
         let scroll_pos = idx as f32 / (list.len() as f32 - 1.0);
         let scroll_pos = scroll_pos * sidebar_height;
-        iced::widget::scrollable::scroll_to(
+        let scroll_task = iced::widget::scrollable::scroll_to(
             iced::widget::scrollable::Id::new("MenuLaunch:sidebar"),
             iced::widget::scrollable::AbsoluteOffset {
                 x: 0.0,
                 y: scroll_pos,
             },
-        )
+        );
+
+        if did_scroll {
+            self.load_edit_instance(None);
+            let instance = self.instance().clone();
+            if let State::Launch(menu) = &mut self.state {
+                return Task::batch([menu.reload_notes(instance), scroll_task]);
+            }
+        }
+        scroll_task
     }
 }

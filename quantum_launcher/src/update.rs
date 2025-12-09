@@ -1,4 +1,3 @@
-use frostmark::MarkState;
 use iced::{futures::executor::block_on, Task};
 use ql_core::{
     err, err_no_log, file_utils::DirItem, info_no_log, InstanceSelection, IntoIoError,
@@ -69,6 +68,7 @@ impl Launcher {
             Message::ManageJarMods(msg) => return self.update_manage_jar_mods(msg),
             Message::RecommendedMods(msg) => return self.update_recommended_mods(msg),
             Message::Window(msg) => return self.update_window_msg(msg),
+            Message::Notes(msg) => return self.update_notes(msg),
 
             Message::LaunchInstanceSelected { name, is_server } => {
                 let inst = InstanceSelection::new(&name, is_server);
@@ -113,15 +113,6 @@ impl Launcher {
                     self.go_to_launch_screen(message)
                 };
             }
-            Message::LaunchNotesLoaded(res) => match res {
-                Ok(notes) => {
-                    if let State::Launch(menu) = &mut self.state {
-                        let state = MarkState::with_html_and_markdown(&notes);
-                        menu.notes = Some((notes, state));
-                    }
-                }
-                Err(err) => err_no_log!("While loading instance notes: {err}"),
-            },
             Message::EditInstance(message) => match self.update_edit_instance(message) {
                 Ok(n) => return n,
                 Err(err) => self.set_error(err),

@@ -248,8 +248,7 @@ impl LauncherTheme {
         let border = self.get_border_style(
             &style,
             match style {
-                StyleScrollable::Round => Color::Mid,
-                StyleScrollable::FlatDark => Color::SecondDark,
+                StyleScrollable::Round | StyleScrollable::FlatDark => Color::SecondDark,
                 StyleScrollable::FlatExtraDark => Color::Dark,
             },
         );
