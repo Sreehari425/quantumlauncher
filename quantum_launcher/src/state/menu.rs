@@ -13,8 +13,8 @@ use ql_core::{
     file_utils::DirItem,
     jarmod::JarMods,
     json::{InstanceConfigJson, VersionDetails},
-    DownloadProgress, GenericProgress, InstanceSelection, ListEntry, ModId, OptifineUniqueVersion,
-    SelectedMod, StoreBackendType,
+    DownloadProgress, GenericProgress, InstanceSelection, IntoStringError, ListEntry, ModId,
+    OptifineUniqueVersion, SelectedMod, StoreBackendType,
 };
 use ql_mod_manager::loaders::paper::PaperVersion;
 use ql_mod_manager::{
@@ -54,6 +54,7 @@ pub struct MenuLaunch {
     pub login_progress: Option<ProgressBar<GenericProgress>>,
     pub tab: LaunchTabId,
     pub edit_instance: Option<MenuEditInstance>,
+    pub notes: Option<(String, MarkState)>,
 
     pub sidebar_scrolled: f32,
     pub sidebar_grid_state: widget::pane_grid::State<bool>,
@@ -92,6 +93,7 @@ impl MenuLaunch {
             log_scroll: 0,
             is_uploading_mclogs: false,
             sidebar_split,
+            notes: None,
         }
     }
 
@@ -99,6 +101,13 @@ impl MenuLaunch {
         if let Some(split) = self.sidebar_split {
             self.sidebar_grid_state.resize(split, width);
         }
+    }
+
+    pub fn reload_notes(&mut self, instance: InstanceSelection) -> Task<Message> {
+        self.notes = None;
+        Task::perform(ql_instances::notes::read(instance), |n| {
+            Message::LaunchNotesLoaded(n.strerr())
+        })
     }
 }
 

@@ -366,6 +366,7 @@ pub enum Message {
         is_server: Option<bool>,
     },
     LaunchChangeTab(LaunchTabId),
+    LaunchNotesLoaded(Res<String>),
 
     LaunchSidebarResize(f32),
     LaunchSidebarScroll(f32),

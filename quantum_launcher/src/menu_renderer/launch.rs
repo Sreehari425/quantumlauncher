@@ -1,6 +1,7 @@
 use cfg_if::cfg_if;
 use iced::keyboard::Modifiers;
 use iced::widget::tooltip::Position;
+use iced::widget::{horizontal_space, vertical_space};
 use iced::{widget, Alignment, Length, Padding};
 use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
 
@@ -66,12 +67,12 @@ impl Launcher {
         let decor = self.config.c_window_decorations();
 
         let last_parts = widget::column![
-            widget::horizontal_space(),
+            horizontal_space(),
             widget::row![
                 // Enable/Disable the below `widget::column![]` code to
                 // toggle the experimental server manager
                 /*widget::column![
-                    widget::vertical_space(),
+                    vertical_space(),
                     widget::button(if menu.is_viewing_server {
                         "View Instances..."
                     } else {
@@ -103,24 +104,34 @@ impl Launcher {
                     .spacing(5)
                     .wrap();
 
+                    let is_running = self.is_process_running(selected);
+
                     widget::column!(
-                        widget::row![widget::text(selected.get_name()).font(FONT_MONO).size(20),]
-                            .push_maybe({
-                                self.is_process_running(selected).then_some(tooltip(
-                                    icon_manager::play_with_size(20),
-                                    "Running...",
-                                    Position::Right,
-                                ))
-                            })
+                        widget::row![widget::text(selected.get_name()).font(FONT_MONO).size(20)]
+                            .push_maybe(is_running.then_some(icon_manager::play_with_size(20)))
+                            .push_maybe(
+                                is_running.then_some(
+                                    widget::text("Running...").size(18).style(tsubtitle)
+                                )
+                            )
                             .spacing(10),
                         main_buttons,
                         // widget::button("Export Instance").on_press(Message::ExportInstanceOpen),
+                        vertical_space(),
+                        widget::row![
+                            widget::button(
+                                widget::row![
+                                    icon_manager::edit_with_size(12),
+                                    widget::text("Notes").style(tsubtitle).size(12)
+                                ]
+                                .spacing(5)
+                                .align_y(Alignment::Center)
+                            )
+                            .padding([2, 4])
+                            .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::Flat)),
+                            last_parts
+                        ]
                     )
-                    .push_maybe(
-                        self.is_process_running(selected)
-                            .then_some(widget::text("Running...").size(20)),
-                    )
-                    .push(last_parts)
                     .padding(10)
                     .spacing(10)
                     .into()
@@ -146,6 +157,7 @@ impl Launcher {
                 widget::text("Select an instance")
                     .size(14)
                     .style(|t: &LauncherTheme| t.style_text(Color::Mid)),
+                vertical_space(),
                 last_parts
             )
             .padding(10)
@@ -275,7 +287,7 @@ impl Launcher {
                     .is_process_running(&InstanceSelection::new(name, menu.is_viewing_server))
                 {
                     Some(widget::row![
-                        widget::horizontal_space(),
+                        horizontal_space(),
                         icon_manager::play_with_size(15),
                         widget::Space::with_width(10),
                     ])
@@ -368,11 +380,7 @@ impl Launcher {
         };
 
         widget::column![
-            widget::row![
-                widget::text(" Accounts:").size(14),
-                widget::horizontal_space(),
-            ]
-            .push_maybe(
+            widget::row![widget::text(" Accounts:").size(14), horizontal_space(),].push_maybe(
                 self.is_account_selected().then_some(
                     widget::button(widget::text("Logout").size(11))
                         .padding(3)
@@ -483,9 +491,9 @@ impl MenuLaunch {
 
         let settings_button = widget::button(
             widget::row![
-                widget::horizontal_space(),
+                horizontal_space(),
                 icon_manager::settings_with_size(12),
-                widget::horizontal_space()
+                horizontal_space()
             ]
             .width(tab_height(decor) + 4.0)
             .height(tab_height(decor) + 4.0)
@@ -497,7 +505,7 @@ impl MenuLaunch {
 
         widget::mouse_area(
             widget::container(
-                widget::row!(settings_button, tab_bar, widget::horizontal_space())
+                widget::row!(settings_button, tab_bar, horizontal_space())
                     // .push_maybe(window_handle_buttons)
                     .height(tab_height(decor) + decorh(decor))
                     .align_y(Alignment::End),
@@ -535,7 +543,7 @@ fn render_tab_button(tab: LaunchTabId, decor: bool, menu: &'_ MenuLaunch) -> Ele
         name.into()
     };
 
-    let txt = widget::row!(widget::horizontal_space(), txt, widget::horizontal_space());
+    let txt = widget::row!(horizontal_space(), txt, horizontal_space());
 
     if menu.tab == tab {
         widget::container(txt)
@@ -601,15 +609,14 @@ fn get_footer_text() -> widget::Column<'static, Message, LauncherTheme> {
     );
 
     widget::column!(
-        widget::vertical_space(),
         widget::row!(
-            widget::horizontal_space(),
+            horizontal_space(),
             widget::text!("QuantumLauncher v{LAUNCHER_VERSION_NAME}")
                 .size(12)
                 .style(|t: &LauncherTheme| t.style_text(Color::Mid))
         ),
         widget::row!(
-            widget::horizontal_space(),
+            horizontal_space(),
             widget::text(subtext)
                 .size(10)
                 .style(|t: &LauncherTheme| t.style_text(Color::Mid))
