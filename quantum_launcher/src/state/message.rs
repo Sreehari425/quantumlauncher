@@ -357,13 +357,14 @@ pub enum Message {
     },
     LaunchUsernameSet(String),
     LaunchStart,
+    LaunchEnd(Res<LaunchedProcess>),
+    LaunchKill,
+
     LaunchScreenOpen {
         message: Option<String>,
         clear_selection: bool,
         is_server: Option<bool>,
     },
-    LaunchEnd(Res<LaunchedProcess>),
-    LaunchKill,
     LaunchChangeTab(LaunchTabId),
 
     LaunchSidebarResize(f32),

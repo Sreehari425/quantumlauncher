@@ -276,9 +276,9 @@ impl Launcher {
     }
 
     pub fn key_escape_back(&mut self, affect: bool) -> (bool, Task<Message>) {
-        let mut should_return_to_main_screen = false;
-        let mut should_return_to_mods_screen = false;
-        let mut should_return_to_download_screen = false;
+        let mut ret_to_main_screen = false;
+        let mut ret_to_mods = false;
+        let mut ret_to_mod_store = false;
 
         if affect && self.hide_submenu() {
             return (true, Task::none());
@@ -303,7 +303,7 @@ impl Launcher {
                 is_loading: false, ..
             })
             | State::Welcome(_) => {
-                should_return_to_main_screen = true;
+                ret_to_main_screen = true;
             }
             State::License(_) => {
                 if affect {
@@ -339,13 +339,13 @@ impl Launcher {
             | State::InstallPaper(
                 MenuInstallPaper::Loading { .. } | MenuInstallPaper::Loaded { .. },
             ) => {
-                should_return_to_mods_screen = true;
+                ret_to_mods = true;
             }
             State::ModsDownload(menu) if menu.opened_mod.is_some() => {
-                should_return_to_download_screen = true;
+                ret_to_mod_store = true;
             }
             State::ModsDownload(menu) if menu.mods_download_in_progress.is_empty() => {
-                should_return_to_mods_screen = true;
+                ret_to_mods = true;
             }
             State::InstallPaper(_)
             | State::ExportInstance(_)
@@ -369,13 +369,13 @@ impl Launcher {
         }
 
         if affect {
-            if should_return_to_main_screen {
-                return (true, self.go_to_launch_screen::<String>(None));
+            if ret_to_main_screen {
+                return (true, self.go_to_main_menu_with_message(None::<String>));
             }
-            if should_return_to_mods_screen {
+            if ret_to_mods {
                 return (true, self.go_to_edit_mods_menu(false));
             }
-            if should_return_to_download_screen {
+            if ret_to_mod_store {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.opened_mod = None;
                     menu.description = None;
@@ -391,11 +391,24 @@ impl Launcher {
         }
 
         (
-            should_return_to_main_screen
-                | should_return_to_mods_screen
-                | should_return_to_download_screen,
+            ret_to_main_screen | ret_to_mods | ret_to_mod_store,
             Task::none(),
         )
+    }
+
+    pub fn server_selected(&self) -> bool {
+        self.selected_instance
+            .as_ref()
+            .is_some_and(|n| n.is_server())
+            || if let State::Launch(menu) = &self.state {
+                menu.is_viewing_server
+            } else if let State::Create(MenuCreateInstance::Choosing { is_server, .. }) =
+                &self.state
+            {
+                *is_server
+            } else {
+                false
+            }
     }
 
     fn hide_submenu(&mut self) -> bool {

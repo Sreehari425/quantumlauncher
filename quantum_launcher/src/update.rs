@@ -433,7 +433,7 @@ impl Launcher {
                         if let Err(err) = std::fs::write(&path, bytes).path(path) {
                             self.set_error(err);
                         } else {
-                            return self.go_to_launch_screen(None::<String>);
+                            return self.go_to_main_menu_with_message(None::<String>);
                         }
                     }
                 }
@@ -491,7 +491,7 @@ impl Launcher {
     pub fn load_edit_instance(&mut self, new_tab: Option<LaunchTabId>) {
         if let State::Launch(_) = &self.state {
         } else {
-            _ = self.go_to_launch_screen(None::<String>);
+            _ = self.go_to_main_menu_with_message(None::<String>);
         }
 
         if let State::Launch(MenuLaunch {
