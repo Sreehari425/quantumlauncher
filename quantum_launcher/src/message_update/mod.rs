@@ -549,6 +549,9 @@ impl Launcher {
                 Ok(mode) => {
                     self.theme.system_dark_mode = mode == dark_light::Mode::Dark;
                 }
+                Err(err) if err.contains("Timeout reached") => {
+                    // The system is just lagging, nothing we can do
+                }
                 Err(err) => {
                     err_no_log!("while loading system theme: {err}");
                 }

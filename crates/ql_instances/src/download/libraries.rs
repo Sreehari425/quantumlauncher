@@ -466,7 +466,9 @@ async fn extractlib_natives_field(
     };
 
     pt!("Extracting native jar: {name}");
-    extract_zip_file(native_jar, natives_path).await.map_err(DownloadError::NativesExtractError)?;
+    extract_zip_file(native_jar, natives_path)
+        .await
+        .map_err(DownloadError::NativesExtractError)?;
 
     Ok(())
 }
