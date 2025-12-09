@@ -18,7 +18,7 @@ use ql_core::{
     err, json::instance_config::InstanceConfigJson, GenericProgress, InstanceSelection,
     IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
 };
-use ql_core::{info, LaunchedProcess};
+use ql_core::{info, pt, LaunchedProcess};
 use ql_instances::auth::AccountData;
 use ql_mod_manager::{loaders, store::ModIndex};
 use std::{
@@ -104,7 +104,8 @@ impl Launcher {
                                 Err(ReadError::Io(io))
                                     if io.kind() == std::io::ErrorKind::InvalidData =>
                                 {
-                                    err!("Minecraft log contains invalid unicode! Stopping the logging...\n(note: the game will continue to run despite the next message)");
+                                    err!("Minecraft log contains invalid unicode! Stopping logs");
+                                    pt!("The game will continue to run");
                                     Ok((ExitStatus::default(), selected_instance, None))
                                 }
                                 _ => result.strerr(),

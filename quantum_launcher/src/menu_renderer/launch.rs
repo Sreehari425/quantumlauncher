@@ -577,7 +577,7 @@ fn get_no_logs_message<'a>() -> widget::Column<'a, Message, LauncherTheme> {
     widget::column!(widget::text(BASE_MESSAGE).style(|t: &LauncherTheme| t.style_text(Color::Mid)))
         // WARN: non x86_64
         .push_maybe(cfg!(not(target_arch = "x86_64")).then_some(widget::text(
-            "Note: This version is experimental. If you want to get help join our discord",
+            "This version is experimental. If you want to get help join our discord",
         )))
         .width(Length::Fill)
         .height(Length::Fill)

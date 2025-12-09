@@ -415,7 +415,8 @@ impl Launcher {
         let (j_sender, j_recv) = std::sync::mpsc::channel();
 
         let instance = self.instance();
-        let get_name = instance.get_name().to_owned();
+        let instance_name = instance.get_name().to_owned();
+        debug_assert!(!instance.is_server());
 
         let optifine_unique_version =
             if let State::InstallOptifine(MenuInstallOptifine::Choosing {
@@ -447,10 +448,10 @@ impl Launcher {
         let installer_path = installer_path.to_owned();
 
         Task::perform(
-            // Note: OptiFine does not support servers
+            // OptiFine does not support servers
             // so it's safe to assume we've selected an instance.
             loaders::optifine::install(
-                get_name,
+                instance_name,
                 installer_path.clone(),
                 Some(p_sender),
                 Some(j_sender),

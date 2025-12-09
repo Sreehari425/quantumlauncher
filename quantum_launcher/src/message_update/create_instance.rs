@@ -1,6 +1,6 @@
 use iced::Task;
 use ql_core::{
-    pt, DownloadProgress, InstanceSelection, IntoStringError, JsonDownloadError, ListEntry,
+    DownloadProgress, InstanceSelection, IntoStringError, JsonDownloadError, ListEntry,
     ListEntryKind,
 };
 
@@ -102,14 +102,6 @@ impl Launcher {
                 {
                     let (send, recv) = std::sync::mpsc::channel();
                     let progress = ProgressBar::with_recv(recv);
-
-                    // I know this doesn't look necessary but there's
-                    // a weird untrackable bug where importing instance
-                    // screen just doesn't appear, and the Task runs
-                    // silently in the background.
-                    //
-                    // I hope I manage to fix it in the future.
-                    pt!("(Internal): Setting state to ImportingInstance...");
 
                     self.state = State::Create(MenuCreateInstance::ImportingInstance(progress));
 
