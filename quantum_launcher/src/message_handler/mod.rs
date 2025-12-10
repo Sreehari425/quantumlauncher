@@ -1,3 +1,4 @@
+use crate::config::SIDEBAR_WIDTH;
 use crate::state::{GameProcess, MenuInstallOptifine};
 use crate::tick::sort_dependencies;
 use crate::{
@@ -17,7 +18,7 @@ use ql_core::{
     err, json::instance_config::InstanceConfigJson, GenericProgress, InstanceSelection,
     IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
 };
-use ql_core::{info, LaunchedProcess};
+use ql_core::{info, pt, LaunchedProcess};
 use ql_instances::auth::AccountData;
 use ql_mod_manager::{loaders, store::ModIndex};
 use std::{
@@ -29,8 +30,7 @@ use std::{
 };
 use tokio::io::AsyncWriteExt;
 
-pub const SIDEBAR_DRAG_LEEWAY: f32 = 10.0;
-pub const SIDEBAR_LIMIT_RIGHT: u16 = 120;
+pub const SIDEBAR_LIMIT_RIGHT: f32 = 120.0;
 pub const SIDEBAR_LIMIT_LEFT: f32 = 135.0;
 
 mod iced_event;
@@ -104,7 +104,8 @@ impl Launcher {
                                 Err(ReadError::Io(io))
                                     if io.kind() == std::io::ErrorKind::InvalidData =>
                                 {
-                                    err!("Minecraft log contains invalid unicode! Stopping the logging...\n(note: the game will continue to run despite the next message)");
+                                    err!("Minecraft log contains invalid unicode! Stopping logs");
+                                    pt!("The game will continue to run");
                                     Ok((ExitStatus::default(), selected_instance, None))
                                 }
                                 _ => result.strerr(),
@@ -158,6 +159,7 @@ impl Launcher {
             instance_name: instance_name.to_owned(),
             old_instance_name: instance_name.to_owned(),
             slider_text: format_memory(memory_mb),
+            is_editing_name: false,
         });
         Ok(())
     }
@@ -181,7 +183,7 @@ impl Launcher {
 
             let (update_cmd, update_check_handle) = if !check_updates
                 || this.mod_updates_checked.contains_key(instance)
-                || config_json.mod_type == "Vanilla"
+                || config_json.mod_type.is_vanilla()
             {
                 (Task::none(), None)
             } else {
@@ -292,9 +294,7 @@ impl Launcher {
                 None => MenuLaunch::default(),
             };
             menu_launch.is_viewing_server = true;
-            if let Some(width) = self.config.sidebar_width {
-                menu_launch.sidebar_width = width as u16;
-            }
+            menu_launch.resize_sidebar(SIDEBAR_WIDTH);
             self.state = State::Launch(menu_launch);
         }
         Task::perform(get_entries(true), Message::CoreListLoaded)

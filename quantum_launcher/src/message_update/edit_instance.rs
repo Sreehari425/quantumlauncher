@@ -8,16 +8,13 @@ use ql_core::{
 use crate::{
     message_handler::format_memory,
     state::{
-        dir_watch, get_entries, CustomJarState, EditInstanceMessage, Launcher, MenuEditInstance,
-        MenuLaunch, Message, State, ADD_JAR_NAME, NONE_JAR_NAME, OPEN_FOLDER_JAR_NAME,
-        REMOVE_JAR_NAME,
+        dir_watch, get_entries, CustomJarState, EditInstanceMessage, LaunchTabId, Launcher,
+        MenuCreateInstance, MenuEditInstance, MenuLaunch, Message, ProgressBar, State,
+        ADD_JAR_NAME, NONE_JAR_NAME, OPEN_FOLDER_JAR_NAME, REMOVE_JAR_NAME,
     },
 };
 
-use super::add_to_arguments_list;
-
 macro_rules! iflet_config {
-    // Match pattern with one field (e.g. java_args: Some(args))
     ($state:expr, $field:ident : $pat:pat, $body:block) => {
         if let State::Launch(MenuLaunch {
             tab_edit_instance: Some(MenuEditInstance {
@@ -34,23 +31,6 @@ macro_rules! iflet_config {
 
     ($state:expr, $field:ident, $body:block) => {
         iflet_config!($state, $field : $field, $body);
-    };
-
-    ($state:expr, get, $field:ident, $body:block) => {
-        if let State::Launch(MenuLaunch {
-            tab_edit_instance: Some(MenuEditInstance {
-                config: InstanceConfigJson {
-                    $field,
-                    ..
-                },
-                ..
-            }),
-            ..
-        }) = $state
-        {
-            let $field = $field.get_or_insert_with(Default::default);
-            $body
-        }
     };
 
     ($state:expr, prefix, |$prefix:ident| $body:block) => {
@@ -108,78 +88,45 @@ impl Launcher {
                     menu.config.close_on_start = Some(t);
                 }
             }
-            EditInstanceMessage::JavaArgsAdd => {
-                iflet_config!(&mut self.state, get, java_args, {
-                    java_args.push(String::new());
-                });
-            }
-            EditInstanceMessage::JavaArgEdit(msg, idx) => {
-                self.e_java_arg_edit(msg, idx);
-            }
-            EditInstanceMessage::JavaArgDelete(idx) => {
-                self.e_java_arg_delete(idx);
-            }
             EditInstanceMessage::JavaArgsModeChanged(mode) => {
-                iflet_config!(&mut self.state, java_args_mode, {
-                    *java_args_mode = Some(mode);
+                iflet_config!(&mut self.state, global_java_args_enable, {
+                    *global_java_args_enable = Some(mode);
                 });
             }
-            EditInstanceMessage::GameArgsAdd => {
-                iflet_config!(&mut self.state, get, game_args, {
-                    game_args.push(String::new());
+            EditInstanceMessage::JavaArgs(msg) => {
+                iflet_config!(&mut self.state, java_args, {
+                    msg.apply(java_args.get_or_insert_with(Vec::new));
                 });
             }
-            EditInstanceMessage::GameArgEdit(msg, idx) => {
-                self.e_game_arg_edit(msg, idx);
-            }
-            EditInstanceMessage::GameArgDelete(idx) => {
-                self.e_game_arg_delete(idx);
-            }
-            EditInstanceMessage::JavaArgShiftUp(idx) => {
-                iflet_config!(&mut self.state, java_args: Some(args), {
-                    Self::e_list_shift_up(idx, args);
+            EditInstanceMessage::GameArgs(msg) => {
+                iflet_config!(&mut self.state, game_args, {
+                    msg.apply(game_args.get_or_insert_with(Vec::new));
                 });
             }
-            EditInstanceMessage::JavaArgShiftDown(idx) => {
-                iflet_config!(&mut self.state, java_args: Some(args), {
-                    Self::e_list_shift_down(idx, args);
-                });
-            }
-            EditInstanceMessage::GameArgShiftUp(idx) => {
-                iflet_config!(&mut self.state, game_args: Some(args), {
-                    Self::e_list_shift_up(idx, args);
-                });
-            }
-            EditInstanceMessage::GameArgShiftDown(idx) => {
-                iflet_config!(&mut self.state, game_args: Some(args), {
-                    Self::e_list_shift_down(idx, args);
-                });
-            }
-            EditInstanceMessage::PreLaunchPrefixAdd => {
+            EditInstanceMessage::PreLaunchPrefix(msg) => {
                 iflet_config!(&mut self.state, prefix, |pre_launch_prefix| {
-                    pre_launch_prefix.push(String::new());
-                });
-            }
-            EditInstanceMessage::PreLaunchPrefixEdit(msg, idx) => {
-                self.e_pre_launch_prefix_edit(msg, idx);
-            }
-            EditInstanceMessage::PreLaunchPrefixDelete(idx) => {
-                self.e_pre_launch_prefix_delete(idx);
-            }
-            EditInstanceMessage::PreLaunchPrefixShiftUp(idx) => {
-                iflet_config!(&mut self.state, prefix, |pre_launch_prefix| {
-                    Self::e_list_shift_up(idx, pre_launch_prefix);
-                });
-            }
-            EditInstanceMessage::PreLaunchPrefixShiftDown(idx) => {
-                iflet_config!(&mut self.state, prefix, |pre_launch_prefix| {
-                    Self::e_list_shift_down(idx, pre_launch_prefix);
+                    msg.apply(pre_launch_prefix);
                 });
             }
             EditInstanceMessage::PreLaunchPrefixModeChanged(mode) => {
                 iflet_config!(&mut self.state, pre_launch_prefix_mode, {
                     *pre_launch_prefix_mode = Some(mode);
                 });
+            }
+            EditInstanceMessage::RenameToggle => {
+                if let State::Launch(MenuLaunch {
+                    tab_edit_instance: Some(menu),
+                    ..
+                }) = &mut self.state
+                {
+                    menu.instance_name = self
+                        .selected_instance
+                        .as_ref()
+                        .unwrap()
+                        .get_name()
+                        .to_owned();
+                    menu.is_editing_name = !menu.is_editing_name;
+                }
             }
             EditInstanceMessage::RenameEdit(n) => {
                 if let State::Launch(MenuLaunch {
@@ -198,15 +145,7 @@ impl Launcher {
                     ..
                 }) = &mut self.state
                 {
-                    menu.config
-                        .global_settings
-                        .get_or_insert_with(Default::default)
-                        .window_width = if width.is_empty() {
-                        None
-                    } else {
-                        // TODO: Error handling
-                        width.parse::<u32>().ok()
-                    }
+                    menu.config.c_global_settings().window_width = width.parse::<u32>().ok();
                 }
             }
             EditInstanceMessage::WindowHeightChanged(height) => {
@@ -215,15 +154,7 @@ impl Launcher {
                     ..
                 }) = &mut self.state
                 {
-                    menu.config
-                        .global_settings
-                        .get_or_insert_with(Default::default)
-                        .window_height = if height.is_empty() {
-                        None
-                    } else {
-                        // TODO: Error handling
-                        height.parse::<u32>().ok()
-                    }
+                    menu.config.c_global_settings().window_height = height.parse::<u32>().ok();
                 }
             }
             EditInstanceMessage::CustomJarPathChanged(path) => {
@@ -262,39 +193,7 @@ impl Launcher {
             }
             EditInstanceMessage::CustomJarLoaded(items) => match items {
                 Ok(items) => {
-                    match &mut self.custom_jar {
-                        Some(cx) => {
-                            cx.choices = items.clone();
-                        }
-                        None => {
-                            let (recv, watcher) = match dir_watch(LAUNCHER_DIR.join("custom_jars"))
-                            {
-                                Ok(n) => n,
-                                Err(err) => {
-                                    err!("Couldn't load list of custom jars (2)! {err}");
-                                    return Ok(Task::none());
-                                }
-                            };
-                            self.custom_jar = Some(CustomJarState {
-                                choices: items.clone(),
-                                recv,
-                                _watcher: watcher,
-                            })
-                        }
-                    }
-                    // If the currently selected jar got deleted/renamed
-                    // then unselect it
-                    if let State::Launch(MenuLaunch {
-                        tab_edit_instance: Some(menu),
-                        ..
-                    }) = &mut self.state
-                    {
-                        if let Some(jar) = &menu.config.custom_jar {
-                            if !items.contains(&jar.name) {
-                                menu.config.custom_jar = None;
-                            }
-                        }
-                    }
+                    return Ok(self.loaded_custom_jar(items));
                 }
                 Err(err) => err!("Couldn't load list of custom jars (1)! {err}"),
             },
@@ -315,8 +214,77 @@ impl Launcher {
                     custom_jar.autoset_main_class = t;
                 }
             }
+            EditInstanceMessage::ReinstallLibraries => {
+                return Ok(self.instance_redownload_stage(
+                    ql_core::DownloadProgress::DownloadingLibraries {
+                        progress: 0,
+                        out_of: 0,
+                    },
+                ));
+            }
+            EditInstanceMessage::UpdateAssets => {
+                return Ok(self.instance_redownload_stage(
+                    ql_core::DownloadProgress::DownloadingAssets {
+                        progress: 0,
+                        out_of: 0,
+                    },
+                ));
+            }
         }
         Ok(Task::none())
+    }
+
+    fn instance_redownload_stage(&mut self, stage: ql_core::DownloadProgress) -> Task<Message> {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let bar = ProgressBar::with_recv(receiver);
+        self.state = State::Create(MenuCreateInstance::DownloadingInstance(bar));
+
+        Task::perform(
+            ql_instances::repeat_stage(self.instance().clone(), stage, Some(sender)),
+            |t| {
+                if let Err(err) = t {
+                    Message::Error(err)
+                } else {
+                    Message::LaunchChangeTab(LaunchTabId::Edit)
+                }
+            },
+        )
+    }
+
+    fn loaded_custom_jar(&mut self, items: Vec<String>) -> Task<Message> {
+        match &mut self.custom_jar {
+            Some(cx) => {
+                cx.choices = items.clone();
+            }
+            None => {
+                let (recv, watcher) = match dir_watch(LAUNCHER_DIR.join("custom_jars")) {
+                    Ok(n) => n,
+                    Err(err) => {
+                        err!("Couldn't load list of custom jars (2)! {err}");
+                        return Task::none();
+                    }
+                };
+                self.custom_jar = Some(CustomJarState {
+                    choices: items.clone(),
+                    recv,
+                    _watcher: watcher,
+                });
+            }
+        }
+        // If the currently selected jar got deleted/renamed
+        // then unselect it
+        if let State::Launch(MenuLaunch {
+            tab_edit_instance: Some(menu),
+            ..
+        }) = &mut self.state
+        {
+            if let Some(jar) = &menu.config.custom_jar {
+                if !items.contains(&jar.name) {
+                    menu.config.custom_jar = None;
+                }
+            }
+        }
+        Task::none()
     }
 
     fn add_custom_jar(&mut self) -> Task<Message> {
@@ -410,91 +378,6 @@ impl Launcher {
                 get_entries(self.instance().is_server()),
                 Message::CoreListLoaded,
             ))
-        }
-    }
-
-    fn e_java_arg_edit(&mut self, msg: String, idx: usize) {
-        let State::Launch(MenuLaunch {
-            tab_edit_instance: Some(menu),
-            ..
-        }) = &mut self.state
-        else {
-            return;
-        };
-        let Some(args) = menu.config.java_args.as_mut() else {
-            return;
-        };
-        add_to_arguments_list(msg, args, idx);
-    }
-
-    fn e_java_arg_delete(&mut self, idx: usize) {
-        if let State::Launch(MenuLaunch {
-            tab_edit_instance: Some(menu),
-            ..
-        }) = &mut self.state
-        {
-            if let Some(args) = &mut menu.config.java_args {
-                args.remove(idx);
-            }
-        }
-    }
-
-    fn e_game_arg_edit(&mut self, msg: String, idx: usize) {
-        let State::Launch(MenuLaunch {
-            tab_edit_instance: Some(menu),
-            ..
-        }) = &mut self.state
-        else {
-            return;
-        };
-        let Some(args) = &mut menu.config.game_args else {
-            return;
-        };
-        add_to_arguments_list(msg, args, idx);
-    }
-
-    fn e_game_arg_delete(&mut self, idx: usize) {
-        if let State::Launch(MenuLaunch {
-            tab_edit_instance: Some(menu),
-            ..
-        }) = &mut self.state
-        {
-            if let Some(args) = &mut menu.config.game_args {
-                args.remove(idx);
-            }
-        }
-    }
-
-    fn e_list_shift_up(idx: usize, args: &mut [String]) {
-        if idx > 0 {
-            args.swap(idx, idx - 1);
-        }
-    }
-
-    fn e_list_shift_down(idx: usize, args: &mut [String]) {
-        if idx + 1 < args.len() {
-            args.swap(idx, idx + 1);
-        }
-    }
-
-    fn e_pre_launch_prefix_edit(&mut self, msg: String, idx: usize) {
-        let State::Launch(MenuLaunch {
-            tab_edit_instance: Some(menu),
-            ..
-        }) = &mut self.state
-        else {
-            return;
-        };
-        add_to_arguments_list(msg, menu.config.get_launch_prefix(), idx);
-    }
-
-    fn e_pre_launch_prefix_delete(&mut self, idx: usize) {
-        if let State::Launch(MenuLaunch {
-            tab_edit_instance: Some(menu),
-            ..
-        }) = &mut self.state
-        {
-            menu.config.get_launch_prefix().remove(idx);
         }
     }
 }

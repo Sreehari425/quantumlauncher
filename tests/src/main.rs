@@ -121,20 +121,13 @@ fn setup_dir() {
         .parent()
         .unwrap()
         .join("QuantumLauncher");
-    std::env::set_var("QL_DIR", new_dir);
+    unsafe {
+        std::env::set_var("QL_DIR", new_dir);
+    }
 }
 
 async fn create_instance(version: String) -> Result<(), DownloadError> {
-    match ql_instances::create_instance(
-        version.clone(),
-        ListEntry {
-            name: version,
-            is_server: false,
-        },
-        None,
-        false,
-    )
-    .await
+    match ql_instances::create_instance(version.clone(), ListEntry::new(version), None, false).await
     {
         Ok(_) | Err(DownloadError::InstanceAlreadyExists(_)) => Ok(()),
         Err(err) => Err(err),

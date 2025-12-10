@@ -2,7 +2,6 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
     path::Path,
-    str::FromStr,
     sync::mpsc::{self, Receiver},
 };
 
@@ -17,8 +16,8 @@ use ql_instances::auth::{ms::CLIENT_ID, AccountData, AccountType};
 use tokio::process::ChildStdin;
 
 use crate::{
-    config::LauncherConfig,
-    stylesheet::styles::{LauncherTheme, LauncherThemeColor, LauncherThemeLightness},
+    config::{LauncherConfig, SIDEBAR_WIDTH},
+    stylesheet::styles::LauncherTheme,
 };
 
 mod images;
@@ -59,6 +58,7 @@ pub struct Launcher {
     pub java_recv: Option<ProgressBar<GenericProgress>>,
     pub custom_jar: Option<CustomJarState>,
     pub mod_updates_checked: HashMap<InstanceSelection, Vec<(ModId, String, bool)>>,
+    pub autosave: HashSet<AutoSaveKind>,
 
     pub accounts: HashMap<String, AccountData>,
     pub accounts_dropdown: Vec<String>,
@@ -71,11 +71,21 @@ pub struct Launcher {
     pub processes: HashMap<InstanceSelection, GameProcess>,
     pub logs: HashMap<InstanceSelection, InstanceLog>,
 
-    pub window_size: (f32, f32),
-    pub mouse_pos: (f32, f32),
-
+    pub window_state: WindowState,
     pub keys_pressed: HashSet<iced::keyboard::Key>,
     pub modifiers_pressed: iced::keyboard::Modifiers,
+}
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub enum AutoSaveKind {
+    LauncherConfig,
+    Jarmods,
+}
+
+pub struct WindowState {
+    pub size: (f32, f32),
+    pub mouse_pos: (f32, f32),
+    pub is_maximized: bool,
 }
 
 pub struct CustomJarState {
@@ -94,8 +104,7 @@ impl CustomJarState {
 
 #[derive(Debug, Clone, Default)]
 pub struct VersionListCache {
-    pub client: Option<Vec<ListEntry>>,
-    pub server: Option<Vec<ListEntry>>,
+    pub list: Option<Vec<ListEntry>>,
     pub latest_stable: Option<String>,
 }
 
@@ -119,7 +128,8 @@ impl Launcher {
         }
 
         let mut config = config?;
-        let theme = get_theme(&config);
+        let theme = config.c_theme();
+        let (window_width, window_height) = config.c_window_size();
 
         let mut launch = if let Some(message) = message {
             MenuLaunch::with_message(message)
@@ -127,9 +137,7 @@ impl Launcher {
             MenuLaunch::default()
         };
 
-        if let Some(sidebar_width) = config.sidebar_width {
-            launch.sidebar_width = sidebar_width as u16;
-        }
+        launch.resize_sidebar(SIDEBAR_WIDTH);
 
         let launch = State::Launch(launch);
 
@@ -145,37 +153,7 @@ impl Launcher {
             State::ChangeLog
         };
 
-        let mut accounts = HashMap::new();
-
-        let mut accounts_dropdown =
-            vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()];
-
-        if let Some(config_accounts) = config.accounts.as_mut() {
-            let mut accounts_to_remove = Vec::new();
-
-            for (username, account) in config_accounts.iter_mut() {
-                load_account(
-                    &mut accounts,
-                    &mut accounts_dropdown,
-                    &mut accounts_to_remove,
-                    username,
-                    account,
-                );
-            }
-
-            for rem in accounts_to_remove {
-                config_accounts.remove(&rem);
-            }
-        }
-
-        let selected_account = config.account_selected.clone().unwrap_or(
-            accounts_dropdown
-                .first()
-                .cloned()
-                .unwrap_or_else(|| OFFLINE_ACCOUNT_NAME.to_owned()),
-        );
-
-        let (window_width, window_height) = config.read_window_size();
+        let (accounts, accounts_dropdown, selected_account) = load_accounts(&mut config);
 
         Ok(Self {
             state,
@@ -184,7 +162,11 @@ impl Launcher {
             accounts,
             accounts_dropdown,
 
-            window_size: (window_width, window_height),
+            window_state: WindowState {
+                size: (window_width, window_height),
+                mouse_pos: (0.0, 0.0),
+                is_maximized: false,
+            },
             accounts_selected: Some(selected_account),
 
             client_list: None,
@@ -205,8 +187,8 @@ impl Launcher {
 
             log_scroll: 0,
             tick_timer: 0,
-            mouse_pos: (0.0, 0.0),
 
+            autosave: HashSet::new(),
             images: ImageState::default(),
             modifiers_pressed: iced::keyboard::Modifiers::empty(),
         })
@@ -220,11 +202,11 @@ impl Launcher {
             Some(LAUNCHER_DIR.clone())
         };
 
-        let (mut config, theme) = launcher_dir
+        let (config, theme) = launcher_dir
             .as_ref()
             .and_then(|_| {
                 match LauncherConfig::load_s().map(|n| {
-                    let theme = get_theme(&n);
+                    let theme = n.c_theme();
                     (n, theme)
                 }) {
                     Ok(n) => Some(n),
@@ -236,7 +218,7 @@ impl Launcher {
             })
             .unwrap_or((LauncherConfig::default(), LauncherTheme::default()));
 
-        let (window_width, window_height) = config.read_window_size();
+        let (window_width, window_height) = config.c_window_size();
 
         Self {
             config,
@@ -255,7 +237,6 @@ impl Launcher {
 
             log_scroll: 0,
             tick_timer: 0,
-            mouse_pos: (0.0, 0.0),
 
             logs: HashMap::new(),
             processes: HashMap::new(),
@@ -264,8 +245,13 @@ impl Launcher {
             mod_updates_checked: HashMap::new(),
 
             images: ImageState::default(),
+            window_state: WindowState {
+                size: (window_width, window_height),
+                mouse_pos: (0.0, 0.0),
+                is_maximized: false,
+            },
+            autosave: HashSet::new(),
             version_list_cache: VersionListCache::default(),
-            window_size: (window_width, window_height),
             accounts_dropdown: vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()],
             accounts_selected: Some(OFFLINE_ACCOUNT_NAME.to_owned()),
             modifiers_pressed: iced::keyboard::Modifiers::empty(),
@@ -288,12 +274,44 @@ impl Launcher {
             Some(message) => MenuLaunch::with_message(message.to_string()),
             None => MenuLaunch::default(),
         };
-        if let Some(width) = self.config.sidebar_width {
-            menu_launch.sidebar_width = width as u16;
-        }
+        menu_launch.resize_sidebar(SIDEBAR_WIDTH);
         self.state = State::Launch(menu_launch);
         Task::perform(get_entries(false), Message::CoreListLoaded)
     }
+}
+
+fn load_accounts(
+    config: &mut LauncherConfig,
+) -> (HashMap<String, AccountData>, Vec<String>, String) {
+    let mut accounts = HashMap::new();
+
+    let mut accounts_dropdown = vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()];
+
+    if let Some(config_accounts) = config.accounts.as_mut() {
+        let mut accounts_to_remove = Vec::new();
+
+        for (username, account) in config_accounts.iter_mut() {
+            load_account(
+                &mut accounts,
+                &mut accounts_dropdown,
+                &mut accounts_to_remove,
+                username,
+                account,
+            );
+        }
+
+        for rem in accounts_to_remove {
+            config_accounts.remove(&rem);
+        }
+    }
+
+    let selected_account = config.account_selected.clone().unwrap_or(
+        accounts_dropdown
+            .first()
+            .cloned()
+            .unwrap_or_else(|| OFFLINE_ACCOUNT_NAME.to_owned()),
+    );
+    (accounts, accounts_dropdown, selected_account)
 }
 
 fn load_account(
@@ -402,24 +420,6 @@ fn load_account(
     }
 }
 
-fn get_theme(config: &LauncherConfig) -> LauncherTheme {
-    let theme = match config.theme.as_deref() {
-        Some("Dark") => LauncherThemeLightness::Dark,
-        Some("Light") => LauncherThemeLightness::Light,
-        None => LauncherThemeLightness::default(),
-        _ => {
-            err!("Unknown style: {:?}", config.theme);
-            LauncherThemeLightness::default()
-        }
-    };
-    let style = config
-        .style
-        .as_deref()
-        .and_then(|n| LauncherThemeColor::from_str(n).ok())
-        .unwrap_or_default();
-    LauncherTheme::from_vals(style, theme)
-}
-
 pub async fn get_entries(is_server: bool) -> Res<(Vec<String>, bool)> {
     let dir_path = file_utils::get_launcher_dir().strerr()?.join(if is_server {
         "servers"
@@ -504,7 +504,7 @@ pub async fn load_custom_jars() -> Result<Vec<String>, IoError> {
 
 pub fn dir_watch<P: AsRef<Path>>(
     path: P,
-) -> notify::Result<(mpsc::Receiver<notify::Event>, notify::RecommendedWatcher)> {
+) -> notify::Result<(Receiver<notify::Event>, notify::RecommendedWatcher)> {
     let (tx, rx) = mpsc::channel();
 
     // `notify` runs callbacks in its own thread.

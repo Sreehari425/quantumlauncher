@@ -2,7 +2,7 @@ use chrono::DateTime;
 use ql_core::{
     file_utils, info,
     json::{instance_config::ModTypeInfo, VersionDetails},
-    no_window, pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError,
+    no_window, pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError, Loader,
     CLASSPATH_SEPARATOR, REGEX_SNAPSHOT,
 };
 use ql_java_handler::{get_java_binary, JavaVersion};
@@ -71,11 +71,10 @@ pub async fn install(
         delete(&neoforge_dir, "launcher_profiles_microsoft_store.json").await?;
     }
 
-    info!("Finished installing NeoForge");
-
+    pt!("Finished");
     change_instance_type(
         &instance_dir,
-        "NeoForge".to_owned(),
+        Loader::Neoforge,
         Some(ModTypeInfo {
             version: Some(neoforge_version),
             backend_implementation: None,
@@ -288,12 +287,10 @@ async fn delete(dir: &Path, path: &str) -> Result<(), IoError> {
 }
 
 async fn create_required_jsons(neoforge_dir: &Path) -> Result<(), ForgeInstallError> {
-    const CONTENTS: &str = "{}";
-
     let p = neoforge_dir.join("launcher_profiles.json");
     fs::write(&p, "{}").await.path(p)?;
     let p = neoforge_dir.join("launcher_profiles_microsoft_store.json");
-    fs::write(&p, CONTENTS).await.path(p)?;
+    fs::write(&p, "{}").await.path(p)?;
 
     Ok(())
 }

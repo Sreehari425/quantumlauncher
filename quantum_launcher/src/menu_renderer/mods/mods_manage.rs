@@ -1,3 +1,8 @@
+use iced::widget::tooltip::Position;
+use iced::{widget, Alignment, Length};
+use ql_core::{InstanceSelection, Loader, SelectedMod};
+
+use crate::menu_renderer::tsubtitle;
 use crate::{
     icon_manager,
     menu_renderer::{
@@ -13,10 +18,7 @@ use crate::{
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
-use iced::widget::tooltip::Position;
-use iced::{widget, Alignment, Length};
 use ql_core::json::InstanceConfigJson;
-use ql_core::{InstanceSelection, SelectedMod};
 
 pub const MODS_SIDEBAR_WIDTH: u16 = 190;
 
@@ -137,8 +139,12 @@ impl MenuEditMods {
                 .spacing(5),
                 self.get_mod_installer_buttons(selected_instance),
                 widget::column!(
-                    button_with_icon(icon_manager::download_with_size(14), "Download Content", 14)
-                        .on_press(Message::InstallMods(InstallModsMessage::Open)),
+                    button_with_icon(
+                        icon_manager::download_with_size(15),
+                        "Download Content...",
+                        14
+                    )
+                    .on_press(Message::InstallMods(InstallModsMessage::Open)),
                     button_with_icon(icon_manager::jar_file(), "Jarmod Patches", 14)
                         .on_press(Message::ManageJarMods(ManageJarModsMessage::Open)),
                     tooltip(
@@ -162,7 +168,7 @@ impl MenuEditMods {
         if self.update_check_handle.is_some() {
             let dots = ".".repeat((tick_timer % 3) + 1);
             widget::text!("Checking for mod updates{dots}")
-                .size(13)
+                .size(12)
                 .into()
         } else if self.available_updates.is_empty() {
             widget::column!().into()
@@ -209,8 +215,8 @@ impl MenuEditMods {
     }
 
     fn get_mod_installer_buttons(&'_ self, selected_instance: &InstanceSelection) -> Element<'_> {
-        match self.config.mod_type.as_str() {
-            "Vanilla" => match selected_instance {
+        match self.config.mod_type {
+            Loader::Vanilla => match selected_instance {
                 InstanceSelection::Instance(_) => widget::column![
                     "Install:",
                     widget::row!(
@@ -262,24 +268,24 @@ impl MenuEditMods {
                 .into(),
             },
 
-            "Forge" => widget::Column::new()
+            Loader::Forge => widget::Column::new()
                 .push_maybe(
                     (!selected_instance.is_server())
                         .then(|| Self::get_optifine_install_button(&self.config)),
                 )
-                .push(Self::get_uninstall_panel(&self.config.mod_type))
+                .push(Self::get_uninstall_panel(self.config.mod_type))
                 .spacing(5)
                 .into(),
-            "OptiFine" => widget::column!(
+            Loader::OptiFine => widget::column!(
                 widget::button(widget::text("Install Forge with OptiFine").size(14))
                     .on_press(Message::InstallForge(ForgeKind::OptiFine)),
-                Self::get_uninstall_panel(&self.config.mod_type,),
+                Self::get_uninstall_panel(self.config.mod_type),
             )
             .spacing(5)
             .into(),
 
-            "NeoForge" | "Fabric" | "Quilt" | "Paper" => {
-                Self::get_uninstall_panel(&self.config.mod_type).into()
+            Loader::Neoforge | Loader::Fabric | Loader::Quilt | Loader::Paper => {
+                Self::get_uninstall_panel(self.config.mod_type).into()
             }
 
             _ => {
@@ -290,7 +296,7 @@ impl MenuEditMods {
 
     fn get_optifine_install_button(
         config: &InstanceConfigJson,
-    ) -> widget::Button<'_, Message, LauncherTheme> {
+    ) -> widget::Button<'static, Message, LauncherTheme> {
         if let Some(optifine) = config
             .mod_type_info
             .as_ref()
@@ -305,21 +311,19 @@ impl MenuEditMods {
                 .spacing(11)
                 .padding(2),
             )
-            .on_press_with(|| {
-                Message::UninstallLoaderConfirm(
-                    Box::new(Message::ManageMods(ManageModsMessage::DeleteOptiforge(
-                        optifine.to_owned(),
-                    ))),
-                    "OptiFine".to_owned(),
-                )
-            })
+            .on_press(Message::UninstallLoaderConfirm(
+                Box::new(Message::ManageMods(ManageModsMessage::DeleteOptiforge(
+                    optifine.to_owned(),
+                ))),
+                Loader::OptiFine,
+            ))
         } else {
             widget::button(widget::text("Install OptiFine with Forge").size(14))
                 .on_press(Message::InstallOptifine(InstallOptifineMessage::ScreenOpen))
         }
     }
 
-    fn get_uninstall_panel(mod_type: &'_ str) -> widget::Button<'_, Message, LauncherTheme> {
+    fn get_uninstall_panel(mod_type: Loader) -> widget::Button<'static, Message, LauncherTheme> {
         widget::button(
             widget::row![
                 icon_manager::delete_with_size(14),
@@ -331,7 +335,7 @@ impl MenuEditMods {
         )
         .on_press(Message::UninstallLoaderConfirm(
             Box::new(Message::UninstallLoaderStart),
-            mod_type.to_owned(),
+            mod_type,
         ))
     }
 
@@ -339,9 +343,9 @@ impl MenuEditMods {
         if self.sorted_mods_list.is_empty() {
             return widget::column!(
                 "Download some mods to get started",
-                widget::button("View Recommended Mods").on_press(Message::RecommendedMods(
-                    crate::state::RecommendedModMessage::Open
-                ))
+                widget::button(widget::text("View Recommended Mods").size(14)).on_press(
+                    Message::RecommendedMods(crate::state::RecommendedModMessage::Open)
+                )
             )
             .spacing(10)
             .padding(10)
@@ -353,7 +357,7 @@ impl MenuEditMods {
             widget::column!(
                 widget::Column::new()
                     .push_maybe(
-                        (self.config.mod_type == "Vanilla" && !self.sorted_mods_list.is_empty())
+                        (self.config.mod_type.is_vanilla() && !self.sorted_mods_list.is_empty())
                         .then_some(
                             widget::container(
                                 widget::text(
@@ -415,18 +419,18 @@ impl MenuEditMods {
                         .spacing(5)
                         .wrap()
                     )
-                    .push(if self.selected_mods.is_empty() {
-                        widget::text("Select some mods to perform actions on them")
-                    } else {
-                        widget::text!("{} mods selected", self.selected_mods.len())
-                    }.size(12).style(|t: &LauncherTheme| t.style_text(Color::Mid)))
-                    .push_maybe(if let Some(search) = &self.search {
-                        Some(widget::text_input("Search...", search).size(14).on_input(|msg|
+                    .push(
+                        if self.selected_mods.is_empty() {
+                            widget::text("Select some mods to perform actions on them")
+                        } else {
+                            widget::text!("{} mods selected", self.selected_mods.len())
+                        }.size(12).style(|t: &LauncherTheme| t.style_text(Color::Mid))
+                    )
+                    .push_maybe(self.search.as_ref().map(|search|
+                        widget::text_input("Search...", search).size(14).on_input(|msg|
                             Message::ManageMods(ManageModsMessage::SetSearch(Some(msg)))
-                        ))
-                    } else {
-                        None
-                    })
+                        )
+                    ))
                     .padding(10)
                     .spacing(10),
                 widget::responsive(|s| self.get_mod_list_contents(s, images)),
@@ -442,7 +446,7 @@ impl MenuEditMods {
         size: iced::Size,
         images: &'a ImageState,
     ) -> Element<'a> {
-        widget::scrollable(widget::column({
+        widget::scrollable(widget::column(
             self.sorted_mods_list
                 .iter()
                 .filter(|n| {
@@ -451,8 +455,8 @@ impl MenuEditMods {
                     };
                     n.name().to_lowercase().contains(&search.to_lowercase())
                 })
-                .map(|mod_list_entry| self.get_mod_entry(mod_list_entry, size, images))
-        }))
+                .map(|mod_list_entry| self.get_mod_entry(mod_list_entry, size, images)),
+        ))
         .direction(widget::scrollable::Direction::Both {
             vertical: widget::scrollable::Scrollbar::new(),
             horizontal: widget::scrollable::Scrollbar::new(),
@@ -470,12 +474,12 @@ impl MenuEditMods {
         images: &'a ImageState,
     ) -> Element<'a> {
         const PADDING: iced::Padding = iced::Padding {
-            top: 2.0,
-            bottom: 4.0,
+            top: 4.0,
+            bottom: 6.0,
             right: 15.0,
             left: 20.0,
         };
-        const ICON_SIZE: u16 = 18;
+        const ICON_SIZE: f32 = 18.0;
         const SPACING: u16 = 25;
 
         let no_icon = widget::Column::new()
@@ -494,7 +498,7 @@ impl MenuEditMods {
 
                     let image: Element = if let Some(url) = &config.icon_url {
                         // SVGs cause absurd lag in large lists of mods
-                        images.view_bitmap(url, Some(ICON_SIZE), no_icon)
+                        images.view_bitmap(url, Some(ICON_SIZE), Some(ICON_SIZE), no_icon)
                     } else {
                         no_icon
                     };
@@ -561,7 +565,7 @@ impl MenuEditMods {
                     let rightclick = Message::ManageMods(ManageModsMessage::RightClick(id.clone()));
 
                     widget::mouse_area(checkbox)
-                        .on_right_press(if self.selected_mods.len() > 1 && self.is_selected(&id) {
+                        .on_right_press(if self.selected_mods.len() > 1 && self.is_selected(id) {
                             rightclick
                         } else {
                             Message::Multiple(vec![
@@ -578,9 +582,7 @@ impl MenuEditMods {
                         widget::text("(dependency) ")
                             .size(12)
                             .style(|t: &LauncherTheme| t.style_text(Color::Mid)),
-                        widget::text(&config.name)
-                            .size(13)
-                            .style(|t: &LauncherTheme| t.style_text(Color::SecondLight))
+                        widget::text(&config.name).size(13).style(tsubtitle)
                     ]
                     .padding(PADDING)
                     .into()
@@ -629,7 +631,7 @@ impl MenuEditMods {
 }
 
 fn install_ldr(loader: &str) -> widget::Button<'_, Message, LauncherTheme> {
-    widget::button(loader).width(97)
+    widget::button(widget::text(loader).size(14)).width(90)
 }
 
 fn ctx_button(e: &'_ str) -> widget::Button<'_, Message, LauncherTheme> {

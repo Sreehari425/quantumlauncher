@@ -18,15 +18,12 @@
 //! - NeoForge
 //! - Paper (for servers)
 
-#![allow(clippy::cast_precision_loss)]
-#![allow(clippy::cast_possible_truncation)]
-#![allow(clippy::cast_sign_loss)]
-
 /// Installers and Uninstallers for loaders (Fabric/Forge/Optifine/Quilt/Paper).
 pub mod loaders;
 mod presets;
 mod rate_limiter;
 /// Mod manager integrated with Modrinth and Curseforge.
 pub mod store;
+
 pub use presets::{Preset, PresetOutput};
 pub use store::add_files;

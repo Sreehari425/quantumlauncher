@@ -258,6 +258,7 @@ pub enum Diagnostic {
 }
 
 impl Diagnostic {
+    #[must_use]
     pub fn generate_from_log(log: &[String]) -> Option<Diagnostic> {
         fn c(log: &[String], msg: &str) -> bool {
             log.iter().any(|n| n.contains(msg))

@@ -1,8 +1,7 @@
 use ql_core::{
     file_utils, info,
     json::{InstanceConfigJson, VersionDetails},
-    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, ListEntry, Loader,
-    Progress,
+    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, ListEntry, Progress,
 };
 use std::{
     path::{Path, PathBuf},
@@ -61,7 +60,7 @@ pub async fn import_instance(
             has_finished: false,
         });
     }
-    file_utils::extract_zip_archive(std::io::BufReader::new(zip_file), temp_dir, true)?;
+    file_utils::extract_zip_archive(std::io::BufReader::new(zip_file), temp_dir, true).await?;
 
     let try_ql = temp_dir.join("quantum-config.json");
     let try_mmc = temp_dir.join("mmc-pack.json");
@@ -111,10 +110,7 @@ async fn import_quantumlauncher(
     pt!("Name: {} ", instance_info.instance_name);
     pt!("Version : {}", version_json.get_id());
     pt!("Exceptions : {:?} ", instance_info.exceptions);
-    let version = ListEntry {
-        name: version_json.id.clone(),
-        is_server: instance_info.is_server,
-    };
+    let version = ListEntry::with_kind(version_json.id.clone(), &version_json.r#type);
 
     let (d_send, d_recv) = std::sync::mpsc::channel();
     if let Some(sender) = sender.clone() {
@@ -137,16 +133,14 @@ async fn import_quantumlauncher(
 
     let instance_path = instance.get_instance_path();
 
-    if let Ok(loader) = Loader::try_from(config_json.mod_type.as_str()) {
-        ql_mod_manager::loaders::install_specified_loader(
-            instance.clone(),
-            loader,
-            sender.clone(),
-            None,
-        )
-        .await
-        .map_err(InstancePackageError::Loader)?;
-    }
+    ql_mod_manager::loaders::install_specified_loader(
+        instance.clone(),
+        config_json.mod_type,
+        sender.clone(),
+        None,
+    )
+    .await
+    .map_err(InstancePackageError::Loader)?;
 
     pt!("Copying packaged files");
     if let Some(sender) = &sender {

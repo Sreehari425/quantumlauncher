@@ -1,4 +1,4 @@
-use ql_core::{json::instance_config::ModTypeInfo, InstanceSelection, IntoIoError};
+use ql_core::{json::instance_config::ModTypeInfo, InstanceSelection, IntoIoError, Loader};
 
 use crate::loaders::{change_instance_type, forge::ForgeInstaller};
 
@@ -43,7 +43,7 @@ pub async fn install_server(
 
     change_instance_type(
         &installer.instance_dir,
-        "Forge".to_owned(),
+        Loader::Forge,
         Some(ModTypeInfo {
             version: Some(installer.version.clone()),
             backend_implementation: None,

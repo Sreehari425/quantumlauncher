@@ -30,8 +30,17 @@ impl AssetObject {
             .path(&obj_folder)?;
 
         let obj_file_path = obj_folder.join(&self.hash);
-        if obj_file_path.exists() {
-            return Ok(());
+        if let Ok(obj_file_metadata) = tokio::fs::metadata(&obj_file_path)
+            .await
+            .path(&obj_file_path)
+        {
+            if let Some(size) = self.size {
+                if obj_file_metadata.len() == size as u64 {
+                    return Ok(());
+                }
+            } else {
+                return Ok(());
+            }
         }
 
         let url = self

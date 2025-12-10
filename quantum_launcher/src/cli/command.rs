@@ -96,31 +96,18 @@ pub fn list_instances(
                         };
                     let m = config_json.mod_type;
 
-                    match Loader::try_from(m.as_str()) {
-                        Ok(l) => {
-                            _ = match l {
-                                Loader::Fabric => writeln!(cmds_loader, "{}", m.bright_green()),
-                                Loader::Quilt => writeln!(cmds_loader, "{}", m.bright_purple()),
-                                Loader::Forge => writeln!(cmds_loader, "{}", m.bright_yellow()),
-                                Loader::Neoforge => writeln!(cmds_loader, "{}", m.yellow()),
-                                Loader::OptiFine => {
-                                    writeln!(cmds_loader, "{}", m.red().bold())
-                                }
-                                Loader::Paper => writeln!(cmds_loader, "{}", m.blue()),
-                                Loader::Liteloader => writeln!(cmds_loader, "{}", m.bright_blue()),
-                                Loader::Modloader => writeln!(cmds_loader, "{}", m),
-                                Loader::Rift => writeln!(cmds_loader, "{}", m.bold().underline()),
-                            };
-                        }
-                        Err(_) => {
-                            if m == "Vanilla" {
-                                _ = writeln!(cmds_loader, "{}", "Vanilla".bright_black());
-                            } else {
-                                cmds_loader.push_str(&m);
-                                cmds_loader.push('\n');
-                            }
-                        }
-                    }
+                    match m {
+                        Loader::Vanilla => writeln!(cmds_loader, "{}", m.bright_black()),
+                        Loader::Fabric => writeln!(cmds_loader, "{}", m.bright_green()),
+                        Loader::Quilt => writeln!(cmds_loader, "{}", m.bright_purple()),
+                        Loader::Forge => writeln!(cmds_loader, "{}", m.bright_yellow()),
+                        Loader::Neoforge => writeln!(cmds_loader, "{}", m.yellow()),
+                        Loader::OptiFine => writeln!(cmds_loader, "{}", m.red().bold()),
+                        Loader::Paper => writeln!(cmds_loader, "{}", m.blue()),
+                        Loader::Liteloader => writeln!(cmds_loader, "{}", m.bright_blue()),
+                        Loader::Modloader => writeln!(cmds_loader, "{m}"),
+                        Loader::Rift => writeln!(cmds_loader, "{}", m.bold().underline()),
+                    }?;
                 }
             }
         }
@@ -152,22 +139,13 @@ pub fn create_instance(
     runtime: &tokio::runtime::Runtime,
     servers: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let entry = ListEntry::new(version);
     if servers {
-        runtime.block_on(ql_servers::create_server(
-            instance_name,
-            ListEntry {
-                name: version,
-                is_server: true,
-            },
-            None,
-        ))?;
+        runtime.block_on(ql_servers::create_server(instance_name, entry, None))?;
     } else {
         runtime.block_on(ql_instances::create_instance(
             instance_name,
-            ListEntry {
-                name: version.clone(),
-                is_server: false,
-            },
+            entry,
             None,
             !skip_assets,
         ))?;
@@ -345,20 +323,24 @@ pub async fn loader(cmd: QLoader, servers: bool) -> Result<(), Box<dyn std::erro
                 err!("Vanilla refers to the base game.\n    Maybe you meant `./quantum_launcher loader uninstall ...`");
                 exit(1);
             }
-            let Ok(loader) = Loader::try_from(loader.as_str()) else {
+            let Some(loader) = Loader::ALL
+                .iter()
+                .copied()
+                .find(|n| n.to_modrinth_str().eq_ignore_ascii_case(&loader))
+            else {
                 exit(1)
             };
 
             let instance = InstanceSelection::new(&instance, servers);
             let mt = InstanceConfigJson::read(&instance).await?.mod_type;
 
-            if Loader::try_from(mt.as_str()).is_ok_and(|n| n == loader) {
+            if mt == loader {
                 err!("{mt} is already installed!");
                 exit(0);
             }
-            if !(mt == "Vanilla"
-                || (mt == "Forge" && matches!(loader, Loader::OptiFine))
-                || (mt == "OptiFine" && matches!(loader, Loader::Forge)))
+            if !(mt == Loader::Vanilla
+                || (mt == Loader::Forge && loader == Loader::OptiFine)
+                || (mt == Loader::OptiFine && loader == Loader::Forge))
             {
                 err!(
                     r"You can't install a loader on top of another loader!

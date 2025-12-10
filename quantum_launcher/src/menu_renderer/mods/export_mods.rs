@@ -4,6 +4,7 @@ use ql_core::{ModId, SelectedMod};
 use crate::{
     icon_manager,
     menu_renderer::{
+        tsubtitle,
         ui::{back_button, underline},
         Element,
     },
@@ -54,7 +55,7 @@ impl MenuExportMods {
                     widget::text("Export as Plain Text").size(17),
                     widget::text("Simple text file with mod names, one per line")
                         .size(13)
-                        .style(|theme: &LauncherTheme| { theme.style_text(Color::SecondLight) }),
+                        .style(tsubtitle),
                 ]
                 .spacing(4),
                 widget::horizontal_space(),
@@ -84,7 +85,7 @@ impl MenuExportMods {
                         .style(|theme: &LauncherTheme| { theme.style_text(Color::Light) }),
                     widget::text("Markdown file with clickable mod links")
                         .size(13)
-                        .style(|theme: &LauncherTheme| { theme.style_text(Color::SecondLight) }),
+                        .style(tsubtitle),
                 ]
                 .spacing(4),
                 widget::horizontal_space(),
@@ -169,10 +170,7 @@ impl MenuExportMods {
                                 .size(13)
                                 .style(|theme: &LauncherTheme| theme.style_text(Color::Mid)),
                             underline(widget::text(name).size(13), Color::Light),
-                            widget::text("→")
-                                .size(13)
-                                .style(|theme: &LauncherTheme| theme
-                                    .style_text(Color::SecondLight))
+                            widget::text("→").size(13).style(tsubtitle)
                         ]
                         .height(Length::Fill)
                         .align_y(iced::Alignment::Center)

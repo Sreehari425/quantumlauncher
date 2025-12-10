@@ -3,16 +3,14 @@ use crate::{
     download::GameDownloader,
     jarmod,
 };
-use ql_core::json::{GlobalSettings, V_1_12_2, V_1_5_2, V_PAULSCODE_LAST, V_PRECLASSIC_LAST};
 use ql_core::{
     err, file_utils, info,
     json::{
-        forge,
-        version::{Library, LibraryDownloadArtifact, LibraryDownloads},
-        FabricJSON, InstanceConfigJson, JsonOptifine, VersionDetails,
+        forge, version::Library, FabricJSON, GlobalSettings, InstanceConfigJson, JsonOptifine,
+        VersionDetails, V_1_12_2, V_1_5_2, V_PAULSCODE_LAST, V_PRECLASSIC_LAST,
     },
     pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError, JsonFileError,
-    CLASSPATH_SEPARATOR, LAUNCHER_DIR,
+    Loader, CLASSPATH_SEPARATOR, LAUNCHER_DIR,
 };
 use ql_java_handler::{get_java_binary, JavaVersion};
 use std::{
@@ -267,28 +265,6 @@ impl GameLauncher {
             ])
             .collect();
 
-        // I've disabled these for now because they make the
-        // FPS slightly worse (!) from my testing?
-        //
-        // These arguments are taken from
-        // https://github.com/alexivkin/minecraft-launcher/
-        // They mainly tune the garbage collector for better performance
-        // which I haven't felt anyway.
-        //
-        // - Without these args I got 110-115 FPS average
-        // on vanilla Minecraft 1.20 in a new world.
-        // - With these args I got 105-110 FPS.
-        //
-        // So... yeah they aren't doing the job for me.
-        if self.config_json.do_gc_tuning.unwrap_or(false) {
-            args.push("-XX:+UnlockExperimentalVMOptions".to_owned());
-            args.push("-XX:+UseG1GC".to_owned());
-            args.push("-XX:G1NewSizePercent=20".to_owned());
-            args.push("-XX:G1ReservePercent=20".to_owned());
-            args.push("-XX:MaxGCPauseMillis=50".to_owned());
-            args.push("-XX:G1HeapRegionSize=32M".to_owned());
-        }
-
         if auth.is_none_or(|n| !n.is_microsoft()) && self.version_json.id.starts_with("1.16") {
             // Fixes "Multiplayer is disabled" issue on 1.16.x
             args.push("-Dminecraft.api.auth.host=https://nope.invalid".to_owned());
@@ -353,7 +329,7 @@ impl GameLauncher {
         java_arguments: &mut Vec<String>,
         game_arguments: &mut Vec<String>,
     ) -> Result<Option<FabricJSON>, GameLaunchError> {
-        if !(self.config_json.mod_type == "Fabric" || self.config_json.mod_type == "Quilt") {
+        if !matches!(self.config_json.mod_type, Loader::Fabric | Loader::Quilt) {
             return Ok(None);
         }
 
@@ -374,7 +350,7 @@ impl GameLauncher {
         java_arguments: &mut Vec<String>,
         game_arguments: &mut Vec<String>,
     ) -> Result<Option<forge::JsonDetails>, GameLaunchError> {
-        if self.config_json.mod_type != "Forge" && self.config_json.mod_type != "NeoForge" {
+        if !matches!(self.config_json.mod_type, Loader::Forge | Loader::Neoforge) {
             return Ok(None);
         }
         if self.version_json.is_legacy_version() && self.version_json.get_id() != "1.5.2" {
@@ -436,7 +412,7 @@ impl GameLauncher {
         &self,
         game_arguments: &mut Vec<String>,
     ) -> Result<Option<(JsonOptifine, PathBuf)>, GameLaunchError> {
-        if self.config_json.mod_type != "OptiFine" {
+        if !matches!(self.config_json.mod_type, Loader::OptiFine) {
             return Ok(None);
         }
 
@@ -701,50 +677,14 @@ impl GameLauncher {
             None,
         );
 
-        for (library, name, artifact) in self
+        for library in self
             .version_json
             .libraries
             .iter()
             .filter(|n| n.is_allowed())
-            .filter_map(|n| match (&n.name, n.downloads.as_ref(), n.url.as_ref()) {
-                (
-                    Some(name),
-                    Some(LibraryDownloads {
-                        artifact: Some(artifact),
-                        ..
-                    }),
-                    _,
-                ) => Some((n, name, artifact.clone())),
-                (Some(name), None, Some(url)) => {
-                    let flib = ql_core::json::fabric::Library {
-                        name: name.clone(),
-                        url: Some(if url.ends_with('/') {
-                            url.clone()
-                        } else {
-                            format!("{url}/")
-                        }),
-                        rules: None,
-                    };
-                    flib.get_url().map(|url| {
-                        (
-                            n,
-                            name,
-                            LibraryDownloadArtifact {
-                                path: Some(flib.get_path()),
-                                sha1: String::new(),
-                                size: serde_json::Number::from_u128(0).unwrap(),
-                                url,
-                            },
-                        )
-                    })
-                }
-                _ => None,
-            })
         {
             self.add_entry_to_classpath(
-                name,
                 classpath_entries,
-                &artifact,
                 class_path,
                 &downloader,
                 library,
@@ -757,23 +697,25 @@ impl GameLauncher {
 
     async fn add_entry_to_classpath(
         &self,
-        name: &str,
         classpath_entries: &mut HashSet<String>,
-        artifact: &LibraryDownloadArtifact,
         class_path: &mut String,
         downloader: &GameDownloader,
         library: &Library,
         main_class: &str,
     ) -> Result<(), GameLaunchError> {
-        if !library.is_allowed() {
-            return Ok(());
-        }
-        if let Some(name) = remove_version_from_library(name) {
+        if let Some(name) = library
+            .name
+            .as_ref()
+            .and_then(|name| remove_version_from_library(name))
+        {
             if classpath_entries.contains(&name) {
                 return Ok(());
             }
             classpath_entries.insert(name);
         }
+        let Some(artifact) = library.get_artifact() else {
+            return Ok(());
+        };
         let library_path = self
             .instance_dir
             .join("libraries")
@@ -781,10 +723,10 @@ impl GameLauncher {
 
         if !library_path.exists() {
             pt!("library {library_path:?} not found! Downloading...");
-            if let Err(err) = downloader.download_library(library, Some(artifact)).await {
+            if let Err(err) = downloader.download_library(library, Some(&artifact)).await {
                 err!("Couldn't download library! Skipping...\n{err}");
             } else if !library_path.exists() {
-                err!("Library still doesn't exist... failed?")
+                err!("Library still doesn't exist... failed?");
             }
         }
         #[allow(unused_mut)]
@@ -883,7 +825,7 @@ impl GameLauncher {
                     .filter(|n| !n.is_empty()),
             );
         } else {
-            info!("Pre args: {prefix_commands:?}");
+            info!("Prefix: {prefix_commands:?}");
 
             let original_java_path = path.to_string_lossy().to_string();
             let mut new_command = Command::new(&prefix_commands[0]);

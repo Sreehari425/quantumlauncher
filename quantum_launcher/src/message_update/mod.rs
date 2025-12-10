@@ -1,9 +1,10 @@
 use std::path::Path;
-use std::str::FromStr;
 
 use iced::futures::executor::block_on;
 use iced::{widget::scrollable::AbsoluteOffset, Task};
-use ql_core::{err, info, InstanceSelection, IntoStringError, ModId, OptifineUniqueVersion};
+use ql_core::{
+    err, err_no_log, InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion,
+};
 use ql_mod_manager::{
     loaders,
     store::{get_description, QueryType},
@@ -16,14 +17,15 @@ mod manage_mods;
 mod presets;
 mod recommended;
 
-use crate::state::{InstallPaperMessage, MenuInstallPaper};
+use crate::config::UiWindowDecorations;
 use crate::{
+    config::UiSettings,
     state::{
-        self, InstallFabricMessage, InstallModsMessage, InstallOptifineMessage, Launcher,
-        LauncherSettingsMessage, MenuCurseforgeManualDownload, MenuInstallFabric,
-        MenuInstallOptifine, Message, ProgressBar, State,
+        self, InstallFabricMessage, InstallModsMessage, InstallOptifineMessage,
+        InstallPaperMessage, Launcher, LauncherSettingsMessage, MenuCurseforgeManualDownload,
+        MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuModsDownload, Message,
+        ProgressBar, State, WindowMessage,
     },
-    stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
 };
 
 pub const MSG_RESIZE: &str = "Resize your window to apply the changes.";
@@ -185,6 +187,15 @@ impl Launcher {
                 Ok(command) => return command,
                 Err(err) => self.set_error(err),
             },
+            InstallModsMessage::TickDesc => {
+                if let State::ModsDownload(MenuModsDownload {
+                    description: Some(d),
+                    ..
+                }) = &mut self.state
+                {
+                    d.update();
+                }
+            }
             InstallModsMessage::SearchInput(input) => {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.query = input;
@@ -194,6 +205,7 @@ impl Launcher {
             InstallModsMessage::Click(i) => {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.opened_mod = Some(i);
+                    menu.reload_description(&mut self.images);
                     if let Some(results) = &menu.results {
                         let hit = results.mods.get(i).unwrap();
                         if !menu
@@ -213,6 +225,7 @@ impl Launcher {
             InstallModsMessage::BackToMainScreen => {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.opened_mod = None;
+                    menu.description = None;
                     return iced::widget::scrollable::scroll_to(
                         iced::widget::scrollable::Id::new("MenuModsDownload:main:mods_list"),
                         menu.scroll_offset,
@@ -222,6 +235,7 @@ impl Launcher {
             InstallModsMessage::LoadData(Ok((id, description))) => {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.mod_descriptions.insert(id, description);
+                    menu.reload_description(&mut self.images);
                 }
             }
             InstallModsMessage::Download(index) => {
@@ -340,7 +354,7 @@ impl Launcher {
         match message {
             InstallOptifineMessage::ScreenOpen => {
                 let is_forge_installed = if let State::EditMods(menu) = &self.state {
-                    menu.config.mod_type == "Forge"
+                    menu.config.mod_type == Loader::Forge
                 } else {
                     false
                 };
@@ -401,7 +415,8 @@ impl Launcher {
         let (j_sender, j_recv) = std::sync::mpsc::channel();
 
         let instance = self.instance();
-        let get_name = instance.get_name().to_owned();
+        let instance_name = instance.get_name().to_owned();
+        debug_assert!(!instance.is_server());
 
         let optifine_unique_version =
             if let State::InstallOptifine(MenuInstallOptifine::Choosing {
@@ -433,10 +448,10 @@ impl Launcher {
         let installer_path = installer_path.to_owned();
 
         Task::perform(
-            // Note: OptiFine does not support servers
+            // OptiFine does not support servers
             // so it's safe to assume we've selected an instance.
             loaders::optifine::install(
-                get_name,
+                instance_name,
                 installer_path.clone(),
                 Some(p_sender),
                 Some(j_sender),
@@ -462,27 +477,27 @@ impl Launcher {
     pub fn update_launcher_settings(&mut self, msg: LauncherSettingsMessage) -> Task<Message> {
         match msg {
             LauncherSettingsMessage::ThemePicked(theme) => {
-                info!("Setting color mode {theme}");
-                self.config.theme = Some(theme.clone());
-
-                match theme.as_str() {
-                    "Light" => self.theme.lightness = LauncherThemeLightness::Light,
-                    "Dark" => self.theme.lightness = LauncherThemeLightness::Dark,
-                    _ => err!("Invalid color mode {theme}"),
-                }
+                self.config.ui_mode = Some(theme);
+                self.theme.lightness = theme;
             }
             LauncherSettingsMessage::Open => {
                 self.go_to_launcher_settings();
             }
             LauncherSettingsMessage::ColorSchemePicked(color) => {
-                info!("Setting color scheme {color}");
-                self.config.style = Some(color.clone());
-                self.theme.color = LauncherThemeColor::from_str(&color).unwrap_or_default();
+                self.config.ui_theme = Some(color);
+                self.theme.color = color;
             }
             LauncherSettingsMessage::UiScale(scale) => {
                 if let State::LauncherSettings(menu) = &mut self.state {
                     menu.temp_scale = scale;
                 }
+            }
+            LauncherSettingsMessage::UiOpacity(opacity) => {
+                self.config
+                    .ui
+                    .get_or_insert_with(UiSettings::default)
+                    .window_opacity = opacity;
+                self.theme.alpha = opacity;
             }
             LauncherSettingsMessage::UiScaleApply => {
                 if let State::LauncherSettings(menu) = &self.state {
@@ -491,16 +506,7 @@ impl Launcher {
                 }
             }
             LauncherSettingsMessage::ClearJavaInstalls => {
-                self.state = State::ConfirmAction {
-                    msg1: "delete auto-installed Java files".to_owned(),
-                    msg2: "They will get reinstalled automatically as needed".to_owned(),
-                    yes: Message::LauncherSettings(
-                        LauncherSettingsMessage::ClearJavaInstallsConfirm,
-                    ),
-                    no: Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(
-                        state::LauncherSettingsTab::Internal,
-                    )),
-                }
+                self.confirm_clear_java_installs();
             }
             LauncherSettingsMessage::ClearJavaInstallsConfirm => {
                 return Task::perform(ql_instances::delete_java_installs(), |()| Message::Nothing);
@@ -512,92 +518,58 @@ impl Launcher {
                 }
             }
             LauncherSettingsMessage::ToggleAntialiasing(t) => {
-                self.config.antialiasing = Some(t);
+                self.config.ui_antialiasing = Some(t);
             }
             LauncherSettingsMessage::ToggleWindowSize(t) => {
-                self.config
-                    .window
-                    .get_or_insert_with(Default::default)
-                    .save_window_size = t;
+                self.config.c_window().save_window_size = t;
             }
             LauncherSettingsMessage::DefaultMinecraftWidthChanged(input) => {
-                self.config
-                    .global_settings
-                    .get_or_insert_with(Default::default)
-                    .window_width = if input.trim().is_empty() {
-                    None
-                } else {
-                    input.trim().parse::<u32>().ok()
-                };
+                self.config.c_global().window_width = input.trim().parse::<u32>().ok();
             }
             LauncherSettingsMessage::DefaultMinecraftHeightChanged(input) => {
-                self.config
-                    .global_settings
-                    .get_or_insert_with(Default::default)
-                    .window_height = if input.trim().is_empty() {
-                    None
+                self.config.c_global().window_height = input.trim().parse::<u32>().ok();
+            }
+            LauncherSettingsMessage::GlobalJavaArgs(msg) => {
+                msg.apply(self.config.extra_java_args.get_or_insert_with(Vec::new));
+            }
+            LauncherSettingsMessage::GlobalPreLaunchPrefix(msg) => {
+                msg.apply(self.config.c_launch_prefix());
+            }
+            LauncherSettingsMessage::ToggleWindowDecorations(b) => {
+                let decor = if b {
+                    UiWindowDecorations::default()
                 } else {
-                    input.trim().parse::<u32>().ok()
+                    UiWindowDecorations::System
                 };
-            }
-            LauncherSettingsMessage::GlobalJavaArgsAdd => {
                 self.config
-                    .extra_java_args
-                    .get_or_insert_with(Vec::new)
-                    .push(String::new());
+                    .ui
+                    .get_or_insert_with(UiSettings::default)
+                    .window_decorations = decor;
             }
-            LauncherSettingsMessage::GlobalJavaArgEdit(arg, idx) => {
-                if let Some(args) = self.config.extra_java_args.as_mut() {
-                    add_to_arguments_list(arg, args, idx);
+            LauncherSettingsMessage::LoadedSystemTheme(res) => match res {
+                Ok(mode) => {
+                    self.theme.system_dark_mode = mode == dark_light::Mode::Dark;
                 }
-            }
-            LauncherSettingsMessage::GlobalJavaArgDelete(idx) => {
-                if let Some(args) = self.config.extra_java_args.as_mut() {
-                    if idx < args.len() {
-                        args.remove(idx);
-                    }
+                Err(err) if err.contains("Timeout reached") => {
+                    // The system is just lagging, nothing we can do
                 }
-            }
-            LauncherSettingsMessage::GlobalJavaArgShiftUp(idx) => {
-                if let Some(args) = self.config.extra_java_args.as_mut() {
-                    if idx > 0 && idx < args.len() {
-                        args.swap(idx, idx - 1);
-                    }
+                Err(err) => {
+                    err_no_log!("while loading system theme: {err}");
                 }
-            }
-            LauncherSettingsMessage::GlobalJavaArgShiftDown(idx) => {
-                if let Some(args) = self.config.extra_java_args.as_mut() {
-                    if idx + 1 < args.len() {
-                        args.swap(idx, idx + 1);
-                    }
-                }
-            }
-            LauncherSettingsMessage::GlobalPreLaunchPrefixAdd => {
-                self.config.get_launch_prefix().push(String::new());
-            }
-            LauncherSettingsMessage::GlobalPreLaunchPrefixEdit(arg, idx) => {
-                add_to_arguments_list(arg, self.config.get_launch_prefix(), idx);
-            }
-            LauncherSettingsMessage::GlobalPreLaunchPrefixDelete(idx) => {
-                let args = self.config.get_launch_prefix();
-                if idx < args.len() {
-                    args.remove(idx);
-                }
-            }
-            LauncherSettingsMessage::GlobalPreLaunchPrefixShiftUp(idx) => {
-                let args = self.config.get_launch_prefix();
-                if idx > 0 && idx < args.len() {
-                    args.swap(idx, idx - 1);
-                }
-            }
-            LauncherSettingsMessage::GlobalPreLaunchPrefixShiftDown(idx) => {
-                let args = self.config.get_launch_prefix();
-                if idx + 1 < args.len() {
-                    args.swap(idx, idx + 1);
-                }
-            }
+            },
         }
         Task::none()
+    }
+
+    fn confirm_clear_java_installs(&mut self) {
+        self.state = State::ConfirmAction {
+            msg1: "delete auto-installed Java files".to_owned(),
+            msg2: "They will get reinstalled automatically as needed".to_owned(),
+            yes: Message::LauncherSettings(LauncherSettingsMessage::ClearJavaInstallsConfirm),
+            no: Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(
+                state::LauncherSettingsTab::Internal,
+            )),
+        }
     }
 
     pub fn go_to_launcher_settings(&mut self) {
@@ -669,17 +641,27 @@ impl Launcher {
         }
         Task::none()
     }
-}
 
-fn add_to_arguments_list(msg: String, args: &mut Vec<String>, idx: usize) {
-    if msg.contains(' ') {
-        args.remove(idx);
-        let mut insert_idx = idx;
-        for s in msg.split(' ').filter(|n| !n.is_empty()) {
-            args.insert(insert_idx, s.to_owned());
-            insert_idx += 1;
+    pub fn update_window_msg(&mut self, msg: WindowMessage) -> Task<Message> {
+        match msg {
+            WindowMessage::Dragged => iced::window::get_latest().and_then(iced::window::drag),
+            // WindowMessage::Resized(dir) => {
+            //     return iced::window::get_latest()
+            //         .and_then(move |id| iced::window::drag_resize(id, dir));
+            // }
+            WindowMessage::ClickMinimize => {
+                iced::window::get_latest().and_then(|id| iced::window::minimize(id, true))
+            }
+            WindowMessage::ClickMaximize => iced::window::get_latest().and_then(|id| {
+                iced::window::get_maximized(id)
+                    .map(Some)
+                    .and_then(move |max| iced::window::maximize(id, !max))
+            }),
+            WindowMessage::ClickClose => std::process::exit(0),
+            // WindowMessage::IsMaximized(n) => {
+            //     self.window_state.is_maximized = n;
+            //     Task::none()
+            // }
         }
-    } else if let Some(arg) = args.get_mut(idx) {
-        *arg = msg;
     }
 }
