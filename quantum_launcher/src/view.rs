@@ -2,7 +2,7 @@ use iced::{widget, Alignment, Length};
 
 use crate::{
     config::UiWindowDecorations,
-    icon_manager,
+    icons,
     menu_renderer::{
         button_with_icon, changelog, tooltip, view_account_login, view_confirm, view_error,
         view_log_upload_result, Element, FONT_MONO,
@@ -132,10 +132,9 @@ impl Launcher {
                 };
                 widget::scrollable(
                     widget::column!(
-                        button_with_icon(icon_manager::back(), "Skip", 16)
-                            .on_press(back_msg.clone()),
+                        button_with_icon(icons::back(), "Skip", 16).on_press(back_msg.clone()),
                         changelog(),
-                        button_with_icon(icon_manager::back(), "Continue", 16).on_press(back_msg),
+                        button_with_icon(icons::back(), "Continue", 16).on_press(back_msg),
                     )
                     .padding(10)
                     .spacing(10),
@@ -234,15 +233,15 @@ impl Launcher {
         let wcls_space = widget::mouse_area(widget::column![].height(Length::Fill).width(6.5))
             .on_press(Message::Window(WindowMessage::ClickClose));
         let wcls = win_button(
-            icon_manager::win_close_with_size(ICON_SIZE),
+            icons::close_s(ICON_SIZE),
             Message::Window(WindowMessage::ClickClose),
         );
         let wmax = win_button(
-            icon_manager::win_maximize_with_size(ICON_SIZE),
+            icons::maximize_s(ICON_SIZE),
             Message::Window(WindowMessage::ClickMaximize),
         );
         let wmin = win_button(
-            icon_manager::win_minimize_with_size(ICON_SIZE),
+            icons::minimize_s(ICON_SIZE),
             Message::Window(WindowMessage::ClickMinimize),
         );
         if right {

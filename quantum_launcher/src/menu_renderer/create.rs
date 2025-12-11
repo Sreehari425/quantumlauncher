@@ -7,7 +7,7 @@ use iced::{
 use ql_core::{ListEntry, ListEntryKind};
 
 use crate::{
-    icon_manager,
+    icons,
     menu_renderer::{
         back_button, button_with_icon, ctxbox, sidebar, sidebar_button, tooltip, tsubtitle, Element,
     },
@@ -49,7 +49,7 @@ impl MenuCreateInstance {
                                 clear_selection: false,
                                 is_server: Some(*is_server),
                             }),
-                        widget::button(icon_manager::filter())
+                        widget::button(icons::filter())
                             .padding(pb)
                             .style(move |t: &LauncherTheme, s| t.style_button(
                                 s,
@@ -166,7 +166,7 @@ impl MenuCreateInstance {
             row![
                 widget::horizontal_space(),
                 tooltip(
-                    widget::button(icon_manager::zip_file()).padding(iced::Padding::new(8.0).left(12.0).right(12.0))
+                    widget::button(icons::file_zip()).padding(iced::Padding::new(8.0).left(12.0).right(12.0))
                     .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
                     widget::text("Import Instance... (VERY EXPERIMENTAL right now)").size(14),
                     Position::Top
@@ -253,7 +253,7 @@ impl MenuCreateInstance {
 }
 
 fn get_create_button(already_exists: bool) -> Element<'static> {
-    let create_button = button_with_icon(icon_manager::create(), "Create", 16).on_press_maybe(
+    let create_button = button_with_icon(icons::new(), "Create", 16).on_press_maybe(
         (!already_exists).then_some(Message::CreateInstance(CreateInstanceMessage::Start)),
     );
 

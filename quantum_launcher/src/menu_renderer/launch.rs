@@ -8,7 +8,7 @@ use crate::menu_renderer::onboarding::x86_warning;
 use crate::menu_renderer::{tsubtitle, underline, FONT_MONO};
 use crate::state::WindowMessage;
 use crate::{
-    icon_manager,
+    icons,
     menu_renderer::DISCORD,
     state::{
         AccountMessage, CreateInstanceMessage, InstanceLog, LaunchTabId, Launcher,
@@ -108,7 +108,7 @@ impl Launcher {
                         widget::row![widget::text(selected.get_name()).font(FONT_MONO).size(20),]
                             .push_maybe({
                                 self.is_process_running(selected).then_some(tooltip(
-                                    icon_manager::play_with_size(20),
+                                    icons::play_s(20),
                                     "Running...",
                                     Position::Right,
                                 ))
@@ -133,7 +133,7 @@ impl Launcher {
                     } else {
                         widget::column!(
                             "Error: Could not read config json!",
-                            button_with_icon(icon_manager::delete(), "Delete Instance", 16)
+                            button_with_icon(icons::bin(), "Delete Instance", 16)
                                 .on_press(Message::DeleteInstanceMenu)
                         )
                         .padding(10)
@@ -166,7 +166,7 @@ impl Launcher {
         &self,
         selected_instance_s: Option<&str>,
     ) -> widget::Button<'_, Message, LauncherTheme> {
-        button_with_icon(icon_manager::download(), "Mods", 15)
+        button_with_icon(icons::download(), "Mods", 15)
             .on_press_maybe(selected_instance_s.is_some().then_some(
                 if self.modifiers_pressed.contains(Modifiers::SHIFT) {
                     Message::ManageMods(ManageModsMessage::ScreenOpenWithoutUpdate)
@@ -276,7 +276,7 @@ impl Launcher {
                 {
                     Some(widget::row![
                         widget::horizontal_space(),
-                        icon_manager::play_with_size(15),
+                        icons::play_s(15),
                         widget::Space::with_width(10),
                     ])
                 } else {
@@ -402,7 +402,7 @@ impl Launcher {
     }
 
     fn get_client_play_button(&'_ self) -> Element<'_> {
-        let play_button = button_with_icon(icon_manager::play(), "Play", 16).width(98);
+        let play_button = button_with_icon(icons::play(), "Play", 16).width(98);
 
         let is_account_selected = self.is_account_selected();
 
@@ -413,7 +413,7 @@ impl Launcher {
         } else if let Some(selected_instance) = &self.selected_instance {
             if self.processes.contains_key(selected_instance) {
                 tooltip(
-                    button_with_icon(icon_manager::play(), "Kill", 16)
+                    button_with_icon(icons::play(), "Kill", 16)
                         .on_press(Message::LaunchKill)
                         .width(98),
                     shortcut_ctrl("Backspace"),
@@ -421,9 +421,7 @@ impl Launcher {
                 )
                 .into()
             } else if self.is_launching_game {
-                button_with_icon(icon_manager::play(), "...", 16)
-                    .width(98)
-                    .into()
+                button_with_icon(icons::play(), "...", 16).width(98).into()
             } else {
                 tooltip(
                     play_button.on_press(Message::LaunchStart),
@@ -440,7 +438,7 @@ impl Launcher {
     fn get_files_button(
         selected_instance: &InstanceSelection,
     ) -> widget::Button<'_, Message, LauncherTheme> {
-        button_with_icon(icon_manager::folder(), "Files", 16)
+        button_with_icon(icons::folder(), "Files", 16)
             .on_press(Message::CoreOpenPath(
                 selected_instance.get_dot_minecraft_path(),
             ))
@@ -450,14 +448,14 @@ impl Launcher {
     fn get_server_play_button<'a>(&self) -> iced::widget::Tooltip<'a, Message, LauncherTheme> {
         match &self.selected_instance {
             Some(n) if self.processes.contains_key(n) => tooltip(
-                button_with_icon(icon_manager::play(), "Stop", 16)
+                button_with_icon(icons::play(), "Stop", 16)
                     .width(97)
                     .on_press(Message::LaunchKill),
                 shortcut_ctrl("Escape"),
                 Position::Bottom,
             ),
             _ => tooltip(
-                button_with_icon(icon_manager::play(), "Start", 16)
+                button_with_icon(icons::play(), "Start", 16)
                     .width(97)
                     .on_press_maybe(
                         self.selected_instance
@@ -484,7 +482,7 @@ impl MenuLaunch {
         let settings_button = widget::button(
             widget::row![
                 widget::horizontal_space(),
-                icon_manager::settings_with_size(12),
+                icons::gear_s(12),
                 widget::horizontal_space()
             ]
             .width(tab_height(decor) + 4.0)
@@ -622,7 +620,7 @@ fn get_sidebar_new_button(
     decor: bool,
 ) -> widget::Button<'_, Message, LauncherTheme> {
     widget::button(
-        widget::row![icon_manager::create(), widget::text("New").size(15)]
+        widget::row![icons::new(), widget::text("New").size(15)]
             .align_y(iced::alignment::Vertical::Center)
             .height(tab_height(decor) - 6.0)
             .spacing(10),
@@ -650,7 +648,7 @@ fn view_info_message(
         widget::container(
             widget::row![
                 widget::button(
-                    icon_manager::win_close()
+                    icons::close()
                         .style(|t: &LauncherTheme| t.style_text(Color::Mid))
                         .size(14)
                 )

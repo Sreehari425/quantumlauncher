@@ -1,7 +1,7 @@
 use iced::{widget, Alignment, Length};
 
 use crate::{
-    icon_manager,
+    icons,
     state::{AccountMessage, MenuLoginAlternate, MenuLoginMS, Message, NEW_ACCOUNT_NAME},
 };
 
@@ -16,7 +16,7 @@ impl MenuLoginAlternate {
                     .padding(8)
                     .into()
             } else {
-                widget::column![button_with_icon(icon_manager::tick(), "Login", 16)
+                widget::column![button_with_icon(icons::checkmark(), "Login", 16)
                     .on_press(Message::Account(AccountMessage::AltLogin))]
                 .align_x(Alignment::Center)
                 .push_maybe(self.is_littleskin.then_some(

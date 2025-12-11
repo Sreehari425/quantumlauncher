@@ -1,5 +1,5 @@
 use crate::{
-    icon_manager,
+    icons,
     menu_renderer::{button_with_icon, tsubtitle, FONT_MONO},
     state::{
         CustomJarState, EditInstanceMessage, ListMessage, MenuEditInstance, Message, NONE_JAR_NAME,
@@ -21,29 +21,22 @@ impl MenuEditInstance {
         let bottom_part: Element = match selected_instance {
             InstanceSelection::Instance(_) => widget::column![
                 widget::row![
-                    button_with_icon(
-                        icon_manager::update_with_size(12),
-                        "Reinstall Libraries",
-                        12
-                    )
-                    .on_press(Message::EditInstance(
-                        EditInstanceMessage::ReinstallLibraries
-                    )),
-                    button_with_icon(icon_manager::update_with_size(12), "Update Assets", 12)
+                    button_with_icon(icons::download_s(12), "Reinstall Libraries", 12).on_press(
+                        Message::EditInstance(EditInstanceMessage::ReinstallLibraries)
+                    ),
+                    button_with_icon(icons::download_s(12), "Update Assets", 12)
                         .on_press(Message::EditInstance(EditInstanceMessage::UpdateAssets)),
                 ]
                 .spacing(5)
                 .wrap(),
-                button_with_icon(icon_manager::delete(), "Delete Instance", 16)
+                button_with_icon(icons::bin(), "Delete Instance", 16)
                     .on_press(Message::DeleteInstanceMenu)
             ]
             .spacing(10)
             .into(),
-            InstanceSelection::Server(_) => {
-                button_with_icon(icon_manager::delete(), "Delete Server", 16)
-                    .on_press(Message::DeleteInstanceMenu)
-                    .into()
-            }
+            InstanceSelection::Server(_) => button_with_icon(icons::bin(), "Delete Server", 16)
+                .on_press(Message::DeleteInstanceMenu)
+                .into(),
         };
 
         widget::scrollable(
@@ -54,7 +47,7 @@ impl MenuEditInstance {
                             widget::text(selected_instance.get_name().to_owned()).size(20).font(FONT_MONO),
                         ].push_maybe((!self.is_editing_name).then_some(
                             widget::button(
-                                icon_manager::edit_with_size(12)
+                                icons::edit_s(12)
                                     .style(|t: &LauncherTheme| t.style_text(Color::Mid))
                             ).style(|t: &LauncherTheme, s|
                                 t.style_button(s, StyleButton::FlatDark)
@@ -368,11 +361,11 @@ pub fn get_args_list<'a>(
             (!args.is_empty()).then_some(widget::column(args.iter().enumerate().map(
                 |(i, arg)| {
                     widget::row![
-                        opt(icon_manager::delete_with_size(ITEM_SIZE), bg_extradark)
+                        opt(icons::bin_s(ITEM_SIZE), bg_extradark)
                             .on_press(msg(ListMessage::Delete(i))),
-                        opt(icon_manager::arrow_up_with_size(ITEM_SIZE), bg_extradark)
+                        opt(icons::arrow_up_s(ITEM_SIZE), bg_extradark)
                             .on_press(msg(ListMessage::ShiftUp(i))),
-                        opt(icon_manager::arrow_down_with_size(ITEM_SIZE), bg_extradark)
+                        opt(icons::arrow_down_s(ITEM_SIZE), bg_extradark)
                             .on_press(msg(ListMessage::ShiftDown(i))),
                         widget::text_input("Enter argument...", arg)
                             .size(ITEM_SIZE + 4)
@@ -396,13 +389,10 @@ fn get_args_list_add_button(
     bg_extradark: bool,
 ) -> widget::Button<'static, Message, LauncherTheme> {
     widget::button(
-        widget::row![
-            icon_manager::create_with_size(13),
-            widget::text("Add").size(13)
-        ]
-        .align_y(iced::alignment::Vertical::Center)
-        .spacing(8)
-        .padding([1, 2]),
+        widget::row![icons::new_s(13), widget::text("Add").size(13)]
+            .align_y(iced::alignment::Vertical::Center)
+            .spacing(8)
+            .padding([1, 2]),
     )
     .style(move |t: &LauncherTheme, s| {
         t.style_button(

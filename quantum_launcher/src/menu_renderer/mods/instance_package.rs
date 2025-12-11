@@ -1,7 +1,7 @@
 use iced::{widget, Length};
 
 use crate::{
-    icon_manager,
+    icons,
     menu_renderer::{back_button, back_to_launch_screen, button_with_icon, Element},
     state::{MenuExportInstance, Message},
 };
@@ -36,7 +36,7 @@ impl MenuExportInstance {
                         Message::Nothing
                     })
                     .text_line_height(1.68),
-                    button_with_icon(icon_manager::save(), "Export", 16)
+                    button_with_icon(icons::floppydisk(), "Export", 16)
                         .on_press(Message::ExportInstanceStart),
                 ]
                 .spacing(5)

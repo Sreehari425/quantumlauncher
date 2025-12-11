@@ -31,7 +31,7 @@ macro_rules! icon_define {
             }
 
             #[allow(dead_code)]
-            pub fn [<$name _with_size>]<'a>(size: u16) -> iced::widget::Text<'a, LauncherTheme> {
+            pub fn [<$name _s>]<'a>(size: u16) -> iced::widget::Text<'a, LauncherTheme> {
                 icon_with_size($unicode, size)
             }
         }
@@ -47,7 +47,7 @@ icon_define!(close, '\u{e905}');
 icon_define!(cross, '\u{e906}');
 icon_define!(deselectall, '\u{e907}');
 icon_define!(discord, '\u{e908}');
-icon_define!(down, '\u{e909}');
+icon_define!(arrow_down, '\u{e909}');
 icon_define!(download, '\u{e90a}');
 icon_define!(edit, '\u{e90b}');
 icon_define!(fav, '\u{e90c}');
@@ -61,7 +61,7 @@ icon_define!(filter, '\u{e913}');
 icon_define!(floppydisk, '\u{e914}');
 icon_define!(folder, '\u{e915}');
 icon_define!(gear, '\u{e916}');
-icon_define!(git, '\u{e917}');
+icon_define!(github, '\u{e917}');
 icon_define!(globe, '\u{e918}');
 icon_define!(lines, '\u{e919}');
 icon_define!(maximize, '\u{e91a}');
@@ -83,11 +83,11 @@ icon_define!(toggleoff, '\u{e929}');
 icon_define!(toggleon, '\u{e92a}');
 icon_define!(tweak, '\u{e92b}');
 icon_define!(unfav, '\u{e92c}');
-icon_define!(up, '\u{e92d}');
+icon_define!(arrow_up, '\u{e92d}');
 icon_define!(upload, '\u{e92e}');
 icon_define!(version_cancel, '\u{e92f}');
 icon_define!(version_download, '\u{e930}');
 icon_define!(version_tick, '\u{e931}');
 icon_define!(version_warn, '\u{e932}');
 icon_define!(warn, '\u{e933}');
-icon_define!(win_size, '\u{e934}')
+icon_define!(win_size, '\u{e934}');
