@@ -10,12 +10,19 @@ use std::fmt::Display;
 /// 4) Jar
 /// 5) Libraries
 /// 6) Assets
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum DownloadProgress {
+    #[default]
     DownloadingJsonManifest,
     DownloadingVersionJson,
-    DownloadingAssets { progress: usize, out_of: usize },
-    DownloadingLibraries { progress: usize, out_of: usize },
+    DownloadingAssets {
+        progress: usize,
+        out_of: usize,
+    },
+    DownloadingLibraries {
+        progress: usize,
+        out_of: usize,
+    },
     DownloadingJar,
     DownloadingLoggingConfig,
 }

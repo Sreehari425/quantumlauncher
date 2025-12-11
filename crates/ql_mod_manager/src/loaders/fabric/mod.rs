@@ -6,7 +6,8 @@ use std::{
 use ql_core::{
     do_jobs, file_utils, info,
     json::{instance_config::ModTypeInfo, FabricJSON, VersionDetails, V_1_12_2},
-    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, RequestError, LAUNCHER_DIR,
+    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, Loader, RequestError,
+    LAUNCHER_DIR,
 };
 use version_compare::compare_versions;
 
@@ -108,11 +109,10 @@ pub async fn install_server(
     change_instance_type(
         &server_dir,
         if backend.is_quilt() {
-            "Quilt"
+            Loader::Quilt
         } else {
-            "Fabric"
-        }
-        .to_owned(),
+            Loader::Fabric
+        },
         Some(ModTypeInfo {
             version: Some(loader_version),
             backend_implementation: if let BackendType::Fabric | BackendType::Quilt = backend {
@@ -213,11 +213,10 @@ pub async fn install_client(
     change_instance_type(
         &instance_dir,
         if backend.is_quilt() {
-            "Quilt"
+            Loader::Quilt
         } else {
-            "Fabric"
-        }
-        .to_owned(),
+            Loader::Fabric
+        },
         Some(ModTypeInfo {
             version: Some(loader_version),
             backend_implementation: if let BackendType::Fabric | BackendType::Quilt = backend {

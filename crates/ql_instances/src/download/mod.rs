@@ -1,7 +1,8 @@
 use std::sync::mpsc::Sender;
 
 use ql_core::{
-    info, DownloadProgress, IntoIoError, ListEntry, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
+    info, json::VersionDetails, DownloadProgress, InstanceSelection, IntoIoError, IntoStringError,
+    ListEntry, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
 };
 
 mod downloader;
@@ -34,7 +35,6 @@ pub async fn create_instance(
     download_assets: bool,
 ) -> Result<String, DownloadError> {
     info!("Started creating instance.");
-    debug_assert!(!version.is_server);
 
     // An empty asset directory.
     let launcher_dir = &*LAUNCHER_DIR;
@@ -80,4 +80,47 @@ pub async fn create_instance(
     info!("Finished creating instance: {instance_name}");
 
     Ok(instance_name)
+}
+
+pub async fn repeat_stage(
+    instance: InstanceSelection,
+    stage: DownloadProgress,
+    sender: Option<Sender<DownloadProgress>>,
+) -> Result<(), String> {
+    debug_assert!(!instance.is_server());
+
+    info!("Redownloading part of instance ({stage})");
+    let instance_dir = instance.get_instance_path();
+    let mut downloader = GameDownloader::with_existing_instance(
+        VersionDetails::load(&instance).await.strerr()?,
+        instance_dir.clone(),
+        sender,
+    );
+
+    match stage {
+        DownloadProgress::DownloadingLibraries { .. } => {
+            let libraries_dir = instance_dir.join("libraries");
+            tokio::fs::remove_dir_all(&libraries_dir)
+                .await
+                .path(&libraries_dir)
+                .strerr()?;
+
+            downloader.download_libraries().await.strerr()?;
+        }
+        DownloadProgress::DownloadingAssets { .. } => {
+            downloader.download_assets().await.strerr()?;
+        }
+        DownloadProgress::DownloadingJar => {
+            downloader.download_jar().await.strerr()?;
+        }
+        DownloadProgress::DownloadingLoggingConfig => {
+            downloader.download_logging_config().await.strerr()?;
+        }
+        DownloadProgress::DownloadingJsonManifest | DownloadProgress::DownloadingVersionJson => {
+            unimplemented!()
+        }
+    }
+    info!("Finished redownloading");
+
+    Ok(())
 }

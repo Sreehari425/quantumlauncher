@@ -1,6 +1,6 @@
-# These are shell scripts that I use to automate some tasks.
+# Shell scripts that I use to automate some tasks.
 
-TODO: Support windows (these only support linux/macOS currently)
+These only support Linux/macOS/unix currently
 
 Except for `line_count.sh` which requires BASH, all other scripts
 should be POSIX-compliant and run on any POSIX-compatible `sh` shell.
@@ -14,7 +14,7 @@ This script is used to run clippy with pedantic level (very strict).
 This script is used to list all the native libraries
 downloaded by the launcher, and their architecture.
 
-## `list_so_files.sh <instance_name>`
+## `list_natives_in_jar.sh <instance_name>`
 
 This script is used to list all the `.so` files that *could* be
 extracted and installed. Unlike the other script, this one lists

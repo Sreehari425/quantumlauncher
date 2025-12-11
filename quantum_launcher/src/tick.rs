@@ -12,17 +12,19 @@ use ql_core::{
 use ql_mod_manager::store::{ModConfig, ModIndex};
 
 use crate::state::{
-    EditInstanceMessage, GameProcess, InstallModsMessage, InstanceLog, LaunchTabId, Launcher,
-    ManageJarModsMessage, MenuCreateInstance, MenuEditMods, MenuExportInstance, MenuInstallFabric,
-    MenuInstallOptifine, MenuLaunch, MenuLoginMS, MenuModsDownload, MenuRecommendedMods, Message,
-    ModListEntry, State,
+    AutoSaveKind, EditInstanceMessage, GameProcess, InstallModsMessage, InstanceLog, LaunchTabId,
+    Launcher, ManageJarModsMessage, MenuCreateInstance, MenuEditMods, MenuExportInstance,
+    MenuInstallFabric, MenuInstallOptifine, MenuLaunch, MenuLoginMS, MenuModsDownload,
+    MenuRecommendedMods, Message, ModListEntry, State,
 };
 
 impl Launcher {
     pub fn tick(&mut self) -> Task<Message> {
         match &mut self.state {
             State::Launch(MenuLaunch {
-                edit_instance, tab, ..
+                ref edit_instance,
+                ref tab,
+                ..
             }) => {
                 if let Some(receiver) = &mut self.java_recv {
                     if receiver.tick() {
@@ -35,11 +37,14 @@ impl Launcher {
 
                 if let (Some(edit), LaunchTabId::Edit) = (&edit_instance, tab) {
                     let config = edit.config.clone();
+                    self.autosave.remove(&AutoSaveKind::LauncherConfig);
                     self.tick_edit_instance(config, &mut commands);
                 }
                 self.tick_processes_and_logs();
 
-                if self.tick_timer.is_multiple_of(5) {
+                if self.tick_timer.is_multiple_of(5)
+                    && self.autosave.insert(AutoSaveKind::LauncherConfig)
+                {
                     let launcher_config = self.config.clone();
                     commands.push(Task::perform(
                         async move { launcher_config.save().await.strerr() },
@@ -97,15 +102,13 @@ impl Launcher {
                 );
             }
             State::EditJarMods(menu) => {
-                if menu.free_for_autosave {
-                    if let Some(mut jarmods) = menu.jarmods.clone() {
-                        let selected_instance = self.selected_instance.clone().unwrap();
-                        menu.free_for_autosave = false;
-                        return Task::perform(
-                            async move { (jarmods.save(&selected_instance).await.strerr(), jarmods) },
-                            |n| Message::ManageJarMods(ManageJarModsMessage::AutosaveFinished(n)),
-                        );
-                    }
+                if self.autosave.insert(AutoSaveKind::Jarmods) {
+                    let mut jarmods = menu.jarmods.clone();
+                    let selected_instance = self.selected_instance.clone().unwrap();
+                    return Task::perform(
+                        async move { (jarmods.save(&selected_instance).await.strerr(), jarmods) },
+                        |n| Message::ManageJarMods(ManageJarModsMessage::AutosaveFinished(n)),
+                    );
                 }
             }
             State::InstallOptifine(menu) => match menu {

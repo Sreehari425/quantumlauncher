@@ -13,6 +13,7 @@ chrono = { workspace = true }
 dirs = "6"
 futures = { workspace = true }
 owo-colors = { workspace = true }
+cfg-if = { workspace = true }
 
 zip = { workspace = true }
 walkdir = { workspace = true }

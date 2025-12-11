@@ -158,16 +158,14 @@ async fn get_instance_recipe(mmc_pack: &MmcPack) -> Result<InstanceRecipe, Insta
         }
 
         match component.cachedName.as_str() {
-            "Minecraft" => {
-                recipe.mc_version = component.cachedVersion.clone();
-            }
+            "Minecraft" => recipe.mc_version.clone_from(&component.cachedVersion),
 
             "Forge" => {
                 recipe.loader = Some(Loader::Forge);
                 recipe.loader_version = Some(component.cachedVersion.clone());
             }
             "NeoForge" => {
-                recipe.loader = Some(Loader::Forge);
+                recipe.loader = Some(Loader::Neoforge);
                 recipe.loader_version = Some(component.cachedVersion.clone());
             }
             "Fabric Loader" => {
@@ -175,7 +173,7 @@ async fn get_instance_recipe(mmc_pack: &MmcPack) -> Result<InstanceRecipe, Insta
                 recipe.loader_version = Some(component.cachedVersion.clone());
             }
             "Quilt Loader" => {
-                recipe.loader = Some(Loader::Forge);
+                recipe.loader = Some(Loader::Quilt);
                 recipe.loader_version = Some(component.cachedVersion.clone());
             }
 
@@ -216,7 +214,7 @@ async fn install_loader(
                 .await?;
             }
             loader => {
-                err!("Unimplemented MultiMC Component: {loader:?}")
+                err!("Unimplemented MultiMC Component: {loader:?}");
             }
         }
     }
@@ -317,7 +315,7 @@ async fn install_fabric(
 
     let mut config = InstanceConfigJson::read(instance_selection).await?;
     config.main_class_override = Some(fabric_json.mainClass.clone());
-    config.mod_type = "Fabric".to_owned();
+    config.mod_type = Loader::Fabric;
     config.save(instance_selection).await?;
 
     let fabric_json_path = instance_path.join("fabric.json");
@@ -371,10 +369,7 @@ async fn create_minecraft_instance(
     instance_name: &str,
     version: String,
 ) -> Result<(), InstancePackageError> {
-    let version = ListEntry {
-        name: version,
-        is_server: false,
-    };
+    let version = ListEntry::new(version);
     let (d_send, d_recv) = std::sync::mpsc::channel();
     if let Some(sender) = sender.clone() {
         std::thread::spawn(move || {

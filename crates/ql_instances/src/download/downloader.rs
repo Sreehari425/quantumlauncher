@@ -13,7 +13,7 @@ use ql_core::{
         instance_config::VersionInfo, AssetIndex, InstanceConfigJson, Manifest, VersionDetails,
     },
     pt, DownloadFileError, DownloadProgress, IntoIoError, IntoJsonError, IoError, JsonError,
-    ListEntry, RequestError,
+    ListEntry, Loader, RequestError,
 };
 use thiserror::Error;
 use tokio::sync::Mutex;
@@ -303,17 +303,16 @@ impl GameDownloader {
         let config_json = InstanceConfigJson {
             java_override: None,
             ram_in_mb: DEFAULT_RAM_MB_FOR_INSTANCE,
-            mod_type: "Vanilla".to_owned(),
+            mod_type: Loader::Vanilla,
             enable_logger: Some(true),
             java_args: None,
             game_args: None,
             is_classic_server: None,
-            do_gc_tuning: None,
             close_on_start: None,
             is_server: Some(false),
             omniarchive: None,
             global_settings: None,
-            java_args_mode: None,
+            global_java_args_enable: None,
             pre_launch_prefix_mode: None,
             custom_jar: None,
             mod_type_info: None,

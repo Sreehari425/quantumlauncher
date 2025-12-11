@@ -12,15 +12,16 @@
 //! - Logging macros
 //! - And much more
 
-#![allow(clippy::cast_precision_loss)]
-#![allow(clippy::cast_possible_truncation)]
-#![allow(clippy::cast_sign_loss)]
-use crate::read_log::{read_logs, Diagnostic, LogLine, ReadError};
+#![allow(clippy::missing_errors_doc)]
+
+use crate::{
+    json::manifest::Version,
+    read_log::{read_logs, Diagnostic, LogLine, ReadError},
+};
 use futures::StreamExt;
 use json::VersionDetails;
 use regex::Regex;
 use std::{
-    ffi::OsStr,
     fmt::{Debug, Display},
     future::Future,
     path::{Path, PathBuf},
@@ -45,6 +46,8 @@ mod progress;
 pub mod read_log;
 mod urlcache;
 
+pub use crate::json::InstanceConfigJson;
+pub use constants::*;
 pub use error::{
     DownloadFileError, IntoIoError, IntoJsonError, IntoStringError, IoError, JsonDownloadError,
     JsonError, JsonFileError,
@@ -82,17 +85,14 @@ macro_rules! no_window {
 
 pub static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(reqwest::Client::new);
 
-/// Perform multiple async tasks concurrently. Useful for things like
-/// downloading lots of files at the same time.
+/// Executes multiple async tasks concurrently (e.g., downloading files).
 ///
 /// # Calling
 ///
-/// This takes in an `Iterator` of the `Future` of `async fn -> Result<T, E>`
-/// and returns `Result<Vec<T>, E>`, where if any one of the
-/// input functions failed the whole thing will fail.
+/// - Takes in `Iterator` over `Future` (the thing returned by `async fn -> Result<T, E>`).
+/// - Returns `Result<Vec<T>, E>`.
 ///
-/// Only if all the input functions succeed, it will return a `Vec`
-/// of the output data.
+/// The entire operation fails if any task fails.
 ///
 /// # Example
 /// ```no_run
@@ -123,25 +123,20 @@ pub async fn do_jobs<T, E>(
     do_jobs_with_limit(results, JOBS).await
 }
 
-/// Perform multiple async tasks concurrently,
-/// with an explicit limit on concurrent processes.
+/// Executes multiple async tasks concurrently (e.g., downloading files),
+/// with an **explicit limit** on concurrent jobs.
 ///
-/// Useful for things like downloading lots of
-/// files at the same time.
+/// # Calling
+///
+/// - Takes in `Iterator` over `Future` (the thing returned by `async fn -> Result<T, E>`).
+/// - Returns `Result<Vec<T>, E>`.
+///
+/// The entire operation fails if any task fails.
 ///
 /// This function allows you to set an explicit
 /// limit on how many jobs can run at the same time,
 /// so you can stay under any `ulimit -n` file descriptor
 /// limits.
-///
-/// # Calling
-///
-/// This takes in an `Iterator` of the `Future` of `async fn -> Result<T, E>`
-/// and returns `Result<Vec<T>, E>`, where if any one of the
-/// input functions failed the whole thing will fail.
-///
-/// Only if all the input functions succeed, it will return a `Vec`
-/// of the output data.
 ///
 /// # Example
 /// ```no_run
@@ -184,35 +179,36 @@ pub async fn do_jobs_with_limit<T, E>(
     Ok(outputs)
 }
 
-/// Retries a non-deterministic function
-/// multiple (5) times if it fails.
+/// Retries a non-deterministic function up to 5 times if it fails.
 ///
-/// Some functions are inherently non-deterministic
-/// in nature, i.e. doing the same thing multiple times
-/// won't always produce the same result.
-/// **For example**, network operations like *downloading
-/// a file* are non-deterministic as they can randomly
-/// fail for no reason, anytime.
-///
-/// So by repeating the function multiple times if it
-/// fails, we reduce the failure rate, because
-/// we could get lucky and succeed on the second try,
-/// or the third try...
+/// Useful for inherently unreliable operations (e.g., network requests) that may
+/// fail intermittently, reducing the overall failure rate by retrying.
+/// Maybe we might get lucky and get it working the second time, or the third...
 ///
 /// # Calling
-/// This takes in an async closure that returns a `Result<T, E>`.
-/// More specifically, it takes in an `Fn` closure, which can run
-/// repeatedly but without storing any state.
+/// Accepts a closure that returns a `Future`
+/// (the thing that async functions return) of `Result<T, E>`.
 ///
 /// # Example
 /// ```no_run
 /// # use ql_core::retry;
-/// # async fn download_file(url: &str) -> Result<String, String> {
-/// #     Ok("Hi".to_owned())
-/// # }
+/// async fn download_file(url: &str) -> Result<String, String> {
+///     // Insert network operation here
+///     Ok("Hi".to_owned())
+/// }
 /// # async fn download_something_important() -> Result<String, String> {
 /// retry(|| download_file("example.com/my_file")).await
 /// # }
+/// ```
+///
+/// Notice how we don't await on `download_file`? Here's another one.
+///
+/// ```no_run
+/// // Use this pattern for inline async blocks
+/// retry(|| async move {
+///     download_file("example.com/my_file").await;
+///     download_file("example.com/another_file").await;
+/// }).await
 /// ```
 ///
 /// # Errors
@@ -249,6 +245,10 @@ impl InstanceSelection {
         }
     }
 
+    /// Gets the path where launcher-specific things are stored.
+    ///
+    /// - Instances: `QuantumLauncher/instances/<NAME>/`
+    /// - Servers: `QuantumLauncher/servers/<Name>/` (identical to `dot_minecraft_path`)
     #[must_use]
     pub fn get_instance_path(&self) -> PathBuf {
         match self {
@@ -257,6 +257,11 @@ impl InstanceSelection {
         }
     }
 
+    /// Gets the path where files used by the game itself are stored,
+    /// also called the `.minecraft` folder.
+    ///
+    /// - Instances: `QuantumLauncher/instances/<NAME>/.minecraft/`
+    /// - Servers: `QuantumLauncher/servers/<NAME>/` (identical to `instance_path`)
     #[must_use]
     pub fn get_dot_minecraft_path(&self) -> PathBuf {
         match self {
@@ -289,23 +294,165 @@ impl InstanceSelection {
     pub fn get_pair(&self) -> (&str, bool) {
         (self.get_name(), self.is_server())
     }
+
+    pub async fn get_loader(&self) -> Result<Loader, JsonFileError> {
+        let config_json = InstanceConfigJson::read(self).await?;
+        Ok(config_json.mod_type)
+    }
 }
 
-/// An enum representing a Minecraft version.
-///
-/// # Fields
-/// - `name`: The name of the version according to
-///   [BetterJSONs](https://mcphackers.org/BetterJSONs/version_manifest_v2.json)
-/// - `is_classic_server`: Whether it is a Minecraft Classic entry
-#[derive(Debug, Clone)]
+/// A struct representing information about a Minecraft version
+#[derive(Debug, Clone, PartialEq)]
 pub struct ListEntry {
     pub name: String,
-    pub is_server: bool,
+    pub supports_server: bool,
+    /// For UI display purposes only
+    pub kind: ListEntryKind,
+}
+
+impl ListEntry {
+    #[must_use]
+    pub fn new(name: String) -> Self {
+        Self {
+            kind: ListEntryKind::guess(&name),
+            supports_server: Version::guess_if_supports_server(&name),
+            name,
+        }
+    }
+
+    pub fn with_kind(name: String, ty: &str) -> Self {
+        Self {
+            kind: ListEntryKind::calculate(&name, ty),
+            supports_server: Version::guess_if_supports_server(&name),
+            name,
+        }
+    }
+
+    #[must_use]
+    pub fn kind(&self) -> ListEntryKind {
+        todo!()
+    }
 }
 
 impl Display for ListEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ListEntryKind {
+    Release,
+    Snapshot,
+    Preclassic,
+    Classic,
+    Indev,
+    Infdev,
+    Alpha,
+    Beta,
+    AprilFools,
+    Special,
+}
+
+impl std::fmt::Display for ListEntryKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ListEntryKind::Release => write!(f, "Release"),
+            ListEntryKind::Snapshot => write!(f, "Snapshot"),
+            ListEntryKind::Preclassic => write!(f, "Pre-classic"),
+            ListEntryKind::Classic => write!(f, "Classic"),
+            ListEntryKind::Indev => write!(f, "Indev"),
+            ListEntryKind::Infdev => write!(f, "Infdev"),
+            ListEntryKind::Alpha => write!(f, "Alpha"),
+            ListEntryKind::Beta => write!(f, "Beta"),
+            ListEntryKind::AprilFools => write!(f, "April Fools"),
+            ListEntryKind::Special => write!(f, "Special"),
+        }
+    }
+}
+
+impl ListEntryKind {
+    pub const ALL: &'static [ListEntryKind] = &[
+        ListEntryKind::Release,
+        ListEntryKind::Snapshot,
+        ListEntryKind::Beta,
+        ListEntryKind::Alpha,
+        ListEntryKind::Infdev,
+        ListEntryKind::Indev,
+        ListEntryKind::Classic,
+        ListEntryKind::Preclassic,
+        ListEntryKind::AprilFools,
+        ListEntryKind::Special,
+    ];
+
+    /// Returns the default selected categories (Release only)
+    #[must_use]
+    pub fn default_selected() -> std::collections::HashSet<ListEntryKind> {
+        let mut set = std::collections::HashSet::new();
+        set.extend(Self::ALL);
+        set.remove(&Self::Snapshot);
+        set
+    }
+}
+
+impl ListEntryKind {
+    fn guess(id: &str) -> Self {
+        if id.starts_with("b1.") {
+            ListEntryKind::Beta
+        } else if id.starts_with("a1.") {
+            ListEntryKind::Alpha
+        } else if id.starts_with("inf-") {
+            ListEntryKind::Infdev
+        } else if id.starts_with("in-") {
+            ListEntryKind::Indev
+        } else if id.starts_with("pc-") {
+            ListEntryKind::Preclassic
+        } else if id.starts_with("c0.") {
+            ListEntryKind::Classic
+        } else if id.contains("w") {
+            ListEntryKind::Snapshot
+        } else {
+            ListEntryKind::Release
+        }
+    }
+
+    #[must_use]
+    pub fn calculate(id: &str, ty: &str) -> Self {
+        if ty == "special" {
+            ListEntryKind::Special
+        } else if ty == "april-fools" {
+            ListEntryKind::AprilFools
+        } else if id.starts_with("b1.") {
+            ListEntryKind::Beta
+        } else if id.starts_with("a1.") {
+            ListEntryKind::Alpha
+        } else if id.starts_with("inf-") {
+            ListEntryKind::Infdev
+        } else if id.starts_with("in-") {
+            ListEntryKind::Indev
+        } else if id.starts_with("pc-") {
+            ListEntryKind::Preclassic
+        } else if id.starts_with("c0.") {
+            ListEntryKind::Classic
+        } else if ty == "snapshot" {
+            ListEntryKind::Snapshot
+        } else {
+            ListEntryKind::Release
+        }
+    }
+
+    /// Returns true if this is a "old" version category
+    #[must_use]
+    pub const fn is_old(&self) -> bool {
+        matches!(
+            self,
+            ListEntryKind::Alpha
+                | ListEntryKind::Beta
+                | ListEntryKind::Classic
+                | ListEntryKind::Preclassic
+                | ListEntryKind::Indev
+                | ListEntryKind::Infdev
+        )
     }
 }
 
@@ -382,6 +529,7 @@ pub enum SelectedMod {
 }
 
 impl SelectedMod {
+    #[must_use]
     pub fn from_pair(name: String, id: Option<ModId>) -> Self {
         match id {
             Some(id) => Self::Downloaded { name, id },
@@ -389,73 +537,6 @@ impl SelectedMod {
         }
     }
 }
-
-/// Opens the file explorer or browser
-/// (depending on path/link) to the corresponding link.
-///
-/// If you input a url (starting with `https://` for example),
-/// this will open the link with your default browser.
-///
-/// If you input a path (for example, `C:\Users\Mrmayman\Documents\`)
-/// this will open it in the file explorer using the system's default file manager.
-///
-/// # Platform details
-/// - Linux, BSDs: `xdg-open <PATH>`
-/// - macOS: `open <PATH>`
-/// - Windows: `cmd /c start /b <PATH>`
-///
-/// Unsupported platforms will log an error and not open anything.
-#[allow(clippy::zombie_processes)]
-pub fn open_file_explorer<S: AsRef<OsStr>>(path: S) {
-    use std::process::Command;
-
-    let path = path.as_ref();
-    info!("Opening link: {}", path.to_string_lossy());
-
-    #[allow(unused)]
-    let result: std::io::Result<()> = Err(std::io::Error::other("Unsupported Platform!"));
-
-    #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"))]
-    let result = Command::new("xdg-open").arg(path).spawn();
-    #[cfg(target_os = "macos")]
-    let result = Command::new("open").arg(path).spawn();
-    #[cfg(target_os = "windows")]
-    let result = {
-        // To not flash a terminal window
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-
-        // Respects the user's default file manager
-        Command::new("cmd")
-            .args(["/c", "start", "/b", ""])
-            .arg(path)
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn()
-    };
-
-    if let Err(err) = result {
-        err!("Could not open link: {err}");
-    }
-}
-
-// #[macro_export]
-// macro_rules! gen_w {
-//     ($fn_name:ident, $doc:literal, $ret:ty, ($($arg_name:ident: $arg_type:ty),*), ($($arg_pass:expr),*)) => {
-//         paste::paste! {
-//             #[doc = "[`"]
-//             #[doc = $doc]
-//             #[doc = "`] `_w` function\n\nSee [`quantum_launcher`] / `main.rs` documentation for more info on what `_w` function is"]
-//             #[allow(clippy::missing_errors_doc)]
-//             pub async fn [<$fn_name _w>] (
-//                 $($arg_name: $arg_type),*
-//             ) -> $ret {
-//                 $crate::IntoStringError::strerr($fn_name(
-//                     $($arg_pass),*
-//                 ).await)
-//             }
-//         }
-//     };
-// }
 
 #[derive(Debug, Clone, Copy)]
 pub enum OptifineUniqueVersion {
@@ -475,6 +556,7 @@ impl OptifineUniqueVersion {
             .and_then(|n| Self::from_version(n.get_id()))
     }
 
+    #[must_use]
     pub fn from_version(version: &str) -> Option<Self> {
         match version {
             "1.5.2" => Some(OptifineUniqueVersion::V1_5_2),
@@ -555,6 +637,7 @@ pub struct LaunchedProcess {
 type ReadLogOut = Result<(ExitStatus, InstanceSelection, Option<Diagnostic>), ReadError>;
 
 impl LaunchedProcess {
+    #[must_use]
     pub fn read_logs(
         &self,
         censors: Vec<String>,

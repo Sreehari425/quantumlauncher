@@ -1,10 +1,9 @@
-use super::{SIDEBAR_DRAG_LEEWAY, SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT};
 use crate::message_update::MSG_RESIZE;
 use crate::state::{
     CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage, LauncherSettingsTab,
-    MenuCreateInstance, MenuEditJarMods, MenuEditMods, MenuEditPresets, MenuExportInstance,
-    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLaunch, MenuLauncherSettings,
-    MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, Message, State,
+    MenuCreateInstance, MenuEditMods, MenuEditPresets, MenuExportInstance, MenuInstallFabric,
+    MenuInstallOptifine, MenuInstallPaper, MenuLauncherSettings, MenuLauncherUpdate,
+    MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, Message, State,
 };
 use iced::{
     keyboard::{self, key::Named, Key},
@@ -17,8 +16,6 @@ use std::path::Path;
 
 impl Launcher {
     pub fn iced_event(&mut self, event: iced::Event, status: iced::event::Status) -> Task<Message> {
-        self.validate_sidebar_width();
-
         match event {
             iced::Event::Window(event) => match event {
                 iced::window::Event::CloseRequested => {
@@ -26,7 +23,7 @@ impl Launcher {
                     std::process::exit(0);
                 }
                 iced::window::Event::Resized(size) => {
-                    self.window_size = (size.width, size.height);
+                    self.window_state.size = (size.width, size.height);
                     // Save window size to config for persistence
                     let window = self.config.window.get_or_insert_with(Default::default);
                     window.width = Some(size.width);
@@ -85,66 +82,15 @@ impl Launcher {
             },
             iced::Event::Mouse(mouse) => match mouse {
                 iced::mouse::Event::CursorMoved { position } => {
-                    self.mouse_pos.0 = position.x;
-                    self.mouse_pos.1 = position.y;
-
-                    if let State::Launch(MenuLaunch {
-                        sidebar_width,
-                        sidebar_dragging: true,
-                        ..
-                    }) = &mut self.state
-                    {
-                        if self.mouse_pos.0 < SIDEBAR_LIMIT_LEFT {
-                            *sidebar_width = SIDEBAR_LIMIT_LEFT as u16;
-                        } else if (self.mouse_pos.0 + f32::from(SIDEBAR_LIMIT_RIGHT)
-                            > self.window_size.0)
-                            && self.window_size.0 as u16 > SIDEBAR_LIMIT_RIGHT
-                        {
-                            *sidebar_width = self.window_size.0 as u16 - SIDEBAR_LIMIT_RIGHT;
-                        } else {
-                            *sidebar_width = self.mouse_pos.0 as u16;
-                        }
-                    }
+                    let pos = (position.x, position.y);
+                    self.window_state.mouse_pos = pos;
                 }
-                iced::mouse::Event::ButtonPressed(button) => {
-                    if let (State::Launch(menu), iced::mouse::Button::Left) =
-                        (&mut self.state, button)
-                    {
-                        let difference = self.mouse_pos.0 - f32::from(menu.sidebar_width);
-                        if difference > 0.0 && difference < SIDEBAR_DRAG_LEEWAY {
-                            menu.sidebar_dragging = true;
-                        }
-                    }
+                iced::mouse::Event::ButtonPressed(_) => {
                     if let iced::event::Status::Ignored = status {
                         self.hide_submenu();
                     }
                 }
-                iced::mouse::Event::ButtonReleased(button) => {
-                    if let (State::Launch(menu), iced::mouse::Button::Left) =
-                        (&mut self.state, button)
-                    {
-                        menu.sidebar_dragging = false;
-                    }
-                }
-                iced::mouse::Event::WheelScrolled { /*delta*/ .. } => {
-                    /*if let iced::event::Status::Ignored = status {
-                        if self.keys_pressed.contains(&Key::Named(Named::Control)) {
-                            match delta {
-                                iced::mouse::ScrollDelta::Lines { y, .. }
-                                | iced::mouse::ScrollDelta::Pixels { y, .. } => {
-                                    let new_scale =
-                                        self.config.ui_scale.unwrap_or(1.0) + (f64::from(y) / 5.0);
-                                    let new_scale = new_scale.clamp(0.5, 2.0);
-                                    self.config.ui_scale = Some(new_scale);
-                                    if let State::LauncherSettings(menu) = &mut self.state {
-                                        menu.temp_scale = new_scale;
-                                    }
-                                }
-                            }
-                        }
-                    }*/
-                }
-                iced::mouse::Event::CursorEntered | iced::mouse::Event::CursorLeft => {}
+                _ => {}
             },
             iced::Event::Touch(_) => {}
         }
@@ -201,6 +147,10 @@ impl Launcher {
                     ))),
                     Message::CoreFocusNext,
                 ]),
+                ("f", true, _, _, State::Create(MenuCreateInstance::Choosing { .. }))
+                | ("/", _, _, true, State::Create(MenuCreateInstance::Choosing { .. })) => {
+                    Message::CoreFocusNext
+                }
 
                 ("a", true, _, true, State::EditJarMods(_)) => {
                     Message::ManageJarMods(crate::state::ManageJarModsMessage::SelectAll)
@@ -225,6 +175,36 @@ impl Launcher {
                 _ => Message::Nothing,
             };
             return Task::done(msg);
+        } else if let State::LauncherSettings(menu) = &mut self.state {
+            if let Key::Named(Named::ArrowUp) = key {
+                return Task::done(Message::LauncherSettings(
+                    LauncherSettingsMessage::ChangeTab(menu.selected_tab.prev()),
+                ));
+            } else if let Key::Named(Named::ArrowDown) = key {
+                return Task::done(Message::LauncherSettings(
+                    LauncherSettingsMessage::ChangeTab(menu.selected_tab.next()),
+                ));
+            }
+        } else if let State::License(menu) = &mut self.state {
+            if let Key::Named(Named::ArrowUp) = key {
+                return Task::done(Message::LicenseChangeTab(menu.selected_tab.prev()));
+            } else if let Key::Named(Named::ArrowDown) = key {
+                return Task::done(Message::LicenseChangeTab(menu.selected_tab.next()));
+            }
+        } else if let State::Launch(_) = &self.state {
+            if let Key::Named(Named::ArrowUp) = key {
+                return self.key_change_selected_instance(false);
+            } else if let Key::Named(Named::ArrowDown) = key {
+                return self.key_change_selected_instance(true);
+            } else if let Key::Named(Named::Enter) = key {
+                if modifiers.command() {
+                    return self.launch_start();
+                }
+            } else if let Key::Named(Named::Backspace) = key {
+                if modifiers.command() {
+                    return Task::done(Message::LaunchKill);
+                }
+            }
         }
         self.keys_pressed.insert(key);
 
@@ -251,17 +231,13 @@ impl Launcher {
             } else {
                 Task::none()
             }
-        } else if let State::EditJarMods(MenuEditJarMods {
-            jarmods: Some(jarmods),
-            ..
-        }) = &mut self.state
-        {
+        } else if let State::EditJarMods(menu) = &mut self.state {
             if extension == "jar" || extension == "zip" {
                 Self::load_jarmods_from_path(
                     self.selected_instance.as_ref().unwrap(),
                     path,
                     filename,
-                    jarmods,
+                    &mut menu.jarmods,
                 );
             }
             Task::none()
@@ -274,23 +250,6 @@ impl Launcher {
             }
         } else {
             Task::none()
-        }
-    }
-
-    fn validate_sidebar_width(&mut self) {
-        if let State::Launch(MenuLaunch { sidebar_width, .. }) = &mut self.state {
-            self.config.sidebar_width = Some(u32::from(*sidebar_width));
-            let window_width = self.window_size.0;
-
-            if window_width > f32::from(SIDEBAR_LIMIT_RIGHT)
-                && *sidebar_width > window_width as u16 - SIDEBAR_LIMIT_RIGHT
-            {
-                *sidebar_width = window_width as u16 - SIDEBAR_LIMIT_RIGHT;
-            }
-
-            if window_width > SIDEBAR_LIMIT_LEFT && *sidebar_width < SIDEBAR_LIMIT_LEFT as u16 {
-                *sidebar_width = SIDEBAR_LIMIT_LEFT as u16;
-            }
         }
     }
 
@@ -419,6 +378,7 @@ impl Launcher {
             if should_return_to_download_screen {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.opened_mod = None;
+                    menu.description = None;
                     return (
                         true,
                         iced::widget::scrollable::scroll_to(
@@ -448,6 +408,15 @@ impl Launcher {
                 menu.search = None;
                 return true;
             }
+        } else if let State::Create(MenuCreateInstance::Choosing {
+            show_category_dropdown,
+            ..
+        }) = &mut self.state
+        {
+            if *show_category_dropdown {
+                *show_category_dropdown = false;
+                return true;
+            }
         }
         false
     }
@@ -457,7 +426,7 @@ impl Launcher {
             let State::Launch(menu) = &self.state else {
                 return Task::none();
             };
-            (menu.is_viewing_server, menu.sidebar_height)
+            (menu.is_viewing_server, menu.sidebar_scrolled)
         };
         let list = if is_viewing_server {
             self.server_list.clone()

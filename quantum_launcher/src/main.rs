@@ -34,7 +34,7 @@ use ql_core::{
     JsonFileError,
 };
 
-use crate::state::CustomJarState;
+use crate::{menu_renderer::FONT_DEFAULT, state::CustomJarState};
 
 /// The CLI interface of the launcher.
 mod cli;
@@ -63,7 +63,7 @@ mod view;
 /// (called by [`view`]).
 mod menu_renderer;
 
-/// Handles mclo.gs log uploads
+/// Handles `mclo.gs` log uploads
 mod mclog_upload;
 /// Child functions of the
 /// [`Launcher::update`] function.
@@ -86,6 +86,8 @@ mod tick;
 const LAUNCHER_ICON: &[u8] = include_bytes!("../../assets/icon/ql_logo.ico");
 
 impl Launcher {
+    const TICKS_PER_SECOND: u64 = 5;
+
     fn new(
         is_new_user: bool,
         config: Result<LauncherConfig, JsonFileError>,
@@ -116,15 +118,10 @@ impl Launcher {
         )
     }
 
-    // Iced expects a `fn(&self)` so we're putting `&self`
-    // even when not needed.
     #[allow(clippy::unused_self)]
     fn subscription(&self) -> iced::Subscription<Message> {
-        const UPDATES_PER_SECOND: u64 = 5;
-
-        let tick = iced::time::every(Duration::from_millis(1000 / UPDATES_PER_SECOND))
+        let tick = iced::time::every(Duration::from_millis(1000 / Self::TICKS_PER_SECOND))
             .map(|_| Message::CoreTick);
-
         let events = iced::event::listen_with(|a, b, _| Some(Message::CoreEvent(a, b)));
 
         iced::Subscription::batch(vec![tick, events])
@@ -164,15 +161,11 @@ fn main() {
     }
 
     let icon = load_icon();
-    let mut config = load_config(launcher_dir.is_some());
-    let scale = match &config {
-        Ok(cfg) => cfg.ui_scale.unwrap_or(1.0),
-        Err(_e) => 1.0,
-    } as f32;
-    let (width, height) = config.as_mut().ok().map_or(
-        (WINDOW_WIDTH * scale, WINDOW_HEIGHT * scale),
-        LauncherConfig::read_window_size,
-    );
+    let config = load_config(launcher_dir.is_some());
+
+    let c = config.as_ref().cloned().unwrap_or_default();
+    let decorations = c.c_window_decorations();
+    let (width, height) = c.c_window_size();
 
     iced::application("QuantumLauncher", Launcher::update, Launcher::view)
         .subscription(Launcher::subscription)
@@ -180,11 +173,11 @@ fn main() {
         .theme(Launcher::theme)
         .settings(Settings {
             fonts: load_fonts(),
-            default_font: iced::Font::with_name("Inter"),
+            default_font: FONT_DEFAULT,
             antialiasing: config
                 .as_ref()
                 .ok()
-                .and_then(|n| n.antialiasing)
+                .and_then(|n| n.ui_antialiasing)
                 .unwrap_or(true),
             ..Default::default()
         })
@@ -196,6 +189,8 @@ fn main() {
                 width: 420.0,
                 height: 300.0,
             }),
+            decorations,
+            transparent: true,
             ..Default::default()
         })
         .run_with(move || Launcher::new(is_new_user, config))
@@ -227,7 +222,7 @@ fn load_config(dir_is_ok: bool) -> Result<LauncherConfig, JsonFileError> {
 }
 
 fn load_icon() -> Option<iced::window::Icon> {
-    match iced::window::icon::from_file_data(LAUNCHER_ICON, Some(image::ImageFormat::Ico)) {
+    match iced::window::icon::from_file_data(LAUNCHER_ICON, None) {
         Ok(n) => Some(n),
         Err(err) => {
             err_no_log!("Couldn't load launcher icon! (bug detected): {err}");
@@ -253,12 +248,22 @@ fn load_fonts() -> Vec<Cow<'static, [u8]>> {
     ]
 }
 
+/// This is the only `unsafe` Rust code in the entire launcher.
+/// It tweaks Windows terminal behaviour so that:
+///
+/// - If launcher is opened from terminal,
+///   it shows output in terminal
+/// - If it's opened normally from GUI,
+///   no terminal window pops up
+///
+/// Basically Linux-default behaviour.
 #[cfg(windows)]
 fn attach_to_console() {
     use windows::Win32::System::Console::AttachConsole;
     use windows::Win32::System::Console::ATTACH_PARENT_PROCESS;
 
     unsafe {
+        // No one cares if it fails. Ignore the `Result<()>`
         _ = AttachConsole(ATTACH_PARENT_PROCESS);
     }
 }

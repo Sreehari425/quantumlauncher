@@ -11,7 +11,7 @@ use ql_core::{
     json::{
         instance_config::ModTypeInfo, optifine::JsonOptifine, InstanceConfigJson, VersionDetails,
     },
-    no_window, pt, GenericProgress, InstanceSelection, IntoIoError, IoError, JsonError,
+    no_window, pt, GenericProgress, InstanceSelection, IntoIoError, IoError, JsonError, Loader,
     OptifineUniqueVersion, Progress, RequestError, CLASSPATH_SEPARATOR, LAUNCHER_DIR,
 };
 use ql_java_handler::{get_java_binary, JavaInstallError, JavaVersion, JAVA};
@@ -166,12 +166,7 @@ pub async fn install(
     run_hook(&new_installer_path, &optifine_path).await?;
 
     download_libraries(&instance_name, &dot_minecraft_path, progress_sender).await?;
-
-    let instance_type = "OptiFine".to_owned();
-    config.mod_type = instance_type;
-    config.mod_type_info = None;
-    config.save_to_dir(&instance_path).await?;
-
+    change_instance_type(&instance_path, Loader::OptiFine, None).await?;
     send_progress(progress_sender, OptifineInstallProgress::P5Done);
     pt!("Finished installing OptiFine");
 
@@ -198,7 +193,7 @@ pub async fn uninstall(instance_name: String, change_type: bool) -> Result<(), O
     }
 
     if change_type {
-        change_instance_type(&instance_path, "Vanilla".to_owned(), None).await?;
+        change_instance_type(&instance_path, Loader::Vanilla, None).await?;
     }
 
     let dot_minecraft_path = instance_path.join(".minecraft");

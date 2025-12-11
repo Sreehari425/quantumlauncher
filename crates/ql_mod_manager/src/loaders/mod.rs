@@ -10,8 +10,7 @@ use crate::loaders::paper::PaperVer;
 use forge::ForgeInstallProgress;
 use ql_core::{
     json::{instance_config::ModTypeInfo, InstanceConfigJson},
-    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
-    Loader, Progress,
+    GenericProgress, InstanceSelection, IntoStringError, JsonFileError, Loader, Progress,
 };
 
 pub mod fabric;
@@ -27,19 +26,13 @@ pub(crate) const FORGE_INSTALLER_SERVER: &[u8] =
 
 async fn change_instance_type(
     instance_dir: &Path,
-    instance_type: String,
+    loader: Loader,
     extras: Option<ModTypeInfo>,
 ) -> Result<(), JsonFileError> {
     let mut config = InstanceConfigJson::read_from_dir(instance_dir).await?;
-
-    config.mod_type = instance_type;
+    config.mod_type = loader;
     config.mod_type_info = extras;
-
-    let config = serde_json::to_string(&config).json_to()?;
-    let config_path = instance_dir.join("config.json");
-    tokio::fs::write(&config_path, config)
-        .await
-        .path(config_path)?;
+    config.save_to_dir(instance_dir).await?;
     Ok(())
 }
 
@@ -57,6 +50,7 @@ pub async fn install_specified_loader(
     specified_version: Option<String>,
 ) -> Result<LoaderInstallResult, String> {
     match loader {
+        Loader::Vanilla => {}
         Loader::Fabric => {
             // TODO: Add legacy fabric support
             fabric::install(
@@ -144,9 +138,6 @@ fn pipe_progress(rec: Receiver<ForgeInstallProgress>, snd: &Sender<GenericProgre
 
 pub async fn uninstall_loader(instance: InstanceSelection) -> Result<(), String> {
     let loader = InstanceConfigJson::read(&instance).await.strerr()?.mod_type;
-    let Ok(loader) = Loader::try_from(loader.as_str()) else {
-        return Ok(());
-    };
 
     match loader {
         Loader::Fabric | Loader::Quilt => fabric::uninstall(instance).await.strerr(),
@@ -158,6 +149,6 @@ pub async fn uninstall_loader(instance: InstanceSelection) -> Result<(), String>
             .await
             .strerr(),
         // Not yet supported
-        Loader::Liteloader | Loader::Modloader | Loader::Rift => Ok(()),
+        Loader::Liteloader | Loader::Modloader | Loader::Rift | Loader::Vanilla => Ok(()),
     }
 }

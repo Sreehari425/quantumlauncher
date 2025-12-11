@@ -17,8 +17,8 @@ through the entire process.
 Before you start, you will need to install
 the [Rust programming language](https://rustup.rs/).
 
-It's also a good idea to have `git` installed, although
-it's not strictly necessary.
+It's also a good idea to have `git` installed,
+although it's not strictly necessary.
 
 > TLDR; Here are the commands.
 >

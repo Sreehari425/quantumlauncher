@@ -1,19 +1,12 @@
 use std::{collections::BTreeMap, fmt::Debug, path::Path};
 
+use cfg_if::cfg_if;
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[cfg(not(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
-    target_arch = "x86",
-    feature = "simulate_linux_arm64",
-    feature = "simulate_macos_arm64"
-)))]
-use crate::constants::OS_NAME;
 use crate::{
-    constants::OS_NAMES, err, pt, InstanceSelection, IntoIoError, IntoJsonError, JsonFileError,
+    constants::*, err, pt, InstanceSelection, IntoIoError, IntoJsonError, JsonFileError, OS_NAME,
 };
 
 pub const V_PRECLASSIC_LAST: &str = "2009-05-16T11:48:00+00:00";
@@ -187,6 +180,7 @@ impl VersionDetails {
         }
     }
 
+    #[must_use]
     pub fn is_after_or_eq(&self, release_time: &str) -> bool {
         match (
             DateTime::parse_from_rfc3339(&self.releaseTime),
@@ -299,6 +293,38 @@ pub struct Library {
 
 impl Library {
     #[must_use]
+    pub fn get_artifact(&self) -> Option<LibraryDownloadArtifact> {
+        match (&self.name, self.downloads.as_ref(), self.url.as_ref()) {
+            (
+                _,
+                Some(LibraryDownloads {
+                    artifact: Some(artifact),
+                    ..
+                }),
+                _,
+            ) => Some(artifact.clone()),
+            (Some(name), None, Some(url)) => {
+                let flib = super::fabric::Library {
+                    name: name.clone(),
+                    url: Some(if url.ends_with('/') {
+                        url.clone()
+                    } else {
+                        format!("{url}/")
+                    }),
+                    rules: self.rules.clone(),
+                };
+                Some(LibraryDownloadArtifact {
+                    path: Some(flib.get_path()),
+                    sha1: String::new(),
+                    size: serde_json::Number::from_u128(0).unwrap(),
+                    url: flib.get_url()?,
+                })
+            }
+            _ => None,
+        }
+    }
+
+    #[must_use]
     pub fn is_allowed(&self) -> bool {
         let mut allowed: bool = true;
 
@@ -307,27 +333,28 @@ impl Library {
 
             for rule in rules {
                 if let Some(ref os) = rule.os {
-                    #[cfg(any(
-                        target_arch = "aarch64",
-                        target_arch = "arm",
-                        target_arch = "x86",
-                        feature = "simulate_linux_arm64",
-                        feature = "simulate_macos_arm64"
-                    ))]
-                    let target = format!("{OS_NAME}-{ARCH}");
-
-                    #[cfg(not(any(
-                        target_arch = "aarch64",
-                        target_arch = "arm",
-                        target_arch = "x86",
-                        feature = "simulate_linux_arm64",
-                        feature = "simulate_macos_arm64"
-                    )))]
-                    let target = OS_NAME;
-
-                    if os.name == target {
-                        allowed = rule.action == "allow";
-                    }
+                    cfg_if!(
+                        if #[cfg(any(
+                            target_arch = "aarch64",
+                            target_arch = "arm",
+                            target_arch = "x86",
+                            feature = "simulate_linux_arm64",
+                            feature = "simulate_macos_arm64"
+                        ))] {
+                            if os.name == format!("{OS_NAME}-{ARCH}") {
+                                allowed = rule.action == "allow";
+                            }
+                            if let Some(libname) = &self.name {
+                                if os.name == OS_NAME && libname.contains(ARCH) {
+                                    allowed = rule.action == "allow";
+                                }
+                            }
+                        } else {
+                            if os.name == OS_NAME {
+                                allowed = rule.action == "allow";
+                            }
+                        }
+                    );
 
                     #[cfg(any(
                         all(target_os = "macos", target_arch = "aarch64"),

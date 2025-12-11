@@ -1,11 +1,22 @@
 use iced::Task;
 use ql_core::{
-    pt, DownloadProgress, InstanceSelection, IntoStringError, JsonDownloadError, ListEntry,
+    DownloadProgress, InstanceSelection, IntoStringError, JsonDownloadError, ListEntry,
+    ListEntryKind,
 };
 
 use crate::state::{
     CreateInstanceMessage, Launcher, MenuCreateInstance, Message, ProgressBar, State,
 };
+
+macro_rules! iflet {
+    ($self:ident, $( $field:ident ),* ; $block:block) => {
+        if let State::Create(MenuCreateInstance::Choosing {
+            $( $field, )* ..
+        }) = &mut $self.state {
+            $block
+        }
+    };
+}
 
 impl Launcher {
     pub fn update_create_instance(&mut self, message: CreateInstanceMessage) -> Task<Message> {
@@ -16,8 +27,48 @@ impl Launcher {
             CreateInstanceMessage::VersionsLoaded(result, is_server) => {
                 self.create_instance_finish_loading_versions_list(result, is_server);
             }
-            CreateInstanceMessage::VersionSelected(selected_version) => {
-                self.select_created_instance_version(selected_version);
+            CreateInstanceMessage::VersionSelected(ver) => {
+                iflet!(self, selected_version; {
+                    *selected_version = ver;
+                });
+            }
+            CreateInstanceMessage::SearchInput(t) => {
+                iflet!(self, search_box; {
+                    *search_box = t;
+                });
+            }
+            CreateInstanceMessage::SearchSubmit => {
+                iflet!(self, search_box, selected_version, is_server, selected_categories; {
+                    if let Some(sel) = self.version_list_cache.list
+                        .as_deref()
+                        .unwrap()
+                        .iter()
+                        .filter(|n| n.supports_server || !*is_server)
+                        .filter(|n| selected_categories.contains(&n.kind))
+                        .find(|n|
+                            search_box.trim().is_empty()
+                            || n.name.trim().to_lowercase().contains(&search_box.trim().to_lowercase())
+                        ) {
+                        *selected_version = sel.clone();
+                    }
+                })
+            }
+            CreateInstanceMessage::ContextMenuToggle => {
+                iflet!(self, show_category_dropdown; {
+                    *show_category_dropdown = !*show_category_dropdown;
+                })
+            }
+            CreateInstanceMessage::CategoryToggle(kind) => {
+                iflet!(self, selected_categories; {
+                    if selected_categories.contains(&kind) {
+                        // Don't allow removing the last category
+                        if selected_categories.len() > 1 {
+                            selected_categories.remove(&kind);
+                        }
+                    } else {
+                        selected_categories.insert(kind);
+                    }
+                })
             }
             CreateInstanceMessage::NameInput(name) => self.update_created_instance_name(name),
             CreateInstanceMessage::Start => return self.create_instance(),
@@ -51,14 +102,6 @@ impl Launcher {
                 {
                     let (send, recv) = std::sync::mpsc::channel();
                     let progress = ProgressBar::with_recv(recv);
-
-                    // I know this doesn't look necessary but there's
-                    // a weird untrackable bug where importing instance
-                    // screen just doesn't appear, and the Task runs
-                    // silently in the background.
-                    //
-                    // I hope I manage to fix it in the future.
-                    pt!("(Internal): Setting state to ImportingInstance...");
 
                     self.state = State::Create(MenuCreateInstance::ImportingInstance(progress));
 
@@ -98,19 +141,29 @@ then go to "Mods->Add File""#,
     ) {
         match result {
             Ok((versions, latest)) => {
-                if is_server {
-                    self.version_list_cache.server = Some(versions.clone());
-                } else {
-                    self.version_list_cache.client = Some(versions.clone());
-                }
-                self.version_list_cache.latest_stable = Some(latest);
-                let combo_state = iced::widget::combo_box::State::new(versions.clone());
+                self.version_list_cache.list = Some(versions.clone());
+                self.version_list_cache.latest_stable = Some(latest.clone());
+
                 if let State::Create(MenuCreateInstance::LoadingList { .. }) = &self.state {
+                    let mut offset = 0.0;
+                    let len = versions.len();
+
                     self.state = State::Create(MenuCreateInstance::Choosing {
                         instance_name: String::new(),
-                        selected_version: None,
+                        selected_version: versions
+                            .iter()
+                            .enumerate()
+                            .filter(|n| n.1.kind != ListEntryKind::Snapshot)
+                            .find(|n| n.1.name == latest)
+                            .map(|n| {
+                                offset = n.0 as f32 / len as f32;
+                                n.1.clone()
+                            })
+                            .unwrap_or_else(|| ListEntry::new(latest)),
                         download_assets: true,
-                        combo_state: Box::new(combo_state),
+                        search_box: String::new(),
+                        show_category_dropdown: false,
+                        selected_categories: ListEntryKind::default_selected(),
                         is_server,
                     });
                 }
@@ -120,13 +173,25 @@ then go to "Mods->Add File""#,
     }
 
     pub fn go_to_create_screen(&mut self, is_server: bool) -> Task<Message> {
-        if let Some(versions) = self.version_list_cache.client.clone() {
-            let combo_state = iced::widget::combo_box::State::new(versions.clone());
+        if let Some(list) = &self.version_list_cache.list {
             self.state = State::Create(MenuCreateInstance::Choosing {
                 instance_name: String::new(),
-                selected_version: None,
+                selected_version: self
+                    .version_list_cache
+                    .latest_stable
+                    .as_ref()
+                    .map(|latest| {
+                        list.iter()
+                            .find(|n| n.name == *latest)
+                            .cloned()
+                            .unwrap_or_else(|| ListEntry::new(latest.to_owned()))
+                    })
+                    .or_else(|| list.first().cloned())
+                    .unwrap(),
                 download_assets: true,
-                combo_state: Box::new(combo_state),
+                search_box: String::new(),
+                show_category_dropdown: false,
+                selected_categories: ListEntryKind::default_selected(),
                 is_server,
             });
             Task::none()
@@ -137,27 +202,13 @@ then go to "Mods->Add File""#,
                     is_server,
                 ))
             };
-            let (task, handle) = if is_server {
-                Task::perform(ql_servers::list(), msg)
-            } else {
-                Task::perform(ql_instances::list_versions(), msg)
-            }
-            .abortable();
+            let (task, handle) = Task::perform(ql_instances::list_versions(), msg).abortable();
 
             self.state = State::Create(MenuCreateInstance::LoadingList {
                 _handle: handle.abort_on_drop(),
             });
 
             task
-        }
-    }
-
-    fn select_created_instance_version(&mut self, entry: ListEntry) {
-        if let State::Create(MenuCreateInstance::Choosing {
-            selected_version, ..
-        }) = &mut self.state
-        {
-            *selected_version = Some(entry);
         }
     }
 
@@ -185,14 +236,7 @@ then go to "Mods->Add File""#,
                 progress: DownloadProgress::DownloadingJsonManifest,
             };
 
-            let version = selected_version
-                .clone()
-                .or(self
-                    .version_list_cache
-                    .latest_stable
-                    .clone()
-                    .map(|name| ListEntry { name, is_server }))
-                .unwrap();
+            let version = selected_version.clone();
             let instance_name = if instance_name.trim().is_empty() {
                 version.name.clone()
             } else {

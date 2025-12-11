@@ -13,7 +13,7 @@ use std::{
 )))]
 use ql_core::constants::OS_NAME;
 use ql_core::{
-    constants::OS_NAMES,
+    constants::*,
     do_jobs, err, file_utils, info,
     json::version::{
         Library, LibraryClassifier, LibraryDownloadArtifact, LibraryDownloads, LibraryExtract,
@@ -149,7 +149,7 @@ impl GameDownloader {
             .download_library_normal(artifact, libraries_dir)
             .await?;
         let natives_path = self.instance_dir.join("libraries/natives");
-        extractlib_natives_field(library, classifiers, &jar_file, &natives_path, artifact).await?;
+        extractlib_natives_field(library, classifiers, jar_file, &natives_path, artifact).await?;
         extractlib_name_natives(library, artifact, natives_path).await?;
         Ok(())
     }
@@ -170,7 +170,7 @@ impl GameDownloader {
     pub async fn migrate_extract_native_library(
         instance_dir: &Path,
         library: &Library,
-        jar_file: &[u8],
+        jar_file: Vec<u8>,
         artifact: &LibraryDownloadArtifact,
     ) -> Result<(), DownloadError> {
         let natives_path = instance_dir.join("libraries/natives");
@@ -287,10 +287,11 @@ impl GameDownloader {
                     "(download_library_native): Library size {} doesn't match expected size {}",
                     library.len(),
                     download.size
-                )
+                );
             }
 
-            file_utils::extract_zip_archive(Cursor::new(&library), &natives_dir, true)
+            file_utils::extract_zip_archive(Cursor::new(library), &natives_dir, true)
+                .await
                 .map_err(DownloadError::NativesExtractError)?;
         }
 
@@ -358,7 +359,9 @@ async fn extractlib_name_natives(
         info!("Downloading native (2): {name}");
         let jar_file = file_utils::download_file_to_bytes(&artifact.url, false).await?;
         pt!("Extracting native: {name}");
-        extract_zip_file(&jar_file, &natives_path).map_err(DownloadError::NativesExtractError)?;
+        extract_zip_file(jar_file, &natives_path)
+            .await
+            .map_err(DownloadError::NativesExtractError)?;
     }
 
     Ok(())
@@ -367,7 +370,7 @@ async fn extractlib_name_natives(
 async fn extractlib_natives_field(
     library: &Library,
     classifiers: Option<&BTreeMap<String, LibraryClassifier>>,
-    jar_file: &[u8],
+    jar_file: Vec<u8>,
     natives_path: &Path,
     artifact: &LibraryDownloadArtifact,
 ) -> Result<(), DownloadError> {
@@ -400,7 +403,9 @@ async fn extractlib_natives_field(
     info!("Extracting natives (1): {name}");
     pt!("Extracting main jar: {name}");
 
-    extract_zip_file(jar_file, natives_path).map_err(DownloadError::NativesExtractError)?;
+    extract_zip_file(jar_file, natives_path)
+        .await
+        .map_err(DownloadError::NativesExtractError)?;
 
     let natives_url = if let Some(classifiers) = classifiers {
         if let Some(natives) = classifiers.get(natives_name) {
@@ -461,12 +466,17 @@ async fn extractlib_natives_field(
     };
 
     pt!("Extracting native jar: {name}");
-    extract_zip_file(&native_jar, natives_path).map_err(DownloadError::NativesExtractError)?;
+    extract_zip_file(native_jar, natives_path)
+        .await
+        .map_err(DownloadError::NativesExtractError)?;
 
     Ok(())
 }
 
-pub fn extract_zip_file(archive: &[u8], target_dir: &Path) -> Result<(), zip::result::ZipError> {
-    file_utils::extract_zip_archive(Cursor::new(archive), target_dir, true)?;
+pub async fn extract_zip_file(
+    archive: Vec<u8>,
+    target_dir: &Path,
+) -> Result<(), zip::result::ZipError> {
+    file_utils::extract_zip_archive(Cursor::new(archive), target_dir, true).await?;
     Ok(())
 }

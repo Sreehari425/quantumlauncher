@@ -6,7 +6,7 @@ use ql_core::{
         instance_config::ModTypeInfo,
         VersionDetails,
     },
-    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError, Progress,
+    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError, Loader, Progress,
     CLASSPATH_SEPARATOR,
 };
 use ql_java_handler::{get_java_binary, JavaVersion, JAVA};
@@ -572,7 +572,7 @@ pub async fn install_client(
 
     change_instance_type(
         &installer.instance_dir,
-        "Forge".to_owned(),
+        Loader::Forge,
         Some(ModTypeInfo {
             version: Some(installer.version.clone()),
             backend_implementation: None,

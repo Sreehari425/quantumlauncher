@@ -3,7 +3,8 @@ use std::sync::mpsc::Sender;
 use ql_core::{
     file_utils, info,
     json::{instance_config::VersionInfo, InstanceConfigJson, Manifest, VersionDetails},
-    pt, DownloadProgress, IntoIoError, IntoJsonError, IntoStringError, ListEntry, LAUNCHER_DIR,
+    pt, DownloadProgress, IntoIoError, IntoJsonError, IntoStringError, ListEntry, Loader,
+    LAUNCHER_DIR,
 };
 
 use crate::ServerError;
@@ -69,7 +70,7 @@ pub async fn create_server(
         is_classic_server = true;
 
         let archive = file_utils::download_file_to_bytes(&server.url, true).await?;
-        file_utils::extract_zip_archive(std::io::Cursor::new(archive), &server_dir, true)?;
+        file_utils::extract_zip_archive(std::io::Cursor::new(archive), &server_dir, true).await?;
 
         let old_path = server_dir.join("minecraft-server.jar");
         tokio::fs::rename(&old_path, &server_jar_path)
@@ -98,7 +99,7 @@ async fn write_config(
 ) -> Result<(), ServerError> {
     #[allow(deprecated)]
     let server_config = InstanceConfigJson {
-        mod_type: "Vanilla".to_owned(),
+        mod_type: Loader::Vanilla,
         java_override: None,
         ram_in_mb: 2048,
         enable_logger: Some(true),
@@ -109,17 +110,9 @@ async fn write_config(
         is_classic_server: is_classic_server.then_some(true),
 
         omniarchive: None,
-
-        // # Doesn't affect servers:
-        // I could add GC tuning to servers too, but I can't find
-        // a way to measure performance on a server. Besides this setting
-        // makes performance worse on clients, so I guess it's same for servers?
-        do_gc_tuning: None,
-        // This won't do anything on servers. Who wants to lose their *only way*
-        // to control the server instantly after starting it?
         close_on_start: None,
         global_settings: None,
-        java_args_mode: None,
+        global_java_args_enable: None,
         custom_jar: None,
         pre_launch_prefix_mode: None,
         mod_type_info: None,

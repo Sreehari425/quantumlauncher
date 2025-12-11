@@ -1,4 +1,5 @@
-use crate::{file_utils, IntoJsonError, JsonDownloadError};
+use crate::{err, file_utils, IntoJsonError, JsonDownloadError};
+use chrono::DateTime;
 use serde::Deserialize;
 
 /// An official Minecraft version manifest
@@ -108,6 +109,52 @@ pub struct Version {
     pub url: String,
     pub time: String,
     pub releaseTime: String,
+}
+
+impl Version {
+    #[must_use]
+    pub fn guess_if_supports_server(id: &str) -> bool {
+        if id.starts_with("inf-") || id.starts_with("in-") || id.starts_with("pc-") {
+            return false;
+        }
+        if let Some(name) = id.strip_prefix("c0.") {
+            if name.contains("_st") || name.contains("-s") {
+                return false;
+            }
+            if name.starts_with("0.11")
+                || name.starts_with("0.12")
+                || name.starts_with("0.13")
+                || name.starts_with("0.14")
+                || name.starts_with("0.15")
+            {
+                return false;
+            }
+        }
+        true
+    }
+
+    #[must_use]
+    pub fn supports_server(&self) -> bool {
+        if !Self::guess_if_supports_server(&self.id) {
+            return false;
+        }
+
+        if self.id.starts_with("a1.") {
+            // Minecraft a1.0.15: Added multiplayer to alpha
+            let a1_0_15 = DateTime::parse_from_rfc3339("2010-08-03T19:47:25+00:00").unwrap();
+            match DateTime::parse_from_rfc3339(&self.releaseTime) {
+                Ok(dt) => {
+                    if dt < a1_0_15 {
+                        return false;
+                    }
+                }
+                Err(e) => {
+                    err!("Could not parse instance date/time: {e}");
+                }
+            }
+        }
+        true
+    }
 }
 
 fn exclude_versions_after<T, F>(vec: &[T], predicate: F) -> Vec<T>

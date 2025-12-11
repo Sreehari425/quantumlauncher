@@ -22,15 +22,13 @@ const AGENT: Agent = Agent {
 };
 
 pub async fn login_new(
-    email: String,
+    email_or_username: String,
     password: String,
     account_type: AccountType,
 ) -> Result<Account, Error> {
-    // NOTE: It says email, but both username and email are accepted
-
-    info!("Logging into {account_type}... ({email})");
+    info!("Logging into {account_type}... ({email_or_username})");
     let mut value = serde_json::json!({
-        "username": &email,
+        "username": &email_or_username,
         "password": &password,
         "clientToken": account_type.get_client_id()
     });
@@ -58,14 +56,14 @@ pub async fn login_new(
         }
     };
 
-    let entry = account_type.get_keyring_entry(&email)?;
+    let entry = account_type.get_keyring_entry(&email_or_username)?;
     entry.set_password(&account_response.accessToken)?;
 
     Ok(Account::Account(AccountData {
         access_token: Some(account_response.accessToken.clone()),
         uuid: account_response.selectedProfile.id,
 
-        username: email,
+        username: email_or_username,
         nice_username: account_response.selectedProfile.name,
 
         refresh_token: account_response.accessToken,
@@ -83,14 +81,12 @@ fn insert_agent_field(account_type: AccountType, value: &mut serde_json::Value) 
 }
 
 pub async fn login_refresh(
-    email: String,
+    email_or_username: String,
     refresh_token: String,
     account_type: AccountType,
 ) -> Result<AccountData, Error> {
-    // NOTE: It says email, but both username and email are accepted
-
     pt!("Refreshing {account_type} account...");
-    let entry = account_type.get_keyring_entry(&email)?;
+    let entry = account_type.get_keyring_entry(&email_or_username)?;
 
     let mut value = serde_json::json!({
         "accessToken": refresh_token,
@@ -112,7 +108,7 @@ pub async fn login_refresh(
         access_token: Some(account_response.accessToken.clone()),
         uuid: account_response.selectedProfile.id,
 
-        username: email,
+        username: email_or_username,
         nice_username: account_response.selectedProfile.name,
 
         refresh_token: account_response.accessToken,

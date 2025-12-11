@@ -58,8 +58,8 @@ icon_define!(download, '\u{e90F}');
 icon_define!(download_file, '\u{e910}');
 icon_define!(settings_file, '\u{e911}');
 icon_define!(text_file, '\u{e912}');
-icon_define!(jar_file, '\u{e913}');
-icon_define!(zip_file, '\u{e914}');
+icon_define!(zip_file, '\u{e913}');
+icon_define!(jar_file, '\u{e914}');
 icon_define!(blank_file, '\u{e915}');
 
 icon_define!(save, '\u{e916}');

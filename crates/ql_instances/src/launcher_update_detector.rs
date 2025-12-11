@@ -96,7 +96,7 @@ pub async fn check_for_launcher_updates() -> Result<UpdateCheckInfo, UpdateError
                 "linux"
             } else if cfg!(target_os = "macos") {
                 "macos"
-            // Note: Currently not supported,
+            // Currently not supported,
             // but hook left here for any future plans
             } else if cfg!(target_os = "freebsd") {
                 "freebsd"
@@ -105,7 +105,6 @@ pub async fn check_for_launcher_updates() -> Result<UpdateCheckInfo, UpdateError
             } else if cfg!(target_os = "solaris") {
                 "solaris"
             } else {
-                err!("Update checking: Unsupported OS");
                 return Err(UpdateError::UnsupportedOS);
             };
 
@@ -192,7 +191,7 @@ pub async fn install_launcher_update(
         message: Some("Extracting new launcher".to_owned()),
         has_finished: false,
     });
-    file_utils::extract_zip_archive(std::io::Cursor::new(download_zip), exe_location, true)?;
+    file_utils::extract_zip_archive(std::io::Cursor::new(download_zip), exe_location, true).await?;
 
     // Should I, though?
     let rm_path = exe_location.join("README.md");

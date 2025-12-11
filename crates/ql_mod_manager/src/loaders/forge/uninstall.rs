@@ -2,7 +2,7 @@ use std::path::Path;
 
 use ql_core::{
     err, find_forge_shim_file, json::InstanceConfigJson, InstanceSelection, IntoIoError,
-    IntoStringError, LAUNCHER_DIR,
+    IntoStringError, Loader, LAUNCHER_DIR,
 };
 
 use crate::loaders::{self, change_instance_type};
@@ -58,14 +58,13 @@ async fn uninstall_client(instance: &str) -> Result<(), String> {
                 .path(&installer_path)
                 .strerr()?;
             config.mod_type_info = None;
-            "OptiFine"
+            Loader::OptiFine
         } else {
-            "Vanilla"
+            Loader::Vanilla
         }
     } else {
-        "Vanilla"
-    }
-    .to_owned();
+        Loader::Vanilla
+    };
     config.save_to_dir(&instance_dir).await.strerr()?;
 
     Ok(())
@@ -73,7 +72,7 @@ async fn uninstall_client(instance: &str) -> Result<(), String> {
 
 async fn uninstall_server(instance: &str) -> Result<(), ForgeInstallError> {
     let instance_dir = LAUNCHER_DIR.join("servers").join(instance);
-    change_instance_type(&instance_dir, "Vanilla".to_owned(), None).await?;
+    change_instance_type(&instance_dir, Loader::Vanilla, None).await?;
 
     if let Some(forge_shim_file) = find_forge_shim_file(&instance_dir).await {
         tokio::fs::remove_file(&forge_shim_file)

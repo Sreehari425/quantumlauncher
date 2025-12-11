@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use ql_core::{
-    err, info, json::FabricJSON, InstanceSelection, IntoIoError, IntoJsonError, IoError,
+    err, info, json::FabricJSON, InstanceSelection, IntoIoError, IntoJsonError, IoError, Loader,
     LAUNCHER_DIR,
 };
 
@@ -48,7 +48,7 @@ async fn uninstall_server(server_name: String) -> Result<(), FabricInstallError>
         }
     }
 
-    change_instance_type(&server_dir, "Vanilla".to_owned(), None).await?;
+    change_instance_type(&server_dir, Loader::Vanilla, None).await?;
     info!("Finished uninstalling fabric");
 
     Ok(())
@@ -92,7 +92,7 @@ async fn uninstall_client(instance_name: String) -> Result<(), FabricInstallErro
             .path(&cache_dir)?;
     }
 
-    change_instance_type(&instance_dir, "Vanilla".to_owned(), None).await?;
+    change_instance_type(&instance_dir, Loader::Vanilla, None).await?;
     Ok(())
 }
 
