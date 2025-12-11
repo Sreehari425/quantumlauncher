@@ -190,13 +190,13 @@ impl Launcher {
                 Ok(command) => return command,
                 Err(err) => self.set_error(err),
             },
-            InstallModsMessage::TickDesc => {
+            InstallModsMessage::TickDesc(update_msg) => {
                 if let State::ModsDownload(MenuModsDownload {
-                    description: Some(d),
+                    description: Some(description),
                     ..
                 }) = &mut self.state
                 {
-                    d.update();
+                    description.update(update_msg);
                 }
             }
             InstallModsMessage::SearchInput(input) => {

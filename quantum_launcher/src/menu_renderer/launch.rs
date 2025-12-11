@@ -159,12 +159,13 @@ impl Launcher {
             Some(InstanceNotes::Viewing { content, .. }) if content.trim().is_empty() => {
                 vertical_space().into()
             }
-            Some(InstanceNotes::Viewing { mark_state, .. }) => {
-                widget::scrollable(widget::column![MarkWidget::new(mark_state)].padding(5))
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .into()
-            }
+            Some(InstanceNotes::Viewing { mark_state, .. }) => widget::scrollable(
+                widget::column![MarkWidget::new(mark_state).heading_scale(0.7).text_size(14)]
+                    .padding(5),
+            )
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into(),
             Some(InstanceNotes::Editing { text_editor, .. }) => {
                 return widget::column!(
                     widget::text("Editing Notes").size(20),
