@@ -1,6 +1,6 @@
-# These are shell scripts that I use to automate some tasks.
+# Shell scripts that I use to automate some tasks.
 
-TODO: Support windows (these only support linux/macOS currently)
+These only support Linux/macOS/unix currently
 
 Except for `line_count.sh` which requires BASH, all other scripts
 should be POSIX-compliant and run on any POSIX-compatible `sh` shell.

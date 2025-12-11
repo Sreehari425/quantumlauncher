@@ -74,6 +74,7 @@ pub fn changelog<'a>() -> Element<'a> {
             widget::text("- Added custom jar override support"),
             widget::text("- File location on linux has moved from `~/.config` to `~/.local/share` (with auto-migration)"),
             widget::text("- Added option to redownload libraries and assets"),
+            widget::text("- Added warning for mistakenly downloading Windows 32-bit build"),
         ].spacing(5),
 
         widget::horizontal_rule(1),

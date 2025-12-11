@@ -124,8 +124,7 @@ pub struct JavaList {
     java_runtime_gamma: Vec<JavaInstallListing>,
     /// Java 17.0.8
     java_runtime_gamma_snapshot: Vec<JavaInstallListing>,
-    // FIXME: Some platforms need exotic versions of Java 8?
-    /// Java 8u202
+    /// Java 8
     jre_legacy: Vec<JavaInstallListing>,
     // Ugly windows specific thing that doesn't seem to be required?
     // minecraft_java_exe: Vec<JavaInstallListing>,

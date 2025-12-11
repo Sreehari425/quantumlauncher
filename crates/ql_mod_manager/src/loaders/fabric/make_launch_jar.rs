@@ -47,12 +47,12 @@ pub async fn make_launch_jar(
         let class_path = library_files
             .iter()
             .map(|library| {
-                // Note: best to have relative paths to
+                // Best to have relative paths to
                 // libraries instead of absolute paths:
                 //
                 // - This avoids problems with spaces in paths
                 //   (real bug fixed in v0.4)
-                // - This makes the fabric server jar file cross-platform
+                // - This makes the server jar file cross-platform
                 library
                     .strip_prefix(base)
                     .ok()

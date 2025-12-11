@@ -205,7 +205,7 @@ impl From<keyring::Error> for Error {
 /// You can read an existing refresh token
 /// from disk using [`super::read_refresh_token`].
 ///
-/// Note: This is for reusing an existing logged-in
+/// This is for reusing an existing logged-in
 /// account. If you want to freshly log in, use
 /// [`login_1_link`], [`login_2_wait`], [`login_3_xbox`]
 /// respectively in that order.

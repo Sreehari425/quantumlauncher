@@ -4,8 +4,8 @@ use crate::{
     config::LauncherConfig,
     icon_manager,
     menu_renderer::{
-        button_with_icon, center_x, get_mode_selector, settings::get_theme_selector, Element,
-        DISCORD,
+        button_with_icon, center_x, get_mode_selector, onboarding::x86_warning,
+        settings::get_theme_selector, Element, DISCORD,
     },
     state::{AccountMessage, MenuWelcome, Message},
 };
@@ -20,8 +20,9 @@ impl MenuWelcome {
                 center_x(widget::image(IMG_LOGO.clone()).width(200)),
                 center_x(widget::text("Welcome to QuantumLauncher!").size(20)),
                 center_x(widget::button("Get Started").on_press(Message::WelcomeContinueToTheme)),
-                widget::vertical_space(),
             ]
+            .push_maybe(cfg!(target_arch = "x86").then(|| center_x(x86_warning())))
+            .push(widget::vertical_space())
             .align_x(iced::alignment::Horizontal::Center)
             .spacing(10)
             .into(),

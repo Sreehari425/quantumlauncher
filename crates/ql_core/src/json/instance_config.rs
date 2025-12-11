@@ -173,9 +173,8 @@ impl InstanceConfigJson {
         instance_args
     }
 
-    pub fn get_launch_prefix(&mut self) -> &mut Vec<String> {
-        self.global_settings
-            .get_or_insert_with(GlobalSettings::default)
+    pub fn c_launch_prefix(&mut self) -> &mut Vec<String> {
+        self.c_global_settings()
             .pre_launch_prefix
             .get_or_insert_with(Vec::new)
     }
@@ -194,7 +193,7 @@ impl InstanceConfigJson {
         let mode = self.pre_launch_prefix_mode.unwrap_or_default();
 
         let mut instance_prefix: Vec<String> = self
-            .get_launch_prefix()
+            .c_launch_prefix()
             .iter_mut()
             .map(|n| n.trim().to_owned())
             .filter(|n| !n.is_empty())
@@ -230,6 +229,11 @@ impl InstanceConfigJson {
                 instance_prefix
             }
         }
+    }
+
+    pub fn c_global_settings(&mut self) -> &mut GlobalSettings {
+        self.global_settings
+            .get_or_insert_with(GlobalSettings::default)
     }
 }
 

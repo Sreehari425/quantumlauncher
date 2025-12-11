@@ -606,7 +606,7 @@ pub async fn find_item_in_dir<F: FnMut(&Path, &str) -> bool>(
 
 /// Extract a ZIP archive to a directory
 ///
-/// Note: if `strip_toplevel` is true, this removes the common root directory
+/// If `strip_toplevel` is true, this removes the common root directory
 /// (matches old `zip-extract` behavior).
 pub async fn extract_zip_archive<
     R: std::io::Read + std::io::Seek + Send + 'static,

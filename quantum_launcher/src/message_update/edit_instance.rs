@@ -145,15 +145,7 @@ impl Launcher {
                     ..
                 }) = &mut self.state
                 {
-                    menu.config
-                        .global_settings
-                        .get_or_insert_with(Default::default)
-                        .window_width = if width.is_empty() {
-                        None
-                    } else {
-                        // TODO: Error handling
-                        width.parse::<u32>().ok()
-                    }
+                    menu.config.c_global_settings().window_width = width.parse::<u32>().ok();
                 }
             }
             EditInstanceMessage::WindowHeightChanged(height) => {
@@ -162,15 +154,7 @@ impl Launcher {
                     ..
                 }) = &mut self.state
                 {
-                    menu.config
-                        .global_settings
-                        .get_or_insert_with(Default::default)
-                        .window_height = if height.is_empty() {
-                        None
-                    } else {
-                        // TODO: Error handling
-                        height.parse::<u32>().ok()
-                    }
+                    menu.config.c_global_settings().window_height = height.parse::<u32>().ok();
                 }
             }
             EditInstanceMessage::CustomJarPathChanged(path) => {

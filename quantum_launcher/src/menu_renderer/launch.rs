@@ -6,6 +6,7 @@ use iced::widget::{horizontal_space, vertical_space};
 use iced::{widget, Alignment, Length, Padding};
 use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
 
+use crate::menu_renderer::onboarding::x86_warning;
 use crate::menu_renderer::{tsubtitle, underline, FONT_MONO};
 use crate::state::{InstanceNotes, NotesMessage, WindowMessage};
 use crate::{
@@ -112,13 +113,11 @@ impl Launcher {
                 }
             }
         } else {
-            widget::column!(
-                widget::text("Select an instance")
-                    .size(14)
-                    .style(|t: &LauncherTheme| t.style_text(Color::Mid)),
-                vertical_space(),
-                last_parts
-            )
+            widget::column!(widget::text("Select an instance")
+                .size(14)
+                .style(|t: &LauncherTheme| t.style_text(Color::Mid)))
+            .push_maybe(cfg!(target_arch = "x86").then(|| x86_warning()))
+            .push(last_parts)
             .padding(10)
             .spacing(10)
             .into()
@@ -619,7 +618,7 @@ fn get_no_logs_message<'a>() -> widget::Column<'a, Message, LauncherTheme> {
     widget::column!(widget::text(BASE_MESSAGE).style(|t: &LauncherTheme| t.style_text(Color::Mid)))
         // WARN: non x86_64
         .push_maybe(cfg!(not(target_arch = "x86_64")).then_some(widget::text(
-            "Note: This version is experimental. If you want to get help join our discord",
+            "This version is experimental. If you want to get help join our discord",
         )))
         .width(Length::Fill)
         .height(Length::Fill)

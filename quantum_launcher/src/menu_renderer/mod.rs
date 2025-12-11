@@ -83,13 +83,12 @@ pub fn underline<'a>(
     )
 }
 
-pub fn center_x<'a>(e: impl Into<Element<'a>>) -> Element<'a> {
+pub fn center_x<'a>(e: impl Into<Element<'a>>) -> widget::Row<'a, Message, LauncherTheme> {
     widget::row![
         widget::horizontal_space(),
         e.into(),
         widget::horizontal_space(),
     ]
-    .into()
 }
 
 pub fn tooltip<'a>(
@@ -204,38 +203,38 @@ impl ImageState {}
 impl MenuLauncherUpdate {
     pub fn view(&'_ self) -> Element<'_> {
         if let Some(progress) = &self.progress {
-            widget::column!("Updating QuantumLauncher...", progress.view())
-        } else {
-            widget::column!(
-                "A new launcher update has been found! Do you want to download it?",
-                widget::row!(
-                    button_with_icon(icon_manager::download(), "Download", 16)
-                        .on_press(Message::UpdateDownloadStart),
-                    back_button().on_press(
-                        Message::LaunchScreenOpen {
-                            message: None,
-                            clear_selection: false,
-                            is_server: None
-                        }
-                    ),
-                    button_with_icon(icon_manager::globe(), "Open Website", 16)
-                        .on_press(Message::CoreOpenLink(WEBSITE.to_owned())),
-                ).push_maybe(cfg!(target_os = "linux").then_some(
-                    widget::column!(
-                        // WARN: Package manager
-                        "Note: If you installed this launcher from a package manager (flatpak/apt/dnf/pacman/..) it's recommended to update from there",
-                        "If you just downloaded it from the website then continue from here."
-                    )
-                )).push_maybe(cfg!(target_os = "macos").then_some(
-                    // WARN: macOS updater
-                    "Note: The updater may be broken on macOS, so download the new version from the website"
-                ))
-                .spacing(5),
-            )
+            return widget::column!("Updating QuantumLauncher...", progress.view())
+                .padding(10)
+                .into();
         }
-            .padding(10)
-            .spacing(10)
-            .into()
+        widget::column!(
+            "A new launcher update has been found! Do you want to download it?",
+            widget::Row::new()
+            .push_maybe((!cfg!(target_os = "macos")).then_some(
+                button_with_icon(icon_manager::download(), "Download", 16)
+                    .on_press(Message::UpdateDownloadStart))
+            )
+            .push(back_button().on_press(
+                Message::LaunchScreenOpen {
+                    message: None,
+                    clear_selection: false,
+                    is_server: None
+                }
+            ))
+            .push(button_with_icon(icon_manager::globe(), "Open Website", 16)
+                .on_press(Message::CoreOpenLink(WEBSITE.to_owned())))
+            .spacing(5).wrap(),
+        )
+        // WARN: Auto update configurations
+        .push_maybe(cfg!(target_os = "linux").then_some(
+            widget::column!(
+                "If you installed this launcher from a package manager/store (flatpak/apt/dnf/pacman/..) then update from there",
+                "If you downloaded it from website then it's fine."
+            )
+        ))
+        .padding(10)
+        .spacing(10)
+        .into()
     }
 }
 

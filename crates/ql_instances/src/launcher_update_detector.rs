@@ -96,7 +96,7 @@ pub async fn check_for_launcher_updates() -> Result<UpdateCheckInfo, UpdateError
                 "linux"
             } else if cfg!(target_os = "macos") {
                 "macos"
-            // Note: Currently not supported,
+            // Currently not supported,
             // but hook left here for any future plans
             } else if cfg!(target_os = "freebsd") {
                 "freebsd"
@@ -105,7 +105,6 @@ pub async fn check_for_launcher_updates() -> Result<UpdateCheckInfo, UpdateError
             } else if cfg!(target_os = "solaris") {
                 "solaris"
             } else {
-                err!("Update checking: Unsupported OS");
                 return Err(UpdateError::UnsupportedOS);
             };
 
