@@ -38,54 +38,56 @@ macro_rules! icon_define {
     };
 }
 
-icon_define!(sort, '\u{e900}'); // A-Z, Version, Playtime, Date Created, etc...
-icon_define!(update, '\u{e901}');
-icon_define!(play, '\u{e902}');
-icon_define!(delete, '\u{e903}');
-icon_define!(filter, '\u{e904}');
-icon_define!(folder, '\u{e905}');
-icon_define!(github, '\u{e906}');
-icon_define!(create, '\u{e907}');
-// icon_define!(back, '\u{e908}');
-icon_define!(back, '\u{e909}');
-icon_define!(chat, '\u{e90A}');
-icon_define!(tick, '\u{e90B}');
-icon_define!(tick2, '\u{e90C}');
-icon_define!(discord, '\u{e90D}');
-icon_define!(arrow_down, '\u{e90E}');
-icon_define!(download, '\u{e90F}');
-
-icon_define!(download_file, '\u{e910}');
-icon_define!(settings_file, '\u{e911}');
-icon_define!(text_file, '\u{e912}');
-icon_define!(zip_file, '\u{e913}');
-icon_define!(jar_file, '\u{e914}');
-icon_define!(blank_file, '\u{e915}');
-
-icon_define!(save, '\u{e916}');
-icon_define!(settings, '\u{e917}');
+icon_define!(back, '\u{e900}');
+icon_define!(bin, '\u{e901}');
+icon_define!(chatbox, '\u{e902}');
+icon_define!(checkmark, '\u{e903}');
+icon_define!(clock, '\u{e904}');
+icon_define!(close, '\u{e905}');
+icon_define!(cross, '\u{e906}');
+icon_define!(deselectall, '\u{e907}');
+icon_define!(discord, '\u{e908}');
+icon_define!(down, '\u{e909}');
+icon_define!(download, '\u{e90a}');
+icon_define!(edit, '\u{e90b}');
+icon_define!(fav, '\u{e90c}');
+icon_define!(file, '\u{e90d}');
+icon_define!(file_download, '\u{e90e}');
+icon_define!(file_gear, '\u{e90f}');
+icon_define!(file_info, '\u{e910}');
+icon_define!(file_jar, '\u{e911}');
+icon_define!(file_zip, '\u{e912}');
+icon_define!(filter, '\u{e913}');
+icon_define!(floppydisk, '\u{e914}');
+icon_define!(folder, '\u{e915}');
+icon_define!(gear, '\u{e916}');
+icon_define!(git, '\u{e917}');
 icon_define!(globe, '\u{e918}');
-icon_define!(three_lines, '\u{e919}');
-icon_define!(logo, '\u{e91A}');
-icon_define!(tick3, '\u{e91B}');
-
-icon_define!(toggle_off, '\u{e91C}');
-icon_define!(toggle_on, '\u{e91D}');
-
-icon_define!(arrow_up, '\u{e91E}');
-icon_define!(update_warn, '\u{e91F}');
-
-icon_define!(chatbox_alt, '\u{e920}'); // This is experimental, I guess
-icon_define!(mode_dark, '\u{e921}');
-icon_define!(mode_light, '\u{e922}');
-icon_define!(edit, '\u{e923}');
-icon_define!(sort2, '\u{e924}');
-icon_define!(sort_ascending, '\u{e925}');
-icon_define!(sort_descending, '\u{e926}');
-icon_define!(cross, '\u{e927}');
-
-icon_define!(win_close, '\u{e928}');
-icon_define!(win_minimize, '\u{e92A}');
-icon_define!(win_maximize, '\u{e929}');
-icon_define!(paintbrush, '\u{e92B}');
-icon_define!(windowsize, '\u{e92C}');
+icon_define!(lines, '\u{e919}');
+icon_define!(maximize, '\u{e91a}');
+icon_define!(minimize, '\u{e91b}');
+icon_define!(mode_dark, '\u{e91c}');
+icon_define!(mode_light, '\u{e91d}');
+icon_define!(new, '\u{e91e}');
+icon_define!(paintbrush, '\u{e91f}');
+icon_define!(pin, '\u{e920}');
+icon_define!(play, '\u{e921}');
+icon_define!(qm, '\u{e922}');
+icon_define!(refresh, '\u{e923}');
+icon_define!(search, '\u{e924}');
+icon_define!(selectall, '\u{e925}');
+icon_define!(sort, '\u{e926}');
+icon_define!(sort_ascend, '\u{e927}');
+icon_define!(sort_descend, '\u{e928}');
+icon_define!(toggleoff, '\u{e929}');
+icon_define!(toggleon, '\u{e92a}');
+icon_define!(tweak, '\u{e92b}');
+icon_define!(unfav, '\u{e92c}');
+icon_define!(up, '\u{e92d}');
+icon_define!(upload, '\u{e92e}');
+icon_define!(version_cancel, '\u{e92f}');
+icon_define!(version_download, '\u{e930}');
+icon_define!(version_tick, '\u{e931}');
+icon_define!(version_warn, '\u{e932}');
+icon_define!(warn, '\u{e933}');
+icon_define!(win_size, '\u{e934}')
