@@ -117,6 +117,7 @@ impl Launcher {
                 .size(14)
                 .style(|t: &LauncherTheme| t.style_text(Color::Mid)))
             .push_maybe(cfg!(target_arch = "x86").then(|| x86_warning()))
+            .push(vertical_space())
             .push(last_parts)
             .padding(10)
             .spacing(10)
@@ -155,7 +156,7 @@ impl Launcher {
 
         let notes: Element = match &menu.notes {
             None => vertical_space().into(),
-            Some(InstanceNotes::Viewing { content, .. }) if content.is_empty() => {
+            Some(InstanceNotes::Viewing { content, .. }) if content.trim().is_empty() => {
                 vertical_space().into()
             }
             Some(InstanceNotes::Viewing { mark_state, .. }) => {
@@ -196,8 +197,16 @@ impl Launcher {
             // widget::button("Export Instance").on_press(Message::ExportInstanceOpen),
             notes,
             widget::row![
-                button_with_icon(icon_manager::edit_with_size(12), "Edit Notes", 12)
-                    .on_press(Message::Notes(NotesMessage::OpenEdit)),
+                widget::button(
+                    widget::row![
+                        icon_manager::edit_with_size(10),
+                        widget::text("Edit Notes").size(12).style(tsubtitle)
+                    ]
+                    .align_y(iced::alignment::Vertical::Center)
+                    .spacing(8),
+                )
+                .padding([4, 8])
+                .on_press(Message::Notes(NotesMessage::OpenEdit)),
                 last_parts
             ]
             .align_y(Alignment::End)
