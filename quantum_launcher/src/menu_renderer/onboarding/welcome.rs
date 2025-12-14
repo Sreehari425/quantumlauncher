@@ -2,7 +2,7 @@ use iced::widget;
 
 use crate::{
     config::LauncherConfig,
-    icon_manager,
+    icons,
     menu_renderer::{
         button_with_icon, center_x, get_mode_selector, onboarding::x86_warning,
         settings::get_theme_selector, Element, DISCORD,
@@ -46,7 +46,7 @@ impl MenuWelcome {
                 widget::Space::with_height(5),
                 center_x("Oh, and also..."),
                 center_x(
-                    button_with_icon(icon_manager::chat(), "Join our Discord", 16)
+                    button_with_icon(icons::discord(), "Join our Discord", 16)
                         .on_press(Message::CoreOpenLink(DISCORD.to_owned()))
                 ),
                 widget::Space::with_height(5),

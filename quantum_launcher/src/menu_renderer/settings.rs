@@ -11,7 +11,7 @@ use crate::menu_renderer::edit_instance::{get_args_list, resolution_dialog};
 use crate::menu_renderer::{back_to_launch_screen, sidebar, tsubtitle, PADDING_NOT_BOTTOM};
 use crate::{
     config::LauncherConfig,
-    icon_manager,
+    icons,
     state::{LauncherSettingsMessage, LauncherSettingsTab, MenuLauncherSettings, Message},
     stylesheet::{
         color::Color,
@@ -57,17 +57,14 @@ impl MenuLauncherSettings {
     }
 
     fn get_heading() -> widget::Row<'static, Message, LauncherTheme> {
-        widget::row![
-            icon_manager::settings_with_size(20),
-            widget::text("Settings").size(20),
-        ]
-        .padding(iced::Padding {
-            top: 5.0,
-            right: 0.0,
-            bottom: 2.0,
-            left: 10.0,
-        })
-        .spacing(10)
+        widget::row![icons::gear_s(20), widget::text("Settings").size(20),]
+            .padding(iced::Padding {
+                top: 5.0,
+                right: 0.0,
+                bottom: 2.0,
+                left: 10.0,
+            })
+            .spacing(10)
     }
 
     fn view_ui_tab<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {
@@ -181,7 +178,7 @@ impl LauncherSettingsTab {
             LauncherSettingsTab::UserInterface => menu.view_ui_tab(config),
             LauncherSettingsTab::Internal => widget::column![
                 widget::text("Game").size(20),
-                button_with_icon(icon_manager::folder(), "Open Launcher Folder", 16)
+                button_with_icon(icons::folder(), "Open Launcher Folder", 16)
                     .on_press(Message::CoreOpenPath(LAUNCHER_DIR.clone())),
                 widget::horizontal_rule(1),
                 resolution_dialog(
@@ -220,7 +217,7 @@ impl LauncherSettingsTab {
                 ),
                 widget::horizontal_rule(1),
                 widget::row![
-                    button_with_icon(icon_manager::delete(), "Clear Java installs", 16).on_press(
+                    button_with_icon(icons::bin(), "Clear Java installs", 16).on_press(
                         Message::LauncherSettings(LauncherSettingsMessage::ClearJavaInstalls)
                     ),
                     widget::text(
@@ -245,11 +242,11 @@ impl LauncherSettingsTab {
                 .on_press(Message::LicenseChangeTab(crate::state::LicenseTab::Gpl3));
 
                 let links = widget::row![
-                    button_with_icon(icon_manager::globe(), "Website", 16)
+                    button_with_icon(icons::globe(), "Website", 16)
                         .on_press(Message::CoreOpenLink(WEBSITE.to_owned())),
-                    button_with_icon(icon_manager::github(), "Github", 16)
+                    button_with_icon(icons::github(), "Github", 16)
                         .on_press(Message::CoreOpenLink(GITHUB.to_owned())),
-                    button_with_icon(icon_manager::discord(), "Discord", 16)
+                    button_with_icon(icons::discord(), "Discord", 16)
                         .on_press(Message::CoreOpenLink(DISCORD.to_owned())),
                 ]
                 .spacing(5)

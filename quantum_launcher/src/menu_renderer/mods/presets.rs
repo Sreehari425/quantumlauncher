@@ -4,7 +4,7 @@ use iced::{widget, Length};
 use ql_core::SelectedMod;
 
 use crate::{
-    icon_manager,
+    icons,
     menu_renderer::{back_button, button_with_icon, tsubtitle, Element},
     state::{
         EditPresetsMessage, ManageModsMessage, MenuEditPresets, MenuRecommendedMods, Message,
@@ -58,7 +58,7 @@ Modrinth/Curseforge modpack"
                     self.include_config
                 )
                 .on_toggle(|t| Message::EditPresets(EditPresetsMessage::ToggleIncludeConfig(t))),
-                button_with_icon(icon_manager::save(), "Build Preset", 16)
+                button_with_icon(icons::floppydisk(), "Build Preset", 16)
                     .on_press(Message::EditPresets(EditPresetsMessage::BuildYourOwn)),
             ]
             .padding(10)
@@ -151,7 +151,7 @@ impl MenuRecommendedMods {
                 let content: Element =
                     widget::column!(
                         back_button,
-                        button_with_icon(icon_manager::download(), "Download Recommended Mods", 16)
+                        button_with_icon(icons::download(), "Download Recommended Mods", 16)
                             .on_press(Message::RecommendedMods(
                                 crate::state::RecommendedModMessage::Download
                             )),

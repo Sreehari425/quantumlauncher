@@ -4,7 +4,7 @@ use ql_core::{Loader, ModId, StoreBackendType};
 use ql_mod_manager::store::{QueryType, SearchMod};
 
 use crate::{
-    icon_manager,
+    icons,
     menu_renderer::{back_button, button_with_icon, Element, FONT_DEFAULT, FONT_MONO},
     state::{ImageState, InstallModsMessage, ManageModsMessage, MenuModsDownload, Message},
     stylesheet::{color::Color, styles::LauncherTheme},
@@ -167,20 +167,16 @@ impl MenuModsDownload {
         backend: StoreBackendType,
     ) -> Element<'a> {
         widget::row!(
-            widget::button(
-                widget::row![icon_manager::download()]
-                    .spacing(10)
-                    .padding(5)
-            )
-            .height(70)
-            .on_press_maybe(
-                (!self
-                    .mods_download_in_progress
-                    .contains_key(&ModId::from_pair(&hit.id, backend))
-                    && !self.mod_index.mods.contains_key(&hit.id)
-                    && !self.mod_index.mods.values().any(|n| n.name == hit.title))
-                .then_some(Message::InstallMods(InstallModsMessage::Download(i)))
-            ),
+            widget::button(widget::row![icons::download()].spacing(10).padding(5))
+                .height(70)
+                .on_press_maybe(
+                    (!self
+                        .mods_download_in_progress
+                        .contains_key(&ModId::from_pair(&hit.id, backend))
+                        && !self.mod_index.mods.contains_key(&hit.id)
+                        && !self.mod_index.mods.values().any(|n| n.name == hit.title))
+                    .then_some(Message::InstallMods(InstallModsMessage::Download(i)))
+                ),
             widget::button(
                 widget::row!(
                     images.view(
@@ -190,7 +186,7 @@ impl MenuModsDownload {
                         widget::column!(widget::text("...")).into()
                     ),
                     widget::column!(
-                        icon_manager::download_with_size(20),
+                        icons::download_s(20),
                         widget::text(Self::format_downloads(hit.downloads)).size(12),
                     )
                     .align_x(iced::Alignment::Center)
@@ -273,13 +269,13 @@ impl MenuModsDownload {
                     back_button()
                         .on_press(Message::InstallMods(InstallModsMessage::BackToMainScreen)),
                     widget::tooltip(
-                        button_with_icon(icon_manager::globe(), "Open Mod Page", 14)
+                        button_with_icon(icons::globe(), "Open Mod Page", 14)
                             .on_press(Message::CoreOpenLink(url.clone())),
                         widget::text(url),
                         widget::tooltip::Position::Bottom
                     )
                     .style(|n| n.style_container_sharp_box(0.0, Color::ExtraDark)),
-                    button_with_icon(icon_manager::save(), "Copy ID", 14)
+                    button_with_icon(icons::floppydisk(), "Copy ID", 14)
                         .on_press(Message::CoreCopyText(hit.id.clone())),
                 )
                 .spacing(5),

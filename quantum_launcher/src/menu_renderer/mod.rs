@@ -6,7 +6,7 @@ use crate::state::ImageState;
 use crate::stylesheet::styles::{LauncherThemeLightness, BORDER_RADIUS, BORDER_WIDTH};
 use crate::{
     config::LauncherConfig,
-    icon_manager,
+    icons,
     state::{
         AccountMessage, InstallModsMessage, LauncherSettingsMessage, LicenseTab, ManageModsMessage,
         MenuCurseforgeManualDownload, MenuLauncherUpdate, MenuLicense, Message, ProgressBar,
@@ -101,7 +101,7 @@ pub fn tooltip<'a>(
 }
 
 pub fn back_button<'a>() -> widget::Button<'a, Message, LauncherTheme> {
-    button_with_icon(icon_manager::back_with_size(14), "Back", 14)
+    button_with_icon(icons::back_s(14), "Back", 14)
 }
 
 pub fn ctxbox<'a>(inner: impl Into<Element<'a>>) -> widget::Container<'a, Message, LauncherTheme> {
@@ -210,7 +210,7 @@ impl MenuLauncherUpdate {
             "A new launcher update has been found! Do you want to download it?",
             widget::Row::new()
             .push_maybe((!cfg!(target_os = "macos")).then_some(
-                button_with_icon(icon_manager::download(), "Download", 16)
+                button_with_icon(icons::download(), "Download", 16)
                     .on_press(Message::UpdateDownloadStart))
             )
             .push(back_button().on_press(
@@ -220,7 +220,7 @@ impl MenuLauncherUpdate {
                     is_server: None
                 }
             ))
-            .push(button_with_icon(icon_manager::globe(), "Open Website", 16)
+            .push(button_with_icon(icons::globe(), "Open Website", 16)
                 .on_press(Message::CoreOpenLink(WEBSITE.to_owned())))
             .spacing(5).wrap(),
         )
@@ -251,9 +251,9 @@ pub fn get_mode_selector(config: &LauncherConfig) -> Element<'static> {
     widget::row(LauncherThemeLightness::ALL.iter().map(|n| {
         let name = widget::text(n.to_string()).size(14);
         let icon = match n {
-            LauncherThemeLightness::Light => icon_manager::mode_light_with_size(14),
-            LauncherThemeLightness::Dark => icon_manager::mode_dark_with_size(14),
-            LauncherThemeLightness::Auto => icon_manager::update_with_size(14),
+            LauncherThemeLightness::Light => icons::mode_light_s(14),
+            LauncherThemeLightness::Dark => icons::mode_dark_s(14),
+            LauncherThemeLightness::Auto => icons::refresh_s(14),
         };
 
         if *n == theme {
@@ -487,7 +487,7 @@ pub fn view_confirm<'a>(
         widget::row![
             widget::button(
                 widget::row![
-                    icon_manager::cross().style(t_white),
+                    icons::cross().style(t_white),
                     widget::text("No").style(t_white)
                 ]
                 .align_y(iced::alignment::Vertical::Center)
@@ -500,7 +500,7 @@ pub fn view_confirm<'a>(
             }),
             widget::button(
                 widget::row![
-                    icon_manager::tick().style(t_white),
+                    icons::deselectall().style(t_white),
                     widget::text("Yes").style(t_white)
                 ]
                 .align_y(iced::alignment::Vertical::Center)

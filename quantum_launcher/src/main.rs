@@ -42,7 +42,7 @@ mod cli;
 mod config;
 /// Definitions of certain icons (like Download,
 /// Play, Settings and so on) as `iced::widget`.
-mod icon_manager;
+mod icons;
 /// All the main structs and enums used in the launcher.
 mod state;
 
