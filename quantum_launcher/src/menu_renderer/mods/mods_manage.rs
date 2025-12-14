@@ -196,7 +196,7 @@ impl MenuEditMods {
                         }
                     ))
                     .spacing(10),
-                    button_with_icon(icons::download(), "Update", 16)
+                    button_with_icon(icons::version_download(), "Update", 16)
                         .on_press(Message::ManageMods(ManageModsMessage::UpdateMods)),
                 )
                 .padding(10)
