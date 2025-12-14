@@ -1,9 +1,6 @@
 use iced::widget;
 
-use super::{
-    color::Color,
-    styles::{LauncherTheme, BORDER_WIDTH},
-};
+use super::{color::Color, styles::LauncherTheme};
 
 #[derive(Default, Clone, Copy)]
 #[allow(unused)]
@@ -436,35 +433,18 @@ impl widget::svg::Catalog for LauncherTheme {
 }
 
 impl widget::radio::Catalog for LauncherTheme {
-    type Class<'a> = ();
+    type Class<'a> = widget::radio::StyleFn<'a, LauncherTheme>;
 
-    fn default<'a>() -> <Self as widget::radio::Catalog>::Class<'a> {}
+    fn default<'a>() -> <Self as widget::radio::Catalog>::Class<'a> {
+        Box::new(|l, s| l.style_radio(s, Color::SecondLight))
+    }
 
-    fn style(&self, (): &(), status: widget::radio::Status) -> widget::radio::Style {
-        match status {
-            widget::radio::Status::Active { is_selected } => widget::radio::Style {
-                background: self.get_bg(Color::Dark),
-                dot_color: self.get(if is_selected {
-                    Color::Light
-                } else {
-                    Color::Dark
-                }),
-                border_width: BORDER_WIDTH,
-                border_color: self.get(Color::SecondLight),
-                text_color: None,
-            },
-            widget::radio::Status::Hovered { is_selected } => widget::radio::Style {
-                background: self.get_bg(Color::Dark),
-                dot_color: self.get(if is_selected {
-                    Color::White
-                } else {
-                    Color::SecondDark
-                }),
-                border_width: BORDER_WIDTH,
-                border_color: self.get(Color::SecondLight),
-                text_color: None,
-            },
-        }
+    fn style(
+        &self,
+        c: &<Self as widget::radio::Catalog>::Class<'_>,
+        status: widget::radio::Status,
+    ) -> widget::radio::Style {
+        c(self, status)
     }
 }
 

@@ -624,6 +624,33 @@ impl LauncherTheme {
         }
     }
 
+    pub fn style_radio(&self, status: widget::radio::Status, color: Color) -> widget::radio::Style {
+        match status {
+            widget::radio::Status::Active { is_selected } => widget::radio::Style {
+                background: self.get_bg(Color::Dark),
+                dot_color: self.get(if is_selected {
+                    Color::SecondLight
+                } else {
+                    Color::ExtraDark
+                }),
+                border_width: BORDER_WIDTH,
+                border_color: self.get(Color::SecondLight),
+                text_color: Some(self.get(color)),
+            },
+            widget::radio::Status::Hovered { is_selected } => widget::radio::Style {
+                background: self.get_bg(Color::Dark),
+                dot_color: self.get(if is_selected {
+                    Color::White
+                } else {
+                    Color::SecondDark
+                }),
+                border_width: BORDER_WIDTH,
+                border_color: self.get(Color::SecondLight),
+                text_color: Some(self.get(color)),
+            },
+        }
+    }
+
     pub fn style_text(&self, color: Color) -> widget::text::Style {
         widget::text::Style {
             color: Some(self.get(color)),

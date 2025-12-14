@@ -68,28 +68,22 @@ impl Launcher {
     ) -> Element<'a> {
         let decor = self.config.c_window_decorations();
 
-        let last_parts = widget::column![
-            horizontal_space(),
-            widget::row![
-                // Enable/Disable the below `widget::column![]` code to
-                // toggle the experimental server manager
-                /*widget::column![
-                    vertical_space(),
-                    widget::button(if menu.is_viewing_server {
-                        "View Instances..."
-                    } else {
-                        "View Servers..."
-                    })
-                    .on_press(Message::LaunchScreenOpen {
-                        message: None,
-                        clear_selection: false,
-                        is_server: Some(!menu.is_viewing_server),
-                    }),
-                ],*/
-                get_footer_text(),
-            ],
+        let last_parts = widget::row![
+            // Enable/Disable the below `widget::button()` code to
+            // toggle the experimental server manager
+            widget::button(if menu.is_viewing_server {
+                "View Instances..."
+            } else {
+                "View Servers..."
+            })
+            .on_press(Message::LaunchScreenOpen {
+                message: None,
+                clear_selection: false,
+                is_server: Some(!menu.is_viewing_server),
+            }),
+            get_footer_text(),
         ]
-        .spacing(5);
+        .align_y(Alignment::End);
 
         let tab_body = if let Some(selected) = &self.selected_instance {
             match menu.tab {
@@ -137,7 +131,7 @@ impl Launcher {
         &'a self,
         selected_instance_s: Option<&str>,
         menu: &'a MenuLaunch,
-        last_parts: widget::Column<'a, Message, LauncherTheme>,
+        last_parts: widget::Row<'a, Message, LauncherTheme>,
         selected: &'a InstanceSelection,
     ) -> Element<'a> {
         let is_running = self.is_process_running(selected);
