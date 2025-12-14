@@ -21,10 +21,10 @@ impl MenuEditInstance {
         let bottom_part: Element = match selected_instance {
             InstanceSelection::Instance(_) => widget::column![
                 widget::row![
-                    button_with_icon(icons::download_s(12), "Reinstall Libraries", 12).on_press(
+                    button_with_icon(icons::version_download_s(12), "Reinstall Libraries", 12).on_press(
                         Message::EditInstance(EditInstanceMessage::ReinstallLibraries)
                     ),
-                    button_with_icon(icons::download_s(12), "Update Assets", 12)
+                    button_with_icon(icons::version_download_s(12), "Update Assets", 12)
                         .on_press(Message::EditInstance(EditInstanceMessage::UpdateAssets)),
                 ]
                 .spacing(5)
