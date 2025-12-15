@@ -70,8 +70,8 @@ pub fn changelog<'a>() -> Element<'a> {
         widget::text("Technical").size(32),
         widget::column![
             widget::text("- Added pre-launch prefix commands (eg: `prime-run`, `mangohud`, `gamemoderun`, etc)"),
-            widget::text("- Added global Java arguments"),
-            widget::text("- Added custom jar override support"),
+            widget::text("- Added global Java arguments and prefixes"),
+            widget::text("- Added custom jar override and custom main class options"),
             widget::text("- File location on linux has moved from `~/.config` to `~/.local/share` (with auto-migration)"),
             widget::text("- Added option to redownload libraries and assets"),
             widget::text("- Added warning for mistakenly downloading Windows 32-bit build"),
