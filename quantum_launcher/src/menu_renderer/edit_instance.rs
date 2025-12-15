@@ -333,12 +333,12 @@ fn item_footer(
     match selected_instance {
         InstanceSelection::Instance(_) => widget::column![
             widget::row![
-                button_with_icon(icons::download_s(14), "Reinstall Libraries", 13)
+                button_with_icon(icons::version_download_s(14), "Reinstall Libraries", 13)
                     .padding([4, 8])
                     .on_press(Message::EditInstance(
                         EditInstanceMessage::ReinstallLibraries
                     )),
-                button_with_icon(icons::download_s(14), "Update Assets", 13)
+                button_with_icon(icons::version_download_s(14), "Update Assets", 13)
                     .padding([4, 8])
                     .on_press(Message::EditInstance(EditInstanceMessage::UpdateAssets)),
             ]

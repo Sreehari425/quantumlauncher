@@ -166,7 +166,7 @@ impl MenuCreateInstance {
             row![
                 widget::horizontal_space(),
                 tooltip(
-                    widget::button(icons::file_zip()).padding(iced::Padding::new(8.0).left(12.0).right(12.0))
+                    widget::button(icons::upload()).padding(iced::Padding::new(8.0).left(12.0).right(12.0))
                     .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
                     widget::text("Import Instance... (VERY EXPERIMENTAL right now)").size(14),
                     Position::Top
