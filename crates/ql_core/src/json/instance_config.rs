@@ -206,20 +206,7 @@ impl InstanceConfigJson {
             .collect();
 
         match mode {
-            PreLaunchPrefixMode::Fallback => {
-                if instance_prefix.is_empty() {
-                    global_prefix.clone()
-                } else {
-                    instance_prefix
-                }
-            }
-            PreLaunchPrefixMode::Disable => {
-                if instance_prefix.is_empty() {
-                    Vec::new()
-                } else {
-                    instance_prefix
-                }
-            }
+            PreLaunchPrefixMode::Disable => instance_prefix,
             PreLaunchPrefixMode::CombineGlobalLocal => {
                 global_prefix.extend(instance_prefix);
                 global_prefix
@@ -234,6 +221,18 @@ impl InstanceConfigJson {
     pub fn c_global_settings(&mut self) -> &mut GlobalSettings {
         self.global_settings
             .get_or_insert_with(GlobalSettings::default)
+    }
+
+    pub fn get_main_class_mode(&self) -> Option<MainClassMode> {
+        self.custom_jar
+            .as_ref()
+            .is_some_and(|t| t.autoset_main_class)
+            .then_some(MainClassMode::SafeFallback)
+            .or(self
+                .main_class_override
+                .as_ref()
+                .is_some_and(|n| !n.is_empty())
+                .then_some(MainClassMode::Custom))
     }
 }
 
@@ -272,19 +271,17 @@ pub struct VersionInfo {
 /// Defines how instance pre-launch prefix commands should interact with global pre-launch prefix commands
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum PreLaunchPrefixMode {
-    /// Use global prefix only if instance prefix is empty
-    #[serde(rename = "fallback")]
-    Fallback,
     /// Only use instance prefix
     #[serde(rename = "disable")]
     Disable,
-    /// Combine global prefix + instance prefix (in order)
-    #[serde(rename = "combine_global_local")]
-    #[default]
-    CombineGlobalLocal,
     /// Combine instance prefix + global prefix (in order)
     #[serde(rename = "combine_local_global")]
     CombineLocalGlobal,
+    /// Combine global prefix + instance prefix (in order)
+    #[serde(rename = "combine_global_local")]
+    #[default]
+    #[serde(other)]
+    CombineGlobalLocal,
 }
 
 impl PreLaunchPrefixMode {
@@ -292,28 +289,26 @@ impl PreLaunchPrefixMode {
         Self::CombineGlobalLocal,
         Self::CombineLocalGlobal,
         Self::Disable,
-        Self::Fallback,
     ];
 
     #[must_use]
-    pub fn get_description(self) -> &'static str {
+    pub const fn get_description(self) -> &'static str {
         match self {
-            PreLaunchPrefixMode::Fallback => "Use global prefix only when instance has no prefix",
-            PreLaunchPrefixMode::Disable => "Use only instance prefix, ignore global prefix",
-            PreLaunchPrefixMode::CombineGlobalLocal => {
-                "Combine global + instance prefix (global first, then instance)"
-            }
-            PreLaunchPrefixMode::CombineLocalGlobal => {
-                "Combine instance + global prefix (instance first, then global)"
-            }
+            PreLaunchPrefixMode::Disable => "Only use instance prefix",
+            PreLaunchPrefixMode::CombineGlobalLocal => "Global + instance",
+            PreLaunchPrefixMode::CombineLocalGlobal => "Instance + global",
         }
+    }
+
+    #[must_use]
+    pub const fn is_disabled(self) -> bool {
+        matches!(self, PreLaunchPrefixMode::Disable)
     }
 }
 
 impl std::fmt::Display for PreLaunchPrefixMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PreLaunchPrefixMode::Fallback => write!(f, "Fallback"),
             PreLaunchPrefixMode::Disable => write!(f, "Disable"),
             PreLaunchPrefixMode::CombineGlobalLocal => write!(f, "Combine Global+Local (default)"),
             PreLaunchPrefixMode::CombineLocalGlobal => write!(f, "Combine Local+Global"),
@@ -326,4 +321,10 @@ impl std::fmt::Display for PreLaunchPrefixMode {
 pub struct CustomJarConfig {
     pub name: String,
     pub autoset_main_class: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MainClassMode {
+    SafeFallback,
+    Custom,
 }

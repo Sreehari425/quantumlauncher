@@ -7,9 +7,11 @@ use crate::{
 };
 use iced::widget;
 use ql_core::{
-    file_utils::DirItem, jarmod::JarMods, json::instance_config::PreLaunchPrefixMode,
-    read_log::Diagnostic, InstanceSelection, LaunchedProcess, ListEntry, Loader, ModId,
-    StoreBackendType,
+    file_utils::DirItem,
+    jarmod::JarMods,
+    json::instance_config::{MainClassMode, PreLaunchPrefixMode},
+    read_log::Diagnostic,
+    InstanceSelection, LaunchedProcess, ListEntry, Loader, ModId, StoreBackendType,
 };
 use ql_instances::{
     auth::{
@@ -79,7 +81,7 @@ pub enum EditInstanceMessage {
     MemoryChanged(f32),
     LoggingToggle(bool),
     CloseLauncherToggle(bool),
-    AutoSetMainClassToggle(bool),
+    SetMainClass(Option<MainClassMode>, Option<String>),
 
     JavaArgs(ListMessage),
     JavaArgsModeChanged(bool),
@@ -158,7 +160,7 @@ pub enum ManageJarModsMessage {
 #[derive(Debug, Clone)]
 pub enum InstallModsMessage {
     Open,
-    TickDesc,
+    TickDesc(frostmark::UpdateMsg),
     SearchInput(String),
     SearchResult(Res<SearchResult>),
 
@@ -329,6 +331,15 @@ impl ListMessage {
 }
 
 #[derive(Debug, Clone)]
+pub enum NotesMessage {
+    Loaded(Res<String>),
+    OpenEdit,
+    Edit(widget::text_editor::Action),
+    SaveEdit,
+    CancelEdit,
+}
+
+#[derive(Debug, Clone)]
 pub enum Message {
     Nothing,
     Error(String),
@@ -350,6 +361,7 @@ pub enum Message {
     EditPresets(EditPresetsMessage),
     LauncherSettings(LauncherSettingsMessage),
     RecommendedMods(RecommendedModMessage),
+    Notes(NotesMessage),
 
     LaunchInstanceSelected {
         name: String,
@@ -357,13 +369,14 @@ pub enum Message {
     },
     LaunchUsernameSet(String),
     LaunchStart,
+    LaunchEnd(Res<LaunchedProcess>),
+    LaunchKill,
+
     LaunchScreenOpen {
         message: Option<String>,
         clear_selection: bool,
         is_server: Option<bool>,
     },
-    LaunchEnd(Res<LaunchedProcess>),
-    LaunchKill,
     LaunchChangeTab(LaunchTabId),
 
     LaunchSidebarResize(f32),

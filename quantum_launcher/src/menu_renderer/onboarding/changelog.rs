@@ -1,6 +1,9 @@
 use iced::widget;
 
-use crate::menu_renderer::{onboarding::IMG_MANAGE_MODS, Element};
+use crate::{
+    menu_renderer::{onboarding::IMG_MANAGE_MODS, Element},
+    state::Message,
+};
 
 #[allow(unused)]
 pub fn changelog<'a>() -> Element<'a> {
@@ -22,9 +25,9 @@ pub fn changelog<'a>() -> Element<'a> {
         widget::text("UX").size(32),
 
         widget::column![
-        "- Export mods as a text list for easy manual sharing, with optional links and instance details",
-        "- Tweaked and rearranged many menus/messages",
-        "- You can now choose whether to include configuration in mod presets (thanks @Sreehari425)"
+        "- Export mods as a shareable text list with optional links!",
+        "- Write instance-specific notes for coordinates, todo lists, etc!",
+        "- Many UI tweaks everywhere",
         ].spacing(5),
 
         widget::text("Themes").size(32),
@@ -38,11 +41,11 @@ pub fn changelog<'a>() -> Element<'a> {
         widget::text("Create Instance").size(32),
         widget::column![
             widget::text("Overhauled the Create Instance screen, now with:"),
-            widget::text("- Sidebar to view versions clearer"),
+            widget::text("- Sidebar to view versions"),
             widget::text("- Filters for release/snapshot/beta/... (thanks @Sreehari425)"),
             widget::text("- Search bar"),
             widget::text("- Auto-filling version and name by default"),
-        ],
+        ].spacing(5),
 
         widget::text("Mod Menu").size(32),
         widget::column![
@@ -66,12 +69,33 @@ pub fn changelog<'a>() -> Element<'a> {
             "- \"Ctrl ,\" to open settings",
         ].spacing(5),
 
+        widget::text("Server Manager").size(32),
+
+        widget::column![
+            widget::text("Enabled a *sneak-peek* of the server manager."),
+            widget::text("You can use it to create and host your own servers!"),
+
+            widget::container(widget::column![
+                widget::text("WARNING: Very buggy and incomplete").size(14),
+                widget::text("You will face frustration if you try and daily-drive this right now").size(14)
+            ]).padding(10),
+
+            widget::text("- Enable it through the CLI flag: --enable-server-manager"),
+            widget::rich_text![
+                widget::span("- For others to join, you'll need "),
+                widget::span("PLAYIT.GG").link(Message::CoreOpenLink("https://playit.gg".to_owned())),
+                widget::span(" or port forwarding (no auto-setup yet)")
+            ],
+            widget::text("- Supports mod loaders, mod store, sending commands, viewing logs"),
+            widget::text("- More features coming soon!"),
+        ].spacing(5),
+
         widget::horizontal_rule(1),
         widget::text("Technical").size(32),
         widget::column![
             widget::text("- Added pre-launch prefix commands (eg: `prime-run`, `mangohud`, `gamemoderun`, etc)"),
-            widget::text("- Added global Java arguments"),
-            widget::text("- Added custom jar override support"),
+            widget::text("- Added global Java arguments and prefixes"),
+            widget::text("- Added custom jar override and custom main class options"),
             widget::text("- File location on linux has moved from `~/.config` to `~/.local/share` (with auto-migration)"),
             widget::text("- Added option to redownload libraries and assets"),
             widget::text("- Added warning for mistakenly downloading Windows 32-bit build"),
@@ -98,7 +122,7 @@ pub fn changelog<'a>() -> Element<'a> {
         ].spacing(5),
 
         widget::Space::with_height(10),
-        widget::container(widget::text("By the way, I've been busy with my life a lot lately.\nSorry for the lack of features.").size(12)).padding(10),
+        widget::container(widget::text("By the way, I've been busy with my life a lot lately.\nSorry for delaying many promised features.").size(12)).padding(10),
         widget::Space::with_height(10),
         widget::text("Ready to experience your new launcher now? Hit continue!").size(20),
     ]

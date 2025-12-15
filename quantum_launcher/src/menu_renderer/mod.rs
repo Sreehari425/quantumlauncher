@@ -40,6 +40,24 @@ const PADDING_NOT_BOTTOM: iced::Padding = iced::Padding {
     right: 10.0,
 };
 
+pub fn checkered_list<'a, Item: Into<Element<'a>>>(
+    children: impl IntoIterator<Item = Item>,
+) -> widget::Column<'a, Message, LauncherTheme> {
+    widget::column(children.into_iter().enumerate().map(|(i, e)| {
+        widget::container(e)
+            .width(Length::Fill)
+            .padding(16)
+            .style(move |t: &LauncherTheme| {
+                if i % 2 == 0 {
+                    t.style_container_bg(0.0, None)
+                } else {
+                    t.style_container_sharp_box(0.0, Color::ExtraDark)
+                }
+            })
+            .into()
+    }))
+}
+
 pub fn select_box<'a>(
     e: impl Into<Element<'a>>,
     is_checked: bool,
@@ -134,10 +152,9 @@ pub fn button_with_icon<'a>(
     widget::button(
         widget::row![icon.into(), widget::text(text).size(size)]
             .align_y(iced::alignment::Vertical::Center)
-            .spacing(10)
-            .padding([7, 13]),
+            .spacing(10),
     )
-    .padding(0)
+    .padding([7, 13])
 }
 
 pub fn shortcut_ctrl<'a>(key: &str) -> Element<'a> {
@@ -291,7 +308,7 @@ impl<T: Progress> ProgressBar<T> {
                 widget::text(message)
             )
         } else {
-            widget::column!(widget::progress_bar(0.0..=total, self.num),)
+            widget::column!(widget::progress_bar(0.0..=total, self.num))
         }
         .spacing(10)
     }

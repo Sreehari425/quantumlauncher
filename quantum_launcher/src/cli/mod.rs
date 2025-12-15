@@ -1,3 +1,5 @@
+use std::sync::{LazyLock, RwLock};
+
 use clap::{Parser, Subcommand};
 use owo_colors::{OwoColorize, Style};
 use ql_core::{err, LAUNCHER_VERSION_NAME, REDACT_SENSITIVE_INFO, WEBSITE};
@@ -24,8 +26,11 @@ struct Cli {
     no_sandbox: Option<bool>,
     #[arg(long)]
     no_redact_info: bool,
+    #[arg(long)]
+    #[arg(help = "Enable experimental server manager (create, delete and host local servers)")]
+    enable_server_manager: bool,
     #[arg(short, long)]
-    #[arg(help = "Manage servers, instead of instances")]
+    #[arg(help = "Operate on servers, not instances")]
     #[arg(hide = true)]
     server: bool,
 }
@@ -96,6 +101,8 @@ Supported loaders: Fabric, Forge, Quilt, NeoForge, Paper, OptiFine
         instance: String,
     },
 }
+
+pub static EXPERIMENTAL_SERVERS: LazyLock<RwLock<bool>> = LazyLock::new(|| RwLock::new(false));
 
 fn long_about() -> String {
     format!(
@@ -178,6 +185,7 @@ fn get_right_text() -> String {
 pub fn start_cli(is_dir_err: bool) {
     let cli = Cli::parse();
     *REDACT_SENSITIVE_INFO.lock().unwrap() = !cli.no_redact_info;
+    *EXPERIMENTAL_SERVERS.write().unwrap() = cli.enable_server_manager;
     if let Some(subcommand) = cli.command {
         if is_dir_err {
             std::process::exit(1);

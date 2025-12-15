@@ -8,7 +8,7 @@ use super::{
     GITHUB,
 };
 use crate::menu_renderer::edit_instance::{get_args_list, resolution_dialog};
-use crate::menu_renderer::{back_to_launch_screen, sidebar, tsubtitle, PADDING_NOT_BOTTOM};
+use crate::menu_renderer::{back_to_launch_screen, checkered_list, sidebar, tsubtitle};
 use crate::{
     config::LauncherConfig,
     icons,
@@ -25,6 +25,7 @@ pub static IMG_ICED: LazyLock<widget::image::Handle> = LazyLock::new(|| {
 });
 
 const SETTINGS_SPACING: f32 = 10.0;
+const SETTING_WIDTH: u16 = 180;
 
 impl MenuLauncherSettings {
     pub fn view<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {
@@ -48,9 +49,16 @@ impl MenuLauncherSettings {
                         Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(*tab)),
                     )
                 })
-            ),
+            )
+            .style(|_: &LauncherTheme| widget::container::Style {
+                text_color: None,
+                background: None,
+                border: iced::Border::default(),
+                shadow: iced::Shadow::default()
+            }),
             widget::scrollable(self.selected_tab.view(config, self))
                 .width(Length::Fill)
+                .spacing(0)
                 .style(LauncherTheme::style_scrollable_flat_dark)
         ]
         .into()
@@ -68,28 +76,28 @@ impl MenuLauncherSettings {
     }
 
     fn view_ui_tab<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {
-        const SETTING_WIDTH: u16 = 180;
-
         let ui_scale_apply = widget::row![
             widget::horizontal_space(),
             widget::button(widget::text("Apply").size(12))
-                .padding(iced::Padding {
-                    top: 2.0,
-                    bottom: 2.0,
-                    right: 5.0,
-                    left: 5.0,
-                })
+                .padding([1.8, 5.0])
                 .on_press(Message::LauncherSettings(
                     LauncherSettingsMessage::UiScaleApply,
                 ))
         ];
 
-        widget::column!(
-            widget::column![widget::text("User Interface").size(20)].padding(PADDING_NOT_BOTTOM),
-            widget::row!["Mode: ", get_mode_selector(config)].spacing(5).align_y(Alignment::Center).padding([0, 10]),
-            widget::column!["Theme:", get_theme_selector().wrap()]
-                .padding(iced::Padding::new(10.0).top(5.0))
-                .spacing(5),
+        checkered_list::<Element>([
+            widget::column![widget::text("User Interface").size(20)].into(),
+
+            widget::column![
+                widget::row!["Mode: ", get_mode_selector(config)]
+                    .spacing(5)
+                    .align_y(Alignment::Center),
+                widget::Space::with_height(5),
+                "Theme:",
+                get_theme_selector().wrap()
+            ]
+            .spacing(5)
+            .into(),
             widget::row![
                 widget::row![widget::text!("UI Scale ({:.2}x)  ", self.temp_scale).size(15)]
                     .push_maybe(
@@ -103,24 +111,10 @@ impl MenuLauncherSettings {
                 .step(0.1),
             ]
             .align_y(Alignment::Center)
-            .padding([5, 10])
-            .spacing(5),
+            .spacing(5)
+            .into(),
 
-            {
-                let ui_opacity = config.c_ui_opacity();
-                widget::column![
-                    widget::row![
-                        widget::text!("Window Opacity ({ui_opacity:.2}x)").width(SETTING_WIDTH).size(15),
-                        widget::slider(0.5..=1.0, ui_opacity, |n| Message::LauncherSettings(
-                            LauncherSettingsMessage::UiOpacity(n)
-                        ))
-                        .step(0.1)
-                    ].spacing(5).align_y(Alignment::Center),
-                    widget::text("Window background transparency\n0.5 (translucent) ..  1.0 (opaque)").size(12).style(tsubtitle),
-                ]
-                .padding([0, 10])
-                .spacing(5)
-            },
+            get_ui_opacity(config).into(),
 
             widget::column![
                 // TODO: This requires launcher restart
@@ -140,13 +134,32 @@ impl MenuLauncherSettings {
                 widget::checkbox("Remember window size", config.window.as_ref().is_none_or(|n| n.save_window_size))
                     .on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::ToggleWindowSize(n))),
             ]
-            .padding(10)
             .spacing(5)
-        )
-        .padding(iced::Padding::new(0.0).right(10.0))
-        .spacing(SETTINGS_SPACING)
+            .into()
+        ])
         .into()
     }
+}
+
+fn get_ui_opacity(config: &LauncherConfig) -> widget::Column<'static, Message, LauncherTheme> {
+    let ui_opacity = config.c_ui_opacity();
+    widget::column![
+        widget::row![
+            widget::text!("Window Opacity ({ui_opacity:.2}x)")
+                .width(SETTING_WIDTH)
+                .size(15),
+            widget::slider(0.5..=1.0, ui_opacity, |n| Message::LauncherSettings(
+                LauncherSettingsMessage::UiOpacity(n)
+            ))
+            .step(0.1)
+        ]
+        .spacing(5)
+        .align_y(Alignment::Center),
+        widget::text("Window background transparency\n0.5 (translucent) ..  1.0 (opaque)")
+            .size(12)
+            .style(tsubtitle),
+    ]
+    .spacing(5)
 }
 
 pub fn get_theme_selector() -> widget::Row<'static, Message, LauncherTheme> {
@@ -197,8 +210,8 @@ impl LauncherSettingsTab {
                     |msg| {
                         Message::LauncherSettings(LauncherSettingsMessage::GlobalJavaArgs(msg))
                     },
-                    false
                 ),
+                widget::Space::with_height(5),
                 "Global Pre-Launch Prefix:",
                 widget::text(
                     "Commands to prepend to the game launch command.\nExample: Use 'prime-run' to force NVIDIA GPU usage on Linux with Optimus graphics."
@@ -213,7 +226,6 @@ impl LauncherSettingsTab {
                     |n| Message::LauncherSettings(LauncherSettingsMessage::GlobalPreLaunchPrefix(
                         n
                     )),
-                    false
                 ),
                 widget::horizontal_rule(1),
                 widget::row![
@@ -230,83 +242,81 @@ impl LauncherSettingsTab {
                 .wrap(),
             ]
             .spacing(SETTINGS_SPACING)
-            .padding(10)
+            .padding(16)
             .into(),
-            LauncherSettingsTab::About => {
-                let gpl3_button = widget::button(underline(
-                    widget::text("GNU GPLv3 License").size(12),
-                    Color::Light,
-                ))
-                .padding(0)
-                .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatDark))
-                .on_press(Message::LicenseChangeTab(crate::state::LicenseTab::Gpl3));
-
-                let links = widget::row![
-                    button_with_icon(icons::globe(), "Website", 16)
-                        .on_press(Message::CoreOpenLink(WEBSITE.to_owned())),
-                    button_with_icon(icons::github(), "Github", 16)
-                        .on_press(Message::CoreOpenLink(GITHUB.to_owned())),
-                    button_with_icon(icons::discord(), "Discord", 16)
-                        .on_press(Message::CoreOpenLink(DISCORD.to_owned())),
-                ]
-                .spacing(5)
-                .wrap();
-
-                let menus = widget::row![
-                    widget::button("Changelog").on_press(Message::CoreOpenChangeLog),
-                    widget::button("Welcome Screen").on_press(Message::CoreOpenIntro),
-                    widget::button("Licenses").on_press(Message::LicenseOpen),
-                ]
-                .spacing(5)
-                .wrap();
-
-                widget::column![
-                    widget::column![
-                        widget::text("About QuantumLauncher").size(20),
-                        "Copyright 2025 Mrmayman & Contributors"
-                    ]
-                    .spacing(5),
-                    menus,
-                    links,
-                    widget::button(widget::image(IMG_ICED.clone()).height(40))
-                        .on_press(Message::CoreOpenLink("https://iced.rs".to_owned()))
-                        .padding(5)
-                        .style(
-                            |n: &LauncherTheme, status| n.style_button(status, StyleButton::Flat)
-                        ),
-                    widget::horizontal_rule(1),
-                    widget::column![
-                        widget::row![
-                            widget::text(
-                                "QuantumLauncher is free and open source software under the "
-                            )
-                            .size(12),
-                            gpl3_button,
-                        ]
-                        .wrap(),
-                        widget::text(
-                            r"No warranty is provided for this software.
-You're free to share, modify, and redistribute it under the same license."
-                        )
-                        .size(12),
-                        widget::text(
-                            r"If you like this launcher, consider sharing it with your friends.
-Every new user motivates me to keep working on this :)"
-                        )
-                        .size(12),
-                    ]
-                    .padding(iced::Padding {
-                        top: 10.0,
-                        bottom: 10.0,
-                        left: 15.0,
-                        right: 10.0,
-                    })
-                    .spacing(5),
-                ]
-                .padding(10)
-                .spacing(SETTINGS_SPACING)
-                .into()
-            }
+            LauncherSettingsTab::About => view_about_tab(),
         }
     }
+}
+
+fn view_about_tab() -> Element<'static> {
+    let gpl3_button = widget::button(underline(
+        widget::text("GNU GPLv3 License").size(12),
+        Color::Light,
+    ))
+    .padding(0)
+    .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatDark))
+    .on_press(Message::LicenseChangeTab(crate::state::LicenseTab::Gpl3));
+
+    let links = widget::row![
+        button_with_icon(icons::globe(), "Website", 16)
+            .on_press(Message::CoreOpenLink(WEBSITE.to_owned())),
+        button_with_icon(icons::github(), "Github", 16)
+            .on_press(Message::CoreOpenLink(GITHUB.to_owned())),
+        button_with_icon(icons::discord(), "Discord", 16)
+            .on_press(Message::CoreOpenLink(DISCORD.to_owned())),
+    ]
+    .spacing(5)
+    .wrap();
+
+    let menus = widget::row![
+        widget::button("Changelog").on_press(Message::CoreOpenChangeLog),
+        widget::button("Welcome Screen").on_press(Message::CoreOpenIntro),
+        widget::button("Licenses").on_press(Message::LicenseOpen),
+    ]
+    .spacing(5)
+    .wrap();
+
+    widget::column![
+        widget::column![
+            widget::text("About QuantumLauncher").size(20),
+            "Copyright 2025 Mrmayman & Contributors"
+        ]
+        .spacing(5),
+        menus,
+        links,
+        widget::button(widget::image(IMG_ICED.clone()).height(40))
+            .on_press(Message::CoreOpenLink("https://iced.rs".to_owned()))
+            .padding(5)
+            .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::Flat)),
+        widget::horizontal_rule(1),
+        widget::column![
+            widget::row![
+                widget::text("QuantumLauncher is free and open source software under the ")
+                    .size(12),
+                gpl3_button,
+            ]
+            .wrap(),
+            widget::text(
+                r"No warranty is provided for this software.
+You're free to share, modify, and redistribute it under the same license."
+            )
+            .size(12),
+            widget::text(
+                r"If you like this launcher, consider sharing it with your friends.
+Every new user motivates me to keep working on this :)"
+            )
+            .size(12),
+        ]
+        .padding(iced::Padding {
+            top: 10.0,
+            bottom: 10.0,
+            left: 15.0,
+            right: 10.0,
+        })
+        .spacing(5),
+    ]
+    .padding(16)
+    .spacing(SETTINGS_SPACING)
+    .into()
 }
