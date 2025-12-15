@@ -6,6 +6,7 @@ use iced::widget::{horizontal_space, vertical_space};
 use iced::{widget, Alignment, Length, Padding};
 use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
 
+use crate::cli::EXPERIMENTAL_SERVERS;
 use crate::menu_renderer::onboarding::x86_warning;
 use crate::menu_renderer::{tsubtitle, underline, FONT_MONO};
 use crate::state::{InstanceNotes, NotesMessage, WindowMessage};
@@ -88,20 +89,19 @@ impl Launcher {
                 }
             }
         } else {
-            widget::column!(widget::text!(
-                "Select a{}",
-                if menu.is_viewing_server {
-                    " server"
-                } else {
-                    "n instance"
-                }
-            )
+            widget::column!(widget::text(if menu.is_viewing_server {
+                "Select a server\n\nNote: You are trying the *early-alpha* server manager feature.\nYou need playit.gg (or port-forwarding) for others to join"
+            } else {
+                "Select an instance"
+            })
             .size(14)
             .style(|t: &LauncherTheme| t.style_text(Color::Mid)))
-            .push_maybe(cfg!(target_arch = "x86").then(|| x86_warning()))
+            .push_maybe(cfg!(target_arch = "x86").then(x86_warning))
             .push(vertical_space())
             .push(
-                widget::row![get_view_servers(menu.is_viewing_server), get_footer_text(),]
+                widget::Row::new()
+                    .push_maybe(get_view_servers(menu.is_viewing_server))
+                    .push(get_footer_text())
                     .align_y(Alignment::End),
             )
             .padding(16)
@@ -182,20 +182,21 @@ impl Launcher {
             // widget::button("Export Instance").on_press(Message::ExportInstanceOpen),
             notes,
             widget::row![
-                widget::column![
-                    get_view_servers(menu.is_viewing_server),
-                    widget::button(
-                        widget::row![
-                            icons::edit_s(10),
-                            widget::text("Edit Notes").size(12).style(tsubtitle)
-                        ]
-                        .align_y(iced::alignment::Vertical::Center)
-                        .spacing(8),
+                widget::Column::new()
+                    .push_maybe(get_view_servers(menu.is_viewing_server))
+                    .push(
+                        widget::button(
+                            widget::row![
+                                icons::edit_s(10),
+                                widget::text("Edit Notes").size(12).style(tsubtitle)
+                            ]
+                            .align_y(iced::alignment::Vertical::Center)
+                            .spacing(8),
+                        )
+                        .padding([4, 8])
+                        .on_press(Message::Notes(NotesMessage::OpenEdit)),
                     )
-                    .padding([4, 8])
-                    .on_press(Message::Notes(NotesMessage::OpenEdit)),
-                ]
-                .spacing(5),
+                    .spacing(5),
                 get_footer_text(),
             ]
             .align_y(Alignment::End)
@@ -508,6 +509,28 @@ impl Launcher {
     }
 }
 
+fn get_view_servers(
+    is_viewing_server: bool,
+) -> Option<widget::Button<'static, Message, LauncherTheme>> {
+    let b = widget::button(
+        widget::text(if is_viewing_server {
+            "View Instances..."
+        } else {
+            "View Servers..."
+        })
+        .size(12)
+        .style(tsubtitle),
+    )
+    .padding([4, 8])
+    .on_press(Message::LaunchScreenOpen {
+        message: None,
+        clear_selection: false,
+        is_server: Some(!is_viewing_server),
+    });
+
+    EXPERIMENTAL_SERVERS.read().unwrap().then_some(b)
+}
+
 impl MenuLaunch {
     fn get_tab_selector(&'_ self, decor: bool) -> Element<'_> {
         let tab_bar = widget::row(
@@ -702,22 +725,4 @@ fn view_info_message(
         .padding(10)
         .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark)),
     )
-}
-
-fn get_view_servers<'a>(is_viewing_server: bool) -> widget::Button<'a, Message, LauncherTheme> {
-    widget::button(
-        widget::text(if is_viewing_server {
-            "View Instances..."
-        } else {
-            "View Servers..."
-        })
-        .size(12)
-        .style(tsubtitle),
-    )
-    .padding([4, 8])
-    .on_press(Message::LaunchScreenOpen {
-        message: None,
-        clear_selection: false,
-        is_server: Some(!is_viewing_server),
-    })
 }

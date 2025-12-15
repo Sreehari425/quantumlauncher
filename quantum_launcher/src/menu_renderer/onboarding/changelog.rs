@@ -1,6 +1,9 @@
 use iced::widget;
 
-use crate::menu_renderer::{onboarding::IMG_MANAGE_MODS, Element};
+use crate::{
+    menu_renderer::{onboarding::IMG_MANAGE_MODS, Element},
+    state::Message,
+};
 
 #[allow(unused)]
 pub fn changelog<'a>() -> Element<'a> {
@@ -38,11 +41,11 @@ pub fn changelog<'a>() -> Element<'a> {
         widget::text("Create Instance").size(32),
         widget::column![
             widget::text("Overhauled the Create Instance screen, now with:"),
-            widget::text("- Sidebar to view versions clearer"),
+            widget::text("- Sidebar to view versions"),
             widget::text("- Filters for release/snapshot/beta/... (thanks @Sreehari425)"),
             widget::text("- Search bar"),
             widget::text("- Auto-filling version and name by default"),
-        ],
+        ].spacing(5),
 
         widget::text("Mod Menu").size(32),
         widget::column![
@@ -64,6 +67,27 @@ pub fn changelog<'a>() -> Element<'a> {
             "- \"Ctrl/Cmd/Alt 1/2/3\" to switch tabs in main screen",
             "- \"Ctrl N\" to create new instance",
             "- \"Ctrl ,\" to open settings",
+        ].spacing(5),
+
+        widget::text("Server Manager").size(32),
+
+        widget::column![
+            widget::text("Enabled a *sneak-peek* of the server manager."),
+            widget::text("You can use it to create and host your own servers!"),
+
+            widget::container(widget::column![
+                widget::text("WARNING: Very buggy and incomplete").size(14),
+                widget::text("You will face frustration if you try and daily-drive this right now").size(14)
+            ]).padding(10),
+
+            widget::text("- Enable it through the CLI flag: --enable-server-manager"),
+            widget::rich_text![
+                widget::span("- For others to join, you'll need "),
+                widget::span("PLAYIT.GG").link(Message::CoreOpenLink("https://playit.gg".to_owned())),
+                widget::span(" or port forwarding (no auto-setup yet)")
+            ],
+            widget::text("- Supports mod loaders, mod store, sending commands, viewing logs"),
+            widget::text("- More features coming soon!"),
         ].spacing(5),
 
         widget::horizontal_rule(1),
@@ -98,7 +122,7 @@ pub fn changelog<'a>() -> Element<'a> {
         ].spacing(5),
 
         widget::Space::with_height(10),
-        widget::container(widget::text("By the way, I've been busy with my life a lot lately.\nSorry for the lack of features.").size(12)).padding(10),
+        widget::container(widget::text("By the way, I've been busy with my life a lot lately.\nSorry for delaying many promised features.").size(12)).padding(10),
         widget::Space::with_height(10),
         widget::text("Ready to experience your new launcher now? Hit continue!").size(20),
     ]
