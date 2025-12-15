@@ -7,9 +7,11 @@ use crate::{
 };
 use iced::widget;
 use ql_core::{
-    file_utils::DirItem, jarmod::JarMods, json::instance_config::PreLaunchPrefixMode,
-    read_log::Diagnostic, InstanceSelection, LaunchedProcess, ListEntry, Loader, ModId,
-    StoreBackendType,
+    file_utils::DirItem,
+    jarmod::JarMods,
+    json::instance_config::{MainClassMode, PreLaunchPrefixMode},
+    read_log::Diagnostic,
+    InstanceSelection, LaunchedProcess, ListEntry, Loader, ModId, StoreBackendType,
 };
 use ql_instances::{
     auth::{
@@ -79,7 +81,7 @@ pub enum EditInstanceMessage {
     MemoryChanged(f32),
     LoggingToggle(bool),
     CloseLauncherToggle(bool),
-    AutoSetMainClassToggle(bool),
+    SetMainClass(Option<MainClassMode>, Option<String>),
 
     JavaArgs(ListMessage),
     JavaArgsModeChanged(bool),

@@ -160,6 +160,7 @@ impl Launcher {
         let instance_name = selected_instance.get_name();
 
         *edit_instance = Some(MenuEditInstance {
+            main_class_mode: config_json.get_main_class_mode(),
             config: config_json,
             slider_value,
             instance_name: instance_name.to_owned(),

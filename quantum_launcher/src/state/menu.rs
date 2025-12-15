@@ -14,7 +14,7 @@ use iced::{
 use ql_core::{
     file_utils::DirItem,
     jarmod::JarMods,
-    json::{InstanceConfigJson, VersionDetails},
+    json::{instance_config::MainClassMode, InstanceConfigJson, VersionDetails},
     DownloadProgress, GenericProgress, InstanceSelection, IntoStringError, ListEntry, ModId,
     OptifineUniqueVersion, SelectedMod, StoreBackendType,
 };
@@ -141,6 +141,7 @@ pub struct MenuEditInstance {
     pub old_instance_name: String,
     pub slider_value: f32,
     pub slider_text: String,
+    pub main_class_mode: Option<MainClassMode>,
 }
 
 pub enum SelectedState {

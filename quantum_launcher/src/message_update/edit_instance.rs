@@ -1,7 +1,10 @@
 use iced::Task;
 use ql_core::{
     err,
-    json::{instance_config::CustomJarConfig, GlobalSettings, InstanceConfigJson},
+    json::{
+        instance_config::{CustomJarConfig, MainClassMode},
+        GlobalSettings, InstanceConfigJson,
+    },
     IntoIoError, IntoStringError, LAUNCHER_DIR,
 };
 
@@ -15,6 +18,16 @@ use crate::{
 };
 
 macro_rules! iflet_config {
+    ($state:expr, $config:ident <- $body:block) => {
+        if let State::Launch(MenuLaunch {
+            edit_instance: Some(MenuEditInstance {
+                config: $config, ..
+            }),
+            ..
+        }) = $state
+        $body
+    };
+
     ($state:expr, $field:ident : $pat:pat, $body:block) => {
         if let State::Launch(MenuLaunch {
             edit_instance: Some(MenuEditInstance {
@@ -140,22 +153,14 @@ impl Launcher {
             EditInstanceMessage::RenameApply => return self.rename_instance(),
             EditInstanceMessage::ConfigSaved(res) => res?,
             EditInstanceMessage::WindowWidthChanged(width) => {
-                if let State::Launch(MenuLaunch {
-                    edit_instance: Some(menu),
-                    ..
-                }) = &mut self.state
-                {
-                    menu.config.c_global_settings().window_width = width.parse::<u32>().ok();
-                }
+                iflet_config!(&mut self.state, config <- {
+                    config.c_global_settings().window_width = width.parse::<u32>().ok();
+                });
             }
             EditInstanceMessage::WindowHeightChanged(height) => {
-                if let State::Launch(MenuLaunch {
-                    edit_instance: Some(menu),
-                    ..
-                }) = &mut self.state
-                {
-                    menu.config.c_global_settings().window_height = height.parse::<u32>().ok();
-                }
+                iflet_config!(&mut self.state, config <- {
+                    config.c_global_settings().window_height = height.parse::<u32>().ok();
+                });
             }
             EditInstanceMessage::CustomJarPathChanged(path) => {
                 if path == ADD_JAR_NAME {
@@ -197,22 +202,28 @@ impl Launcher {
                 }
                 Err(err) => err!("Couldn't load list of custom jars (1)! {err}"),
             },
-            EditInstanceMessage::AutoSetMainClassToggle(t) => {
+            EditInstanceMessage::SetMainClass(t, cls) => {
                 if let State::Launch(MenuLaunch {
                     edit_instance:
                         Some(MenuEditInstance {
-                            config:
-                                InstanceConfigJson {
-                                    custom_jar: Some(custom_jar),
-                                    ..
-                                },
+                            config,
+                            main_class_mode,
                             ..
                         }),
                     ..
                 }) = &mut self.state
                 {
-                    custom_jar.autoset_main_class = t;
-                }
+                    *main_class_mode = t;
+                    let (name, autos) = match t {
+                        Some(MainClassMode::Custom) => (cls, false),
+                        Some(MainClassMode::SafeFallback) => (None, true),
+                        None => (None, false),
+                    };
+                    config.main_class_override = name;
+                    if let Some(c) = &mut config.custom_jar {
+                        c.autoset_main_class = autos;
+                    }
+                };
             }
             EditInstanceMessage::ReinstallLibraries => {
                 return Ok(self.instance_redownload_stage(

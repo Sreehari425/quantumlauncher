@@ -222,6 +222,18 @@ impl InstanceConfigJson {
         self.global_settings
             .get_or_insert_with(GlobalSettings::default)
     }
+
+    pub fn get_main_class_mode(&self) -> Option<MainClassMode> {
+        self.custom_jar
+            .as_ref()
+            .is_some_and(|t| t.autoset_main_class)
+            .then_some(MainClassMode::SafeFallback)
+            .or(self
+                .main_class_override
+                .as_ref()
+                .is_some_and(|n| !n.is_empty())
+                .then_some(MainClassMode::Custom))
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -309,4 +321,10 @@ impl std::fmt::Display for PreLaunchPrefixMode {
 pub struct CustomJarConfig {
     pub name: String,
     pub autoset_main_class: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MainClassMode {
+    SafeFallback,
+    Custom,
 }

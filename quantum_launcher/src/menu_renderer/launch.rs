@@ -68,28 +68,9 @@ impl Launcher {
     ) -> Element<'a> {
         let decor = self.config.c_window_decorations();
 
-        let last_parts = widget::row![
-            // Enable/Disable the below `widget::button()` code to
-            // toggle the experimental server manager
-            widget::button(if menu.is_viewing_server {
-                "View Instances..."
-            } else {
-                "View Servers..."
-            })
-            .on_press(Message::LaunchScreenOpen {
-                message: None,
-                clear_selection: false,
-                is_server: Some(!menu.is_viewing_server),
-            }),
-            get_footer_text(),
-        ]
-        .align_y(Alignment::End);
-
         let tab_body = if let Some(selected) = &self.selected_instance {
             match menu.tab {
-                LaunchTabId::Buttons => {
-                    self.get_tab_main(selected_instance_s, menu, last_parts, selected)
-                }
+                LaunchTabId::Buttons => self.get_tab_main(selected_instance_s, menu, selected),
                 LaunchTabId::Log => self.get_tab_logs(menu).into(),
                 LaunchTabId::Edit => {
                     if let Some(menu) = &menu.edit_instance {
@@ -107,13 +88,23 @@ impl Launcher {
                 }
             }
         } else {
-            widget::column!(widget::text("Select an instance")
-                .size(14)
-                .style(|t: &LauncherTheme| t.style_text(Color::Mid)))
+            widget::column!(widget::text!(
+                "Select a{}",
+                if menu.is_viewing_server {
+                    " server"
+                } else {
+                    "n instance"
+                }
+            )
+            .size(14)
+            .style(|t: &LauncherTheme| t.style_text(Color::Mid)))
             .push_maybe(cfg!(target_arch = "x86").then(|| x86_warning()))
             .push(vertical_space())
-            .push(last_parts)
-            .padding(10)
+            .push(
+                widget::row![get_view_servers(menu.is_viewing_server), get_footer_text(),]
+                    .align_y(Alignment::End),
+            )
+            .padding(16)
             .spacing(10)
             .into()
         };
@@ -131,7 +122,6 @@ impl Launcher {
         &'a self,
         selected_instance_s: Option<&str>,
         menu: &'a MenuLaunch,
-        last_parts: widget::Row<'a, Message, LauncherTheme>,
         selected: &'a InstanceSelection,
     ) -> Element<'a> {
         let is_running = self.is_process_running(selected);
@@ -192,21 +182,25 @@ impl Launcher {
             // widget::button("Export Instance").on_press(Message::ExportInstanceOpen),
             notes,
             widget::row![
-                widget::button(
-                    widget::row![
-                        icons::edit_s(10),
-                        widget::text("Edit Notes").size(12).style(tsubtitle)
-                    ]
-                    .align_y(iced::alignment::Vertical::Center)
-                    .spacing(8),
-                )
-                .padding([4, 8])
-                .on_press(Message::Notes(NotesMessage::OpenEdit)),
-                last_parts
+                widget::column![
+                    get_view_servers(menu.is_viewing_server),
+                    widget::button(
+                        widget::row![
+                            icons::edit_s(10),
+                            widget::text("Edit Notes").size(12).style(tsubtitle)
+                        ]
+                        .align_y(iced::alignment::Vertical::Center)
+                        .spacing(8),
+                    )
+                    .padding([4, 8])
+                    .on_press(Message::Notes(NotesMessage::OpenEdit)),
+                ]
+                .spacing(5),
+                get_footer_text(),
             ]
             .align_y(Alignment::End)
         )
-        .padding(10)
+        .padding(16)
         .spacing(10)
         .into()
     }
@@ -708,4 +702,22 @@ fn view_info_message(
         .padding(10)
         .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark)),
     )
+}
+
+fn get_view_servers<'a>(is_viewing_server: bool) -> widget::Button<'a, Message, LauncherTheme> {
+    widget::button(
+        widget::text(if is_viewing_server {
+            "View Instances..."
+        } else {
+            "View Servers..."
+        })
+        .size(12)
+        .style(tsubtitle),
+    )
+    .padding([4, 8])
+    .on_press(Message::LaunchScreenOpen {
+        message: None,
+        clear_selection: false,
+        is_server: Some(!is_viewing_server),
+    })
 }

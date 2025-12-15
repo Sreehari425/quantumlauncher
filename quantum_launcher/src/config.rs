@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::Path};
 
 pub const SIDEBAR_WIDTH: f32 = 0.33;
+const OPACITY: f32 = 0.9;
 
 /// Global launcher configuration stored in
 /// `QuantumLauncher/config.json`.
@@ -203,7 +204,7 @@ impl LauncherConfig {
     }
 
     pub fn c_ui_opacity(&self) -> f32 {
-        self.ui.as_ref().map_or(0.9, |n| n.window_opacity)
+        self.ui.as_ref().map_or(OPACITY, |n| n.window_opacity)
     }
 
     pub fn c_launch_prefix(&mut self) -> &mut Vec<String> {
@@ -317,7 +318,7 @@ impl Default for UiSettings {
     fn default() -> Self {
         Self {
             window_decorations: UiWindowDecorations::default(),
-            window_opacity: 0.9,
+            window_opacity: OPACITY,
         }
     }
 }

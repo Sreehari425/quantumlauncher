@@ -116,7 +116,7 @@ impl Launcher {
             } => view_confirm(msg1, msg2, yes, no),
             State::Error { error } => view_error(error),
             State::InstallFabric(menu) => menu.view(self.instance(), self.tick_timer),
-            State::InstallJava => widget::column!(widget::text("Downloading Java").size(20),)
+            State::InstallJava => widget::column!(widget::text("Downloading Java").size(20))
                 .push_maybe(self.java_recv.as_ref().map(|n| n.view()))
                 .padding(10)
                 .spacing(10)

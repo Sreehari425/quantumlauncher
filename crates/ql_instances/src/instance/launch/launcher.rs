@@ -521,7 +521,7 @@ impl GameLauncher {
     }
 
     fn main_class_override(&self) -> Option<String> {
-        let main_class = if self.version_json.is_before_or_eq(V_PRECLASSIC_LAST) {
+        let forced_main_class = if self.version_json.is_before_or_eq(V_PRECLASSIC_LAST) {
             "com.mojang.minecraft.RubyDung"
         } else if self.version_json.is_before_or_eq(V_1_5_2) {
             "net.minecraft.launchwrapper.Launch"
@@ -532,7 +532,7 @@ impl GameLauncher {
             .custom_jar
             .as_ref()
             .is_some_and(|n| n.autoset_main_class)
-            .then_some(main_class.to_owned())
+            .then(|| forced_main_class.to_owned())
             .or_else(|| {
                 self.config_json
                     .main_class_override
