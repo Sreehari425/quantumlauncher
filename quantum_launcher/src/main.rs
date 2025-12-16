@@ -30,8 +30,7 @@ use iced::{Settings, Task};
 use state::{get_entries, Launcher, Message};
 
 use ql_core::{
-    constants::OS_NAME, err, err_no_log, file_utils, info, info_no_log, IntoStringError,
-    JsonFileError,
+    constants::OS_NAME, err, err_no_log, file_utils, info_no_log, IntoStringError, JsonFileError,
 };
 
 use crate::{menu_renderer::FONT_DEFAULT, state::CustomJarState};
@@ -311,7 +310,7 @@ fn do_migration() {
         } else if let Err(e) = file_utils::create_symlink(&new_dir, &legacy_dir) {
             eprintln!("Migration successful but couldn't create symlink to the legacy dir: {e}",);
         } else {
-            info!("Migration successful!\nYour launcher files are now in ~./local/share/QuantumLauncher");
+            ql_core::info!("Migration successful!\nYour launcher files are now in ~./local/share/QuantumLauncher");
         }
     }
 }
