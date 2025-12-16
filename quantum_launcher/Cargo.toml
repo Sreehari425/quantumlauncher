@@ -54,6 +54,7 @@ frostmark = { git = "https://github.com/Mrmayman/frostmark.git", rev = "94a4e904
 serde.workspace = true
 serde_json.workspace = true
 cfg-if.workspace = true
+semver.workspace = true
 
 # For URL encoding in log uploads
 urlencoding = "2"

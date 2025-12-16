@@ -8,9 +8,9 @@ use std::{
 use iced::Task;
 use notify::Watcher;
 use ql_core::{
-    err, file_utils, read_log::LogLine, GenericProgress, InstanceSelection, IntoIoError,
-    IntoStringError, IoError, JsonFileError, LaunchedProcess, ListEntry, ModId, Progress,
-    LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
+    err, err_no_log, file_utils, read_log::LogLine, GenericProgress, InstanceSelection,
+    IntoIoError, IntoStringError, IoError, JsonFileError, LaunchedProcess, ListEntry, ModId,
+    Progress, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
 };
 use ql_instances::auth::{ms::CLIENT_ID, AccountData, AccountType};
 use tokio::process::ChildStdin;
@@ -149,6 +149,9 @@ impl Launcher {
         } else if version == LAUNCHER_VERSION_NAME {
             launch
         } else {
+            if let Err(err) = migration(version) {
+                err_no_log!("{err}")
+            }
             config.version = Some(LAUNCHER_VERSION_NAME.to_owned());
             State::ChangeLog
         };
@@ -527,4 +530,31 @@ pub fn dir_watch<P: AsRef<Path>>(
     watcher.watch(path.as_ref(), notify::RecursiveMode::NonRecursive)?;
 
     Ok((rx, watcher))
+}
+
+fn migration(version: &str) -> Result<(), String> {
+    fn ver(major: u64, minor: u64, patch: u64) -> semver::Version {
+        semver::Version {
+            major,
+            minor,
+            patch,
+            pre: semver::Prerelease::default(),
+            build: semver::BuildMetadata::default(),
+        }
+    }
+
+    let version = version.strip_prefix("v").unwrap_or(version);
+    let version = semver::Version::parse(version).strerr()?;
+
+    if version < ver(0, 4, 3) && (cfg!(target_os = "windows") || cfg!(target_os = "macos")) {
+        // Mojang sneakily updated their Java 8 to fix certs.
+        // Let's redownload it.
+        let java_dir = LAUNCHER_DIR.join("java_installs/java_8");
+        if java_dir.is_dir() {
+            std::fs::remove_dir_all(&java_dir)
+                .path(&java_dir)
+                .strerr()?;
+        }
+    }
+    Ok(())
 }

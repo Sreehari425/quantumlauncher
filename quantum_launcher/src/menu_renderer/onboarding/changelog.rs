@@ -12,9 +12,9 @@ pub fn changelog<'a>() -> Element<'a> {
     widget::column![
         widget::text("Welcome to QuantumLauncher v0.4.3!").size(40),
 
-        widget::text("You can now install OptiFine and Forge together!"),
-
+        widget::text("Mod Loaders").size(32),
         widget::column![
+            widget::text("- You can now install OptiFine and Forge together!"),
             widget::text("Added alternate fabric implementations for versions without official Fabric support:"),
             widget::text("- Legacy Fabric (1.3-1.13)").size(14),
             widget::text("- OrnitheMC (b1.7-1.13)").size(14),
@@ -54,7 +54,7 @@ pub fn changelog<'a>() -> Element<'a> {
             widget::text("- Easy bulk-selection (ctrl-a, shift/ctrl+click)"),
             widget::text("- Better aesthetics and layout"),
             widget::text("Also:"),
-            widget::text("- Added EXPERIMENTAL importing of MultiMC/PrismLauncher instances"),
+            widget::text("- Added EXPERIMENTAL importing of MultiMC/PrismLauncher instances\n(in create instance screen)"),
             widget::text("- Added option to include/exclude configuration in mod presets (thanks @Sreehari425)"),
         ].spacing(5),
 

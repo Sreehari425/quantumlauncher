@@ -4,8 +4,7 @@ use std::{
 };
 
 use ql_core::{
-    info, json::version::LibraryDownloads, IntoIoError, CLASSPATH_SEPARATOR, LAUNCHER_DIR,
-    LAUNCHER_VERSION_NAME,
+    info, json::version::LibraryDownloads, IntoIoError, CLASSPATH_SEPARATOR, LAUNCHER_VERSION_NAME,
 };
 
 use crate::{download::GameDownloader, LAUNCHER_VERSION};
@@ -20,18 +19,6 @@ impl GameLauncher {
 
         self.migrate_natives(&version).await?;
         self.migrate_classpath_to_relative(&version).await?;
-
-        if version <= ver(0, 4, 2)
-            && (cfg!(target_os = "windows") || cfg!(target_os = "macos"))
-            && self.version_json.uses_java_8()
-        {
-            // Mojang sneakily updated their Java 8 to fix certs.
-            // Let's redownload it.
-            let java_dir = LAUNCHER_DIR.join("java_installs/java_8");
-            if java_dir.is_dir() {
-                tokio::fs::remove_dir_all(&java_dir).await.path(&java_dir)?;
-            }
-        }
 
         Ok(())
     }
