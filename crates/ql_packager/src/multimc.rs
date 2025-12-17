@@ -8,6 +8,7 @@ use std::{
 use crate::{import::pipe_progress, import::OUT_OF, InstancePackageError};
 use ql_core::{
     do_jobs, err, file_utils, info,
+    jarmod::{JarMod, JarMods},
     json::{
         FabricJSON, InstanceConfigJson, Manifest, VersionDetails, V_1_12_2,
         V_OFFICIAL_FABRIC_SUPPORT,
@@ -28,7 +29,7 @@ pub struct MmcPack {
 #[allow(non_snake_case)]
 pub struct MmcPackComponent {
     pub cachedName: String,
-    pub cachedVersion: String,
+    pub cachedVersion: Option<String>,
     pub uid: String,
 }
 
@@ -39,6 +40,7 @@ pub struct InstanceRecipe {
     loader: Option<Loader>,
     loader_version: Option<String>,
     force_vanilla_launch: bool,
+    jarmods: Vec<String>,
 }
 
 impl InstanceRecipe {
@@ -104,6 +106,17 @@ pub async fn import(
             if !notes.is_empty() {
                 ql_instances::notes::write(instance.clone(), notes.to_owned()).await?;
             }
+            Ok(())
+        },
+        async {
+            let mut jarmods = JarMods::read(&instance).await?;
+            jarmods
+                .mods
+                .extend(instance_recipe.jarmods.iter().map(|n| JarMod {
+                    filename: n.clone(),
+                    enabled: true,
+                }));
+            jarmods.save(&instance).await?;
             Ok(())
         }
     )?;
@@ -208,36 +221,43 @@ async fn get_instance_recipe(mmc_pack: &MmcPack) -> Result<InstanceRecipe, Insta
         loader: None,
         loader_version: None,
         force_vanilla_launch: false,
+        jarmods: Vec::new(),
     };
 
     for component in &mmc_pack.components {
         if component.uid.starts_with("custom.jarmod.") {
             recipe.force_vanilla_launch = true; // ?
         }
+        let version = component.cachedVersion.clone().unwrap_or_default();
 
         match component.cachedName.as_str() {
-            "Minecraft" => recipe.mc_version.clone_from(&component.cachedVersion),
+            "Minecraft" => recipe.mc_version.clone_from(&version),
 
             "Forge" => {
                 recipe.loader = Some(Loader::Forge);
-                recipe.loader_version = Some(component.cachedVersion.clone());
+                recipe.loader_version = Some(version);
             }
             "NeoForge" => {
                 recipe.loader = Some(Loader::Neoforge);
-                recipe.loader_version = Some(component.cachedVersion.clone());
+                recipe.loader_version = Some(version);
             }
             "Fabric Loader" => {
                 recipe.loader = Some(Loader::Fabric);
-                recipe.loader_version = Some(component.cachedVersion.clone());
+                recipe.loader_version = Some(version);
             }
             "Quilt Loader" => {
                 recipe.loader = Some(Loader::Quilt);
-                recipe.loader_version = Some(component.cachedVersion.clone());
+                recipe.loader_version = Some(version);
             }
 
             "LWJGL 3" => recipe.is_lwjgl3 = true,
 
             "LWJGL 2" | "Intermediary Mappings" => {}
+            name if name.contains("(jar mod)") => {
+                if let Some(jarmod_filename) = component.uid.split('.').last() {
+                    recipe.jarmods.push(format!("{}.jar", jarmod_filename));
+                }
+            }
             name => err!("Unknown MultiMC Component: {name}"),
         }
     }

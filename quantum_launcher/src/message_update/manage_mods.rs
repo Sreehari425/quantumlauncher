@@ -420,7 +420,7 @@ impl Launcher {
 
     pub fn update_manage_jar_mods(&mut self, msg: ManageJarModsMessage) -> Task<Message> {
         match msg {
-            ManageJarModsMessage::Open => match block_on(JarMods::get(self.instance())) {
+            ManageJarModsMessage::Open => match block_on(JarMods::read(self.instance())) {
                 Ok(jarmods) => {
                     self.state = State::EditJarMods(MenuEditJarMods {
                         jarmods,

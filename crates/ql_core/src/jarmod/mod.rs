@@ -31,7 +31,7 @@ mod json;
 pub use json::{JarMod, JarMods};
 
 pub async fn remove(instance: &InstanceSelection, filename: &str) -> Result<(), JsonFileError> {
-    let mut jarmods = JarMods::get(instance).await?;
+    let mut jarmods = JarMods::read(instance).await?;
 
     if let Some(idx) = jarmods
         .mods
@@ -57,7 +57,7 @@ pub async fn insert(
     name: &str,
 ) -> Result<(), JsonFileError> {
     let filename = format!("{name}.zip");
-    let mut jarmods = JarMods::get(&instance).await?;
+    let mut jarmods = JarMods::read(&instance).await?;
     if let Some(entry) = jarmods.mods.iter_mut().find(|n| n.filename == filename) {
         entry.enabled = true;
         return Ok(());
@@ -97,7 +97,7 @@ pub async fn build(instance: &InstanceSelection) -> Result<PathBuf, JarModError>
         return Ok(original_jar);
     }
 
-    let mut index = JarMods::get(instance).await?;
+    let mut index = JarMods::read(instance).await?;
     index.expand(instance).await?;
 
     let tmp_dir = jarmods_dir.join("tmp");
