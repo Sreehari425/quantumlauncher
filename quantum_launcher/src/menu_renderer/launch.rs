@@ -175,9 +175,10 @@ impl Launcher {
             widget::row![widget::text(selected.get_name()).font(FONT_MONO).size(20)]
                 .push_maybe(is_running.then_some(icons::play_s(20)))
                 .push_maybe(
-                    is_running.then_some(widget::text("Running...").size(18).style(tsubtitle))
+                    is_running.then_some(widget::text("Running...").size(16).style(tsubtitle))
                 )
-                .spacing(10),
+                .spacing(16)
+                .align_y(Alignment::Center),
             main_buttons,
             // widget::button("Export Instance").on_press(Message::ExportInstanceOpen),
             notes,

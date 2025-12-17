@@ -8,8 +8,8 @@ use ql_instances::auth::{self, AccountType};
 use crate::{
     config::ConfigAccount,
     state::{
-        AccountMessage, Launcher, LittleSkinOauth, MenuLoginAlternate, MenuLoginMS, Message,
-        ProgressBar, State, NEW_ACCOUNT_NAME, OFFLINE_ACCOUNT_NAME,
+        AccountMessage, AutoSaveKind, Launcher, LittleSkinOauth, MenuLoginAlternate, MenuLoginMS,
+        Message, ProgressBar, State, NEW_ACCOUNT_NAME, OFFLINE_ACCOUNT_NAME,
     },
 };
 
@@ -93,6 +93,7 @@ impl Launcher {
                 }
             }
             AccountMessage::LogoutConfirm => {
+                self.autosave.remove(&AutoSaveKind::LauncherConfig);
                 let username = self.accounts_selected.clone().unwrap();
                 let account_type = self
                     .accounts
@@ -296,6 +297,7 @@ impl Launcher {
     }
 
     fn account_response_3(&mut self, data: AccountData) -> Task<Message> {
+        self.autosave.remove(&AutoSaveKind::LauncherConfig);
         if data.username == OFFLINE_ACCOUNT_NAME || data.username == NEW_ACCOUNT_NAME {
             return self.go_to_launch_screen::<String>(None);
         }
