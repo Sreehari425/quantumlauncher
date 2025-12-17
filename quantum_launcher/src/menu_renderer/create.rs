@@ -7,6 +7,7 @@ use iced::{
 use ql_core::{ListEntry, ListEntryKind};
 
 use crate::{
+    cli::EXPERIMENTAL_MMC_IMPORT,
     icons,
     menu_renderer::{
         back_button, button_with_icon, ctxbox, sidebar, sidebar_button, tooltip, tsubtitle, Element,
@@ -163,16 +164,18 @@ impl MenuCreateInstance {
                 ).wrap(),
             ].spacing(5),
             widget::vertical_space(),
-            row![
-                widget::horizontal_space(),
-                tooltip(
-                    widget::button(icons::upload()).padding(iced::Padding::new(8.0).left(12.0).right(12.0))
-                    .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
-                    widget::text("Import Instance... (VERY EXPERIMENTAL right now)").size(14),
-                    Position::Top
-                ),
-                get_create_button(already_exists),
-            ].spacing(5)
+            row![widget::horizontal_space()].push_maybe(
+                EXPERIMENTAL_MMC_IMPORT.read().unwrap().then_some(
+                    tooltip(
+                        button_with_icon(icons::upload(), "Import from MultiMC...", 16)
+                        .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
+                        widget::text("Import Instance... (VERY EXPERIMENTAL right now)").size(14),
+                        Position::Top
+                    )
+                )
+            )
+            .push(get_create_button(already_exists))
+            .spacing(5)
         ].push_maybe({
             let real_platform = if cfg!(target_arch = "x86") { "x86_64" } else { "aarch64" };
             (cfg!(target_os = "linux") && (cfg!(target_arch = "x86") || cfg!(target_arch = "arm")))
