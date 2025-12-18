@@ -203,26 +203,24 @@ pub fn start_cli(is_dir_err: bool) {
                 version,
                 skip_assets,
             } => {
-                quit(command::create_instance(
+                quit(runtime.block_on(command::create_instance(
                     instance_name,
                     version,
                     skip_assets,
-                    &runtime,
                     cli.server,
-                ));
+                )));
             }
             QSubCommand::Launch {
                 instance_name,
                 username,
                 use_account,
             } => {
-                quit(command::launch_instance(
+                quit(runtime.block_on(command::launch_instance(
                     instance_name,
                     username,
                     use_account,
-                    &runtime,
                     cli.server,
-                ));
+                )));
             }
             QSubCommand::ListAvailableVersions => {
                 command::list_available_versions();
