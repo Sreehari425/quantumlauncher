@@ -140,7 +140,7 @@ impl GameLauncher {
             game_arguments.push(height.to_string());
         }
 
-        game_arguments.extend(self.config_json.game_args.iter().flatten().cloned());
+        game_arguments.extend(self.config_json.game_args.clone());
 
         Ok(game_arguments)
     }
@@ -779,7 +779,7 @@ impl GameLauncher {
             self.java_install_progress_sender.take().as_ref(),
         )
         .await?;
-        info!("Java: {program:?}");
+        info!("Java: {program:?}\n");
         Ok((Command::new(&program), program))
     }
 
@@ -809,11 +809,10 @@ impl GameLauncher {
     ) -> Result<(Command, PathBuf), GameLaunchError> {
         let (mut command, mut path) = self.get_java_command().await?;
 
-        let prefix_commands = self.config_json.setup_launch_prefix(
-            &self
-                .global_settings
+        let prefix_commands = self.config_json.build_launch_prefix(
+            self.global_settings
                 .as_ref()
-                .and_then(|n| n.pre_launch_prefix.clone())
+                .map(|n| n.pre_launch_prefix.as_slice())
                 .unwrap_or_default(),
         );
         if prefix_commands.is_empty() {

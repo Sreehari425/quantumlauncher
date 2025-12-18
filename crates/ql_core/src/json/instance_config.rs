@@ -33,10 +33,12 @@ pub struct InstanceConfigJson {
     pub enable_logger: Option<bool>,
     /// Extra Java arguments
     // Since: v0.3
-    pub java_args: Option<Vec<String>>,
+    #[serde(default)]
+    pub java_args: Vec<String>,
     /// Extra game arguments
     // Since: v0.3
-    pub game_args: Option<Vec<String>>,
+    #[serde(default)]
+    pub game_args: Vec<String>,
 
     /// Previously used to indicate if a version was downloaded from Omniarchive
     // Since: v0.3.1 - v0.4.1
@@ -156,15 +158,12 @@ impl InstanceConfigJson {
         )
     }
 
-    /// Gets Java arguments with global fallback/combination support.
-    ///
-    /// The behavior depends on the instance's `java_args_mode`.
-    /// See [`JavaArgsMode`] documentation for more info.
+    /// Gets Java arguments (combining them with global args based on configuration)
     #[must_use]
     #[allow(clippy::missing_panics_doc)] // Won't panic
     pub fn get_java_args(&self, global_args: &[String]) -> Vec<String> {
         let use_global_args = self.global_java_args_enable.unwrap_or(true);
-        let mut instance_args = self.java_args.clone().unwrap_or_default();
+        let mut instance_args = self.java_args.clone();
 
         if use_global_args {
             instance_args.extend(global_args.iter().filter(|n| !n.trim().is_empty()).cloned());
@@ -173,27 +172,17 @@ impl InstanceConfigJson {
         instance_args
     }
 
-    pub fn c_launch_prefix(&mut self) -> &mut Vec<String> {
-        self.c_global_settings()
-            .pre_launch_prefix
-            .get_or_insert_with(Vec::new)
-    }
-
-    /// Gets pre-launch prefix commands with global fallback/combination support.
+    /// Gets pre-launch prefix commands, (empty if none).
     ///
-    /// The behavior depends on the instance's `pre_launch_prefix_mode`:
-    /// - `Fallback`: Returns instance prefix if meaningful, otherwise global prefix
-    /// - `Override`: Returns instance prefix only (ignores global even if instance is empty)
-    /// - `CombineGlobalLocal`: Returns global prefix + instance prefix (global first, then instance)
-    /// - `CombineLocalGlobal`: Returns instance prefix + global prefix (instance first, then global)
-    ///
-    /// Returns an empty vector if no prefixes should be used.
+    /// Whether to combine with global prefixes, and how,
+    /// depends on the instance's [`PreLaunchPrefixMode`].
     #[must_use]
-    pub fn setup_launch_prefix(&mut self, global_prefix: &[String]) -> Vec<String> {
+    pub fn build_launch_prefix(&mut self, global_prefix: &[String]) -> Vec<String> {
         let mode = self.pre_launch_prefix_mode.unwrap_or_default();
 
         let mut instance_prefix: Vec<String> = self
-            .c_launch_prefix()
+            .c_global_settings()
+            .pre_launch_prefix
             .iter_mut()
             .map(|n| n.trim().to_owned())
             .filter(|n| !n.is_empty())
@@ -260,7 +249,8 @@ pub struct GlobalSettings {
     /// This is an optional list of commands to prepend
     /// to the launch command (e.g., "prime-run" for NVIDIA GPU usage on Linux).
     // Since: v0.4.3
-    pub pre_launch_prefix: Option<Vec<String>>,
+    #[serde(default)]
+    pub pre_launch_prefix: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

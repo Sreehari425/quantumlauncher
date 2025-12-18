@@ -14,7 +14,7 @@ use crate::{
 
 impl Launcher {
     pub fn view(&'_ self) -> Element<'_> {
-        let round = !self.config.c_window_decorations();
+        let round = !self.config.uses_system_decorations();
         let toggler = tooltip(
             widget::button(widget::row![
                 widget::horizontal_space(),
@@ -172,7 +172,7 @@ impl Launcher {
         if let State::Launch(_) = &self.state {
             menu
         } else {
-            let round = !self.config.c_window_decorations();
+            let round = !self.config.uses_system_decorations();
             widget::Column::new()
                 .push_maybe({
                     let maximized = self.window_state.is_maximized;

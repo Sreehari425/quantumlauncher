@@ -533,10 +533,10 @@ impl Launcher {
                 self.config.c_global().window_height = input.trim().parse::<u32>().ok();
             }
             LauncherSettingsMessage::GlobalJavaArgs(msg) => {
-                msg.apply(self.config.extra_java_args.get_or_insert_with(Vec::new));
+                msg.apply(&mut self.config.extra_java_args);
             }
             LauncherSettingsMessage::GlobalPreLaunchPrefix(msg) => {
-                msg.apply(self.config.c_launch_prefix());
+                msg.apply(&mut self.config.c_global().pre_launch_prefix);
             }
             LauncherSettingsMessage::ToggleWindowDecorations(b) => {
                 let decor = if b {

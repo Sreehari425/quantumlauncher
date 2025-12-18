@@ -167,13 +167,13 @@ fn setup_config(ini: &Ini, instance_recipe: &InstanceRecipe, config: &mut Instan
     }
 
     if let Ok(jvmargs) = general_get(ini, "JvmArgs") {
-        let mut java_args = config.java_args.clone().unwrap_or_default();
-        java_args.extend(jvmargs.split_whitespace().map(str::to_owned));
-        config.java_args = Some(java_args);
+        config
+            .java_args
+            .extend(jvmargs.split_whitespace().map(str::to_owned));
     }
 
     if let Ok(prefix) = general_get(ini, "WrapperCommand") {
-        *config.c_launch_prefix() = prefix
+        config.c_global_settings().pre_launch_prefix = prefix
             .split_whitespace()
             .filter(|n| !n.is_empty())
             .map(str::to_owned)

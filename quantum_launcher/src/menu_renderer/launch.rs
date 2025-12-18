@@ -67,7 +67,7 @@ impl Launcher {
         selected_instance_s: Option<&'a str>,
         menu: &'a MenuLaunch,
     ) -> Element<'a> {
-        let decor = self.config.c_window_decorations();
+        let decor = self.config.uses_system_decorations();
 
         let tab_body = if let Some(selected) = &self.selected_instance {
             match menu.tab {
@@ -113,6 +113,8 @@ impl Launcher {
             .push_maybe(view_info_message(menu))
             .push(
                 widget::container(tab_body)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
                     .style(|t: &LauncherTheme| t.style_container_bg(0.0, None)),
             )
             .into()
@@ -312,7 +314,7 @@ impl Launcher {
             self.client_list.as_deref()
         };
 
-        let decor = self.config.c_window_decorations();
+        let decor = self.config.uses_system_decorations();
 
         let list = if let Some(instances) = list {
             widget::column(instances.iter().map(|name| {

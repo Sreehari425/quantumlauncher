@@ -87,7 +87,7 @@ pub async fn launch(
     );
     java_arguments.push(main_class);
 
-    info!("Java args: {java_arguments:?}\n");
+    info!("\nJava args: {java_arguments:?}\n");
 
     print_censored_args(auth.as_ref(), &mut game_arguments);
 

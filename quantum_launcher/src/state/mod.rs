@@ -301,22 +301,20 @@ fn load_accounts(
 
     let mut accounts_dropdown = vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()];
 
-    if let Some(config_accounts) = config.accounts.as_mut() {
-        let mut accounts_to_remove = Vec::new();
+    let mut accounts_to_remove = Vec::new();
 
-        for (username, account) in config_accounts.iter_mut() {
-            load_account(
-                &mut accounts,
-                &mut accounts_dropdown,
-                &mut accounts_to_remove,
-                username,
-                account,
-            );
-        }
+    for (username, account) in config.accounts.iter_mut() {
+        load_account(
+            &mut accounts,
+            &mut accounts_dropdown,
+            &mut accounts_to_remove,
+            username,
+            account,
+        );
+    }
 
-        for rem in accounts_to_remove {
-            config_accounts.remove(&rem);
-        }
+    for rem in accounts_to_remove {
+        config.accounts.remove(&rem);
     }
 
     let selected_account = config.account_selected.clone().unwrap_or(

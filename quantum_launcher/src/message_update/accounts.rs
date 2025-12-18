@@ -103,9 +103,7 @@ impl Launcher {
                 if let Err(err) = auth::logout(account_type.strip_name(&username), account_type) {
                     self.set_error(err);
                 }
-                if let Some(accounts) = &mut self.config.accounts {
-                    accounts.remove(&username);
-                }
+                self.config.accounts.remove(&username);
                 self.accounts.remove(&username);
                 if let Some(idx) = self
                     .accounts_dropdown
@@ -309,8 +307,7 @@ impl Launcher {
         }
         self.accounts_dropdown.insert(0, username.clone());
 
-        let accounts = self.config.accounts.get_or_insert_with(Default::default);
-        accounts.insert(
+        self.config.accounts.insert(
             username.clone(),
             ConfigAccount {
                 uuid: data.uuid.clone(),

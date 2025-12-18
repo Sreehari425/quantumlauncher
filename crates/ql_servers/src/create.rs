@@ -103,8 +103,8 @@ async fn write_config(
         java_override: None,
         ram_in_mb: 2048,
         enable_logger: Some(true),
-        java_args: None,
-        game_args: None,
+        java_args: Vec::new(),
+        game_args: Vec::new(),
 
         is_server: Some(true),
         is_classic_server: is_classic_server.then_some(true),

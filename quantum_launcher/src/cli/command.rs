@@ -253,12 +253,9 @@ fn refresh_account(
 ) -> Result<Option<auth::AccountData>, Box<dyn std::error::Error>> {
     Ok(if use_account {
         let config = LauncherConfig::load_s()?;
-        let Some(accounts) = config.accounts else {
-            err!("You haven't paired any accounts yet! Use the graphical interface to add some.");
-            exit(1);
-        };
-        let Some((real_name, account)) = accounts.get_key_value(username).or_else(|| {
-            accounts
+        let Some((real_name, account)) = config.accounts.get_key_value(username).or_else(|| {
+            config
+                .accounts
                 .iter()
                 .find(|n| n.1.username_nice.as_ref().is_some_and(|n| n == username))
         }) else {

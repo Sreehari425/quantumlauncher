@@ -51,7 +51,7 @@ macro_rules! iflet_config {
             let global_settings =
                 global_settings.get_or_insert_with(GlobalSettings::default);
             let $prefix =
-                global_settings.pre_launch_prefix.get_or_insert_with(Vec::new);
+                &mut global_settings.pre_launch_prefix;
             $body
         });
     };
@@ -108,12 +108,12 @@ impl Launcher {
             }
             EditInstanceMessage::JavaArgs(msg) => {
                 iflet_config!(&mut self.state, java_args, {
-                    msg.apply(java_args.get_or_insert_with(Vec::new));
+                    msg.apply(java_args);
                 });
             }
             EditInstanceMessage::GameArgs(msg) => {
                 iflet_config!(&mut self.state, game_args, {
-                    msg.apply(game_args.get_or_insert_with(Vec::new));
+                    msg.apply(game_args);
                 });
             }
             EditInstanceMessage::PreLaunchPrefix(msg) => {

@@ -49,7 +49,7 @@ impl Launcher {
         self.java_recv = Some(ProgressBar::with_recv(receiver));
 
         let global_settings = self.config.global_settings.clone();
-        let extra_java_args = self.config.extra_java_args.clone().unwrap_or_default();
+        let extra_java_args = self.config.extra_java_args.clone();
 
         let instance_name = self.instance().get_name().to_owned();
         Task::perform(

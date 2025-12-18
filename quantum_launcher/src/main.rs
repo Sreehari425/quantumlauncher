@@ -163,7 +163,7 @@ fn main() {
     let config = load_config(launcher_dir.is_some());
 
     let c = config.as_ref().cloned().unwrap_or_default();
-    let decorations = c.c_window_decorations();
+    let decorations = c.uses_system_decorations();
     let (width, height) = c.c_window_size();
 
     iced::application("QuantumLauncher", Launcher::update, Launcher::view)

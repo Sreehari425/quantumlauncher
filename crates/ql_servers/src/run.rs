@@ -45,7 +45,7 @@ pub async fn run(
     let java_path = launcher.get_java(java_install_progress.as_ref()).await?;
 
     let java_args = launcher.get_java_args(&server_jar_path).await?;
-    let mut game_args = launcher.config.game_args.clone().unwrap_or_default();
+    let mut game_args = launcher.config.game_args.clone();
     game_args.push("nogui".to_owned());
 
     info!("Java: {java_path:?}\n");

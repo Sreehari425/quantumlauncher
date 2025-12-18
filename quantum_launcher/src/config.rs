@@ -55,7 +55,8 @@ pub struct LauncherConfig {
     /// is called on each account's key value (username)
     /// to get the refresh token (stored securely on disk).
     // Since: v0.4
-    pub accounts: Option<HashMap<String, ConfigAccount>>,
+    #[serde(default)]
+    pub accounts: HashMap<String, ConfigAccount>,
     /// Refers to the entry of the `accounts` map
     /// that's selected in the UI when you open the launcher.
     // Since: v0.4.2
@@ -86,7 +87,10 @@ pub struct LauncherConfig {
     /// Settings that apply both on a per-instance basis and with global overrides.
     // Since: v0.4.2
     pub global_settings: Option<GlobalSettings>,
-    pub extra_java_args: Option<Vec<String>>,
+    // Since: v0.4.3
+    #[serde(default)]
+    pub extra_java_args: Vec<String>,
+    // Since: v0.4.3
     pub ui: Option<UiSettings>,
 }
 
@@ -98,14 +102,14 @@ impl Default for LauncherConfig {
             ui_mode: None,
             ui_theme: None,
             version: Some(LAUNCHER_VERSION_NAME.to_owned()),
-            accounts: None,
+            accounts: HashMap::new(),
             ui_scale: None,
             java_installs: Some(Vec::new()),
             ui_antialiasing: Some(true),
             account_selected: None,
             window: None,
             global_settings: None,
-            extra_java_args: None,
+            extra_java_args: Vec::new(),
             ui: None,
         }
     }
@@ -170,8 +174,8 @@ impl LauncherConfig {
         if self.ui_antialiasing.is_none() {
             self.ui_antialiasing = Some(true);
         }
-        if let (Some(accounts), Some(selected)) = (&self.accounts, &self.account_selected) {
-            if !accounts.contains_key(selected) {
+        if let Some(selected) = &self.account_selected {
+            if !self.accounts.contains_key(selected) {
                 self.account_selected = None;
             }
         }
@@ -193,7 +197,7 @@ impl LauncherConfig {
             .unwrap_or(WINDOW_WIDTH * scale);
         let window_height = window.height.filter(|_| window.save_window_size).unwrap_or(
             (WINDOW_HEIGHT
-                + if self.c_window_decorations() {
+                + if self.uses_system_decorations() {
                     0.0
                 } else {
                     30.0
@@ -207,13 +211,7 @@ impl LauncherConfig {
         self.ui.as_ref().map_or(OPACITY, |n| n.window_opacity)
     }
 
-    pub fn c_launch_prefix(&mut self) -> &mut Vec<String> {
-        self.c_global()
-            .pre_launch_prefix
-            .get_or_insert_with(Vec::new)
-    }
-
-    pub fn c_window_decorations(&self) -> bool {
+    pub fn uses_system_decorations(&self) -> bool {
         self.ui
             .as_ref()
             .map(|n| matches!(n.window_decorations, UiWindowDecorations::System))
@@ -310,7 +308,9 @@ impl Default for WindowProperties {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct UiSettings {
+    // Since: v0.4.3
     pub window_decorations: UiWindowDecorations,
+    // Since: v0.4.3
     pub window_opacity: f32,
 }
 

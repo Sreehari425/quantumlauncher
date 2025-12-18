@@ -136,12 +136,12 @@ impl MenuEditInstance {
                     .text_size(12)
             ]
             .align_y(Alignment::Center),
-            get_args_list(self.config.java_args.as_deref(), |n| Message::EditInstance(
+            get_args_list(&self.config.java_args, |n| Message::EditInstance(
                 EditInstanceMessage::JavaArgs(n)
             )),
             sp(),
             "Game arguments:",
-            get_args_list(self.config.game_args.as_deref(), |n| Message::EditInstance(
+            get_args_list(&self.config.game_args, |n| Message::EditInstance(
                 EditInstanceMessage::GameArgs(n)
             )),
             sp(),
@@ -175,7 +175,8 @@ impl MenuEditInstance {
                 self.config
                     .global_settings
                     .as_ref()
-                    .and_then(|n| n.pre_launch_prefix.as_deref()),
+                    .map(|n| n.pre_launch_prefix.as_slice())
+                    .unwrap_or_default(),
                 |n| Message::EditInstance(EditInstanceMessage::PreLaunchPrefix(n)),
             )]
             .push_maybe(
@@ -391,12 +392,11 @@ pub fn resolution_dialog<'a>(
 }
 
 pub fn get_args_list<'a>(
-    args: Option<&'a [String]>,
+    args: &'a [String],
     msg: impl Fn(ListMessage) -> Message + Clone + 'static,
 ) -> Element<'a> {
     const ITEM_SIZE: u16 = 10;
 
-    let args = args.unwrap_or_default();
     fn opt<'a>(
         icon: widget::Text<'a, LauncherTheme>,
     ) -> widget::Button<'a, Message, LauncherTheme> {
