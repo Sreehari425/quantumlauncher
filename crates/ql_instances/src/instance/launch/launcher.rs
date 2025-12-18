@@ -142,7 +142,7 @@ impl GameLauncher {
             game_arguments.push(height.to_string());
         }
 
-        game_arguments.extend(self.config_json.game_args.clone());
+        game_arguments.extend(self.config_json.game_args.clone().unwrap_or_default());
 
         Ok(game_arguments)
     }
@@ -911,7 +911,7 @@ impl GameLauncher {
         let prefix_commands = self.config_json.build_launch_prefix(
             self.global_settings
                 .as_ref()
-                .map(|n| n.pre_launch_prefix.as_slice())
+                .and_then(|n| n.pre_launch_prefix.as_deref())
                 .unwrap_or_default(),
         );
         if prefix_commands.is_empty() {

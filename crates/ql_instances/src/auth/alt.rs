@@ -32,6 +32,8 @@ pub enum Error {
     KeyringError(#[from] KeyringError),
     #[error("{AUTH_ERR_PREFIX}Littleskin response:\n{0}")]
     LittleSkin(String),
+    #[error("incorrect password entered (ely.by/littleskin account)")]
+    IncorrectPassword,
 
     #[error("{AUTH_ERR_PREFIX}while logging in through oauth:\n{0}")]
     Oauth(#[from] OauthError),

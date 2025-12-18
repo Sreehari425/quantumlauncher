@@ -1,19 +1,3 @@
-# Copyright 2021- Dotan Nahum
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-# This file is modified by Mrmayman, ApicalShark on 2024
-
 name: Release
 
 permissions:
@@ -34,9 +18,7 @@ on:
 env:
   BIN_NAME: quantum_launcher
   PROJECT_NAME: quantum_launcher
-  REPO_NAME: Mrmayman/quantum-launcher
   CARGO_TERM_COLOR: always # Tell cargo to always use colors
-  MACOSX_DEPLOYMENT_TARGET: 10.15
 
 jobs:
   dist:
@@ -45,63 +27,73 @@ jobs:
     strategy:
       fail-fast: false # don't fail other jobs if one fails
       matrix:
-        build: [x86_64-linux, aarch64-linux, armv7-linux, x86_64-macos, x86_64-windows, aarch64-macos, aarch64-windows, i686-windows]
+        build:
+          [
+            x86_64-linux,
+            aarch64-linux,
+            armv7-linux,
+            x86_64-macos,
+            x86_64-windows,
+            aarch64-macos,
+            aarch64-windows,
+            i686-windows,
+          ]
         include:
-        - build: x86_64-linux
-          os: ubuntu-22.04
-          rust: stable
-          target: x86_64-unknown-linux-gnu
-          cross: false
-          final_name: linux_x86_64
-        - build: aarch64-linux
-          os: ubuntu-22.04-arm
-          rust: stable
-          target: aarch64-unknown-linux-gnu
-          cross: false
-          final_name: linux_aarch64
-        - build: armv7-linux
-          os: ubuntu-22.04
-          rust: stable
-          target: armv7-unknown-linux-gnueabihf
-          cross: true
-          final_name: linux_arm32
-        - build: x86_64-macos
-          os: macos-latest
-          rust: stable
-          target: x86_64-apple-darwin
-          cross: false
-          final_name: macos_x86_64
-        - build: x86_64-windows
-          os: windows-latest
-          rust: stable
-          target: x86_64-pc-windows-msvc
-          cross: false
-          final_name: windows_x86_64
-        - build: aarch64-macos
-          os: macos-latest
-          rust: stable
-          target: aarch64-apple-darwin
-          cross: false
-          final_name: macos_aarch64
-        - build: aarch64-windows
-          os: windows-11-arm
-          rust: stable
-          target: aarch64-pc-windows-msvc
-          cross: false
-          final_name: windows_aarch64
-        - build: i686-windows
-          os: ubuntu-latest
-          rust: stable
-          target: i686-pc-windows-gnu
-          cross: true
-          final_name: windows_i686
+          - build: x86_64-linux
+            os: ubuntu-22.04
+            rust: stable
+            target: x86_64-unknown-linux-gnu
+            cross: false
+            final_name: linux_x86_64
+          - build: aarch64-linux
+            os: ubuntu-22.04-arm
+            rust: stable
+            target: aarch64-unknown-linux-gnu
+            cross: false
+            final_name: linux_aarch64
+          - build: armv7-linux
+            os: ubuntu-22.04
+            rust: stable
+            target: armv7-unknown-linux-gnueabihf
+            cross: true
+            final_name: linux_arm32
+          - build: x86_64-macos
+            os: macos-latest
+            rust: stable
+            target: x86_64-apple-darwin
+            cross: false
+            final_name: macos_x86_64
+          - build: x86_64-windows
+            os: windows-latest
+            rust: stable
+            target: x86_64-pc-windows-msvc
+            cross: false
+            final_name: windows_x86_64
+          - build: aarch64-macos
+            os: macos-latest
+            rust: stable
+            target: aarch64-apple-darwin
+            cross: false
+            final_name: macos_aarch64
+          - build: aarch64-windows
+            os: windows-11-arm
+            rust: stable
+            target: aarch64-pc-windows-msvc
+            cross: false
+            final_name: windows_aarch64
+          - build: i686-windows
+            os: windows-latest
+            rust: stable-i686
+            target: i686-pc-windows-msvc
+            cross: false
+            final_name: windows_i686
 
     steps:
       - name: Checkout sources
         uses: actions/checkout@v6
         with:
           submodules: true
-      
+
       - name: Install dependencies
         if: matrix.os == 'ubuntu-22.04' || matrix.os == 'ubuntu-22.04-arm'
         run: |
@@ -136,25 +128,25 @@ jobs:
           else
             cargo build --profile release-ql --target ${{ matrix.target }}
           fi
-      
+
       - name: Build archive
         shell: bash
         run: |
           mkdir dist
 
           if [ "${{ matrix.build }}" = "x86_64-windows" ] || [ "${{ matrix.build }}" = "i686-windows" ]; then
-            cp "target/${{ matrix.target }}/release-ql/$BIN_NAME.exe" "dist/"
+            cp "target/${{ matrix.target }}/release-ql/${{ env.BIN_NAME }}.exe" "dist/"
           elif [ "${{ matrix.build }}" = "aarch64-macos" ] || [ "${{ matrix.build }}" = "x86_64-macos" ]; then
             APP_DIR="build/quantum-launcher.app"
             MACOS_DIR="$APP_DIR/Contents/MacOS"
             RESOURCES_DIR="$APP_DIR/Contents/Resources"
             mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
-            cp "target/${{ matrix.target }}/release-ql/$BIN_NAME" "$MACOS_DIR/$BIN_NAME"
+            cp "target/${{ matrix.target }}/release-ql/${{ env.BIN_NAME }}" "$MACOS_DIR/${{ env.BIN_NAME }}"
             cp assets/freedesktop/Info.plist "$APP_DIR/Contents/Info.plist"
             sips -s format icns "assets/icon/ql_logo.png" --out "$RESOURCES_DIR/ql_logo.icns"
             hdiutil create -volname "${{ env.BIN_NAME}}" -srcfolder "$APP_DIR" -ov -format UDZO "dist/${{ env.BIN_NAME }}.dmg"
           else
-            cp "target/${{ matrix.target }}/release-ql/$BIN_NAME" "dist/"
+            cp "target/${{ matrix.target }}/release-ql/${{ env.BIN_NAME }}" "dist/"
           fi
 
       - uses: actions/upload-artifact@v5
@@ -162,76 +154,43 @@ jobs:
           name: quantum-launcher-${{ matrix.final_name }}
           path: dist
 
+  build-appimages:
+    uses: ./.github/workflows/build-appimage.yml
+
   publish:
     name: Publish
-    needs: [dist]
+    needs: [dist, build-appimages]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v6
-        with:
-          submodules: false
-
       - uses: actions/download-artifact@v6
-      - run: ls -al quantum-launcher-*
+      - run: ls -alR
 
       - name: Calculate tag name
         run: |
-          name=dev
-          if [[ $GITHUB_REF == refs/tags/v* ]]; then
-            name=${GITHUB_REF:10}
-          fi
-          echo val=$name >> $GITHUB_OUTPUT
-          echo TAG=$name >> $GITHUB_ENV
+          echo "val=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          echo "Tag value: $val"
         id: tagname
 
       - name: Build archive and Copy binaries
         shell: bash
         run: |
-          set -ex
-
-          rm -rf tmp
-          mkdir tmp
-          mkdir dist
-          mkdir arti  # Create the 'arti' directory
-
-          echo "Listing dirs: "
-          ls
-          echo "...Done."
+          set -xe
+          mkdir -p dist arti
 
           for dir in quantum-launcher-* ; do
-              platform=${dir#"quantum-launcher-"}
-              unset exe
-              if [[ $platform =~ "windows" ]]; then
-                  exe=".exe"
-              else
-                  exe=""
-              fi
 
-              unset dmg
-              if [[ $platform =~ "macos" ]]; then
-                  dmg=".dmg"
-              else
-                  dmg=""
-              fi
+              binary_path=$(find "$dir" -type f | head -n 1)
+              platform_name=$(basename "$dir" | sed 's/quantum-launcher-//')
+              pkgname="${{ env.PROJECT_NAME }}_${platform_name}"
 
-              # Change PROJECT_NAME to BIN_NAME if you wish
-              pkgname=${PROJECT_NAME}_${platform}
-
-              echo "Package name: $pkgname"
-
-              binary_path=$dir/$BIN_NAME$exe$flatpak$dmg
               if [ ! -f "$binary_path" ]; then
-                  echo "Error: Binary not found at $binary_path.  Check your setup!"
+                  echo "Error: Binary not found in $dir."
+                  tree
                   exit 1
               fi
 
-              # Zip the binary with no sub dir
-              (zip -j "dist/$pkgname.zip" "$binary_path")
-
-
-              # Zip the binary to arti
-              (zip -j "arti/$pkgname.zip" "$binary_path")
+              zip -j "dist/$pkgname.zip" "$binary_path"
+              zip -j "arti/$pkgname.zip" "$binary_path"
           done
 
       - name: Upload as artifact
@@ -239,19 +198,14 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: binaries
-          path: arti/* # Zip the binaries under arti folder
+          path: arti/*
 
       - name: Upload binaries to release
         if: ${{ github.event_name != 'workflow_dispatch' }}
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/* #Release the binary under dist folder
+          file: dist/*
           file_glob: true
           tag: ${{ steps.tagname.outputs.val }}
           overwrite: true
-
-      - name: Extract version
-        id: extract-version
-        run: |
-          printf "%s=%s\n" >> $GITHUB_OUTPUT tag-name "${GITHUB_REF#refs/tags/}"

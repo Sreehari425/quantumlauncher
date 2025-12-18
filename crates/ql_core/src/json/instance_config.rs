@@ -33,12 +33,10 @@ pub struct InstanceConfigJson {
     pub enable_logger: Option<bool>,
     /// Extra Java arguments
     // Since: v0.3
-    #[serde(default)]
-    pub java_args: Vec<String>,
+    pub java_args: Option<Vec<String>>,
     /// Extra game arguments
     // Since: v0.3
-    #[serde(default)]
-    pub game_args: Vec<String>,
+    pub game_args: Option<Vec<String>>,
 
     /// Previously used to indicate if a version was downloaded from Omniarchive
     // Since: v0.3.1 - v0.4.1
@@ -186,7 +184,7 @@ impl InstanceConfigJson {
     #[allow(clippy::missing_panics_doc)] // Won't panic
     pub fn get_java_args(&self, global_args: &[String]) -> Vec<String> {
         let use_global_args = self.global_java_args_enable.unwrap_or(true);
-        let mut instance_args = self.java_args.clone();
+        let mut instance_args = self.java_args.clone().unwrap_or_default();
 
         if use_global_args {
             instance_args.extend(global_args.iter().filter(|n| !n.trim().is_empty()).cloned());
@@ -207,6 +205,7 @@ impl InstanceConfigJson {
             .c_global_settings()
             .pre_launch_prefix
             .iter_mut()
+            .flatten()
             .map(|n| n.trim().to_owned())
             .filter(|n| !n.is_empty())
             .collect();
@@ -296,8 +295,7 @@ pub struct GlobalSettings {
     /// This is an optional list of commands to prepend
     /// to the launch command (e.g., "prime-run" for NVIDIA GPU usage on Linux).
     // Since: v0.4.3
-    #[serde(default)]
-    pub pre_launch_prefix: Vec<String>,
+    pub pre_launch_prefix: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

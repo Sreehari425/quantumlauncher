@@ -16,6 +16,13 @@ use crate::{
 impl Launcher {
     pub fn update_account(&mut self, msg: AccountMessage) -> Task<Message> {
         match msg {
+            AccountMessage::AltLoginResponse(Err(err)) if err.contains("incorrect password") => {
+                if let State::LoginAlternate(menu) = &mut self.state {
+                    menu.is_incorrect_password = true;
+                    menu.is_loading = false;
+                }
+            }
+
             AccountMessage::Response1 { r: Err(err), .. }
             | AccountMessage::Response2(Err(err))
             | AccountMessage::Response3(Err(err))
@@ -103,7 +110,9 @@ impl Launcher {
                 if let Err(err) = auth::logout(account_type.strip_name(&username), account_type) {
                     self.set_error(err);
                 }
-                self.config.accounts.remove(&username);
+                if let Some(accounts) = &mut self.config.accounts {
+                    accounts.remove(&username);
+                }
                 self.accounts.remove(&username);
                 if let Some(idx) = self
                     .accounts_dropdown
@@ -133,33 +142,35 @@ impl Launcher {
                 ]);
             }
 
-            AccountMessage::OpenMicrosoft {
+            AccountMessage::OpenMenu {
                 is_from_welcome_screen,
-            } => {
-                self.state = State::GenericMessage("Loading Login...".to_owned());
-                return Task::perform(auth::ms::login_1_link(), move |n| {
-                    Message::Account(AccountMessage::Response1 {
-                        r: n.strerr(),
+                kind,
+            } => match kind {
+                AccountType::Microsoft => {
+                    self.state = State::GenericMessage("Loading Login...".to_owned());
+                    return Task::perform(auth::ms::login_1_link(), move |n| {
+                        Message::Account(AccountMessage::Response1 {
+                            r: n.strerr(),
+                            is_from_welcome_screen,
+                        })
+                    });
+                }
+                AccountType::ElyBy | AccountType::LittleSkin => {
+                    self.state = State::LoginAlternate(MenuLoginAlternate {
+                        username: String::new(),
+                        password: String::new(),
+                        is_loading: false,
+                        otp: None,
+                        show_password: false,
                         is_from_welcome_screen,
-                    })
-                });
-            }
-            AccountMessage::OpenElyBy {
-                is_from_welcome_screen,
-            } => {
-                self.state = State::LoginAlternate(MenuLoginAlternate {
-                    username: String::new(),
-                    password: String::new(),
-                    is_loading: false,
-                    otp: None,
-                    show_password: false,
-                    is_from_welcome_screen,
+                        is_incorrect_password: false,
 
-                    is_littleskin: false,
-                    device_code_error: None,
-                    oauth: None,
-                });
-            }
+                        is_littleskin: matches!(kind, AccountType::LittleSkin),
+                        device_code_error: None,
+                        oauth: None,
+                    });
+                }
+            },
 
             AccountMessage::AltUsernameInput(username) => {
                 if let State::LoginAlternate(menu) = &mut self.state {
@@ -184,6 +195,7 @@ impl Launcher {
 
             AccountMessage::AltLogin => {
                 if let State::LoginAlternate(menu) = &mut self.state {
+                    menu.is_incorrect_password = false;
                     let mut password = menu.password.clone();
                     if let Some(otp) = &menu.otp {
                         password.push(':');
@@ -218,25 +230,11 @@ impl Launcher {
                     }
                 }
             }
-            AccountMessage::OpenLittleSkin {
-                is_from_welcome_screen,
-            } => {
-                self.state = State::LoginAlternate(MenuLoginAlternate {
-                    username: String::new(),
-                    password: String::new(),
-                    is_loading: false,
-                    otp: None,
-                    show_password: false,
-                    is_from_welcome_screen,
-                    oauth: None,
-                    device_code_error: None,
-                    is_littleskin: true,
-                });
-            }
 
             AccountMessage::LittleSkinOauthButtonClicked => {
                 if let State::LoginAlternate(menu) = &mut self.state {
                     menu.is_loading = true;
+                    menu.is_incorrect_password = false;
                 }
 
                 return Task::perform(auth::yggdrasil::oauth::request_device_code(), |resp| {
@@ -307,16 +305,18 @@ impl Launcher {
         }
         self.accounts_dropdown.insert(0, username.clone());
 
-        self.config.accounts.insert(
-            username.clone(),
-            ConfigAccount {
-                uuid: data.uuid.clone(),
-                skin: None,
-                account_type: Some(data.account_type.to_string()),
-                keyring_identifier: Some(data.username.clone()),
-                username_nice: Some(data.nice_username.clone()),
-            },
-        );
+        if let Some(accounts) = &mut self.config.accounts {
+            accounts.insert(
+                username.clone(),
+                ConfigAccount {
+                    uuid: data.uuid.clone(),
+                    skin: None,
+                    account_type: Some(data.account_type.to_string()),
+                    keyring_identifier: Some(data.username.clone()),
+                    username_nice: Some(data.nice_username.clone()),
+                },
+            );
+        }
 
         self.accounts_selected = Some(username.clone());
         self.accounts.insert(username.clone(), data);

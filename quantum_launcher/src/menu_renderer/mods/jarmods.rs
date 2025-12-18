@@ -113,7 +113,7 @@ impl MenuEditJarMods {
         .into()
     }
 
-    fn get_mod_list_contents<'a>(&'a self) -> Element<'a> {
+    fn get_mod_list_contents(&self) -> Element<'_> {
         widget::scrollable(
             widget::column({
                 self.jarmods.mods.iter().map(|jarmod| {

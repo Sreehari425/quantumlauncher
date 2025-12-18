@@ -16,7 +16,7 @@ use ql_core::{
 use ql_instances::{
     auth::{
         ms::{AuthCodeResponse, AuthTokenResponse},
-        AccountData,
+        AccountData, AccountType,
     },
     UpdateCheckInfo,
 };
@@ -242,15 +242,9 @@ pub enum AccountMessage {
     LogoutConfirm,
     RefreshComplete(Res<AccountData>),
 
-    OpenMicrosoft {
+    OpenMenu {
         is_from_welcome_screen: bool,
-    },
-    OpenElyBy {
-        is_from_welcome_screen: bool,
-    },
-
-    OpenLittleSkin {
-        is_from_welcome_screen: bool,
+        kind: AccountType,
     },
 
     AltUsernameInput(String),

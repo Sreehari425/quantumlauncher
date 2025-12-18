@@ -134,6 +134,7 @@ pub fn changelog<'a>() -> Element<'a> {
             widget::text("- Fixed NeoForge 1.21.1 and Forge 1.21.5 crash (reinstall loader to apply)").size(14),
             widget::text("- Fixed forge installer error: \"Processor failed, invalid outputs\"").size(14),
             widget::text("- Fixed wrong link used for \"Open Website\" in auto-update screen").size(14),
+            widget::text("- Fixed confusing error on entering wrong password in ely.by login").size(14),
             widget::Space::with_height(5),
             "Platform:",
             widget::text("- Added warning if xrandr isn't installed").size(14),

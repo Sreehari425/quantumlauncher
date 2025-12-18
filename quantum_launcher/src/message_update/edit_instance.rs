@@ -122,17 +122,17 @@ impl Launcher {
             }
             EditInstanceMessage::JavaArgs(msg) => {
                 iflet_config!(&mut self.state, java_args, {
-                    msg.apply(java_args);
+                    msg.apply(java_args.get_or_insert_with(Vec::new));
                 });
             }
             EditInstanceMessage::GameArgs(msg) => {
                 iflet_config!(&mut self.state, game_args, {
-                    msg.apply(game_args);
+                    msg.apply(game_args.get_or_insert_with(Vec::new));
                 });
             }
             EditInstanceMessage::PreLaunchPrefix(msg) => {
                 iflet_config!(&mut self.state, prefix, |pre_launch_prefix| {
-                    msg.apply(pre_launch_prefix);
+                    msg.apply(pre_launch_prefix.get_or_insert_with(Vec::new));
                 });
             }
             EditInstanceMessage::PreLaunchPrefixModeChanged(mode) => {

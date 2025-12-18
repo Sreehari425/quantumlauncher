@@ -4,6 +4,7 @@ permissions:
   contents: write
 
 on:
+  workflow_call:
   workflow_dispatch:
 
 env:
@@ -18,21 +19,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build: [x86_64-linux, aarch64-linux]
+        build: [x86_64-appimage, aarch64-appimage]
         include:
-          - build: x86_64-linux
+          - build: x86_64-appimage
             arch: x86_64
             runner: ubuntu-24.04
             rust: stable
             target: x86_64-unknown-linux-gnu
             cross: false
-          - build: aarch64-linux
+            final_name: appimage_x86_64
+          - build: aarch64-appimage
             arch: aarch64
             runner: ubuntu-24.04-arm
             rust: stable
             target: aarch64-unknown-linux-gnu
             cross: false
-
+            final_name: appimage_aarch64
 
     steps:
       - name: Checkout code
@@ -73,20 +75,21 @@ jobs:
 
       - name: Prepare AppDir and Build AppImage
         run: |
-          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
+          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/{256x256,512x512}/apps
           cp target/${{ matrix.target }}/release/${{ env.BIN_NAME }} AppDir/usr/bin/quantum-launcher
           cp assets/freedesktop/quantum-launcher.desktop AppDir/usr/share/applications/
           cp assets/icon/256x256/ql_logo.png AppDir/usr/share/icons/hicolor/256x256/apps/io.github.Mrmayman.QuantumLauncher.png
+          cp assets/icon/512x512/ql_logo.png AppDir/usr/share/icons/hicolor/512x512/apps/io.github.Mrmayman.QuantumLauncher.png
           linuxdeploy --appdir AppDir
           if [ "${{ matrix.arch }}" == "x86_64" ]; then
-            ARCH=x86_64 appimagetool AppDir ${{ env.PROJECT_NAME }}-${{ matrix.build }}.AppImage
+            ARCH=x86_64 appimagetool AppDir ${{ env.BIN_NAME }}.AppImage
           else
-            ARCH=arm_aarch64 appimagetool AppDir ${{ env.PROJECT_NAME }}-${{ matrix.build }}.AppImage
+            ARCH=arm_aarch64 appimagetool AppDir ${{ env.BIN_NAME }}.AppImage
           fi
-          
+          cp ${{ env.BIN_NAME }}.AppImage dist
 
       - name: Upload artifact
         uses: actions/upload-artifact@v5
         with:
-          name: ${{ env.PROJECT_NAME }}-${{ matrix.build }}
-          path: ${{ env.PROJECT_NAME }}-${{ matrix.build }}.AppImage
+          name: quantum-launcher-${{ matrix.final_name }}
+          path: dist

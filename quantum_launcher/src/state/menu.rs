@@ -532,7 +532,9 @@ pub struct MenuExportInstance {
 pub struct MenuLoginAlternate {
     pub username: String,
     pub password: String,
+
     pub show_password: bool,
+    pub is_incorrect_password: bool,
 
     pub is_loading: bool,
     pub otp: Option<String>,

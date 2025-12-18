@@ -1,4 +1,5 @@
 use iced::widget;
+use ql_instances::auth::AccountType;
 
 use crate::{
     config::LauncherConfig,
@@ -59,20 +60,23 @@ impl MenuWelcome {
                 widget::vertical_space(),
                 center_x(
                     widget::button("Login to Microsoft").on_press(Message::Account(
-                        AccountMessage::OpenMicrosoft {
-                            is_from_welcome_screen: true
+                        AccountMessage::OpenMenu {
+                            is_from_welcome_screen: true,
+                            kind: AccountType::Microsoft
                         }
                     ))
                 ),
                 center_x(widget::button("Login to ely.by").on_press(Message::Account(
-                    AccountMessage::OpenElyBy {
-                        is_from_welcome_screen: true
+                    AccountMessage::OpenMenu {
+                        is_from_welcome_screen: true,
+                        kind: AccountType::ElyBy
                     }
                 ))),
                 center_x(
                     widget::button("Login to littleskin").on_press(Message::Account(
-                        AccountMessage::OpenLittleSkin {
-                            is_from_welcome_screen: true
+                        AccountMessage::OpenMenu {
+                            is_from_welcome_screen: true,
+                            kind: AccountType::LittleSkin
                         }
                     ))
                 ),

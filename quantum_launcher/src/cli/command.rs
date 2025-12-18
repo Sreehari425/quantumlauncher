@@ -246,11 +246,12 @@ async fn refresh_account(
 ) -> Result<Option<auth::AccountData>, Box<dyn std::error::Error>> {
     Ok(if use_account {
         let config = LauncherConfig::load_s()?;
-        let Some((real_name, account)) = config.accounts.get_key_value(username).or_else(|| {
-            config
-                .accounts
-                .iter()
-                .find(|n| n.1.username_nice.as_ref().is_some_and(|n| n == username))
+        let Some((real_name, account)) = config.accounts.as_ref().and_then(|accounts| {
+            accounts.get_key_value(username).or_else(|| {
+                accounts
+                    .iter()
+                    .find(|n| n.1.username_nice.as_ref().is_some_and(|n| n == username))
+            })
         }) else {
             err!("No logged-in account called {username:?} was found!");
             exit(1);
