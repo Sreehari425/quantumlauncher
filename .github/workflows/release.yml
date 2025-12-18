@@ -34,7 +34,7 @@ jobs:
             armv7-linux,
             x86_64-macos,
             x86_64-windows,
-            # aarch64-macos,
+            aarch64-macos,
             aarch64-windows,
             i686-windows,
           ]
@@ -69,12 +69,12 @@ jobs:
             target: x86_64-pc-windows-msvc
             cross: false
             final_name: windows_x86_64
-          # - build: aarch64-macos
-          #   os: macos-latest
-          #   rust: stable
-          #   target: aarch64-apple-darwin
-          #   cross: false
-          #   final_name: macos_aarch64
+          - build: aarch64-macos
+            os: macos-latest
+            rust: stable
+            target: aarch64-apple-darwin
+            cross: false
+            final_name: macos_aarch64
           - build: aarch64-windows
             os: windows-11-arm
             rust: stable
