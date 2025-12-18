@@ -842,7 +842,7 @@ impl GameLauncher {
             if let Err(e) = file_utils::extract_zip_archive(Cursor::new(bytes), &natives_dir, true).await {
                 err!("Failed to extract LWJGL natives: {}", e);
                 return Err(IoError::Io {
-                    error: format!("Failed to extract LWJGL natives: {}", e),
+                    error: format!("Failed to extract LWJGL natives: {e}"),
                     path: natives_dir.clone(),
                 }.into());
             }

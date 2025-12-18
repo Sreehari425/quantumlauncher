@@ -30,7 +30,7 @@ impl Launcher {
                     }
                     Err(err) => {
                         self.state = State::Error {
-                            error: format!("Failed to load LWJGL versions: {}", err),
+                            error: format!("Failed to load LWJGL versions: {err}"),
                         };
                     }
                 }
@@ -66,7 +66,7 @@ impl Launcher {
                         |result: Result<(), ql_core::JsonFileError>| {
                             match result {
                                 Ok(()) => Message::EditLwjgl(EditLwjglMessage::Back),
-                                Err(err) => Message::Error(format!("Failed to save LWJGL version: {}", err)),
+                                Err(err) => Message::Error(format!("Failed to save LWJGL version: {err}")),
                             }
                         },
                     );

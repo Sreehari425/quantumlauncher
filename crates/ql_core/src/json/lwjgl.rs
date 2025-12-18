@@ -51,7 +51,7 @@ impl LwjglVersion {
 impl fmt::Display for LwjglVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
-            Some(version) => write!(f, "{}", version),
+            Some(version) => write!(f, "{version}"),
             None => write!(f, "Default (from game)"),
         }
     }
@@ -167,14 +167,12 @@ pub fn build_lwjgl_maven_metadata_url(version: &str) -> String {
     if is_lwjgl3(version) {
         // LWJGL 3.x: https://repo1.maven.org/maven2/org/lwjgl/lwjgl/maven-metadata.xml
         format!(
-            "https://repo1.maven.org/maven2/{}/lwjgl/maven-metadata.xml",
-            group_path
+            "https://repo1.maven.org/maven2/{group_path}/lwjgl/maven-metadata.xml"
         )
     } else {
         // LWJGL 2.x: https://repo1.maven.org/maven2/org/lwjgl/lwjgl/lwjgl/maven-metadata.xml
         format!(
-            "https://repo1.maven.org/maven2/{}/lwjgl/maven-metadata.xml",
-            group_path
+            "https://repo1.maven.org/maven2/{group_path}/lwjgl/maven-metadata.xml"
         )
     }
 }
@@ -200,14 +198,13 @@ pub fn build_lwjgl_maven_url(version: &str, module: &str, classifier: Option<&st
     };
 
     let filename = if let Some(classifier) = classifier {
-        format!("{}-{}-{}.jar", artifact_id, version, classifier)
+        format!("{artifact_id}-{version}-{classifier}.jar")
     } else {
-        format!("{}-{}.jar", artifact_id, version)
+        format!("{artifact_id}-{version}.jar")
     };
 
     format!(
-        "https://repo1.maven.org/maven2/{}/{}/{}/{}",
-        group_path, artifact_id, version, filename
+        "https://repo1.maven.org/maven2/{group_path}/{artifact_id}/{version}/{filename}"
     )
 }
 
@@ -221,21 +218,19 @@ pub fn build_lwjgl_library_path(version: &str, module: &str, classifier: Option<
 
     let artifact_id = if is_lwjgl3(version) {
         module.to_string()
+    } else if module == "lwjgl_util" {
+        "lwjgl_util".to_string()
     } else {
-        if module == "lwjgl_util" {
-            "lwjgl_util".to_string()
-        } else {
-            "lwjgl".to_string()
-        }
+        "lwjgl".to_string()
     };
 
     let filename = if let Some(classifier) = classifier {
-        format!("{}-{}-{}.jar", artifact_id, version, classifier)
+        format!("{artifact_id}-{version}-{classifier}.jar")
     } else {
-        format!("{}-{}.jar", artifact_id, version)
+        format!("{artifact_id}-{version}.jar")
     };
 
-    format!("{}/{}/{}/{}", group_path, artifact_id, version, filename)
+    format!("{group_path}/{artifact_id}/{version}/{filename}")
 }
 
 /// Fetch available LWJGL versions from Maven Central
@@ -255,7 +250,7 @@ pub async fn fetch_lwjgl_versions() -> Result<LwjglVersionList, String> {
             }
         }
         Err(e) => {
-            return Err(format!("Failed to fetch LWJGL 3.x versions: {}", e));
+            return Err(format!("Failed to fetch LWJGL 3.x versions: {e}"));
         }
     }
 
@@ -268,7 +263,7 @@ pub async fn fetch_lwjgl_versions() -> Result<LwjglVersionList, String> {
             }
         }
         Err(e) => {
-            return Err(format!("Failed to fetch LWJGL 2.x versions: {}", e));
+            return Err(format!("Failed to fetch LWJGL 2.x versions: {e}"));
         }
     }
 
