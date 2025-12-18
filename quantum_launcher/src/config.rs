@@ -55,8 +55,7 @@ pub struct LauncherConfig {
     /// is called on each account's key value (username)
     /// to get the refresh token (stored securely on disk).
     // Since: v0.4
-    #[serde(default)]
-    pub accounts: HashMap<String, ConfigAccount>,
+    pub accounts: Option<HashMap<String, ConfigAccount>>,
     /// Refers to the entry of the `accounts` map
     /// that's selected in the UI when you open the launcher.
     // Since: v0.4.2
@@ -88,8 +87,7 @@ pub struct LauncherConfig {
     // Since: v0.4.2
     pub global_settings: Option<GlobalSettings>,
     // Since: v0.4.3
-    #[serde(default)]
-    pub extra_java_args: Vec<String>,
+    pub extra_java_args: Option<Vec<String>>,
     // Since: v0.4.3
     pub ui: Option<UiSettings>,
 }
@@ -102,14 +100,14 @@ impl Default for LauncherConfig {
             ui_mode: None,
             ui_theme: None,
             version: Some(LAUNCHER_VERSION_NAME.to_owned()),
-            accounts: HashMap::new(),
+            accounts: None,
             ui_scale: None,
             java_installs: Some(Vec::new()),
             ui_antialiasing: Some(true),
             account_selected: None,
             window: None,
             global_settings: None,
-            extra_java_args: Vec::new(),
+            extra_java_args: None,
             ui: None,
         }
     }
@@ -174,8 +172,8 @@ impl LauncherConfig {
         if self.ui_antialiasing.is_none() {
             self.ui_antialiasing = Some(true);
         }
-        if let Some(selected) = &self.account_selected {
-            if !self.accounts.contains_key(selected) {
+        if let (Some(accounts), Some(selected)) = (&self.accounts, &self.account_selected) {
+            if !accounts.contains_key(selected) {
                 self.account_selected = None;
             }
         }

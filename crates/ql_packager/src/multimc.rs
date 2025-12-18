@@ -169,15 +169,18 @@ fn setup_config(ini: &Ini, instance_recipe: &InstanceRecipe, config: &mut Instan
     if let Ok(jvmargs) = general_get(ini, "JvmArgs") {
         config
             .java_args
+            .get_or_insert_with(Vec::new)
             .extend(jvmargs.split_whitespace().map(str::to_owned));
     }
 
     if let Ok(prefix) = general_get(ini, "WrapperCommand") {
-        config.c_global_settings().pre_launch_prefix = prefix
-            .split_whitespace()
-            .filter(|n| !n.is_empty())
-            .map(str::to_owned)
-            .collect();
+        config.c_global_settings().pre_launch_prefix = Some(
+            prefix
+                .split_whitespace()
+                .filter(|n| !n.is_empty())
+                .map(str::to_owned)
+                .collect(),
+        );
     }
 }
 
@@ -254,7 +257,7 @@ async fn get_instance_recipe(mmc_pack: &MmcPack) -> Result<InstanceRecipe, Insta
 
             "LWJGL 2" | "Intermediary Mappings" => {}
             name if name.contains("(jar mod)") => {
-                if let Some(jarmod_filename) = component.uid.split('.').last() {
+                if let Some(jarmod_filename) = component.uid.split('.').next_back() {
                     recipe.jarmods.push(format!("{}.jar", jarmod_filename));
                 }
             }

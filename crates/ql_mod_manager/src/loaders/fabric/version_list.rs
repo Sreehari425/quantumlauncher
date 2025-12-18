@@ -227,7 +227,7 @@ pub async fn get_list_of_versions_from_backend(
             },
         }]
     } else {
-        let list = if let BackendType::OrnitheMCFabric | BackendType::OrnitheMCQuilt = backend {
+        if let BackendType::OrnitheMCFabric | BackendType::OrnitheMCQuilt = backend {
             let name = if backend.is_quilt() {
                 "quilt"
             } else {
@@ -254,9 +254,7 @@ pub async fn get_list_of_versions_from_backend(
             let list =
                 download_file_to_string(&format!("/versions/loader/{version}"), backend).await?;
             serde_json::from_str(&list).json(list)?
-        };
-
-        list
+        }
     };
     Ok(versions)
 }

@@ -303,7 +303,7 @@ fn load_accounts(
 
     let mut accounts_to_remove = Vec::new();
 
-    for (username, account) in config.accounts.iter_mut() {
+    for (username, account) in config.accounts.iter_mut().flatten() {
         load_account(
             &mut accounts,
             &mut accounts_dropdown,
@@ -313,8 +313,10 @@ fn load_accounts(
         );
     }
 
-    for rem in accounts_to_remove {
-        config.accounts.remove(&rem);
+    if let Some(accounts) = &mut config.accounts {
+        for rem in accounts_to_remove {
+            accounts.remove(&rem);
+        }
     }
 
     let selected_account = config.account_selected.clone().unwrap_or(

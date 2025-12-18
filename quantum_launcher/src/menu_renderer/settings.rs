@@ -224,7 +224,7 @@ impl LauncherSettingsTab {
                 widget::horizontal_rule(1),
                 "Global Java Arguments:",
                 get_args_list(
-                    &config.extra_java_args,
+                    config.extra_java_args.as_deref(),
                     |msg| {
                         Message::LauncherSettings(LauncherSettingsMessage::GlobalJavaArgs(msg))
                     },
@@ -240,8 +240,7 @@ impl LauncherSettingsTab {
                     config
                         .global_settings
                         .as_ref()
-                        .map(|n| n.pre_launch_prefix.as_slice())
-                        .unwrap_or_default(),
+                        .and_then(|n| n.pre_launch_prefix.as_deref()),
                     |n| Message::LauncherSettings(LauncherSettingsMessage::GlobalPreLaunchPrefix(
                         n
                     )),
