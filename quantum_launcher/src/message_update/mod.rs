@@ -508,6 +508,13 @@ impl Launcher {
                     self.state = State::GenericMessage(MSG_RESIZE.to_owned());
                 }
             }
+            LauncherSettingsMessage::UiIdleFps(fps) => {
+                debug_assert!(fps > 0.0);
+                self.config
+                    .ui
+                    .get_or_insert_with(UiSettings::default)
+                    .idle_fps = Some(fps as u64);
+            }
             LauncherSettingsMessage::ClearJavaInstalls => {
                 self.confirm_clear_java_installs();
             }

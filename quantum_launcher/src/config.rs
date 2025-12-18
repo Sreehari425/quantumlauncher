@@ -312,6 +312,8 @@ pub struct UiSettings {
     pub window_decorations: UiWindowDecorations,
     // Since: v0.4.3
     pub window_opacity: f32,
+    // Since: v0.4.3
+    pub idle_fps: Option<u64>,
 }
 
 impl Default for UiSettings {
@@ -319,7 +321,14 @@ impl Default for UiSettings {
         Self {
             window_decorations: UiWindowDecorations::default(),
             window_opacity: OPACITY,
+            idle_fps: None,
         }
+    }
+}
+
+impl UiSettings {
+    pub fn get_idle_fps(&self) -> u64 {
+        self.idle_fps.unwrap_or(6)
     }
 }
 

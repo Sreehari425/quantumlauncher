@@ -270,6 +270,7 @@ pub enum LauncherSettingsMessage {
     UiScale(f64),
     UiScaleApply,
     UiOpacity(f32),
+    UiIdleFps(f64),
     ClearJavaInstalls,
     ClearJavaInstallsConfirm,
     ChangeTab(LauncherSettingsTab),

@@ -85,8 +85,6 @@ mod tick;
 const LAUNCHER_ICON: &[u8] = include_bytes!("../../assets/icon/ql_logo.ico");
 
 impl Launcher {
-    const TICKS_PER_SECOND: u64 = 5;
-
     fn new(
         is_new_user: bool,
         config: Result<LauncherConfig, JsonFileError>,
@@ -119,8 +117,10 @@ impl Launcher {
 
     #[allow(clippy::unused_self)]
     fn subscription(&self) -> iced::Subscription<Message> {
-        let tick = iced::time::every(Duration::from_millis(1000 / Self::TICKS_PER_SECOND))
-            .map(|_| Message::CoreTick);
+        let tick = iced::time::every(Duration::from_millis(
+            1000 / self.config.ui.unwrap_or_default().get_idle_fps(),
+        ))
+        .map(|_| Message::CoreTick);
         let events = iced::event::listen_with(|a, b, _| Some(Message::CoreEvent(a, b)));
 
         iced::Subscription::batch(vec![tick, events])

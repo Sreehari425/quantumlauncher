@@ -85,6 +85,8 @@ impl MenuLauncherSettings {
                 ))
         ];
 
+        let idle_fps = config.ui.unwrap_or_default().get_idle_fps();
+
         checkered_list::<Element>([
             widget::column![widget::text("User Interface").size(20)].into(),
 
@@ -133,6 +135,22 @@ impl MenuLauncherSettings {
 
                 widget::checkbox("Remember window size", config.window.as_ref().is_none_or(|n| n.save_window_size))
                     .on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::ToggleWindowSize(n))),
+
+                widget::Space::with_height(10),
+                widget::row![
+                    widget::text!("UI Idle FPS ({idle_fps})")
+                        .size(15)
+                        .width(SETTING_WIDTH),
+                    widget::slider(2.0..=20.0, idle_fps as f64, |n| Message::LauncherSettings(
+                        LauncherSettingsMessage::UiIdleFps(n)
+                    ))
+                    .step(1.0).shift_step(1.0),
+                ]
+                .align_y(Alignment::Center)
+                .spacing(5),
+                widget::text(r#"(Default: 6) The frames-per-second the launcher itself will run at WHEN IDLE (not being used)
+- Lower values may improve efficiency/battery life
+- Increase if you see "not responding" messages"#).size(12).style(tsubtitle),
             ]
             .spacing(5)
             .into()
