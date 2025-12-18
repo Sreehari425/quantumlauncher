@@ -240,8 +240,7 @@ pub async fn get_list_of_versions_from_backend(
 
         let list = file_utils::download_file_to_json::<List>(&url1, false).await?;
         if list.is_empty() {
-            if let Ok(new_list) = file_utils::download_file_to_json::<List>(&url2, false).await
-            {
+            if let Ok(new_list) = file_utils::download_file_to_json::<List>(&url2, false).await {
                 new_list
             } else {
                 list
@@ -250,8 +249,7 @@ pub async fn get_list_of_versions_from_backend(
             list
         }
     } else {
-        let list =
-            download_file_to_string(&format!("/versions/loader/{version}"), backend).await?;
+        let list = download_file_to_string(&format!("/versions/loader/{version}"), backend).await?;
         serde_json::from_str(&list).json(list)?
     };
     Ok(versions)

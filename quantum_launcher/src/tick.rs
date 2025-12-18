@@ -14,8 +14,8 @@ use ql_mod_manager::store::{ModConfig, ModIndex};
 use crate::state::{
     AutoSaveKind, EditInstanceMessage, GameProcess, InstallModsMessage, InstanceLog, LaunchTabId,
     Launcher, ManageJarModsMessage, MenuCreateInstance, MenuEditMods, MenuExportInstance,
-    MenuInstallFabric, MenuInstallOptifine, MenuLoginMS, MenuModsDownload,
-    MenuRecommendedMods, Message, ModListEntry, State,
+    MenuInstallFabric, MenuInstallOptifine, MenuLoginMS, MenuModsDownload, MenuRecommendedMods,
+    Message, ModListEntry, State,
 };
 
 impl Launcher {
@@ -45,7 +45,9 @@ impl Launcher {
                 }
                 self.tick_processes_and_logs();
 
-                if self.tick_timer.is_multiple_of(5) && self.autosave.insert(AutoSaveKind::LauncherConfig) {
+                if self.tick_timer.is_multiple_of(5)
+                    && self.autosave.insert(AutoSaveKind::LauncherConfig)
+                {
                     let launcher_config = self.config.clone();
                     commands.push(Task::perform(
                         async move { launcher_config.save().await.strerr() },

@@ -13,13 +13,8 @@ impl MenuEditLwjgl {
                 let dots = ".".repeat((tick_timer % 3) + 1);
 
                 widget::column![
-                    back_button().on_press(Message::EditLwjgl(
-                        EditLwjglMessage::Back
-                    )),
-                    widget::text!(
-                        "Loading LWJGL version list from Maven Central{dots}",
-                    )
-                    .size(20)
+                    back_button().on_press(Message::EditLwjgl(EditLwjglMessage::Back)),
+                    widget::text!("Loading LWJGL version list from Maven Central{dots}",).size(20)
                 ]
                 .padding(10)
                 .into()
@@ -107,18 +102,14 @@ impl MenuEditLwjgl {
                 };
 
                 widget::column![
-                    back_button().on_press(Message::EditLwjgl(
-                        EditLwjglMessage::Back
-                    )),
+                    back_button().on_press(Message::EditLwjgl(EditLwjglMessage::Back)),
                     widget::text("Change LWJGL Version").size(24),
                     widget::container(
                         widget::column![
                             widget::text("Select LWJGL Version:").size(16),
-                            widget::pick_list(
-                                all_versions,
-                                Some(selected_version.clone()),
-                                |v| Message::EditLwjgl(EditLwjglMessage::VersionSelected(Some(v)))
-                            )
+                            widget::pick_list(all_versions, Some(selected_version.clone()), |v| {
+                                Message::EditLwjgl(EditLwjglMessage::VersionSelected(Some(v)))
+                            })
                             .width(Length::Fixed(300.0)),
                             widget::Space::with_height(10),
                             warning_box,
@@ -133,11 +124,13 @@ impl MenuEditLwjgl {
                         } else {
                             widget::text("Apply (no changes)").size(16)
                         })
-                        .on_press_maybe(if has_changed && !is_applying && mismatch_confirm.is_none() {
-                            Some(Message::EditLwjgl(EditLwjglMessage::Apply))
-                        } else {
-                            None
-                        }),
+                        .on_press_maybe(
+                            if has_changed && !is_applying && mismatch_confirm.is_none() {
+                                Some(Message::EditLwjgl(EditLwjglMessage::Apply))
+                            } else {
+                                None
+                            }
+                        ),
                         widget::Space::with_width(10),
                         widget::text(if *is_applying {
                             "Applying changes..."
@@ -163,5 +156,3 @@ impl MenuEditLwjgl {
         }
     }
 }
-
-
