@@ -1,6 +1,7 @@
 use iced::widget::tooltip::Position;
 use iced::{widget, Alignment, Length};
 use ql_core::{Progress, WEBSITE};
+use ql_instances::auth::AccountType;
 
 use crate::state::ImageState;
 use crate::stylesheet::styles::{LauncherThemeLightness, BORDER_RADIUS, BORDER_WIDTH};
@@ -409,18 +410,21 @@ pub fn view_account_login<'a>() -> Element<'a> {
             widget::column![
                 widget::text("Login").size(20),
                 widget::button("Login with Microsoft").on_press(Message::Account(
-                    AccountMessage::OpenMicrosoft {
-                        is_from_welcome_screen: false
+                    AccountMessage::OpenMenu {
+                        is_from_welcome_screen: false,
+                        kind: AccountType::Microsoft
                     }
                 )),
                 widget::button("Login with ely.by").on_press(Message::Account(
-                    AccountMessage::OpenElyBy {
-                        is_from_welcome_screen: false
+                    AccountMessage::OpenMenu {
+                        is_from_welcome_screen: false,
+                        kind: AccountType::ElyBy
                     }
                 )),
                 widget::button("Login with littleskin").on_press(Message::Account(
-                    AccountMessage::OpenLittleSkin {
-                        is_from_welcome_screen: false
+                    AccountMessage::OpenMenu {
+                        is_from_welcome_screen: false,
+                        kind: AccountType::LittleSkin
                     }
                 )),
             ]

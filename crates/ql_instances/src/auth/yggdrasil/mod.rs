@@ -39,6 +39,9 @@ pub async fn login_new(
         .json(&value)
         .send()
         .await?;
+    if response.status().as_u16() == 401 {
+        return Err(Error::IncorrectPassword);
+    }
     check_for_success(&response)?;
     let text = response.text().await?;
 

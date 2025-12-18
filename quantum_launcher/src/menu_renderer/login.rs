@@ -2,6 +2,7 @@ use iced::{widget, Alignment, Length};
 
 use crate::{
     icons,
+    menu_renderer::tsubtitle,
     state::{AccountMessage, MenuLoginAlternate, MenuLoginMS, Message, NEW_ACCOUNT_NAME},
 };
 
@@ -9,6 +10,10 @@ use super::{back_button, button_with_icon, center_x, Element};
 
 impl MenuLoginAlternate {
     pub fn view(&'_ self, tick_timer: usize) -> Element<'_> {
+        if let Some(oauth) = &self.oauth {
+            return self.view_oauth(oauth);
+        }
+
         let status: Element =
             if self.is_loading {
                 let dots = ".".repeat((tick_timer % 3) + 1);
@@ -44,36 +49,37 @@ impl MenuLoginAlternate {
             password_input.font(iced::Font::with_name("Password Asterisks"))
         };
 
-        if let Some(oauth) = &self.oauth {
-            self.view_oauth(oauth)
-        } else {
+        widget::column![
+            back_button().on_press(if self.is_from_welcome_screen {
+                Message::WelcomeContinueToAuth
+            } else {
+                Message::Account(AccountMessage::Selected(NEW_ACCOUNT_NAME.to_owned()))
+            }),
             widget::column![
-                back_button().on_press(if self.is_from_welcome_screen {
-                    Message::WelcomeContinueToAuth
+                widget::text(if self.is_littleskin {
+                    "LittleSkin Login"
                 } else {
-                    Message::Account(AccountMessage::Selected(NEW_ACCOUNT_NAME.to_owned()))
-                }),
-                widget::column![
-                    widget::text(if self.is_littleskin {
-                        "LittleSkin Login"
-                    } else {
-                        "ElyBy Login"
-                    })
-                    .size(20),
-                    widget::vertical_space(),
-                    widget::text("Username/Email:").size(12),
-                    center_x(
-                        widget::text_input("Enter Username/Email...", &self.username)
-                            .padding(padding)
-                            .on_input(|n| Message::Account(AccountMessage::AltUsernameInput(n)))
-                    ),
+                    "ElyBy Login"
+                })
+                .size(20),
+                widget::vertical_space(),
+                widget::text("Username/Email:").size(12),
+                center_x(
+                    widget::text_input("Enter Username/Email...", &self.username)
+                        .padding(padding)
+                        .on_input(|n| Message::Account(AccountMessage::AltUsernameInput(n)))
+                ),
+                widget::row![
                     widget::text("Password:").size(12),
-                    center_x(password_input),
-                    widget::checkbox("Show Password", self.show_password)
-                        .size(14)
-                        .text_size(14)
+                    widget::checkbox("Show", self.show_password)
+                        .size(12)
+                        .text_size(12)
                         .on_toggle(|t| Message::Account(AccountMessage::AltShowPassword(t))),
-                    widget::Column::new().push_maybe(self.otp.as_deref().map(|otp| {
+                ]
+                .spacing(16),
+                center_x(password_input),
+                widget::Column::new()
+                    .push_maybe(self.otp.as_deref().map(|otp| {
                         widget::column![
                             widget::text("OTP:").size(12),
                             widget::text_input("Enter Username/Email...", otp)
@@ -81,34 +87,37 @@ impl MenuLoginAlternate {
                                 .on_input(|n| Message::Account(AccountMessage::AltOtpInput(n))),
                         ]
                         .spacing(5)
-                    })),
-                    status,
-                    widget::Space::with_height(5),
-                    widget::row![
-                        widget::text("Or").size(14),
-                        widget::button(widget::text("Create an account").size(14)).on_press(
-                            Message::CoreOpenLink(
-                                if self.is_littleskin {
-                                    "https://littleskin.cn/auth/register"
-                                } else {
-                                    "https://account.ely.by/register"
-                                }
-                                .to_owned()
-                            )
+                    }))
+                    .push_maybe(
+                        self.is_incorrect_password
+                            .then_some(widget::text("Wrong Password!").style(tsubtitle).size(12))
+                    ),
+                status,
+                widget::Space::with_height(5),
+                widget::row![
+                    widget::text("Or").size(14),
+                    widget::button(widget::text("Create an account").size(14)).on_press(
+                        Message::CoreOpenLink(
+                            if self.is_littleskin {
+                                "https://littleskin.cn/auth/register"
+                            } else {
+                                "https://account.ely.by/register"
+                            }
+                            .to_owned()
                         )
-                    ]
-                    .align_y(Alignment::Center)
-                    .spacing(5)
-                    .wrap(),
-                    widget::vertical_space(),
+                    )
                 ]
-                .width(Length::Fill)
-                .align_x(Alignment::Center)
+                .align_y(Alignment::Center)
                 .spacing(5)
+                .wrap(),
+                widget::vertical_space(),
             ]
-            .padding(10)
-            .into()
-        }
+            .width(Length::Fill)
+            .align_x(Alignment::Center)
+            .spacing(5)
+        ]
+        .padding(10)
+        .into()
     }
 
     fn view_oauth(&'_ self, oauth: &crate::state::LittleSkinOauth) -> Element<'_> {
