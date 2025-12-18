@@ -361,7 +361,7 @@ impl Library {
                         feature = "simulate_macos_arm64"
                     ))]
                     if os.name == OS_NAME
-                        && library.name.as_ref().is_some_and(|n| {
+                        && self.name.as_ref().is_some_and(|n| {
                             n.contains("natives-macos-arm64")
                                 || n == "ca.weblite:java-objc-bridge:1.1"
                         })
