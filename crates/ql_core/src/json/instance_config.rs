@@ -86,6 +86,29 @@ pub struct InstanceConfigJson {
     /// An override for the main class when launching the game.
     /// Mainly only used for debugging purposes.
     pub main_class_override: Option<String>,
+    
+    /// Override LWJGL version for this instance.
+    /// 
+    /// **Default: `None`** (uses LWJGL version specified by the game)
+    /// 
+    /// This allows you to:
+    /// - Fix platform compatibility issues (e.g., macOS ARM64, Linux ARM64)
+    /// - Test different LWJGL versions for performance
+    /// - Use newer LWJGL with older Minecraft versions
+    /// 
+    /// **⚠️ Warning:** LWJGL 2.x and 3.x are NOT compatible!
+    /// - Minecraft 1.12.2 and below use LWJGL 2.x
+    /// - Minecraft 1.13+ use LWJGL 3.x
+    /// 
+    /// Using the wrong major version will cause the game to crash on launch.
+    /// 
+    /// **Examples:**
+    /// - `Some("3.3.1")` - Use LWJGL 3.3.1
+    /// - `Some("2.9.4")` - Use LWJGL 2.9.4
+    /// - `None` - Use game's default LWJGL version
+    /// 
+    /// Since: v0.4.4
+    pub lwjgl_version: Option<String>,
 }
 
 impl InstanceConfigJson {

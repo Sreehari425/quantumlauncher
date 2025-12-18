@@ -158,7 +158,8 @@ impl Launcher {
             | State::CurseforgeManualDownload(_)
             | State::LogUploadResult { .. }
             | State::InstallPaper(_)
-            | State::ExportMods(_) => {}
+            | State::ExportMods(_)
+            | State::EditLwjgl(_) => {}
         }
 
         Task::none()

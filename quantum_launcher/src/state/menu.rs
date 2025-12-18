@@ -358,6 +358,19 @@ impl MenuInstallFabric {
     }
 }
 
+pub enum MenuEditLwjgl {
+    Loading {
+        _handle: iced::task::Handle,
+        initial_version: Option<String>,
+    },
+    Loaded {
+        versions: ql_core::json::LwjglVersionList,
+        selected_version: String,
+        initial_version: Option<String>,
+        is_applying: bool,
+    },
+}
+
 pub enum MenuInstallPaper {
     Loading {
         _handle: iced::task::Handle,
@@ -558,6 +571,7 @@ pub enum State {
     EditMods(MenuEditMods),
     ExportMods(MenuExportMods),
     EditJarMods(MenuEditJarMods),
+    EditLwjgl(MenuEditLwjgl),
     ImportModpack(ProgressBar<GenericProgress>),
     CurseforgeManualDownload(MenuCurseforgeManualDownload),
     ExportInstance(MenuExportInstance),

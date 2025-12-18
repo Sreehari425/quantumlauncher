@@ -117,6 +117,7 @@ impl Launcher {
                 Ok(n) => return n,
                 Err(err) => self.set_error(err),
             },
+            Message::EditLwjgl(message) => return self.update_edit_lwjgl(message),
             Message::InstallFabric(message) => return self.update_install_fabric(message),
             Message::CoreOpenLink(dir) => _ = open::that_detached(&dir),
             Message::CoreOpenPath(dir) => {

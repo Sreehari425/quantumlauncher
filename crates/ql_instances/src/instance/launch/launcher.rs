@@ -6,7 +6,8 @@ use crate::{
 use ql_core::{
     err, file_utils, info,
     json::{
-        forge, version::Library, FabricJSON, GlobalSettings, InstanceConfigJson, JsonOptifine,
+        forge, lwjgl,
+        version::Library, FabricJSON, GlobalSettings, InstanceConfigJson, JsonOptifine,
         VersionDetails, V_1_12_2, V_1_5_2, V_PAULSCODE_LAST, V_PRECLASSIC_LAST,
     },
     pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError, JsonFileError,
@@ -15,6 +16,7 @@ use ql_core::{
 use ql_java_handler::{get_java_binary, JavaVersion};
 use std::{
     collections::HashSet,
+    io::Cursor,
     path::{Path, PathBuf},
     process::Stdio,
     sync::mpsc::Sender,
@@ -716,10 +718,13 @@ impl GameLauncher {
         let Some(artifact) = library.get_artifact() else {
             return Ok(());
         };
-        let library_path = self
-            .instance_dir
-            .join("libraries")
-            .join(artifact.get_path());
+        
+        // Check for LWJGL override
+        let library_path = if let Some(override_path) = self.get_lwjgl_override_path(library, &artifact).await? {
+            override_path
+        } else {
+            self.instance_dir.join("libraries").join(artifact.get_path())
+        };
 
         if !library_path.exists() {
             pt!("library {library_path:?} not found! Downloading...");
@@ -754,6 +759,101 @@ impl GameLauncher {
 
         class_path.push_str(library_path);
         class_path.push(CLASSPATH_SEPARATOR);
+        Ok(())
+    }
+
+    /// Check if a library needs LWJGL override and return the new path if so
+    async fn get_lwjgl_override_path(
+        &self,
+        library: &Library,
+        _artifact: &ql_core::json::version::LibraryDownloadArtifact,
+    ) -> Result<Option<PathBuf>, GameLaunchError> {
+        // Check if LWJGL override is configured
+        let Some(lwjgl_version) = &self.config_json.lwjgl_version else {
+            return Ok(None);
+        };
+
+        // Check if this library is an LWJGL library
+        let Some(name) = &library.name else {
+            return Ok(None);
+        };
+
+        if !name.starts_with("org.lwjgl") {
+            return Ok(None);
+        }
+
+        // Parse library name: "org.lwjgl:lwjgl-opengl:3.2.3" or "org.lwjgl.lwjgl:lwjgl:2.9.4"
+        let parts: Vec<&str> = name.split(':').collect();
+        if parts.len() < 3 {
+            return Ok(None);
+        }
+
+        let (_group_id, artifact_id, _old_version) = (parts[0], parts[1], parts[2]);
+        let classifier = if parts.len() >= 4 { Some(parts[3]) } else { None };
+
+        // Build new library path with custom LWJGL version
+        let new_path = lwjgl::build_lwjgl_library_path(lwjgl_version, artifact_id, classifier);
+        let library_path = self.instance_dir.join("libraries").join(&new_path);
+
+        // Download if doesn't exist
+        if !library_path.exists() {
+            pt!("Downloading custom LWJGL library: {}", artifact_id);
+            self.download_custom_lwjgl_library(lwjgl_version, artifact_id, classifier, &library_path)
+                .await?;
+        }
+
+        Ok(Some(library_path))
+    }
+
+    /// Download a custom LWJGL library from Maven Central
+    async fn download_custom_lwjgl_library(
+        &self,
+        version: &str,
+        module: &str,
+        classifier: Option<&str>,
+        dest_path: &Path,
+    ) -> Result<(), GameLaunchError> {
+        let url = lwjgl::build_lwjgl_maven_url(version, module, classifier);
+
+        // Create parent directories
+        if let Some(parent) = dest_path.parent() {
+            tokio::fs::create_dir_all(parent)
+                .await
+                .path(parent)?;
+        }
+
+        // Download the library
+        let bytes = file_utils::download_file_to_bytes(&url, false)
+            .await?;
+
+        // Save to disk
+        tokio::fs::write(dest_path, &bytes)
+            .await
+            .path(dest_path)?;
+
+        // If this is a natives JAR, extract it
+        if classifier.is_some() && classifier.unwrap().starts_with("natives-") {
+            let natives_dir = self.instance_dir.join("libraries/natives");
+            tokio::fs::create_dir_all(&natives_dir)
+                .await
+                .path(&natives_dir)?;
+
+            pt!("Extracting LWJGL natives: {}", module);
+            if let Err(e) = file_utils::extract_zip_archive(Cursor::new(bytes), &natives_dir, true).await {
+                err!("Failed to extract LWJGL natives: {}", e);
+                return Err(IoError::Io {
+                    error: format!("Failed to extract LWJGL natives: {}", e),
+                    path: natives_dir.clone(),
+                }.into());
+            }
+
+            // Mark the natives directory with the new LWJGL version
+            let version_file = natives_dir.join(".lwjgl_version");
+            tokio::fs::write(&version_file, version)
+                .await
+                .path(version_file)?;
+        }
+
         Ok(())
     }
 
