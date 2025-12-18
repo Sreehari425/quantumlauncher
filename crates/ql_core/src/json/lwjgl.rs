@@ -166,14 +166,10 @@ pub fn build_lwjgl_maven_metadata_url(version: &str) -> String {
 
     if is_lwjgl3(version) {
         // LWJGL 3.x: https://repo1.maven.org/maven2/org/lwjgl/lwjgl/maven-metadata.xml
-        format!(
-            "https://repo1.maven.org/maven2/{group_path}/lwjgl/maven-metadata.xml"
-        )
+        format!("https://repo1.maven.org/maven2/{group_path}/lwjgl/maven-metadata.xml")
     } else {
         // LWJGL 2.x: https://repo1.maven.org/maven2/org/lwjgl/lwjgl/lwjgl/maven-metadata.xml
-        format!(
-            "https://repo1.maven.org/maven2/{group_path}/lwjgl/maven-metadata.xml"
-        )
+        format!("https://repo1.maven.org/maven2/{group_path}/lwjgl/maven-metadata.xml")
     }
 }
 
@@ -189,8 +185,12 @@ pub fn build_lwjgl_maven_url(version: &str, module: &str, classifier: Option<&st
     let artifact_id = if is_lwjgl3(version) {
         module.to_string()
     } else {
-        // LWJGL 2.x uses "lwjgl" as artifact ID
-        if module == "lwjgl_util" {
+        // LWJGL 2.x on Maven Central:
+        // - main jars: lwjgl, lwjgl_util
+        // - natives jars: lwjgl-platform (with classifier natives-*)
+        if classifier.is_some_and(|c| c.starts_with("natives-")) {
+            "lwjgl-platform".to_string()
+        } else if module == "lwjgl_util" {
             "lwjgl_util".to_string()
         } else {
             "lwjgl".to_string()
@@ -203,9 +203,7 @@ pub fn build_lwjgl_maven_url(version: &str, module: &str, classifier: Option<&st
         format!("{artifact_id}-{version}.jar")
     };
 
-    format!(
-        "https://repo1.maven.org/maven2/{group_path}/{artifact_id}/{version}/{filename}"
-    )
+    format!("https://repo1.maven.org/maven2/{group_path}/{artifact_id}/{version}/{filename}")
 }
 
 /// Build local library path for a LWJGL artifact
@@ -218,6 +216,8 @@ pub fn build_lwjgl_library_path(version: &str, module: &str, classifier: Option<
 
     let artifact_id = if is_lwjgl3(version) {
         module.to_string()
+    } else if classifier.is_some_and(|c| c.starts_with("natives-")) {
+        "lwjgl-platform".to_string()
     } else if module == "lwjgl_util" {
         "lwjgl_util".to_string()
     } else {

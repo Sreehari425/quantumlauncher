@@ -6,9 +6,8 @@ use crate::{
 use ql_core::{
     err, file_utils, info,
     json::{
-        forge, lwjgl,
-        version::Library, FabricJSON, GlobalSettings, InstanceConfigJson, JsonOptifine,
-        VersionDetails, V_1_12_2, V_1_5_2, V_PAULSCODE_LAST, V_PRECLASSIC_LAST,
+        forge, lwjgl, version::Library, FabricJSON, GlobalSettings, InstanceConfigJson,
+        JsonOptifine, VersionDetails, V_1_12_2, V_1_5_2, V_PAULSCODE_LAST, V_PRECLASSIC_LAST,
     },
     pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError, JsonFileError,
     Loader, CLASSPATH_SEPARATOR, LAUNCHER_DIR,
@@ -16,7 +15,6 @@ use ql_core::{
 use ql_java_handler::{get_java_binary, JavaVersion};
 use std::{
     collections::HashSet,
-    io::Cursor,
     path::{Path, PathBuf},
     process::Stdio,
     sync::mpsc::Sender,
@@ -33,6 +31,9 @@ pub struct GameLauncher {
     /// This field allows you to send progress updates
     /// to the GUI during installation.
     java_install_progress_sender: Option<Sender<GenericProgress>>,
+
+    /// Progress updates during launch preparation (e.g. custom LWJGL downloads).
+    launch_progress_sender: Option<Sender<GenericProgress>>,
 
     /// Client: `QuantumLauncher/instances/NAME/`
     /// Server: `QuantumLauncher/servers/NAME/`
@@ -54,6 +55,7 @@ impl GameLauncher {
         instance_name: String,
         username: String,
         java_install_progress_sender: Option<Sender<GenericProgress>>,
+        launch_progress_sender: Option<Sender<GenericProgress>>,
         global_settings: Option<GlobalSettings>,
         extra_java_args: Vec<String>,
     ) -> Result<Self, GameLaunchError> {
@@ -74,6 +76,7 @@ impl GameLauncher {
             username,
             instance_name,
             java_install_progress_sender,
+            launch_progress_sender,
             instance_dir,
             minecraft_dir,
             config_json,
@@ -718,13 +721,16 @@ impl GameLauncher {
         let Some(artifact) = library.get_artifact() else {
             return Ok(());
         };
-        
+
         // Check for LWJGL override
-        let library_path = if let Some(override_path) = self.get_lwjgl_override_path(library, &artifact).await? {
-            override_path
-        } else {
-            self.instance_dir.join("libraries").join(artifact.get_path())
-        };
+        let library_path =
+            if let Some(override_path) = self.get_lwjgl_override_path(library, &artifact).await? {
+                override_path
+            } else {
+                self.instance_dir
+                    .join("libraries")
+                    .join(artifact.get_path())
+            };
 
         if !library_path.exists() {
             pt!("library {library_path:?} not found! Downloading...");
@@ -789,7 +795,14 @@ impl GameLauncher {
         }
 
         let (_group_id, artifact_id, _old_version) = (parts[0], parts[1], parts[2]);
-        let classifier = if parts.len() >= 4 { Some(parts[3]) } else { None };
+        let classifier = if parts.len() >= 4 {
+            Some(parts[3])
+        } else {
+            None
+        };
+
+        // Note: we intentionally allow LWJGL 2.x/3.x mismatch overrides.
+        // The UI warns on apply; users may still force it for testing.
 
         // Build new library path with custom LWJGL version
         let new_path = lwjgl::build_lwjgl_library_path(lwjgl_version, artifact_id, classifier);
@@ -798,8 +811,13 @@ impl GameLauncher {
         // Download if doesn't exist
         if !library_path.exists() {
             pt!("Downloading custom LWJGL library: {}", artifact_id);
-            self.download_custom_lwjgl_library(lwjgl_version, artifact_id, classifier, &library_path)
-                .await?;
+            self.download_custom_lwjgl_library(
+                lwjgl_version,
+                artifact_id,
+                classifier,
+                &library_path,
+            )
+            .await?;
         }
 
         Ok(Some(library_path))
@@ -817,19 +835,23 @@ impl GameLauncher {
 
         // Create parent directories
         if let Some(parent) = dest_path.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .path(parent)?;
+            tokio::fs::create_dir_all(parent).await.path(parent)?;
         }
 
-        // Download the library
-        let bytes = file_utils::download_file_to_bytes(&url, false)
-            .await?;
-
-        // Save to disk
-        tokio::fs::write(dest_path, &bytes)
-            .await
-            .path(dest_path)?;
+        // Download the library (streamed to disk) with progress
+        let label = format!(
+            "Downloading LWJGL {version} {}{}",
+            module,
+            classifier.map(|c| format!(" ({c})")).unwrap_or_default()
+        );
+        file_utils::download_file_to_path_with_progress(
+            &url,
+            false,
+            dest_path,
+            self.launch_progress_sender.as_ref(),
+            Some(&label),
+        )
+        .await?;
 
         // If this is a natives JAR, extract it
         if classifier.is_some() && classifier.unwrap().starts_with("natives-") {
@@ -839,12 +861,24 @@ impl GameLauncher {
                 .path(&natives_dir)?;
 
             pt!("Extracting LWJGL natives: {}", module);
-            if let Err(e) = file_utils::extract_zip_archive(Cursor::new(bytes), &natives_dir, true).await {
+
+            if let Some(sender) = &self.launch_progress_sender {
+                let _ = sender.send(GenericProgress {
+                    done: 1,
+                    total: 1,
+                    message: Some(format!("Extracting LWJGL natives: {module}")),
+                    has_finished: false,
+                });
+            }
+
+            let file = std::fs::File::open(dest_path).path(dest_path)?;
+            if let Err(e) = file_utils::extract_zip_archive(file, &natives_dir, true).await {
                 err!("Failed to extract LWJGL natives: {}", e);
                 return Err(IoError::Io {
                     error: format!("Failed to extract LWJGL natives: {e}"),
                     path: natives_dir.clone(),
-                }.into());
+                }
+                .into());
             }
 
             // Mark the natives directory with the new LWJGL version
@@ -852,6 +886,15 @@ impl GameLauncher {
             tokio::fs::write(&version_file, version)
                 .await
                 .path(version_file)?;
+        }
+
+        if let Some(sender) = &self.launch_progress_sender {
+            let _ = sender.send(GenericProgress {
+                done: 1,
+                total: 1,
+                message: Some("LWJGL download complete".to_owned()),
+                has_finished: true,
+            });
         }
 
         Ok(())

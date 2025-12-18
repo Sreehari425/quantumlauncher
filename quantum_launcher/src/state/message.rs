@@ -100,7 +100,7 @@ pub enum EditInstanceMessage {
 
     CustomJarPathChanged(String),
     CustomJarLoaded(Res<Vec<String>>),
-    
+
     LwjglScreenOpen,
 }
 
@@ -109,6 +109,9 @@ pub enum EditLwjglMessage {
     VersionsLoaded(Res<ql_core::json::LwjglVersionList>),
     VersionSelected(Option<String>),
     Apply,
+    ApplyChecked(Res<crate::state::ApplyLwjglResult>),
+    MismatchProceed,
+    MismatchRevert,
     Back,
 }
 

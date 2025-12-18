@@ -74,6 +74,7 @@ impl InstanceNotes {
 pub struct MenuLaunch {
     pub message: String,
     pub login_progress: Option<ProgressBar<GenericProgress>>,
+    pub launch_progress: Option<ProgressBar<GenericProgress>>,
     pub tab: LaunchTabId,
     pub edit_instance: Option<MenuEditInstance>,
     pub notes: Option<InstanceNotes>,
@@ -109,6 +110,7 @@ impl MenuLaunch {
             tab: LaunchTabId::default(),
             edit_instance: None,
             login_progress: None,
+            launch_progress: None,
             sidebar_scrolled: 100.0,
             is_viewing_server: false,
             sidebar_grid_state,
@@ -368,7 +370,14 @@ pub enum MenuEditLwjgl {
         selected_version: String,
         initial_version: Option<String>,
         is_applying: bool,
+        mismatch_confirm: Option<String>,
     },
+}
+
+#[derive(Debug, Clone)]
+pub enum ApplyLwjglResult {
+    Saved,
+    NeedsConfirmation(String),
 }
 
 pub enum MenuInstallPaper {

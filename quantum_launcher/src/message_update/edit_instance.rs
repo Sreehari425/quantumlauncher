@@ -284,6 +284,7 @@ impl Launcher {
                         selected_version: selected_version.clone(),
                         initial_version: current_version,
                         is_applying: false,
+                        mismatch_confirm: None,
                     });
                     return Ok(Task::none());
                 }
