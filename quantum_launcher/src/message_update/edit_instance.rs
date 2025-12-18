@@ -72,6 +72,20 @@ impl Launcher {
                     menu.config.java_override = Some(n);
                 }
             }
+            EditInstanceMessage::BrowseJavaOverride => {
+                if let Some(file) = rfd::FileDialog::new()
+                    .set_title("Select Java Executable (./bin/java)")
+                    .pick_file()
+                {
+                    if let State::Launch(MenuLaunch {
+                        edit_instance: Some(menu),
+                        ..
+                    }) = &mut self.state
+                    {
+                        menu.config.java_override = Some(file.to_string_lossy().to_string());
+                    }
+                }
+            }
             EditInstanceMessage::MemoryChanged(new_slider_value) => {
                 if let State::Launch(MenuLaunch {
                     edit_instance: Some(menu),

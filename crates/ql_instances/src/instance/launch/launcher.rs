@@ -758,10 +758,9 @@ impl GameLauncher {
     }
 
     pub async fn get_java_command(&mut self) -> Result<(Command, PathBuf), GameLaunchError> {
-        if let Some(java_override) = &self.config_json.java_override {
-            if !java_override.is_empty() {
-                return Ok((Command::new(java_override), PathBuf::from(java_override)));
-            }
+        if let Some(java_override) = self.config_json.get_java_override() {
+            info!("Java (override): {java_override:?}\n");
+            return Ok((Command::new(&java_override), java_override));
         }
         let version = if let Some(version) = self.version_json.javaVersion.clone() {
             version.into()

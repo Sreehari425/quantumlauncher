@@ -5,7 +5,7 @@ use std::{
 };
 
 use ql_core::{
-    err, find_forge_shim_file, info,
+    find_forge_shim_file, info,
     json::{InstanceConfigJson, VersionDetails},
     no_window, pt, GenericProgress, InstanceSelection, IntoIoError, LaunchedProcess, Loader,
     LAUNCHER_DIR,
@@ -113,14 +113,8 @@ impl ServerLauncher {
             JavaVersion::Java8
         };
 
-        if let Some(java_path) = &self.config.java_override {
-            if !java_path.is_empty() {
-                let java_path = PathBuf::from(java_path);
-                if java_path.exists() {
-                    return Ok(java_path);
-                }
-                err!("Java override at {java_path:?} does not exist!");
-            }
+        if let Some(java_path) = self.config.get_java_override() {
+            return Ok(java_path);
         }
         let path = get_java_binary(version, "java", java_install_progress).await?;
         Ok(path)

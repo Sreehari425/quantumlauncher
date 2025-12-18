@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -222,6 +222,30 @@ impl InstanceConfigJson {
                 .as_ref()
                 .is_some_and(|n| !n.is_empty())
                 .then_some(MainClassMode::Custom))
+    }
+
+    pub fn get_java_override(&self) -> Option<PathBuf> {
+        fn inner(path: &str) -> Option<PathBuf> {
+            if path.is_empty() {
+                return None;
+            }
+            if path.starts_with("~/") || path.starts_with("~\\") {
+                if let Some(home_dir) = dirs::home_dir() {
+                    let without_tilde = &path[2..];
+                    let full_path = home_dir.join(without_tilde);
+                    return Some(full_path);
+                }
+            }
+            Some(PathBuf::from(path))
+        }
+        let java_override = self.java_override.as_ref()?.trim();
+        let path = inner(java_override)?;
+
+        if !path.exists() {
+            return None;
+        }
+
+        Some(path)
     }
 }
 

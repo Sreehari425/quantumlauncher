@@ -76,6 +76,7 @@ pub enum EditInstanceMessage {
     ConfigSaved(Res),
     ReinstallLibraries,
     UpdateAssets,
+    BrowseJavaOverride,
 
     JavaOverride(String),
     MemoryChanged(f32),

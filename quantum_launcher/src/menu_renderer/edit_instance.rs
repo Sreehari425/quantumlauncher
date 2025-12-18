@@ -242,13 +242,18 @@ Heavy modpacks / High settings: 4-8 GB"
         widget::column![
             "Custom Java executable (full path)",
             widget::text("Note: The launcher already sets up Java automatically,\nYou won't need this in most cases").size(12).style(tsubtitle),
-            widget::text_input(
-                "Leave blank if none",
-                self.config.java_override.as_deref().unwrap_or_default()
-            )
-            .size(14)
-            .font(FONT_MONO)
-            .on_input(|t| Message::EditInstance(EditInstanceMessage::JavaOverride(t)))
+            widget::row![
+                widget::text_input(
+                    "Leave blank if none",
+                    self.config.java_override.as_deref().unwrap_or_default()
+                )
+                .size(14)
+                .font(FONT_MONO)
+                .on_input(|t| Message::EditInstance(EditInstanceMessage::JavaOverride(t))),
+                button_with_icon(icons::folder_s(14), "Browse", 13)
+                    .padding([5, 10])
+                    .on_press(Message::EditInstance(EditInstanceMessage::BrowseJavaOverride))
+            ].spacing(5)
         ]
         .spacing(10)
     }
