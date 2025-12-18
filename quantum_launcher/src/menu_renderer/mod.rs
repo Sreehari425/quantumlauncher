@@ -48,11 +48,14 @@ pub fn checkered_list<'a, Item: Into<Element<'a>>>(
             .width(Length::Fill)
             .padding(16)
             .style(move |t: &LauncherTheme| {
-                if i % 2 == 0 {
-                    t.style_container_bg(0.0, None)
-                } else {
-                    t.style_container_sharp_box(0.0, Color::ExtraDark)
-                }
+                t.style_container_sharp_box(
+                    0.0,
+                    if i % 2 == 0 {
+                        Color::Dark
+                    } else {
+                        Color::ExtraDark
+                    },
+                )
             })
             .into()
     }))
@@ -152,7 +155,7 @@ pub fn button_with_icon<'a>(
     widget::button(
         widget::row![icon.into(), widget::text(text).size(size)]
             .align_y(iced::alignment::Vertical::Center)
-            .spacing(10),
+            .spacing(size as f32 / 1.6),
     )
     .padding([7, 13])
 }

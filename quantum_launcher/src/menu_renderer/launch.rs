@@ -710,7 +710,7 @@ fn view_info_message(
                 widget::button(
                     icons::close()
                         .style(|t: &LauncherTheme| t.style_text(Color::Mid))
-                        .size(14)
+                        .size(12)
                 )
                 .padding(0)
                 .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatExtraDark))
@@ -721,7 +721,7 @@ fn view_info_message(
                 }),
                 widget::text(&menu.message).size(12).style(tsubtitle),
             ]
-            .spacing(10)
+            .spacing(16)
             .align_y(Alignment::Center),
         )
         .width(Length::Fill)

@@ -14,12 +14,12 @@ pub fn changelog<'a>() -> Element<'a> {
 
         widget::container(widget::column![
             "TLDR;",
-            widget::text("- **Mod loaders**: OptiFine + Forge together, plus legacy Fabric support").size(14),
-            widget::text("- **UI & themes**: major overhauls, polish, keyboard navigation and new themes").size(14),
-            widget::text("- **Experimental**: early Server Manager and MultiMC/PrismLauncher import").size(14),
+            widget::text("- Mod loaders: OptiFine + Forge together, plus legacy Fabric support").size(14),
+            widget::text("- UI & themes: major overhauls, polish, keyboard navigation and new themes").size(14),
+            widget::text("- Experimental: early Server Manager and MultiMC/PrismLauncher import").size(14),
             widget::text("- Power user features, technical improvements").size(14),
             widget::text("- Lots of fixes and improvements").size(14),
-        ]).padding(10),
+        ].spacing(5)).padding(10),
 
         widget::text("Mod Loaders").size(32),
         widget::column![

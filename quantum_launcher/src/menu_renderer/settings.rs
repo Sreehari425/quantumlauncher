@@ -135,8 +135,11 @@ impl MenuLauncherSettings {
 
                 widget::checkbox("Remember window size", config.window.as_ref().is_none_or(|n| n.save_window_size))
                     .on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::ToggleWindowSize(n))),
+            ]
+            .spacing(5)
+            .into(),
 
-                widget::Space::with_height(10),
+            widget::column![
                 widget::row![
                     widget::text!("UI Idle FPS ({idle_fps})")
                         .size(15)
@@ -148,12 +151,9 @@ impl MenuLauncherSettings {
                 ]
                 .align_y(Alignment::Center)
                 .spacing(5),
-                widget::text(r#"(Default: 6) The frames-per-second the launcher itself will run at WHEN IDLE (not being used)
-- Lower values may improve efficiency/battery life
-- Increase if you see "not responding" messages"#).size(12).style(tsubtitle),
-            ]
-            .spacing(5)
-            .into()
+                widget::text(r#"(Default: 6) Reduces resource usage when launcher is idle.
+Only increase if progress bars stutter or "not responding" dialogs show"#).size(12).style(tsubtitle),
+            ].spacing(5).into()
         ])
         .into()
     }
