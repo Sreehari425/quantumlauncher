@@ -161,6 +161,7 @@ pub fn button_with_icon<'a>(
     .padding([7, 13])
 }
 
+#[allow(unreachable_code)]
 pub fn shortcut_ctrl<'a>(key: &str) -> Element<'a> {
     #[cfg(target_os = "macos")]
     return widget::text!("Command + {key}").size(12).into();

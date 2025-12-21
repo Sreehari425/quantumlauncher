@@ -403,7 +403,7 @@ pub fn get_args_list(
 
     let args = args.unwrap_or_default();
 
-    fn opt(icon: widget::Text<LauncherTheme>) -> widget::Button<'_, Message, LauncherTheme> {
+    fn opt(icon: widget::Text<'_, LauncherTheme>) -> widget::Button<'_, Message, LauncherTheme> {
         widget::button(icon)
             .padding([6, 8])
             .style(move |t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatDark))
