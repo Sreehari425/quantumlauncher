@@ -1,8 +1,8 @@
 use core_foundation::{array::CFArray, base::TCFType, dictionary::CFDictionary, number::CFNumber};
 use core_graphics::window::{kCGNullWindowID, kCGWindowListOptionAll, CGWindowListCopyWindowInfo};
-use std::os::raw::c_int;
 
 use crate::search::kill_proc;
+use std::ffi::c_void;
 
 pub fn search_for_window(pid: u32, sys: &sysinfo::System) -> bool {
     // SAFETY: Quartz returns a retained CFArray
@@ -18,14 +18,14 @@ pub fn search_for_window(pid: u32, sys: &sysinfo::System) -> bool {
 
     for window in windows.iter() {
         // kCGWindowOwnerPID is a CFString constant
-        let pid_value = window.find(unsafe { &core_graphics::window::kCGWindowOwnerPID });
+        let pid_value = window.find(unsafe { core_graphics::window::kCGWindowOwnerPID as *const c_void });
 
         if let Some(pid_value) = pid_value {
             // Value is a CFNumber
-            let pid_number: CFNumber = unsafe { CFNumber::wrap_under_get_rule(pid_value) };
+            let pid_number: CFNumber = unsafe { CFNumber::wrap_under_get_rule((*pid_value) as *const _) };
 
-            if let Some(pid) = pid_number.to_i32() {
-                if pid == target_pid {
+            if let Some(pid_current) = pid_number.to_i32() {
+                if pid_current as u32 == pid {
                     kill_proc(pid, sys);
                     return true;
                 }

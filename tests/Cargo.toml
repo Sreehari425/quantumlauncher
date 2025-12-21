@@ -17,7 +17,7 @@ duct = "1"
 sysinfo = "0.36"
 which = "8.0.0"
 
-[target.'cfg(macos)'.dependencies]
+[target.'cfg(target_os = "macos")'.dependencies]
 core-graphics = { version = "0.25", features = ["catalina"] }
 core-foundation = "0.10"
 
