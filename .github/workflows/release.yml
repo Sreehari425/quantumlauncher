@@ -4,16 +4,35 @@ permissions:
   contents: write
 
 on:
-  workflow_dispatch: # allows manual triggering
-
-  # schedule:
-  # - cron: '0 0 * * *' # midnight UTC
-
   push:
     tags:
       - "v[0-9]+.[0-9]+"
       - "v[0-9]+.[0-9]+.[0-9]+"
-    ## - release
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name (e.g. v1.0.0)'
+        required: false
+        type: string
+        default: ''
+      release_title:
+        description: 'Release Title (optional)'
+        required: false
+        type: string
+      release_body:
+        description: 'Release Description (one-line only) (optional)'
+        required: false
+        type: string
+      create_release:
+        description: 'Create GitHub Release'
+        required: true
+        type: boolean
+        default: false
+      auto_release_note:
+        description: 'Generate release note'
+        required: true
+        type: boolean
+        default: false
 
 env:
   BIN_NAME: quantum_launcher
@@ -100,7 +119,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libdbus-1-dev pkg-config libdbus-1-3
 
-      - uses: ilammy/setup-nasm@v1
+      # Unblock when nasm is a requirement
+      # - uses: ilammy/setup-nasm@v1
 
       - name: Install rustup for ${{ matrix.os }}
         if: matrix.os == 'windows-11-arm'
@@ -163,49 +183,66 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v6
-      - run: ls -alR
+      # - run: ls -alR
 
-      - name: Calculate tag name
+      - name: Determine Release Metadata
+        id: meta
+        env:
+          MANUAL_BODY: ${{ github.event.inputs.release_body }}
         run: |
-          echo "val=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-          echo "Tag value: $val"
-        id: tagname
+          set -xe
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ ${{ github.event.inputs.tag_name }} != "" ]; then
+            echo "tag=${{ github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
+            echo "title=${{ github.event.inputs.release_title || github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
+            echo "enabled=${{ github.event.inputs.create_release }}" >> $GITHUB_OUTPUT
+
+            # echo "body<<EOF" >> $GITHUB_OUTPUT
+            # echo "$MANUAL_BODY" >> $GITHUB_OUTPUT
+            # echo "EOF" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "push" ]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+            echo "title=$TAG_NAME" >> $GITHUB_OUTPUT
+            echo "enabled=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build archive and Copy binaries
         shell: bash
         run: |
           set -xe
-          mkdir -p dist arti
-
+          mkdir -p dist
           for dir in quantum-launcher-* ; do
-
               binary_path=$(find "$dir" -type f | head -n 1)
               platform_name=$(basename "$dir" | sed 's/quantum-launcher-//')
               pkgname="${{ env.PROJECT_NAME }}_${platform_name}"
-
-              if [ ! -f "$binary_path" ]; then
-                  echo "Error: Binary not found in $dir."
-                  tree
-                  exit 1
-              fi
-
               zip -j "dist/$pkgname.zip" "$binary_path"
-              zip -j "arti/$pkgname.zip" "$binary_path"
           done
 
+      - name: Create Release and Upload Archives
+        if: steps.meta.outputs.enabled == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.title }}
+          files: dist/*
+          generate_release_notes: ${{ github.event.inputs.auto_release_note }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload as artifact
-        if: ${{ github.event_name == 'workflow_dispatch' }}
         uses: actions/upload-artifact@v5
         with:
-          name: binaries
-          path: arti/*
+          name: artifacts
+          path: dist/*
 
-      - name: Upload binaries to release
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-        uses: svenstaro/upload-release-action@v2
+      - name: Trigger Flatpak Update
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+        if: steps.meta.outputs.enabled == 'true' && env.GITHUB_TOKEN != ''
+        uses: peter-evans/repository-dispatch@v4
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/*
-          file_glob: true
-          tag: ${{ steps.tagname.outputs.val }}
-          overwrite: true
+          token: ${{ secrets.PAT }}
+          repository: ${{ github.repository_owner }}/ql-flatpak-remote
+          event-type: trigger-flatpak-update
+          # This might be useful in the future
+          # client-payload: '{"tag": "${{ steps.meta.outputs.tag }}"}'
