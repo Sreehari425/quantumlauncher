@@ -176,7 +176,7 @@ pub async fn get_java_binary(
     }
 
     let bin_path = find_java_bin(name, &java_dir).await?;
-    Ok(bin_path.canonicalize().path(bin_path)?)
+    Ok(tokio::fs::canonicalize(&bin_path).await.path(bin_path)?)
 }
 
 async fn find_java_bin(name: &str, java_dir: &Path) -> Result<PathBuf, JavaInstallError> {

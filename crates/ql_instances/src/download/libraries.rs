@@ -359,7 +359,7 @@ async fn extractlib_name_natives(
         info!("Downloading native (2): {name}");
         let jar_file = file_utils::download_file_to_bytes(&artifact.url, false).await?;
         pt!("Extracting native: {name}");
-        extract_zip_file(jar_file, &natives_path)
+        file_utils::extract_zip_archive(Cursor::new(jar_file), &natives_path, true)
             .await
             .map_err(DownloadError::NativesExtractError)?;
     }
@@ -403,7 +403,7 @@ async fn extractlib_natives_field(
     info!("Extracting natives (1): {name}");
     pt!("Extracting main jar: {name}");
 
-    extract_zip_file(jar_file, natives_path)
+    file_utils::extract_zip_archive(Cursor::new(jar_file), natives_path, true)
         .await
         .map_err(DownloadError::NativesExtractError)?;
 
@@ -466,17 +466,9 @@ async fn extractlib_natives_field(
     };
 
     pt!("Extracting native jar: {name}");
-    extract_zip_file(native_jar, natives_path)
+    file_utils::extract_zip_archive(Cursor::new(native_jar), natives_path, true)
         .await
         .map_err(DownloadError::NativesExtractError)?;
 
-    Ok(())
-}
-
-pub async fn extract_zip_file(
-    archive: Vec<u8>,
-    target_dir: &Path,
-) -> Result<(), zip::result::ZipError> {
-    file_utils::extract_zip_archive(Cursor::new(archive), target_dir, true).await?;
     Ok(())
 }

@@ -28,6 +28,7 @@ pub enum DownloadError {
     Request(#[from] RequestError),
     #[error("{DOWNLOAD_ERR_PREFIX}{0}")]
     Io(#[from] IoError),
+
     #[error("an instance with that name already exists: {0}")]
     InstanceAlreadyExists(String),
     #[error("{DOWNLOAD_ERR_PREFIX}version not found in manifest.json: {0}")]
@@ -35,7 +36,7 @@ pub enum DownloadError {
     #[error("{DOWNLOAD_ERR_PREFIX}in assets JSON, field not found: \"{0}\"")]
     AssetsJsonFieldNotFound(String),
     #[error("{DOWNLOAD_ERR_PREFIX}could not extract native libraries:\n{0}")]
-    NativesExtractError(#[from] zip::result::ZipError),
+    NativesExtractError(zip::result::ZipError),
     #[error("{DOWNLOAD_ERR_PREFIX}tried to remove natives outside folder. POTENTIAL SECURITY RISK AVOIDED")]
     NativesOutsideDirRemove,
 }
