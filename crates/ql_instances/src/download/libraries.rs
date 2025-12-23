@@ -21,6 +21,7 @@ use ql_core::{
     },
     pt, DownloadProgress, IntoIoError, IoError,
 };
+use tokio::fs;
 
 use super::{DownloadError, GameDownloader};
 
@@ -29,12 +30,10 @@ const MACOS_ARM_LWJGL_294_2: &str = "https://github.com/Dungeons-Guide/lwjgl/rel
 
 impl GameDownloader {
     pub async fn download_libraries(&mut self) -> Result<(), DownloadError> {
-        info!("Starting download of libraries.");
-
+        info!("Downloading libraries");
         self.prepare_library_directories().await?;
 
         let total_libraries = self.version_json.libraries.len();
-
         let num_library = Mutex::new(0);
 
         let results = self
@@ -90,13 +89,11 @@ impl GameDownloader {
 
     async fn prepare_library_directories(&self) -> Result<(), IoError> {
         let library_path = self.instance_dir.join("libraries");
-        tokio::fs::create_dir_all(&library_path)
+        fs::create_dir_all(&library_path)
             .await
             .path(&library_path)?;
         let natives_path = library_path.join("natives");
-        tokio::fs::create_dir_all(&natives_path)
-            .await
-            .path(natives_path)?;
+        fs::create_dir_all(&natives_path).await.path(natives_path)?;
         Ok(())
     }
 
@@ -141,11 +138,12 @@ impl GameDownloader {
         artifact: &LibraryDownloadArtifact,
         classifiers: Option<&BTreeMap<String, LibraryClassifier>>,
     ) -> Result<(), DownloadError> {
-        if let Some(name) = &library.name {
-            info!("Downloading {name}: {}", artifact.url);
-        } else {
-            info!("Downloading {}", artifact.url);
-        }
+        pt!(
+            "{} {}:\n  {}",
+            "Downloading".underline(),
+            library.name.as_deref().unwrap_or_default().bright_black(),
+            artifact.url.bright_black()
+        );
         let jar_file = self
             .download_library_normal(artifact, libraries_dir)
             .await?;
@@ -206,12 +204,10 @@ impl GameDownloader {
             )
             .to_path_buf();
 
-        tokio::fs::create_dir_all(&lib_dir_path)
-            .await
-            .path(lib_dir_path)?;
+        fs::create_dir_all(&lib_dir_path).await.path(lib_dir_path)?;
         let library_downloaded = file_utils::download_file_to_bytes(&artifact.url, false).await?;
 
-        tokio::fs::write(&lib_file_path, &library_downloaded)
+        fs::write(&lib_file_path, &library_downloaded)
             .await
             .path(lib_file_path)?;
 
@@ -270,7 +266,7 @@ impl GameDownloader {
 
                 matches
             })) {
-                pt!("Skipping OS: {os}");
+                pt!("{} {os}", "Skipping".bright_black());
                 continue;
             }
 
@@ -306,11 +302,11 @@ impl GameDownloader {
 
                 if exclusion_path.exists() {
                     if exclusion_path.is_dir() {
-                        tokio::fs::remove_dir_all(&exclusion_path)
+                        fs::remove_dir_all(&exclusion_path)
                             .await
                             .path(exclusion_path)?;
                     } else {
-                        tokio::fs::remove_file(&exclusion_path)
+                        fs::remove_file(&exclusion_path)
                             .await
                             .path(exclusion_path)?;
                     }
@@ -404,16 +400,24 @@ async fn extractlib_natives_field(
         return Ok(());
     };
 
-    pt!(
-        "Natives ({}): {}",
-        "1: main jar".cyan(),
-        name.bright_black()
-    );
-
-    if let Err(err) =
-        file_utils::extract_zip_archive(Cursor::new(jar_file), natives_path, true).await
+    if !library
+        .name
+        .as_deref()
+        .is_some_and(|n| n == "ca.weblite:java-objc-bridge:1.0.0")
     {
-        err!("Couldn't extract main jar: {err}");
+        // TODO: Somehow obtain aarch64 natives for this
+        // Bridge 1.1 has them but 1.0 doesn't
+        pt!(
+            "Natives ({}): {}",
+            "1: main jar".cyan(),
+            name.bright_black()
+        );
+
+        if let Err(err) =
+            file_utils::extract_zip_archive(Cursor::new(jar_file), natives_path, true).await
+        {
+            err!("Couldn't extract main jar: {err}");
+        }
     }
 
     let natives_url = if let Some(classifiers) = classifiers {
@@ -458,8 +462,8 @@ async fn extractlib_natives_field(
     };
 
     pt!(
-        "Natives ({}): {}\n  ({})",
-        "2: `.natives`".purple(),
+        "Natives ({}): {}\n  {}",
+        "2: .natives".purple(),
         name.bright_black(),
         natives_url.bright_black()
     );
