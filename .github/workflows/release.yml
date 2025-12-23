@@ -19,10 +19,10 @@ on:
         description: 'Release Title (optional)'
         required: false
         type: string
-      release_body:
-        description: 'Release Description (one-line only) (optional)'
-        required: false
-        type: string
+      # release_body:
+      #   description: 'Release Description (one-line only) (optional)'
+      #   required: false
+      #   type: string
       create_release:
         description: 'Create GitHub Release'
         required: true
@@ -113,6 +113,17 @@ jobs:
         with:
           submodules: true
 
+      - name: Determine Profile
+        id: determine_profile
+        shell: bash
+        run: |
+          set -xe
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.create_release }}" == "false" ]]; then
+            echo "profile=dev-ql" >> $GITHUB_OUTPUT
+          else
+            echo "profile=release-ql" >> $GITHUB_OUTPUT
+          fi
+
       - name: Install dependencies
         if: matrix.os == 'ubuntu-22.04' || matrix.os == 'ubuntu-22.04-arm'
         run: |
@@ -140,33 +151,35 @@ jobs:
             cargo install cross --locked
           fi
 
-      - name: Build release binary
+      - name: Build binary
         shell: bash
         run: |
+          PROFILE=${{ steps.determine_profile.outputs.profile }}
           if [ "${{ matrix.cross }}" == "true" ]; then
-            cross build --profile release-ql --target ${{ matrix.target }}
+            cross build --profile $PROFILE --target ${{ matrix.target }}
           else
-            cargo build --profile release-ql --target ${{ matrix.target }}
+            cargo build --profile $PROFILE --target ${{ matrix.target }}
           fi
 
       - name: Build archive
         shell: bash
         run: |
           mkdir dist
+          PROFILE=${{ steps.determine_profile.outputs.profile }}
 
           if [ "${{ matrix.build }}" = "x86_64-windows" ] || [ "${{ matrix.build }}" = "i686-windows" ]; then
-            cp "target/${{ matrix.target }}/release-ql/${{ env.BIN_NAME }}.exe" "dist/"
+            cp "target/${{ matrix.target }}/$PROFILE/${{ env.BIN_NAME }}.exe" "dist/"
           elif [ "${{ matrix.build }}" = "aarch64-macos" ] || [ "${{ matrix.build }}" = "x86_64-macos" ]; then
             APP_DIR="build/quantum-launcher.app"
             MACOS_DIR="$APP_DIR/Contents/MacOS"
             RESOURCES_DIR="$APP_DIR/Contents/Resources"
             mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
-            cp "target/${{ matrix.target }}/release-ql/${{ env.BIN_NAME }}" "$MACOS_DIR/${{ env.BIN_NAME }}"
+            cp "target/${{ matrix.target }}/$PROFILE/${{ env.BIN_NAME }}" "$MACOS_DIR/${{ env.BIN_NAME }}"
             cp assets/freedesktop/Info.plist "$APP_DIR/Contents/Info.plist"
             sips -s format icns "assets/icon/ql_logo.png" --out "$RESOURCES_DIR/ql_logo.icns"
             hdiutil create -volname "${{ env.BIN_NAME}}" -srcfolder "$APP_DIR" -ov -format UDZO "dist/${{ env.BIN_NAME }}.dmg"
           else
-            cp "target/${{ matrix.target }}/release-ql/${{ env.BIN_NAME }}" "dist/"
+            cp "target/${{ matrix.target }}/$PROFILE/${{ env.BIN_NAME }}" "dist/"
           fi
 
       - uses: actions/upload-artifact@v5
@@ -183,12 +196,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v6
-      # - run: ls -alR
 
       - name: Determine Release Metadata
         id: meta
-        env:
-          MANUAL_BODY: ${{ github.event.inputs.release_body }}
         run: |
           set -xe
           if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ ${{ github.event.inputs.tag_name }} != "" ]; then
