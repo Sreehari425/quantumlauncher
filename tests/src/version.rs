@@ -33,6 +33,6 @@ pub const VERSIONS_LWJGL3: &[Version] = &[
     Version("1.21.5", &[Loader::Forge, Loader::Quilt, Loader::Neoforge]),
     // last launchwrapper version
     Version("1.21.10", &[Loader::Forge, Loader::Quilt, Loader::Neoforge]),
-    // latest
-    ver("1.21.11-pre2"),
+    // TODO: Wait for a version to come out after 1.21.11, then add it here
+    // (BetterJSONs is, unfortunately, up-to-date so can't test without it)
 ];

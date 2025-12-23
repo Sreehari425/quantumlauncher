@@ -1,6 +1,11 @@
+use std::sync::LazyLock;
+
 use crate::{err, file_utils, IntoJsonError, JsonDownloadError};
 use chrono::DateTime;
 use serde::Deserialize;
+
+static MANIFEST: LazyLock<tokio::sync::RwLock<Option<Manifest>>> =
+    LazyLock::new(|| tokio::sync::RwLock::new(None));
 
 /// An official Minecraft version manifest
 /// (list of all versions and their download links)
@@ -18,7 +23,7 @@ impl Manifest {
     ///   Platform-dependent URLs (see below)
     ///
     /// This ensures a consistent, high-quality manifest by preserving curated data
-    /// for older versions (up to `25w14craftmine`) and appending newer versions
+    /// for older versions (up to `1.21.11`) and appending newer versions
     /// from the official or forked manifests.
     ///
     /// # Platform-specific URLs
@@ -29,7 +34,16 @@ impl Manifest {
     /// # Errors
     /// Returns an error if either file cannot be downloaded or parsed into JSON.
     pub async fn download() -> Result<Manifest, JsonDownloadError> {
-        const LAST_BETTERJSONS: &str = "25w44a";
+        if let Some(m) = MANIFEST.read().await.clone() {
+            return Ok(m);
+        }
+        let manifest = Self::load().await?;
+        *MANIFEST.write().await = Some(manifest.clone());
+        Ok(manifest)
+    }
+
+    async fn load() -> Result<Manifest, JsonDownloadError> {
+        const LAST_BETTERJSONS: &str = "1.21.11";
 
         // An out-of-date but curated manifest
         const OLDER_VERSIONS_JSON: &str =

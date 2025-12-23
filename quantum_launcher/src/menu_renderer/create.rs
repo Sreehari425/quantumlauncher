@@ -17,11 +17,7 @@ use crate::{
 };
 
 impl MenuCreateInstance {
-    pub fn view<'a>(
-        &'a self,
-        existing_instances: Option<&[String]>,
-        versions: Option<&'a [ListEntry]>,
-    ) -> Element<'a> {
+    pub fn view<'a>(&'a self, existing_instances: Option<&[String]>) -> Element<'a> {
         match self {
             MenuCreateInstance::LoadingList { .. } => column![
                 back_button().on_press(Message::CreateInstance(CreateInstanceMessage::Cancel)),
@@ -38,6 +34,8 @@ impl MenuCreateInstance {
                 is_server,
                 show_category_dropdown,
                 selected_categories,
+                list,
+                ..
             } => {
                 let pb = iced::Padding::new(7.0).left(10.0).right(10.0);
                 let opened_controls = *show_category_dropdown;
@@ -79,7 +77,7 @@ impl MenuCreateInstance {
                 .spacing(10);
 
                 let sidebar = Self::get_sidebar_contents(
-                    versions,
+                    list,
                     selected_version,
                     *is_server,
                     header.into(),
@@ -188,7 +186,7 @@ impl MenuCreateInstance {
     }
 
     fn get_sidebar_contents<'a>(
-        versions: Option<&'a [ListEntry]>,
+        versions: &'a [ListEntry],
         selected_version: &'a ListEntry,
         is_server: bool,
         header: Element<'static>,
@@ -199,8 +197,7 @@ impl MenuCreateInstance {
             "MenuCreateInstance:sidebar",
             Some(header),
             versions
-                .into_iter()
-                .flatten()
+                .iter()
                 .filter(|n| n.supports_server || !is_server)
                 .filter(|n| selected_categories.contains(&n.kind))
                 .filter(|n| {

@@ -400,10 +400,10 @@ async fn extractlib_natives_field(
         return Ok(());
     };
 
-    if !library
+    if library
         .name
         .as_deref()
-        .is_some_and(|n| n == "ca.weblite:java-objc-bridge:1.0.0")
+        .is_none_or(|n| n != "ca.weblite:java-objc-bridge:1.0.0")
     {
         // TODO: Somehow obtain aarch64 natives for this
         // Bridge 1.1 has them but 1.0 doesn't

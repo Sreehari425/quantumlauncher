@@ -321,6 +321,8 @@ pub enum MenuCreateInstance {
         _handle: iced::task::Handle,
     },
     Choosing {
+        list: Vec<ListEntry>,
+        // UI:
         is_server: bool,
         search_box: String,
         show_category_dropdown: bool,

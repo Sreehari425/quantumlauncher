@@ -9,8 +9,8 @@ use iced::Task;
 use notify::Watcher;
 use ql_core::{
     err, err_no_log, file_utils, read_log::LogLine, GenericProgress, InstanceSelection,
-    IntoIoError, IntoStringError, IoError, JsonFileError, LaunchedProcess, ListEntry, ModId,
-    Progress, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
+    IntoIoError, IntoStringError, IoError, JsonFileError, LaunchedProcess, ModId, Progress,
+    LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
 };
 use ql_instances::auth::{ms::CLIENT_ID, AccountData, AccountType};
 use tokio::process::ChildStdin;
@@ -64,7 +64,6 @@ pub struct Launcher {
     pub accounts_dropdown: Vec<String>,
     pub accounts_selected: Option<String>,
 
-    pub version_list_cache: VersionListCache,
     pub client_list: Option<Vec<String>>,
     pub server_list: Option<Vec<String>>,
 
@@ -100,12 +99,6 @@ impl CustomJarState {
             Message::EditInstance(EditInstanceMessage::CustomJarLoaded(n.strerr()))
         })
     }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct VersionListCache {
-    pub list: Option<Vec<ListEntry>>,
-    pub latest_stable: Option<String>,
 }
 
 pub struct GameProcess {
@@ -175,7 +168,6 @@ impl Launcher {
             client_list: None,
             server_list: None,
             java_recv: None,
-            version_list_cache: VersionListCache::default(),
             selected_instance: None,
             custom_jar: None,
 
@@ -254,7 +246,6 @@ impl Launcher {
                 is_maximized: false,
             },
             autosave: HashSet::new(),
-            version_list_cache: VersionListCache::default(),
             accounts_dropdown: vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()],
             accounts_selected: Some(OFFLINE_ACCOUNT_NAME.to_owned()),
             modifiers_pressed: iced::keyboard::Modifiers::empty(),
