@@ -34,7 +34,10 @@ pub async fn create_instance(
     progress_sender: Option<Sender<DownloadProgress>>,
     download_assets: bool,
 ) -> Result<String, DownloadError> {
-    info!("Started creating instance");
+    info!(
+        "Started creating instance: {} (kind: {})",
+        version.name, version.kind
+    );
 
     // An empty asset directory.
     let launcher_dir = &*LAUNCHER_DIR;

@@ -5,6 +5,7 @@ use std::{
     sync::Mutex,
 };
 
+use owo_colors::OwoColorize;
 #[cfg(not(any(
     target_arch = "aarch64",
     target_arch = "arm",
@@ -356,9 +357,12 @@ async fn extractlib_name_natives(
         || (name.contains("x86") && !name.contains("x86_64")));
 
     if is_compatible {
-        info!("Downloading native (2): {name}");
+        pt!(
+            "Natives ({}): {}",
+            "3: based on name".yellow(),
+            name.bright_black()
+        );
         let jar_file = file_utils::download_file_to_bytes(&artifact.url, false).await?;
-        pt!("Extracting native: {name}");
         file_utils::extract_zip_archive(Cursor::new(jar_file), &natives_path, true)
             .await
             .map_err(DownloadError::NativesExtractError)?;
@@ -400,12 +404,17 @@ async fn extractlib_natives_field(
         return Ok(());
     };
 
-    info!("Extracting natives (1): {name}");
-    pt!("Extracting main jar: {name}");
+    pt!(
+        "Natives ({}): {}",
+        "1: main jar".cyan(),
+        name.bright_black()
+    );
 
-    file_utils::extract_zip_archive(Cursor::new(jar_file), natives_path, true)
-        .await
-        .map_err(DownloadError::NativesExtractError)?;
+    if let Err(err) =
+        file_utils::extract_zip_archive(Cursor::new(jar_file), natives_path, true).await
+    {
+        err!("Couldn't extract main jar: {err}");
+    }
 
     let natives_url = if let Some(classifiers) = classifiers {
         if let Some(natives) = classifiers.get(natives_name) {
@@ -448,7 +457,12 @@ async fn extractlib_natives_field(
         natives_url
     };
 
-    pt!("Downloading native jar: {name}\n  ({natives_url})");
+    pt!(
+        "Natives ({}): {}\n  ({})",
+        "2: `.natives`".purple(),
+        name.bright_black(),
+        natives_url.bright_black()
+    );
     let native_jar = match file_utils::download_file_to_bytes(&natives_url, false).await {
         Ok(n) => n,
         #[cfg(any(
