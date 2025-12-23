@@ -62,9 +62,9 @@ regex = "1"
 opt-level = 3
 debug = false
 
-[profile.dev-ql]
-inherits = "dev"
-strip = "symbols"
+[profile.release-test]
+inherits = "release"
+opt-level = "s"
 
 [profile.release-dbg]
 inherits = "release"
