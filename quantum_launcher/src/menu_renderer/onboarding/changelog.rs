@@ -142,6 +142,7 @@ pub fn changelog<'a>() -> Element<'a> {
             widget::text("- Improved ARM support for Linux and macOS, for 1.21 and above").size(14),
             widget::text("- Fixed \"java binary not found\" macOS error").size(14),
             widget::text("- Fixed \"SSLHandshakeException\" crash on Windows").size(14),
+            widget::text("- Fixed some versions (eg: 1.12.2) being undownloadable on macOS").size(14)
         ].spacing(5),
 
         widget::Space::with_height(10),
