@@ -275,9 +275,7 @@ impl Launcher {
                 mod_update_progress: None,
                 ..
             })
-            | State::Create(
-                MenuCreateInstance::LoadingList { .. } | MenuCreateInstance::Choosing { .. },
-            )
+            | State::Create(MenuCreateInstance::Choosing { .. })
             | State::Error { .. }
             | State::UpdateFound(MenuLauncherUpdate { progress: None, .. })
             | State::LauncherSettings(_)

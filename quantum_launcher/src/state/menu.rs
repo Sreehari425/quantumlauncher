@@ -317,11 +317,9 @@ pub struct MenuEditJarMods {
 }
 
 pub enum MenuCreateInstance {
-    LoadingList {
-        _handle: iced::task::Handle,
-    },
     Choosing {
-        list: Vec<ListEntry>,
+        _loading_list_handle: iced::task::Handle,
+        list: Option<Vec<ListEntry>>,
         // UI:
         is_server: bool,
         search_box: String,

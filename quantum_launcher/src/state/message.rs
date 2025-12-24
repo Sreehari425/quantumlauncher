@@ -52,7 +52,7 @@ pub enum CreateInstanceMessage {
         is_server: bool,
     },
 
-    VersionsLoaded(Res<(Vec<ListEntry>, String)>, bool),
+    VersionsLoaded(Res<(Vec<ListEntry>, String)>),
     VersionSelected(ListEntry),
     NameInput(String),
     ChangeAssetToggle(bool),
@@ -64,7 +64,6 @@ pub enum CreateInstanceMessage {
 
     Start,
     End(Res<InstanceSelection>),
-    Cancel,
 
     #[allow(unused)]
     Import,

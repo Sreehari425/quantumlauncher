@@ -10,22 +10,16 @@ use crate::{
     cli::EXPERIMENTAL_MMC_IMPORT,
     icons,
     menu_renderer::{
-        back_button, button_with_icon, ctxbox, sidebar, sidebar_button, tooltip, tsubtitle, Element,
+        back_button, button_with_icon, ctxbox, dots, sidebar, sidebar_button, tooltip, tsubtitle,
+        Element,
     },
     state::{CreateInstanceMessage, MenuCreateInstance, Message},
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
 
 impl MenuCreateInstance {
-    pub fn view<'a>(&'a self, existing_instances: Option<&[String]>) -> Element<'a> {
+    pub fn view<'a>(&'a self, existing_instances: Option<&[String]>, timer: usize) -> Element<'a> {
         match self {
-            MenuCreateInstance::LoadingList { .. } => column![
-                back_button().on_press(Message::CreateInstance(CreateInstanceMessage::Cancel)),
-                widget::text("Loading version list...").size(20),
-            ]
-            .padding(10)
-            .spacing(10)
-            .into(),
             MenuCreateInstance::Choosing {
                 instance_name,
                 selected_version,
@@ -48,7 +42,7 @@ impl MenuCreateInstance {
                                 clear_selection: false,
                                 is_server: Some(*is_server),
                             }),
-                        widget::button(icons::filter())
+                        widget::button(icons::filter_s(14))
                             .padding(pb)
                             .style(move |t: &LauncherTheme, s| t.style_button(
                                 s,
@@ -77,12 +71,13 @@ impl MenuCreateInstance {
                 .spacing(10);
 
                 let sidebar = Self::get_sidebar_contents(
-                    list,
+                    list.as_deref(),
                     selected_version,
                     *is_server,
                     header.into(),
                     search_box,
                     selected_categories,
+                    timer,
                 );
 
                 let view = row![
@@ -97,10 +92,10 @@ impl MenuCreateInstance {
                 ]
                 .width(Length::Fill);
 
-                widget::stack!(view,)
-                    .push_maybe(show_category_dropdown.then_some(widget::row![
+                widget::stack!(view)
+                    .push_maybe(show_category_dropdown.then_some(row![
                         widget::Space::with_width(97),
-                        widget::column![
+                        column![
                             widget::Space::with_height(50),
                             ctxbox(Self::get_category_dropdown(selected_categories))
                         ]
@@ -133,7 +128,7 @@ impl MenuCreateInstance {
     ) -> widget::Column<'static, Message, LauncherTheme> {
         let already_exists = existing_instances.is_some_and(|n| n.contains(instance_name));
 
-        column![
+        let main_part = column![
             widget::text!("Create {}", if is_server { "Server" } else { "Instance" })
                 .size(24),
             row![
@@ -154,26 +149,11 @@ impl MenuCreateInstance {
                 Position::FollowCursor
             ),
             widget::horizontal_rule(1),
-            column![
-                widget::text("- To install Fabric/Forge/OptiFine/etc and mods, click on Mods after installing the instance").size(12).style(tsubtitle),
-                row!(
-                    widget::text("- To sideload your own custom JARs, create an instance with a similar version, then go to").size(12).style(tsubtitle),
-                    widget::text(" \"Edit->Custom Jar File\"").size(12).style(tsubtitle)
-                ).wrap(),
-            ].spacing(5),
-            widget::vertical_space(),
-            row![widget::horizontal_space()].push_maybe(
-                EXPERIMENTAL_MMC_IMPORT.read().unwrap().then_some(
-                    tooltip(
-                        button_with_icon(icons::upload(), "Import from MultiMC...", 16)
-                        .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
-                        widget::text("Import Instance... (VERY EXPERIMENTAL right now)").size(14),
-                        Position::Top
-                    )
-                )
-            )
-            .push(get_create_button(already_exists))
-            .spacing(5)
+            widget::text("- To install Fabric/Forge/OptiFine/etc and mods, click on Mods after installing the instance").size(12).style(tsubtitle),
+            row!(
+                widget::text("- To sideload your own custom JARs, create an instance with a similar version, then go to").size(12).style(tsubtitle),
+                widget::text(" \"Edit->Custom Jar File\"").size(12).style(tsubtitle)
+            ).wrap(),
         ].push_maybe({
             let real_platform = if cfg!(target_arch = "x86") { "x86_64" } else { "aarch64" };
             (cfg!(target_os = "linux") && (cfg!(target_arch = "x86") || cfg!(target_arch = "arm")))
@@ -182,17 +162,55 @@ impl MenuCreateInstance {
                 widget::text("Warning: On your platform (Linux 32 bit) only Minecraft 1.16.5 and below are supported.").size(20),
                 widget::text!("If your computer isn't outdated, you might have wanted to download QuantumLauncher 64 bit ({real_platform})"),
             ])
-        }).spacing(10).padding(10)
+        }).spacing(16).padding(16);
+
+        column![
+            widget::scrollable(main_part)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .style(|t: &LauncherTheme, s| t.style_scrollable_flat_dark(s)),
+            row![widget::horizontal_space()]
+                .push_maybe(
+                    EXPERIMENTAL_MMC_IMPORT.read().unwrap().then_some(tooltip(
+                        button_with_icon(icons::upload(), "Import from MultiMC...", 16)
+                            .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
+                        widget::text("Import Instance... (VERY EXPERIMENTAL right now)").size(14),
+                        Position::Top
+                    ))
+                )
+                .push(get_create_button(already_exists))
+                .padding(16)
+                .spacing(5)
+        ]
+        .spacing(10)
     }
 
     fn get_sidebar_contents<'a>(
-        versions: &'a [ListEntry],
+        versions: Option<&'a [ListEntry]>,
         selected_version: &'a ListEntry,
         is_server: bool,
         header: Element<'static>,
         searchbox: &str,
         selected_categories: &HashSet<ListEntryKind>,
+        timer: usize,
     ) -> widget::Container<'a, Message, LauncherTheme> {
+        let Some(versions) = versions else {
+            return widget::container(
+                column![
+                    header,
+                    widget::text!(" Loading versions{}", dots(timer))
+                        .style(tsubtitle)
+                        .size(14)
+                ]
+                .spacing(10)
+                .padding(10),
+            )
+            .width(190)
+            .height(Length::Fill)
+            .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark))
+            .into();
+        };
+
         sidebar(
             "MenuCreateInstance:sidebar",
             Some(header),
@@ -207,19 +225,13 @@ impl MenuCreateInstance {
                             .contains(&searchbox.trim().to_lowercase())
                 })
                 .map(|n| {
-                    let label = widget::text(&n.name)
-                        .size(if n.kind == ListEntryKind::Snapshot {
-                            14
+                    let label = widget::text(&n.name).size(14).style(|t: &LauncherTheme| {
+                        t.style_text(if n.kind == ListEntryKind::Snapshot {
+                            Color::SecondLight
                         } else {
-                            15
+                            Color::Light
                         })
-                        .style(|t: &LauncherTheme| {
-                            t.style_text(if n.kind == ListEntryKind::Snapshot {
-                                Color::SecondLight
-                            } else {
-                                Color::Light
-                            })
-                        });
+                    });
 
                     sidebar_button(
                         n,

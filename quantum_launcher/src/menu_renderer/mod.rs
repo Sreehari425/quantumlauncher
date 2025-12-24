@@ -3,7 +3,6 @@ use iced::{widget, Alignment, Length};
 use ql_core::{Progress, WEBSITE};
 use ql_instances::auth::AccountType;
 
-use crate::state::ImageState;
 use crate::stylesheet::styles::{LauncherThemeLightness, BORDER_RADIUS, BORDER_WIDTH};
 use crate::{
     config::LauncherConfig,
@@ -127,7 +126,7 @@ pub fn back_button<'a>() -> widget::Button<'a, Message, LauncherTheme> {
 }
 
 pub fn ctxbox<'a>(inner: impl Into<Element<'a>>) -> widget::Container<'a, Message, LauncherTheme> {
-    widget::container(widget::mouse_area(inner))
+    widget::container(widget::mouse_area(inner).on_press(Message::Nothing))
         .padding(10)
         .style(|t: &LauncherTheme| {
             t.style_container_round_box(BORDER_WIDTH, Color::Dark, BORDER_RADIUS)
@@ -220,7 +219,9 @@ fn sidebar<'a>(
     .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark))
 }
 
-impl ImageState {}
+fn dots(tick_timer: usize) -> String {
+    ".".repeat((tick_timer % 3) + 1)
+}
 
 impl MenuLauncherUpdate {
     pub fn view(&'_ self) -> Element<'_> {

@@ -7,6 +7,9 @@ use ql_instances::UpdateCheckInfo;
 use std::fmt::Write;
 use tokio::io::AsyncWriteExt;
 
+#[allow(unused)]
+use owo_colors::OwoColorize;
+
 use crate::{
     message_handler::{SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT},
     state::{
@@ -46,7 +49,7 @@ impl Launcher {
                 }
             }
 
-            Message::UpdateCheckResult(Err(err)) | Message::CoreCleanComplete(Err(err)) => {
+            Message::CoreCleanComplete(Err(err)) => {
                 err_no_log!("{err}");
             }
 
@@ -222,15 +225,18 @@ impl Launcher {
                 }
             },
             #[cfg(feature = "auto_update")]
-            Message::UpdateCheckResult(Ok(info)) => match info {
-                UpdateCheckInfo::UpToDate => {
-                    info_no_log!("Launcher is latest version. No new updates");
+            Message::UpdateCheckResult(res) => match res {
+                Ok(UpdateCheckInfo::UpToDate) => {
+                    ql_core::pt_no_log!("{}", "Latest version".bright_black());
                 }
-                UpdateCheckInfo::NewVersion { url } => {
+                Ok(UpdateCheckInfo::NewVersion { url }) => {
                     self.state = State::UpdateFound(MenuLauncherUpdate {
                         url,
                         progress: None,
                     });
+                }
+                Err(err) => {
+                    ql_core::pt_no_log!("{}", err.bright_black());
                 }
             },
             #[cfg(feature = "auto_update")]
