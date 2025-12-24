@@ -207,8 +207,7 @@ impl MenuCreateInstance {
             )
             .width(190)
             .height(Length::Fill)
-            .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark))
-            .into();
+            .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark));
         };
 
         sidebar(

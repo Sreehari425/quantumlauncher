@@ -122,19 +122,12 @@ impl GameDownloader {
     }
 
     pub async fn download_logging_config(&self) -> Result<(), DownloadError> {
-        if let Some(ref logging) = self.version_json.logging {
-            info!("Downloading logging configuration.");
-            self.send_progress(DownloadProgress::DownloadingLoggingConfig, false);
-
+        if let Some(logging) = &self.version_json.logging {
             let log_config_name = format!("logging-{}", logging.client.file.id);
-
-            let log_config =
-                file_utils::download_file_to_string(&logging.client.file.url, false).await?;
-
             let config_path = self.instance_dir.join(log_config_name);
-            tokio::fs::write(&config_path, log_config.as_bytes())
-                .await
-                .path(config_path)?;
+
+            file_utils::download_file_to_path(&logging.client.file.url, false, &config_path)
+                .await?;
         }
         Ok(())
     }

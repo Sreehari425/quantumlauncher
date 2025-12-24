@@ -268,7 +268,7 @@ pub async fn download_file_to_bytes(url: &str, user_agent: bool) -> Result<Vec<u
 pub async fn download_file_to_path(
     url: &str,
     user_agent: bool,
-    path: &Path,
+    path: impl AsRef<Path>,
 ) -> Result<(), DownloadFileError> {
     async fn inner(url: &str, user_agent: bool, path: &Path) -> Result<(), DownloadFileError> {
         let mut get = CLIENT.get(url);
@@ -294,7 +294,7 @@ pub async fn download_file_to_path(
         Ok(())
     }
 
-    retry(|| async { inner(url, user_agent, path).await }).await
+    retry(|| async { inner(url, user_agent, path.as_ref()).await }).await
 }
 
 /// Downloads a file from the given URL into a `Vec<u8>`,

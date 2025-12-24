@@ -211,6 +211,7 @@ impl InstanceConfigJson {
             .get_or_insert_with(GlobalSettings::default)
     }
 
+    #[must_use]
     pub fn get_main_class_mode(&self) -> Option<MainClassMode> {
         self.custom_jar
             .as_ref()
@@ -223,6 +224,7 @@ impl InstanceConfigJson {
                 .then_some(MainClassMode::Custom))
     }
 
+    #[must_use]
     pub fn get_java_override(&self) -> Option<PathBuf> {
         fn inner(path: &str) -> Option<PathBuf> {
             if path.is_empty() {

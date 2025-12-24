@@ -65,6 +65,7 @@ use json::{
     files::{JavaFile, JavaFileDownload, JavaFilesJson},
     list::JavaListJson,
 };
+use owo_colors::OwoColorize;
 use std::{
     path::{Path, PathBuf},
     sync::{mpsc::Sender, Mutex},
@@ -369,8 +370,8 @@ async fn download_file(downloads: &JavaFileDownload) -> Result<Vec<u8>, JavaInst
         Ok(()) => Ok(out),
         Err(err) => {
             err!(
-                "Could not decompress lzma file: {err} ({})",
-                downloads.raw.url
+                "Could not decompress lzma file: {err}\n  ({})",
+                downloads.raw.url.bright_black()
             );
             Ok(normal_download(downloads).await?)
         }
