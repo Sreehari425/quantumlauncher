@@ -5,14 +5,8 @@ use std::{
     sync::Mutex,
 };
 
+use cfg_if::cfg_if;
 use owo_colors::OwoColorize;
-#[cfg(not(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
-    feature = "simulate_linux_arm64",
-    feature = "simulate_macos_arm64",
-)))]
-use ql_core::constants::OS_NAME;
 use ql_core::{
     constants::*,
     do_jobs, err, file_utils, info,
@@ -225,44 +219,25 @@ impl GameDownloader {
         for (os, download) in classifiers {
             #[allow(unused)]
             if !(OS_NAMES.iter().any(|os_name| {
-                #[cfg(all(target_os = "windows", target_arch = "x86"))]
-                let matches = os == "natives-windows-32";
-                #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
-                let matches = (os == "natives-windows-64") || (os == "natives-windows");
-
-                #[cfg(any(
+                cfg_if!(if #[cfg(any(
                     all(target_os = "linux", target_arch = "aarch64"),
                     feature = "simulate_linux_arm64"
-                ))]
-                let matches = os == "natives-linux-arm64";
-                #[cfg(all(target_os = "linux", target_arch = "arm"))]
-                let matches = os == "natives-linux-arm32";
-
-                #[cfg(any(
+                ))] {
+                    let matches = os == "natives-linux-arm64";
+                } else if #[cfg(any(
                     all(target_os = "macos", target_arch = "aarch64"),
                     feature = "simulate_macos_arm64"
-                ))]
-                let matches = os == "natives-osx-arm64";
-
-                #[cfg(not(any(
-                    all(
-                        target_os = "windows",
-                        any(target_arch = "x86_64", target_arch = "x86")
-                    ),
-                    all(
-                        target_os = "linux",
-                        any(
-                            target_arch = "aarch64",
-                            target_arch = "arm",
-                            feature = "simulate_linux_arm64"
-                        )
-                    ),
-                    any(
-                        all(target_os = "macos", target_arch = "aarch64"),
-                        feature = "simulate_macos_arm64"
-                    )
-                )))]
-                let matches = *os == format!("natives-{os_name}");
+                ))] {
+                    let matches = os == "natives-osx-arm64";
+                } else if #[cfg(all(target_os = "windows", target_arch = "x86"))] {
+                    let matches = os == "natives-windows-32";
+                } else if #[cfg(all(target_os = "windows", target_arch = "x86_64"))] {
+                    let matches = (os == "natives-windows-64") || (os == "natives-windows");
+                } else if #[cfg(all(target_os = "linux", target_arch = "arm"))] {
+                    let matches = os == "natives-linux-arm32";
+                } else {
+                    let matches = *os == format!("natives-{os_name}");
+                });
 
                 matches
             })) {
@@ -331,26 +306,21 @@ async fn extractlib_name_natives(
         return Ok(());
     }
 
-    #[cfg(target_arch = "arm")]
-    let is_compatible = name.contains("arm32");
-    #[cfg(target_arch = "x86")]
-    let is_compatible = name.contains("x86") && !name.contains("x86_64");
-    #[cfg(any(
+    cfg_if!(if #[cfg(any(
         target_arch = "aarch64",
         feature = "simulate_linux_arm64",
         feature = "simulate_macos_arm64"
-    ))]
-    let is_compatible = name.contains("aarch") || name.contains("arm64");
-    #[cfg(not(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "x86",
-        feature = "simulate_linux_arm64",
-        feature = "simulate_macos_arm64"
-    )))]
-    let is_compatible = !(name.contains("aarch")
-        || name.contains("arm")
-        || (name.contains("x86") && !name.contains("x86_64")));
+    ))] {
+        let is_compatible = name.contains("aarch") || name.contains("arm64");
+    } else if #[cfg(target_arch = "arm")] {
+        let is_compatible = name.contains("arm32");
+    } else if #[cfg(target_arch = "x86")] {
+        let is_compatible = name.contains("x86") && !name.contains("x86_64");
+    } else {
+        let is_compatible = !(name.contains("aarch")
+            || name.contains("arm")
+            || (name.contains("x86") && !name.contains("x86_64")));
+    });
 
     if is_compatible {
         pt!(
@@ -380,25 +350,23 @@ async fn extractlib_natives_field(
         return Ok(());
     };
 
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "x86",
-        feature = "simulate_linux_arm64",
-        feature = "simulate_macos_arm64",
-    ))]
-    let Some(natives_name) = natives.get(&format!("{OS_NAME}-{ARCH}")) else {
-        return Ok(());
-    };
-    #[cfg(not(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        feature = "simulate_linux_arm64",
-        feature = "simulate_macos_arm64",
-    )))]
-    let Some(natives_name) = natives.get(OS_NAME) else {
-        return Ok(());
-    };
+    cfg_if!(
+        if #[cfg(any(
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "x86",
+            feature = "simulate_linux_arm64",
+            feature = "simulate_macos_arm64",
+        ))] {
+            let Some(natives_name) = natives.get(&format!("{OS_NAME}-{ARCH}")) else {
+                return Ok(());
+            };
+        } else {
+            let Some(natives_name) = natives.get(OS_NAME) else {
+                return Ok(());
+            };
+        }
+    );
 
     if library
         .name

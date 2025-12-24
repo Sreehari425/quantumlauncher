@@ -375,6 +375,7 @@ pub struct MenuInstallForge {
     pub is_java_getting_installed: bool,
 }
 
+#[allow(unused)]
 pub struct MenuLauncherUpdate {
     pub url: String,
     pub progress: Option<ProgressBar<GenericProgress>>,

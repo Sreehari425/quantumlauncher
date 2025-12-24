@@ -5,7 +5,7 @@ use crate::{
     get_entries,
     state::{
         EditPresetsMessage, ManageModsMessage, MenuEditInstance, MenuEditMods, MenuInstallForge,
-        MenuLaunch, MenuLauncherUpdate, ProgressBar, SelectedState, State, OFFLINE_ACCOUNT_NAME,
+        MenuLaunch, ProgressBar, SelectedState, State, OFFLINE_ACCOUNT_NAME,
     },
     Launcher, Message,
 };
@@ -467,7 +467,9 @@ impl Launcher {
     }
     #[cfg(feature = "auto_update")]
     pub fn update_download_start(&mut self) -> Task<Message> {
-        if let State::UpdateFound(MenuLauncherUpdate { url, progress, .. }) = &mut self.state {
+        if let State::UpdateFound(crate::state::MenuLauncherUpdate { url, progress, .. }) =
+            &mut self.state
+        {
             let (sender, update_receiver) = std::sync::mpsc::channel();
             *progress = Some(ProgressBar::with_recv_and_msg(
                 update_receiver,

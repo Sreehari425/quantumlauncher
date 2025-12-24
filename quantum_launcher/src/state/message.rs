@@ -424,8 +424,10 @@ pub enum Message {
     LaunchUploadLog,
     LaunchUploadLogResult(Res<String>),
 
+    #[allow(unused)]
     UpdateCheckResult(Res<UpdateCheckInfo>),
     UpdateDownloadStart,
+    #[allow(unused)]
     UpdateDownloadEnd(Res),
 
     ServerCommandEdit(String),

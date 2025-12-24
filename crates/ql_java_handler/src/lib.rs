@@ -88,6 +88,7 @@ mod json;
 
 pub use json::list::JavaVersion;
 
+#[allow(dead_code)]
 const fn which_java() -> &'static str {
     #[cfg(target_os = "windows")]
     return "javaw";

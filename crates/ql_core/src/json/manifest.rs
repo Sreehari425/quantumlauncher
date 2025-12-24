@@ -1,6 +1,7 @@
 use std::sync::LazyLock;
 
 use crate::{err, file_utils, IntoJsonError, JsonDownloadError};
+use cfg_if::cfg_if;
 use chrono::DateTime;
 use serde::Deserialize;
 
@@ -50,13 +51,14 @@ impl Manifest {
             "https://mcphackers.org/BetterJSONs/version_manifest_v2.json";
 
         // An up-to-date manifest that lacks some fixes/polish
-        #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
-        const NEWER_VERSIONS_JSON: &str = "https://raw.githubusercontent.com/theofficialgman/piston-meta-arm64/refs/heads/main/mc/game/version_manifest_v2.json";
-        #[cfg(all(target_os = "linux", target_arch = "arm"))]
-        const NEWER_VERSIONS_JSON: &str = "https://raw.githubusercontent.com/theofficialgman/piston-meta-arm32/refs/heads/main/mc/game/version_manifest_v2.json";
-        #[cfg(not(all(target_os = "linux", any(target_arch = "aarch64", target_arch = "arm"))))]
-        const NEWER_VERSIONS_JSON: &str =
-            "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
+        cfg_if!(if #[cfg(all(target_os = "linux", target_arch = "aarch64"))] {
+            const NEWER_VERSIONS_JSON: &str = "https://raw.githubusercontent.com/theofficialgman/piston-meta-arm64/refs/heads/main/mc/game/version_manifest_v2.json";
+        } else if #[cfg(all(target_os = "linux", target_arch = "arm"))] {
+            const NEWER_VERSIONS_JSON: &str = "https://raw.githubusercontent.com/theofficialgman/piston-meta-arm32/refs/heads/main/mc/game/version_manifest_v2.json";
+        } else {
+            const NEWER_VERSIONS_JSON: &str =
+                "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
+        });
 
         let (older_manifest, newer_manifest) = tokio::try_join!(
             file_utils::download_file_to_string(OLDER_VERSIONS_JSON, false),

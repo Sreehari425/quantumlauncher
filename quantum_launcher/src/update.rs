@@ -3,7 +3,6 @@ use ql_core::{
     err, err_no_log, file_utils::DirItem, info_no_log, InstanceSelection, IntoIoError,
     IntoStringError,
 };
-use ql_instances::UpdateCheckInfo;
 use std::fmt::Write;
 use tokio::io::AsyncWriteExt;
 
@@ -14,8 +13,8 @@ use crate::{
     message_handler::{SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT},
     state::{
         AutoSaveKind, CustomJarState, GameProcess, LaunchTabId, Launcher, LauncherSettingsMessage,
-        ManageModsMessage, MenuExportInstance, MenuLaunch, MenuLauncherUpdate, MenuLicense,
-        MenuWelcome, Message, ProgressBar, State,
+        ManageModsMessage, MenuExportInstance, MenuLaunch, MenuLicense, MenuWelcome, Message,
+        ProgressBar, State,
     },
     stylesheet::styles::LauncherThemeLightness,
 };
@@ -226,11 +225,11 @@ impl Launcher {
             },
             #[cfg(feature = "auto_update")]
             Message::UpdateCheckResult(res) => match res {
-                Ok(UpdateCheckInfo::UpToDate) => {
+                Ok(ql_instances::UpdateCheckInfo::UpToDate) => {
                     ql_core::pt_no_log!("{}", "Latest version".bright_black());
                 }
-                Ok(UpdateCheckInfo::NewVersion { url }) => {
-                    self.state = State::UpdateFound(MenuLauncherUpdate {
+                Ok(ql_instances::UpdateCheckInfo::NewVersion { url }) => {
+                    self.state = State::UpdateFound(crate::state::MenuLauncherUpdate {
                         url,
                         progress: None,
                     });

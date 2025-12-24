@@ -16,6 +16,7 @@ ql_java_handler.path = "../ql_java_handler"
 chrono.workspace = true
 semver.workspace = true
 zip.workspace = true
+cfg-if.workspace = true
 
 reqwest.workspace = true
 tokio.workspace = true
