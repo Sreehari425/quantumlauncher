@@ -215,7 +215,7 @@ pub async fn install_launcher_update(
     std::process::exit(0);
 }
 
-const UPDATE_ERR_PREFIX: &str = "while managing launcher update:\n";
+const UPDATE_ERR_PREFIX: &str = "launcher update:\n";
 
 #[derive(Debug, Error)]
 pub enum UpdateError {
@@ -233,7 +233,7 @@ pub enum UpdateError {
     UnsupportedArchitecture,
     #[error("no matching launcher update download found for your platform")]
     NoMatchingDownloadFound,
-    #[error("Current launcher version is ahead of latest version! dev build?")]
+    #[error("Running dev build... (ahead of latest version)")]
     AheadOfLatestVersion,
     #[error("{UPDATE_ERR_PREFIX}could not get current exe path: {0}")]
     CurrentExeError(std::io::Error),

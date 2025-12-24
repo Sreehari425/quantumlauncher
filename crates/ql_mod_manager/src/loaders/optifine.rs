@@ -258,8 +258,8 @@ async fn download_libraries(
 
         info!("Downloading library ({i}/{len}): {}", library);
 
-        let url_parent_path = format!("{}/{}/{}", parts[0].replace('.', "/"), parts[1], parts[2],);
-        let url_final_part = format!("{url_parent_path}/{}-{}.jar", parts[1], parts[2],);
+        let url_parent_path = format!("{}/{}/{}", parts[0].replace('.', "/"), parts[1], parts[2]);
+        let url_final_part = format!("{url_parent_path}/{}-{}.jar", parts[1], parts[2]);
 
         let parent_path = libraries_path.join(&url_parent_path);
         tokio::fs::create_dir_all(&parent_path)

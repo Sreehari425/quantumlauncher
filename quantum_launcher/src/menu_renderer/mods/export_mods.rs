@@ -97,7 +97,7 @@ impl MenuExportMods {
                             use crate::stylesheet::widgets::StyleButton;
                             theme.style_button(status, StyleButton::FlatDark)
                         })
-                        .on_press(Message::ExportMods(ExportModsMessage::ExportAsMarkdown,))
+                        .on_press(Message::ExportMods(ExportModsMessage::ExportAsMarkdown))
                 ]
                 .spacing(12)
             ]
