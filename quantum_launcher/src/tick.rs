@@ -337,7 +337,7 @@ impl MenuEditMods {
 impl MenuCreateInstance {
     pub fn tick(&mut self) {
         match self {
-            MenuCreateInstance::LoadingList { .. } | MenuCreateInstance::Choosing { .. } => {}
+            MenuCreateInstance::Choosing { .. } => {}
             MenuCreateInstance::DownloadingInstance(progress) => {
                 progress.tick();
             }
