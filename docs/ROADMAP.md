@@ -27,7 +27,7 @@ Plans for the future of QuantumLauncher.
 - [x] Optifine
 - [x] Quilt
 - [x] Neoforge
-- [ ] OptiForge (WIP)
+- [x] OptiForge
 - [ ] OptiFabric
 - [ ] Other Fabric implementations (WIP)
 - [x] Jar Mods
@@ -87,7 +87,7 @@ but local and ad-free.
 
 - [x] Windows Aarch64
 - [x] Linux Aarch64
-- [x] Linux ARM32
+- [x] Linux ARM 32-bit
 - [x] macOS Aarch64
 
 - [x] Windows i686
@@ -104,7 +104,7 @@ but local and ad-free.
 - [x] `list-available-versions`, `-a`
 - [x] `create NAME VERSION`
 - [x] `launch INSTANCE USERNAME`
-- [ ] Install loaders from CLI
+- [ ] `loader install/uninstall/info`
 - [ ] Mod installation features from CLI
 - [ ] Preset, modpack features from CLI
 

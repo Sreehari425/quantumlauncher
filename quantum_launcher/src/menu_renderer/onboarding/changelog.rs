@@ -23,8 +23,9 @@ pub fn changelog<'a>() -> Element<'a> {
 
         widget::text("Mod Loaders").size(32),
         widget::column![
-            widget::text("- You can now install OptiFine and Forge together!"),
-            widget::text("Added alternate fabric implementations for versions without official Fabric support:"),
+            "- Manage loaders from the CLI with `quantum_launcher loaders install/info/uninstall`",
+            "- You can now install OptiFine and Forge together!",
+            "Added alternate fabric implementations for versions without official Fabric support:",
             widget::text("- Legacy Fabric (1.3-1.13)").size(14),
             widget::text("- OrnitheMC (b1.7-1.13)").size(14),
             widget::text("- Babric and Cursed Legacy (b1.7.3)").size(14),
