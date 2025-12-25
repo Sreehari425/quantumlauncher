@@ -10,8 +10,11 @@ use owo_colors::OwoColorize;
 use ql_core::{
     constants::*,
     do_jobs, err, file_utils, info,
-    json::version::{
-        Library, LibraryClassifier, LibraryDownloadArtifact, LibraryDownloads, LibraryExtract,
+    json::{
+        version::{
+            Library, LibraryClassifier, LibraryDownloadArtifact, LibraryDownloads, LibraryExtract,
+        },
+        VersionDetails,
     },
     pt, DownloadProgress, IntoIoError, IoError,
 };
@@ -60,7 +63,7 @@ impl GameDownloader {
         library_len: usize,
     ) -> Result<(), DownloadError> {
         if !library.is_allowed() {
-            info!("Skipping library:\n{library:#?}\n");
+            pt!("{} {library:?}", "Skipping".underline());
             return Ok(());
         }
 
@@ -135,15 +138,17 @@ impl GameDownloader {
         pt!(
             "{} {}:\n  {}",
             "Downloading".underline(),
-            library.name.as_deref().unwrap_or_default().bright_black(),
+            library.name.as_deref().unwrap_or_default(),
             artifact.url.bright_black()
         );
         let jar_file = self
             .download_library_normal(artifact, libraries_dir)
             .await?;
+
         let natives_path = self.instance_dir.join("libraries/natives");
-        extractlib_natives_field(library, classifiers, jar_file, &natives_path, artifact).await?;
-        extractlib_name_natives(library, artifact, natives_path).await?;
+        self.extractlib_natives_field(library, classifiers, jar_file, &natives_path, artifact)
+            .await?;
+        self.extractlib_name_natives(library, artifact).await?;
         Ok(())
     }
 
@@ -166,11 +171,16 @@ impl GameDownloader {
         jar_file: Vec<u8>,
         artifact: &LibraryDownloadArtifact,
     ) -> Result<(), DownloadError> {
+        let d = GameDownloader::with_existing_instance(
+            VersionDetails::load_from_path(instance_dir).await?,
+            instance_dir.to_owned(),
+            None,
+        );
         let natives_path = instance_dir.join("libraries/natives");
 
         // Why 2 functions? Because unfortunately there are multiple formats
         // natives can come in, and we need to support all of them.
-        extractlib_natives_field(
+        d.extractlib_natives_field(
             library,
             Some(&BTreeMap::new()),
             jar_file,
@@ -179,7 +189,7 @@ impl GameDownloader {
         )
         .await?;
 
-        extractlib_name_natives(library, artifact, natives_path).await?;
+        d.extractlib_name_natives(library, artifact).await?;
 
         Ok(())
     }
@@ -241,49 +251,31 @@ impl GameDownloader {
 
                 matches
             })) {
-                pt!("{} {os}", "Skipping".bright_black());
+                pt!("  {} {os}", "Skipping".bright_black());
                 continue;
             }
 
-            let url = if cfg!(target_arch = "aarch64") && download.url == MACOS_ARM_LWJGL_294_1 {
-                info!("Patching LWJGL 2.9.4 20150209 natives for OSX ARM64 (classifiers)");
-                MACOS_ARM_LWJGL_294_2
-            } else {
-                &download.url
-            };
-            info!("Downloading natives (classifiers): {url}");
-
-            let library = file_utils::download_file_to_bytes(url, false).await?;
-            if Some(library.len()) != download.size.as_u64().map(|n| n as usize) {
-                err!(
-                    "(download_library_native): Library size {} doesn't match expected size {}",
-                    library.len(),
-                    download.size
-                );
-            }
-
-            file_utils::extract_zip_archive(Cursor::new(library), &natives_dir, true)
-                .await
-                .map_err(DownloadError::NativesExtractError)?;
+            pt!(
+                "  Natives ({}):\n    {}",
+                "4: classifiers".blue(),
+                download.url.bright_black()
+            );
+            self.extract_file(download.url.clone()).await?;
         }
 
         if let Some(extract) = extract {
             for exclusion in &extract.exclude {
-                let exclusion_path = natives_dir.join(exclusion);
+                let path = natives_dir.join(exclusion);
 
-                if !exclusion_path.starts_with(&natives_dir) {
+                if !path.starts_with(&natives_dir) {
                     return Err(DownloadError::NativesOutsideDirRemove);
                 }
 
-                if exclusion_path.exists() {
-                    if exclusion_path.is_dir() {
-                        fs::remove_dir_all(&exclusion_path)
-                            .await
-                            .path(exclusion_path)?;
+                if let Ok(meta) = fs::metadata(&path).await {
+                    if meta.is_dir() {
+                        fs::remove_dir_all(&path).await.path(path)?;
                     } else {
-                        fs::remove_file(&exclusion_path)
-                            .await
-                            .path(exclusion_path)?;
+                        fs::remove_file(&path).await.path(path)?;
                     }
                 }
             }
@@ -291,170 +283,165 @@ impl GameDownloader {
 
         Ok(())
     }
-}
 
-async fn extractlib_name_natives(
-    library: &Library,
-    artifact: &LibraryDownloadArtifact,
-    natives_path: PathBuf,
-) -> Result<(), DownloadError> {
-    let Some(name) = &library.name else {
-        return Ok(());
-    };
-
-    if !name.contains("native") {
-        return Ok(());
-    }
-
-    cfg_if!(if #[cfg(any(
-        target_arch = "aarch64",
-        feature = "simulate_linux_arm64",
-        feature = "simulate_macos_arm64"
-    ))] {
-        let is_compatible = name.contains("aarch") || name.contains("arm64");
-    } else if #[cfg(target_arch = "arm")] {
-        let is_compatible = name.contains("arm32");
-    } else if #[cfg(target_arch = "x86")] {
-        let is_compatible = name.contains("x86") && !name.contains("x86_64");
-    } else {
-        let is_compatible = !(name.contains("aarch")
-            || name.contains("arm")
-            || (name.contains("x86") && !name.contains("x86_64")));
-    });
-
-    if is_compatible {
-        pt!(
-            "Natives ({}): {}",
-            "3: based on name".yellow(),
-            name.bright_black()
-        );
-        let jar_file = file_utils::download_file_to_bytes(&artifact.url, false).await?;
-        file_utils::extract_zip_archive(Cursor::new(jar_file), &natives_path, true)
-            .await
-            .map_err(DownloadError::NativesExtractError)?;
-    }
-
-    Ok(())
-}
-
-async fn extractlib_natives_field(
-    library: &Library,
-    classifiers: Option<&BTreeMap<String, LibraryClassifier>>,
-    jar_file: Vec<u8>,
-    natives_path: &Path,
-    artifact: &LibraryDownloadArtifact,
-) -> Result<(), DownloadError> {
-    let name = library.name.as_deref().unwrap_or_default();
-
-    let Some(natives) = &library.natives else {
-        return Ok(());
-    };
-
-    cfg_if!(
-        if #[cfg(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "x86",
-            feature = "simulate_linux_arm64",
-            feature = "simulate_macos_arm64",
-        ))] {
-            let Some(natives_name) = natives.get(&format!("{OS_NAME}-{ARCH}")) else {
-                return Ok(());
-            };
-        } else {
-            let Some(natives_name) = natives.get(OS_NAME) else {
-                return Ok(());
-            };
+    async fn extract_file(&self, mut url: String) -> Result<(), DownloadError> {
+        if url == "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-natives-linux.jar" {
+            url = "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-patched-natives-linux-arm64.jar".to_owned();
         }
-    );
-
-    if library
-        .name
-        .as_deref()
-        .is_none_or(|n| n != "ca.weblite:java-objc-bridge:1.0.0")
-    {
-        // TODO: Somehow obtain aarch64 natives for this
-        // Bridge 1.1 has them but 1.0 doesn't
-        pt!(
-            "Natives ({}): {}",
-            "1: main jar".cyan(),
-            name.bright_black()
-        );
-
-        if let Err(err) =
-            file_utils::extract_zip_archive(Cursor::new(jar_file), natives_path, true).await
-        {
-            err!("Couldn't extract main jar: {err}");
-        }
-    }
-
-    let natives_url = if let Some(classifiers) = classifiers {
-        if let Some(natives) = classifiers.get(natives_name) {
-            if natives.url == "https://github.com/MinecraftMachina/lwjgl/releases/download/2.9.4-20150209-mmachina.2/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.jar" {
-                // Updated fork, fixes crash on macOS aarch64 when resizing windows
-                MACOS_ARM_LWJGL_294_2.to_owned()
-            } else {
-                natives.url.clone()
-            }
-        } else {
-            err!("{name}: No matching `classifiers.natives-*` entry found for {natives_name}");
-            return Ok(());
-        }
-    } else {
-        let url = &artifact.url[..artifact.url.len() - 4];
-        let mut natives_url = format!("{url}-{natives_name}.jar");
-
-        if natives_url == "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-natives-linux.jar" {
-            "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-patched-natives-linux-arm64.jar".clone_into(&mut natives_url);
+        if (cfg!(target_arch = "aarch64") && url == MACOS_ARM_LWJGL_294_1) || url == "https://github.com/MinecraftMachina/lwjgl/releases/download/2.9.4-20150209-mmachina.2/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.jar" {
+            url = MACOS_ARM_LWJGL_294_2.to_owned();
         }
 
         #[cfg(any(
+            feature = "simulate_linux_arm64",
+            all(target_os = "linux", target_arch = "aarch64")
+        ))]
+        if url.ends_with("lwjgl-core-natives-linux.jar") {
+            url = url.replace(
+                "lwjgl-core-natives-linux.jar",
+                "lwjgl-natives-linux-arm64.jar",
+            );
+        }
+
+        if !self
+            .already_downloaded_natives
+            .lock()
+            .await
+            .insert(url.clone())
+        {
+            return Ok(());
+        }
+        let file_bytes = match file_utils::download_file_to_bytes(&url, false).await {
+            Ok(n) => n,
+            #[cfg(any(
+                all(target_os = "linux", target_arch = "aarch64"),
+                feature = "simulate_linux_arm64"
+            ))]
+            Err(ql_core::RequestError::DownloadError { code, .. }) if code.as_u16() == 404 => {
+                file_utils::download_file_to_bytes(
+                    &url.replace("linux.jar", "linux-arm64.jar"),
+                    false,
+                )
+                .await?
+            }
+            Err(err) => Err(err)?,
+        };
+
+        let extract_path = self.instance_dir.join("libraries/natives");
+        file_utils::extract_zip_archive(Cursor::new(file_bytes), &extract_path, true)
+            .await
+            .map_err(DownloadError::NativesExtractError)?;
+        Ok(())
+    }
+
+    async fn extractlib_natives_field(
+        &self,
+        library: &Library,
+        classifiers: Option<&BTreeMap<String, LibraryClassifier>>,
+        jar_file: Vec<u8>,
+        natives_path: &Path,
+        artifact: &LibraryDownloadArtifact,
+    ) -> Result<(), DownloadError> {
+        let name = library.name.as_deref().unwrap_or_default();
+
+        let Some(natives) = &library.natives else {
+            return Ok(());
+        };
+
+        cfg_if!(
+            if #[cfg(any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86",
+                feature = "simulate_linux_arm64",
+                feature = "simulate_macos_arm64",
+            ))] {
+                let Some(natives_name) = natives.get(&format!("{OS_NAME}-{ARCH}")) else {
+                    return Ok(());
+                };
+            } else {
+                let Some(natives_name) = natives.get(OS_NAME) else {
+                    return Ok(());
+                };
+            }
+        );
+
+        if library
+            .name
+            .as_deref()
+            .is_none_or(|n| n != "ca.weblite:java-objc-bridge:1.0.0")
+        {
+            // TODO: Somehow obtain aarch64 natives for ca.weblite:java-objc-bridge:1.0.0
+            // Bridge 1.1 has them but 1.0 doesn't
+            pt!(
+                "  Natives ({}): {}",
+                "1: main jar".cyan(),
+                name.bright_black()
+            );
+
+            if let Err(err) =
+                file_utils::extract_zip_archive(Cursor::new(jar_file), natives_path, true).await
+            {
+                err!("Couldn't extract main jar: {err}");
+            }
+        }
+
+        let natives_url = if let Some(natives) = classifiers.and_then(|n| n.get(natives_name)) {
+            natives.url.clone()
+        } else {
+            let url = &artifact.url[..artifact.url.len() - 4];
+            format!("{url}-{natives_name}.jar")
+        };
+
+        pt!(
+            "  Natives ({}): {}\n    {}",
+            "2: .natives".purple(),
+            name.bright_black(),
+            natives_url.bright_black()
+        );
+        self.extract_file(natives_url).await?;
+
+        Ok(())
+    }
+
+    async fn extractlib_name_natives(
+        &self,
+        library: &Library,
+        artifact: &LibraryDownloadArtifact,
+    ) -> Result<(), DownloadError> {
+        let Some(name) = &library.name else {
+            return Ok(());
+        };
+
+        if !name.contains("native") {
+            return Ok(());
+        }
+
+        cfg_if!(if #[cfg(any(
             target_arch = "aarch64",
             feature = "simulate_linux_arm64",
             feature = "simulate_macos_arm64"
-        ))]
-        {
-            if natives_url == MACOS_ARM_LWJGL_294_1 {
-                info!("Patching LWJGL 2.9.4 20150209 natives for OSX ARM64");
-                MACOS_ARM_LWJGL_294_2.clone_into(&mut natives_url);
-            }
-            if natives_url.ends_with("lwjgl-core-natives-linux.jar") {
-                natives_url = natives_url.replace(
-                    "lwjgl-core-natives-linux.jar",
-                    "lwjgl-natives-linux-arm64.jar",
-                );
-            }
+        ))] {
+            let is_compatible = name.contains("aarch") || name.contains("arm64");
+        } else if #[cfg(target_arch = "arm")] {
+            let is_compatible = name.contains("arm32");
+        } else if #[cfg(target_arch = "x86")] {
+            let is_compatible = name.contains("x86") && !name.contains("x86_64");
+        } else {
+            let is_compatible = !(name.contains("aarch")
+                || name.contains("arm")
+                || (name.contains("x86") && !name.contains("x86_64")));
+        });
+
+        if is_compatible {
+            pt!(
+                "  Natives ({}): {}",
+                "3: based on name".yellow(),
+                name.bright_black()
+            );
+            self.extract_file(artifact.url.clone()).await?;
         }
 
-        natives_url
-    };
-
-    pt!(
-        "Natives ({}): {}\n  {}",
-        "2: .natives".purple(),
-        name.bright_black(),
-        natives_url.bright_black()
-    );
-    let native_jar = match file_utils::download_file_to_bytes(&natives_url, false).await {
-        Ok(n) => n,
-        #[cfg(any(
-            all(target_os = "linux", target_arch = "aarch64"),
-            feature = "simulate_linux_arm64"
-        ))]
-        Err(ql_core::RequestError::DownloadError { code, .. }) if code.as_u16() == 404 => {
-            file_utils::download_file_to_bytes(
-                &natives_url.replace("linux.jar", "linux-arm64.jar"),
-                false,
-            )
-            .await?
-        }
-        Err(err) => Err(err)?,
-    };
-
-    pt!("Extracting native jar: {name}");
-    file_utils::extract_zip_archive(Cursor::new(native_jar), natives_path, true)
-        .await
-        .map_err(DownloadError::NativesExtractError)?;
-
-    Ok(())
+        Ok(())
+    }
 }

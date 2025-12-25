@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     path::{Path, PathBuf},
     sync::mpsc::Sender,
 };
@@ -43,6 +44,10 @@ pub enum DownloadError {
 
 impl_3_errs_jri!(DownloadError, Json, Request, Io);
 
+const SKIP_NATIVES: &[&str] = &[
+    "https://libraries.minecraft.net/ca/weblite/java-objc-bridge/1.0.0/java-objc-bridge-1.0.0.jar",
+];
+
 /// A struct that helps download a Minecraft instance.
 ///
 /// # Example
@@ -51,6 +56,7 @@ pub(crate) struct GameDownloader {
     pub instance_dir: PathBuf,
     pub version_json: VersionDetails,
     sender: Option<Sender<DownloadProgress>>,
+    pub(crate) already_downloaded_natives: Mutex<HashSet<String>>,
 }
 
 impl GameDownloader {
@@ -80,6 +86,7 @@ impl GameDownloader {
             instance_dir,
             version_json,
             sender,
+            already_downloaded_natives: already_downloaded_natives(),
         })
     }
 
@@ -93,6 +100,7 @@ impl GameDownloader {
             instance_dir,
             version_json,
             sender,
+            already_downloaded_natives: already_downloaded_natives(),
         }
     }
 
@@ -403,4 +411,10 @@ impl GameDownloader {
 
         Ok(())
     }
+}
+
+fn already_downloaded_natives() -> Mutex<HashSet<String>> {
+    Mutex::new(HashSet::from_iter(
+        SKIP_NATIVES.into_iter().map(|n| n.to_string()),
+    ))
 }
