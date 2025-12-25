@@ -75,10 +75,7 @@ impl Launcher {
             Message::LaunchInstanceSelected { name, is_server } => {
                 let inst = InstanceSelection::new(&name, is_server);
                 self.selected_instance = Some(inst.clone());
-                self.load_edit_instance(None);
-                if let State::Launch(menu) = &mut self.state {
-                    return menu.reload_notes(inst);
-                }
+                return self.on_instance_selected();
             }
             Message::LauncherSettings(msg) => return self.update_launcher_settings(msg),
             Message::InstallOptifine(msg) => return self.update_install_optifine(msg),
@@ -106,7 +103,7 @@ impl Launcher {
                         .map(InstanceSelection::is_server))
                     .unwrap_or_default();
                 if clear_selection {
-                    self.selected_instance = None;
+                    self.unselect_instance();
                 }
 
                 return if is_server {
@@ -271,11 +268,7 @@ impl Launcher {
                 }
             }
             Message::CoreListLoaded(Ok((list, is_server))) => {
-                if is_server {
-                    self.server_list = Some(list);
-                } else {
-                    self.client_list = Some(list);
-                }
+                self.core_list_loaded(list, is_server)
             }
             Message::CoreCopyText(txt) => {
                 return iced::clipboard::write(txt);
@@ -476,6 +469,25 @@ impl Launcher {
             }
         }
         Task::none()
+    }
+
+    fn core_list_loaded(&mut self, list: Vec<String>, is_server: bool) {
+        let persistent = self.config.c_persistent();
+        if is_server {
+            if let Some(n) = &persistent.selected_server {
+                if !list.contains(n) {
+                    self.unselect_instance();
+                }
+            }
+            self.server_list = Some(list);
+        } else {
+            if let Some(n) = &persistent.selected_instance {
+                if !list.contains(n) {
+                    self.unselect_instance();
+                }
+            }
+            self.client_list = Some(list);
+        }
     }
 
     fn task_read_system_theme(&mut self) -> Task<Message> {

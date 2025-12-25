@@ -533,6 +533,14 @@ impl Launcher {
             LauncherSettingsMessage::ToggleWindowSize(t) => {
                 self.config.c_window().save_window_size = t;
             }
+            LauncherSettingsMessage::ToggleInstanceRemembering(t) => {
+                let persistent = self.config.c_persistent();
+                persistent.selected_remembered = t;
+                if !t {
+                    persistent.selected_instance = None;
+                    persistent.selected_server = None;
+                }
+            }
             LauncherSettingsMessage::DefaultMinecraftWidthChanged(input) => {
                 self.config.c_global().window_width = input.trim().parse::<u32>().ok();
             }

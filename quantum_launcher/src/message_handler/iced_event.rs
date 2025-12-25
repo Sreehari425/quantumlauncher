@@ -379,21 +379,6 @@ impl Launcher {
         )
     }
 
-    pub fn server_selected(&self) -> bool {
-        self.selected_instance
-            .as_ref()
-            .is_some_and(|n| n.is_server())
-            || if let State::Launch(menu) = &self.state {
-                menu.is_viewing_server
-            } else if let State::Create(MenuCreateInstance::Choosing { is_server, .. }) =
-                &self.state
-            {
-                *is_server
-            } else {
-                false
-            }
-    }
-
     fn hide_submenu(&mut self) -> bool {
         if let State::EditMods(menu) = &mut self.state {
             if menu.modal.is_some() {
@@ -487,12 +472,9 @@ impl Launcher {
         );
 
         if did_scroll {
-            self.load_edit_instance(None);
-            let instance = self.instance().clone();
-            if let State::Launch(menu) = &mut self.state {
-                return Task::batch([menu.reload_notes(instance), scroll_task]);
-            }
+            Task::batch([scroll_task, self.on_instance_selected()])
+        } else {
+            scroll_task
         }
-        scroll_task
     }
 }

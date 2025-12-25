@@ -58,6 +58,8 @@ pub struct Launcher {
     pub java_recv: Option<ProgressBar<GenericProgress>>,
     pub custom_jar: Option<CustomJarState>,
     pub mod_updates_checked: HashMap<InstanceSelection, Vec<(ModId, String, bool)>>,
+
+    /// See [`AutoSaveKind`]
     pub autosave: HashSet<AutoSaveKind>,
 
     pub accounts: HashMap<String, AccountData>,
@@ -75,6 +77,15 @@ pub struct Launcher {
     pub modifiers_pressed: iced::keyboard::Modifiers,
 }
 
+/// Used to temporarily "block" auto-saving something,
+/// or indicate it was already saved.
+///
+/// On the [`Launcher`] struct,
+///
+/// - Use `self.autosave.remove(n)`
+///   to indicate a change was made
+/// - Use `self.autosave.insert(n)`
+///   to indicate it was saved, and doesn't need saving again
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum AutoSaveKind {
     LauncherConfig,
@@ -151,7 +162,15 @@ impl Launcher {
 
         let (accounts, accounts_dropdown, selected_account) = load_accounts(&mut config);
 
+        let persistent = config.c_persistent();
+
         Ok(Self {
+            selected_instance: persistent
+                .selected_instance
+                .as_ref()
+                .filter(|_| persistent.selected_remembered)
+                .map(|n| InstanceSelection::new(n, false)),
+
             state,
             config,
             theme,
@@ -168,7 +187,6 @@ impl Launcher {
             client_list: None,
             server_list: None,
             java_recv: None,
-            selected_instance: None,
             custom_jar: None,
 
             logs: HashMap::new(),

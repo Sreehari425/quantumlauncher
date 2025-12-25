@@ -38,6 +38,7 @@ pub fn changelog<'a>() -> Element<'a> {
         "- Export mods as a shareable text list with optional links!",
         "- Write instance-specific notes for coordinates, todo lists, etc!",
         "- Many small UX improvements and polish",
+        "- The launcher will now remember the last-selected instance (toggleable)",
         ].spacing(5),
 
         widget::text("Themes").size(32),
