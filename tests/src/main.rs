@@ -1,7 +1,7 @@
 use std::{fmt::Display, path::PathBuf, process::exit};
 
 use clap::Parser;
-use ql_core::{do_jobs, print::LogConfig, InstanceSelection, ListEntry};
+use ql_core::{do_jobs, print::LogConfig, ListEntry, LAUNCHER_DIR};
 use ql_instances::DownloadError;
 
 use crate::version::{Version, VERSIONS_LWJGL2, VERSIONS_LWJGL3};
@@ -54,6 +54,7 @@ fn attempt<T, E: Display>(r: Result<T, E>) -> T {
 }
 
 #[tokio::main]
+#[allow(unreachable_code)]
 async fn main() {
     set_terminal(true);
     setup_dir();
@@ -61,18 +62,23 @@ async fn main() {
 
     if !cli.existing {
         attempt(
-            do_jobs(
-                cli.get_versions()
-                    .map(|version| create_instance(version.0.to_owned())),
-            )
+            do_jobs(cli.get_versions().map(|version| async {
+                let path = LAUNCHER_DIR.join("instances").join(version.0);
+                _ = tokio::fs::remove_dir_all(&path).await;
+                create_instance(version.0.to_owned()).await?;
+                Ok::<(), DownloadError>(())
+            }))
             .await,
         );
     }
 
+    #[cfg(any(feature = "simulate_linux_arm64", feature = "simulate_macos_arm64"))]
+    return;
+
     let mut fails = Vec::new();
 
     for Version(name, loaders) in cli.get_versions() {
-        let instance = InstanceSelection::new(name, false);
+        let instance = ql_core::InstanceSelection::new(name, false);
         attempt(ql_mod_manager::loaders::uninstall_loader(instance.clone()).await);
         set_terminal(cli.verbose);
         if !launch::launch((*name).to_owned(), cli.timeout.unwrap_or(60.0)).await {

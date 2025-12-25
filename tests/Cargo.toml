@@ -26,3 +26,5 @@ windows = { version = "0.52", features = ["Win32_Foundation", "Win32_UI_WindowsA
 
 [features]
 default = ["tokio/rt-multi-thread"]
+simulate_linux_arm64 = ["ql_instances/simulate_linux_arm64"]
+simulate_macos_arm64 = ["ql_instances/simulate_macos_arm64"]
