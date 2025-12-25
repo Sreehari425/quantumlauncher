@@ -84,14 +84,14 @@ Supported loaders: Fabric, Forge, Quilt, NeoForge, Paper, OptiFine
 (case-insensitive)"
 )]
 enum QLoader {
-    #[command(long_about = r"
-Installs the specified loader
+    #[command(about = "Installs the specified loader")]
+    #[command(long_about = r"Installs the specified loader
 
 Supported loaders: Fabric, Forge, Quilt, NeoForge, Paper, OptiFine
 (case-insensitive)")]
     Install {
-        instance: String,
         loader: String,
+        instance: String,
         more: Option<String>,
         #[arg(long)]
         version: Option<String>,
