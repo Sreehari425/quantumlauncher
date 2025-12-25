@@ -117,11 +117,14 @@ impl Launcher {
                 &self.state,
             ) {
                 ("q", true, _, true, _) => Message::CoreTryQuit,
+
+                // ========
+                // MANAGE MODS MENU
+                // ========
                 ("a", true, _, true, State::EditMods(_)) => {
                     Message::ManageMods(crate::state::ManageModsMessage::SelectAll)
                 }
-
-                // Ctrl-F search in mods list
+                // Ctrl-F search in mods list (with toggling)
                 #[rustfmt::skip]
                 ("f", true, _, _, State::EditMods(MenuEditMods { search: Some(_), .. })) => {
                     Message::ManageMods(crate::state::ManageModsMessage::SetSearch(None))
@@ -132,14 +135,21 @@ impl Launcher {
                     ))),
                     Message::CoreFocusNext,
                 ]),
-                ("f", true, _, _, State::Create(MenuCreateInstance::Choosing { .. }))
-                | ("/", _, _, true, State::Create(MenuCreateInstance::Choosing { .. })) => {
-                    Message::CoreFocusNext
-                }
 
+                // Search Action (general)
+                ("f", true, _, _, State::Create(MenuCreateInstance::Choosing { .. }))
+                | ("/", _, _, true, State::Create(MenuCreateInstance::Choosing { .. }))
+                | ("f", true, _, _, State::ModsDownload(_))
+                | ("/", _, _, true, State::ModsDownload(_)) => Message::CoreFocusNext,
+
+                // Misc
                 ("a", true, _, true, State::EditJarMods(_)) => {
                     Message::ManageJarMods(crate::state::ManageJarModsMessage::SelectAll)
                 }
+
+                // ========
+                // MAIN MENU
+                // ========
                 ("n", true, _, _, State::Launch(n)) => {
                     Message::CreateInstance(CreateInstanceMessage::ScreenOpen {
                         is_server: n.is_viewing_server,
