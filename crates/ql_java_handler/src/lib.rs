@@ -8,17 +8,19 @@
 //!
 //! # Platform Support
 //!
-//! - ✅: Official support from Mojang (installed from their servers)
+//! - ¹: Only Java 8 supported (Minecraft 1.16.5 and below)
+//! - ✅: Obtained [from Mojang](https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json)
 //! - 🟢: Supported through *Amazon Corretto Java*
 //!   which we provide an alternate installer for.
+//! - 🟢²: Uses Java 17+ (with backwards compatibility),
+//!   may not be stable
 //! - 🟢³: Installed from
 //!   <https://github.com/Mrmayman/get-jdk>
-//! - 🟢²: Uses later version of Java (with backwards compatibility)
 //!
 //! | Platforms   | 8  | 16 | 17 | 21 |
 //! |-------------|----|----|----|----|
 //! | **Windows** `x86_64`  | 🟢 | ✅ | ✅ | ✅  |
-//! | **Windows** `i686`    | 🟢 | ✅ | ✅ | 🟢³|
+//! | **Windows** `i686`    | 🟢 | ✅ | ✅ | 🟢|
 //! | **Windows** `aarch64`²| 🟢²|🟢²| ✅ | ✅ |
 //! | | | | |
 //! | **macOS**   `x86_64`  | 🟢 | ✅  | ✅ | ✅ |
@@ -28,23 +30,11 @@
 //! | **Linux**   `i686`¹   | ✅ |    |    |   |
 //! | **Linux**   `aarch64` | 🟢 | 🟢 | 🟢 | 🟢 |
 //! | **Linux**   `arm32`¹  | 🟢³|    |    |    |
-//! | **Linux**   `sparc64` |    |    |    |    |
 //! | | | | |
 //! | **FreeBSD** `x86_64`¹ | 🟢³|    |    |    |
-//! | **FreeBSD** `aarch64` |    |    |    |    |
-//! | **FreeBSD** `i686`    |    |    |    |    |
 //! | | | | |
 //! | **Solaris** `x86_64`¹ | 🟢³|    |    |    |
 //! | **Solaris** `sparc64`¹| 🟢³|    |    |    |
-//!
-//! ¹ Only Java 8 is supported on these platforms,
-//!   you can only play Minecraft 1.16.5 and below.
-//!
-//! ² Only Java 17+ is supported here,
-//!   most versions should run fine through Java backwards compatibility
-//!   but some mods may break.
-//!
-//! ³ This version uses `get-jdk` as mentioned previously
 //!
 //! # TODO
 //!
