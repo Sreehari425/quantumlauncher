@@ -1,10 +1,16 @@
 use cfg_if::cfg_if;
 
 cfg_if!(
-    if #[cfg(any(target_os = "linux", feature = "simulate_linux_arm64"))] {
+    if #[cfg(feature = "simulate_linux_arm64")] {
         pub const OS_NAME: &str = "linux";
         pub const OS_NAMES: &[&str] = &["linux"];
-    } else if #[cfg(any(target_os = "macos", feature = "simulate_macos_arm64"))] {
+    } else if #[cfg(feature = "simulate_macos_arm64")] {
+        pub const OS_NAME: &str = "osx";
+        pub const OS_NAMES: &[&str] = &["macos", "osx"];
+    } else if #[cfg(target_os = "linux")] {
+        pub const OS_NAME: &str = "linux";
+        pub const OS_NAMES: &[&str] = &["linux"];
+    } else if #[cfg(target_os = "macos")] {
         pub const OS_NAME: &str = "osx";
         pub const OS_NAMES: &[&str] = &["macos", "osx"];
     } else if #[cfg(target_os = "windows")] {
