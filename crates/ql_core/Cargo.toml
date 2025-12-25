@@ -7,6 +7,7 @@ edition = "2021"
 default = []
 simulate_linux_arm64 = []
 simulate_macos_arm64 = []
+simulate_linux_arm32 = []
 
 [dependencies]
 chrono.workspace = true

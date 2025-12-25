@@ -72,7 +72,11 @@ async fn main() {
         );
     }
 
-    #[cfg(any(feature = "simulate_linux_arm64", feature = "simulate_macos_arm64"))]
+    #[cfg(any(
+        feature = "simulate_linux_arm64",
+        feature = "simulate_macos_arm64",
+        feature = "simulate_linux_arm32",
+    ))]
     return;
 
     let mut fails = Vec::new();

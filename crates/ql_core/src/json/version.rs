@@ -339,7 +339,8 @@ impl Library {
                             target_arch = "arm",
                             target_arch = "x86",
                             feature = "simulate_linux_arm64",
-                            feature = "simulate_macos_arm64"
+                            feature = "simulate_macos_arm64",
+                            feature = "simulate_linux_arm32",
                         ))] {
                             if os.name == format!("{OS_NAME}-{ARCH}") {
                                 allowed = rule.action == "allow";

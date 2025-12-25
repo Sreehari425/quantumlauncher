@@ -229,16 +229,16 @@ impl GameDownloader {
         for (os, download) in classifiers {
             #[allow(unused)]
             if !(OS_NAMES.iter().any(|os_name| {
-                cfg_if!(if #[cfg(any(
-                    all(target_os = "linux", target_arch = "aarch64"),
-                    feature = "simulate_linux_arm64"
-                ))] {
+                cfg_if!(if #[cfg(feature = "simulate_linux_arm64")] {
                     let matches = os == "natives-linux-arm64";
-                } else if #[cfg(any(
-                    all(target_os = "macos", target_arch = "aarch64"),
-                    feature = "simulate_macos_arm64"
-                ))] {
+                } else if #[cfg(feature = "simulate_macos_arm64")] {
                     let matches = os == "natives-osx-arm64";
+                } else if #[cfg(feature = "simulate_linux_arm32")] {
+                    let matches = os == "natives-linux-arm32";
+                } else if #[cfg(all(target_os = "macos", target_arch = "aarch64"))] {
+                    let matches = os == "natives-osx-arm64";
+                } else if #[cfg(all(target_os = "linux", target_arch = "aarch64"))] {
+                    let matches = os == "natives-linux-arm64";
                 } else if #[cfg(all(target_os = "windows", target_arch = "x86"))] {
                     let matches = os == "natives-windows-32";
                 } else if #[cfg(all(target_os = "windows", target_arch = "x86_64"))] {
@@ -355,6 +355,7 @@ impl GameDownloader {
                 target_arch = "x86",
                 feature = "simulate_linux_arm64",
                 feature = "simulate_macos_arm64",
+                feature = "simulate_linux_arm32",
             ))] {
                 let Some(natives_name) = natives.get(&format!("{OS_NAME}-{ARCH}")) else {
                     return Ok(());
@@ -422,6 +423,10 @@ impl GameDownloader {
             feature = "simulate_linux_arm64",
             feature = "simulate_macos_arm64"
         ))] {
+            let is_compatible = name.contains("aarch") || name.contains("arm64");
+        } else if #[cfg(feature = "simulate_linux_arm32")] {
+            let is_compatible = name.contains("arm32");
+        } else if #[cfg(target_arch = "aarch64")] {
             let is_compatible = name.contains("aarch") || name.contains("arm64");
         } else if #[cfg(target_arch = "arm")] {
             let is_compatible = name.contains("arm32");

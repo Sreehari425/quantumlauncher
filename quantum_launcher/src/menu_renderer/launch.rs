@@ -646,6 +646,8 @@ fn get_footer_text() -> widget::Column<'static, Message, LauncherTheme> {
     cfg_if! (
         if #[cfg(feature = "simulate_linux_arm64")] {
             let subtext = "(Simulating Linux aarch64)";
+        } else if #[cfg(feature = "simulate_linux_arm32")] {
+            let subtext = "(Simulating Linux arm32)";
         } else if #[cfg(feature = "simulate_macos_arm64")] {
             let subtext = "(Simulating macOS aarch64)";
         } else if #[cfg(target_arch = "aarch64")] {

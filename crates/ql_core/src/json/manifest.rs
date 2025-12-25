@@ -43,7 +43,13 @@ impl Manifest {
         Ok(manifest)
     }
 
+    #[allow(unused)]
     async fn load() -> Result<Manifest, JsonDownloadError> {
+        const ARM64: &str =
+            "https://raw.githubusercontent.com/theofficialgman/piston-meta-arm64/refs/heads/main/mc/game/version_manifest_v2.json";
+        const ARM32: &str =
+            "https://raw.githubusercontent.com/theofficialgman/piston-meta-arm32/refs/heads/main/mc/game/version_manifest_v2.json";
+
         const LAST_BETTERJSONS: &str = "1.21.11";
 
         // An out-of-date but curated manifest
@@ -51,10 +57,10 @@ impl Manifest {
             "https://mcphackers.org/BetterJSONs/version_manifest_v2.json";
 
         // An up-to-date manifest that lacks some fixes/polish
-        cfg_if!(if #[cfg(all(target_os = "linux", target_arch = "aarch64"))] {
-            const NEWER_VERSIONS_JSON: &str = "https://raw.githubusercontent.com/theofficialgman/piston-meta-arm64/refs/heads/main/mc/game/version_manifest_v2.json";
-        } else if #[cfg(all(target_os = "linux", target_arch = "arm"))] {
-            const NEWER_VERSIONS_JSON: &str = "https://raw.githubusercontent.com/theofficialgman/piston-meta-arm32/refs/heads/main/mc/game/version_manifest_v2.json";
+        cfg_if!(if #[cfg(feature = "simulate_linux_arm64")] { use ARM64 as NEWER_VERSIONS_JSON;
+        } else if #[cfg(feature = "simulate_linux_arm32")] { use ARM32 as NEWER_VERSIONS_JSON;
+        } else if #[cfg(all(target_os = "linux", target_arch = "aarch64"))] { use ARM64 as NEWER_VERSIONS_JSON;
+        } else if #[cfg(all(target_os = "linux", target_arch = "arm"))] { use ARM32 as NEWER_VERSIONS_JSON;
         } else {
             const NEWER_VERSIONS_JSON: &str =
                 "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
