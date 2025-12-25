@@ -8,6 +8,11 @@ use crate::{
 #[allow(unused)]
 pub fn changelog<'a>() -> Element<'a> {
     const FS: u16 = 14;
+    let cmd = if cfg!(target_os = "macos") {
+        "Cmd"
+    } else {
+        "Ctrl"
+    };
 
     widget::column![
         widget::text("Welcome to QuantumLauncher v0.4.3!").size(40),
@@ -74,9 +79,13 @@ pub fn changelog<'a>() -> Element<'a> {
         widget::text("Keyboard Navigation").size(32),
 
         widget::column![
-            "- \"Ctrl/Cmd/Alt +  1/2/3\" to switch tabs in main screen",
-            "- \"Ctrl/Cmd + N\" to create new instance",
-            "- \"Ctrl/Cmd + ,\" to open settings",
+            widget::text!("- {cmd}/Alt + 1/2/3 to switch tabs in main screen"),
+            widget::text!("- {cmd} + , to open settings"),
+
+            "Creating instance:",
+            widget::text!("- {cmd} + N to open screen"),
+            widget::text!("- {cmd} + F to search versions (and `Enter` to select)"),
+            widget::text!("- {cmd} + Enter to confirm"),
         ].spacing(5),
 
         widget::horizontal_rule(1),

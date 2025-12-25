@@ -177,7 +177,12 @@ impl Launcher {
             widget::row![widget::text(selected.get_name()).font(FONT_MONO).size(20)]
                 .push_maybe(is_running.then_some(icons::play_s(20)))
                 .push_maybe(
-                    is_running.then_some(widget::text("Running...").size(16).style(tsubtitle))
+                    is_running.then_some(
+                        widget::text("Running...")
+                            .size(16)
+                            .style(tsubtitle)
+                            .font(FONT_MONO)
+                    )
                 )
                 .spacing(16)
                 .align_y(Alignment::Center),

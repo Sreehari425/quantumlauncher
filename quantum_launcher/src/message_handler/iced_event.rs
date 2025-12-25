@@ -190,6 +190,14 @@ impl Launcher {
                     return Task::done(Message::LaunchKill);
                 }
             }
+        } else if let State::Create(MenuCreateInstance::Choosing { list: Some(_), .. }) =
+            &self.state
+        {
+            if let Key::Named(Named::Enter) = key {
+                if modifiers.command() {
+                    return Task::done(Message::CreateInstance(CreateInstanceMessage::Start));
+                }
+            }
         }
         self.keys_pressed.insert(key);
 

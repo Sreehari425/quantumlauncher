@@ -10,8 +10,8 @@ use crate::{
     cli::EXPERIMENTAL_MMC_IMPORT,
     icons,
     menu_renderer::{
-        back_button, button_with_icon, ctxbox, dots, sidebar, sidebar_button, tooltip, tsubtitle,
-        Element,
+        back_button, button_with_icon, ctxbox, dots, shortcut_ctrl, sidebar, sidebar_button,
+        tooltip, tsubtitle, Element,
     },
     state::{CreateInstanceMessage, MenuCreateInstance, Message},
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
@@ -126,7 +126,10 @@ impl MenuCreateInstance {
         existing_instances: Option<&[String]>,
         is_server: bool,
     ) -> widget::Column<'static, Message, LauncherTheme> {
-        let already_exists = existing_instances.is_some_and(|n| n.contains(instance_name));
+        let already_exists = existing_instances.is_some_and(|n| {
+            n.contains(instance_name)
+                || (instance_name.is_empty() && n.contains(&selected_version.name))
+        });
 
         let main_part = column![
             widget::text!("Create {}", if is_server { "Server" } else { "Instance" })
@@ -263,7 +266,7 @@ impl MenuCreateInstance {
     }
 }
 
-fn get_create_button(already_exists: bool) -> Element<'static> {
+fn get_create_button(already_exists: bool) -> widget::Tooltip<'static, Message, LauncherTheme> {
     let create_button = button_with_icon(icons::new(), "Create", 16).on_press_maybe(
         (!already_exists).then_some(Message::CreateInstance(CreateInstanceMessage::Start)),
     );
@@ -274,8 +277,7 @@ fn get_create_button(already_exists: bool) -> Element<'static> {
             "An instance with that name already exists!",
             Position::FollowCursor,
         )
-        .into()
     } else {
-        create_button.into()
+        tooltip(create_button, shortcut_ctrl("Enter"), Position::Bottom)
     }
 }

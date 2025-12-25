@@ -198,6 +198,23 @@ then go to "Mods->Add File""#,
         }) = &mut self.state
         {
             let is_server = *is_server;
+
+            let already_exists = {
+                let existing_instances = if is_server {
+                    self.server_list.as_ref()
+                } else {
+                    self.client_list.as_ref()
+                };
+                existing_instances.is_some_and(|n| {
+                    n.contains(instance_name)
+                        || (instance_name.is_empty() && n.contains(&selected_version.name))
+                })
+            };
+
+            if already_exists {
+                return Task::none();
+            }
+
             let (sender, receiver) = std::sync::mpsc::channel::<DownloadProgress>();
             let progress = ProgressBar {
                 num: 0.0,
