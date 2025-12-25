@@ -51,8 +51,13 @@ impl Launcher {
                             || n.name.trim().to_lowercase().contains(&search_box.trim().to_lowercase())
                         );
 
-                    // De-prioritize special lwjgl3 "ports" of normal versions
-                    if let Some(sel) = iter().find(|n| !n.name.ends_with("-lwjgl3")).or(iter().next()) {
+                    // Search priority order
+                    // - Exact name match
+                    // - Name contains search term
+                    // - Special lwjgl3 "ports" of normal versions (de-prioritized)
+                    if let Some(sel) = list.iter().flatten().find(|n| n.name == *search_box)
+                        .or(iter().find(|n| !n.name.ends_with("-lwjgl3"))
+                        .or(iter().next())) {
                         *selected_version = sel.clone();
                     }
                 })
