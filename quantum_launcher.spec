@@ -2,7 +2,7 @@
 %global debug_package %{nil}
 
 Name:           quantum-launcher
-Version:        0.4.3
+Version:        0.5.0
 Release:        1%{?dist}
 Summary:        Simple Minecraft Launcher written in Rust
 

@@ -95,7 +95,7 @@ unable to find valid certification path to requested target
 
 Either:
 
-1) Update to QuantumLauncher 0.4.3
+1) Update to QuantumLauncher 0.5.0
 2) Override the Java version of the instance with a newer build of Java 8
 3) Add the following Java argument: `--Djavax.net.ssl.trustStoreType=Windows-ROOT`
 

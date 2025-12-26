@@ -273,7 +273,7 @@ pub struct GlobalSettings {
     pub window_height: Option<u32>,
     /// This is an optional list of commands to prepend
     /// to the launch command (e.g., "prime-run" for NVIDIA GPU usage on Linux).
-    // Since: v0.4.3
+    // Since: v0.5.0
     pub pre_launch_prefix: Option<Vec<String>>,
 }
 

@@ -86,11 +86,11 @@ pub struct LauncherConfig {
     /// Settings that apply both on a per-instance basis and with global overrides.
     // Since: v0.4.2
     pub global_settings: Option<GlobalSettings>,
-    // Since: v0.4.3
+    // Since: v0.5.0
     pub extra_java_args: Option<Vec<String>>,
-    // Since: v0.4.3
+    // Since: v0.5.0
     pub ui: Option<UiSettings>,
-    // Since: v0.4.3
+    // Since: v0.5.0
     pub persistent: Option<PersistentSettings>,
 }
 
@@ -314,11 +314,11 @@ impl Default for WindowProperties {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct UiSettings {
-    // Since: v0.4.3
+    // Since: v0.5.0
     pub window_decorations: UiWindowDecorations,
-    // Since: v0.4.3
+    // Since: v0.5.0
     pub window_opacity: f32,
-    // Since: v0.4.3
+    // Since: v0.5.0
     pub idle_fps: Option<u64>,
 }
 

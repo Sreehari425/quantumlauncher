@@ -15,7 +15,7 @@ pub fn changelog<'a>() -> Element<'a> {
     };
 
     widget::column![
-        widget::text("Welcome to QuantumLauncher v0.4.3!").size(40),
+        widget::text("Welcome to QuantumLauncher v0.5.0!").size(40),
 
         widget::container(widget::column![
             "TLDR;",

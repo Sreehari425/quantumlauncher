@@ -452,7 +452,7 @@ impl ListEntryKind {
     }
 }
 
-pub const LAUNCHER_VERSION_NAME: &str = "0.4.3";
+pub const LAUNCHER_VERSION_NAME: &str = "0.5.0";
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ModId {
