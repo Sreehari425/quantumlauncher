@@ -399,7 +399,7 @@ pub fn resolution_dialog<'a>(
             .width(100),
         ]
         .spacing(10)
-        .align_y(iced::alignment::Vertical::Center),
+        .align_y(Alignment::Center),
     ]
     .spacing(5)
 }
@@ -459,7 +459,7 @@ fn get_args_list_add_button(
 ) -> widget::Button<'static, Message, LauncherTheme> {
     widget::button(
         widget::row![icons::new_s(13), widget::text("Add").size(13)]
-            .align_y(iced::alignment::Vertical::Center)
+            .align_y(Alignment::Center)
             .spacing(8)
             .padding([1, 2]),
     )

@@ -198,7 +198,7 @@ impl Launcher {
                                 icons::edit_s(10),
                                 widget::text("Edit Notes").size(12).style(tsubtitle)
                             ]
-                            .align_y(iced::alignment::Vertical::Center)
+                            .align_y(Alignment::Center)
                             .spacing(8),
                         )
                         .padding([4, 8])
@@ -688,7 +688,7 @@ fn get_sidebar_new_button(
 ) -> widget::Button<'_, Message, LauncherTheme> {
     widget::button(
         widget::row![icons::new(), widget::text("New").size(15)]
-            .align_y(iced::alignment::Vertical::Center)
+            .align_y(Alignment::Center)
             .height(tab_height(decor) - 6.0)
             .spacing(10),
     )
