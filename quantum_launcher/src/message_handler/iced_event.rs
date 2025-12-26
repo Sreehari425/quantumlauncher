@@ -1,9 +1,9 @@
 use crate::message_update::MSG_RESIZE;
 use crate::state::{
-    CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage, LauncherSettingsTab,
-    MenuCreateInstance, MenuEditMods, MenuEditPresets, MenuExportInstance, MenuInstallFabric,
-    MenuInstallOptifine, MenuInstallPaper, MenuLauncherSettings, MenuLauncherUpdate,
-    MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, Message, State,
+    AutoSaveKind, CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage,
+    LauncherSettingsTab, MenuCreateInstance, MenuEditMods, MenuEditPresets, MenuExportInstance,
+    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLauncherSettings,
+    MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, Message, State,
 };
 use iced::{
     keyboard::{self, key::Named, Key},
@@ -24,11 +24,17 @@ impl Launcher {
                 }
                 iced::window::Event::Resized(size) => {
                     self.window_state.size = (size.width, size.height);
-                    // Save window size to config for persistence
+
+                    // Remember window height
                     let window = self.config.window.get_or_insert_with(Default::default);
                     window.width = Some(size.width);
                     window.height = Some(size.height);
+                    if window.save_window_size {
+                        self.autosave.remove(&AutoSaveKind::LauncherConfig);
+                    }
 
+                    // Clear the "Resize the window to apply changes"
+                    // after changing UI scale
                     if let State::GenericMessage(msg) = &self.state {
                         if msg == MSG_RESIZE {
                             return self.update(Message::LauncherSettings(
@@ -313,6 +319,7 @@ impl Launcher {
                         self.state = State::LauncherSettings(MenuLauncherSettings {
                             temp_scale: self.config.ui_scale.unwrap_or(1.0),
                             selected_tab: LauncherSettingsTab::About,
+                            arg_split_by_space: true,
                         });
                     }
                 }

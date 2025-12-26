@@ -140,7 +140,7 @@ pub fn subbutton_with_icon<'a>(
     widget::button(
         widget::row![icon.into()]
             .push_maybe((!text.is_empty()).then_some(widget::text(text).size(12)))
-            .align_y(iced::alignment::Vertical::Center)
+            .align_y(Alignment::Center)
             .spacing(8)
             .padding(1),
     )
@@ -153,8 +153,9 @@ pub fn button_with_icon<'a>(
     size: u16,
 ) -> widget::Button<'a, Message, LauncherTheme> {
     widget::button(
-        widget::row![icon.into(), widget::text(text).size(size)]
-            .align_y(iced::alignment::Vertical::Center)
+        widget::row![icon.into()]
+            .push_maybe((!text.is_empty()).then_some(widget::text(text).size(size)))
+            .align_y(Alignment::Center)
             .spacing(size as f32 / 1.6),
     )
     .padding([7, 13])
@@ -517,7 +518,7 @@ pub fn view_confirm<'a>(
                     icons::cross().style(t_white),
                     widget::text("No").style(t_white)
                 ]
-                .align_y(iced::alignment::Vertical::Center)
+                .align_y(Alignment::Center)
                 .spacing(10)
                 .padding(3),
             )
@@ -530,7 +531,7 @@ pub fn view_confirm<'a>(
                     icons::deselectall().style(t_white),
                     widget::text("Yes").style(t_white)
                 ]
-                .align_y(iced::alignment::Vertical::Center)
+                .align_y(Alignment::Center)
                 .spacing(10)
                 .padding(3),
             )

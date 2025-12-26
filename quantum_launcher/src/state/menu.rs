@@ -136,12 +136,17 @@ impl MenuLaunch {
 /// The screen where you can edit an instance/server.
 pub struct MenuEditInstance {
     pub config: InstanceConfigJson,
+
+    // Renaming Instance:
     pub is_editing_name: bool,
     pub instance_name: String,
     pub old_instance_name: String,
+    // Changing RAM:
     pub slider_value: f32,
     pub slider_text: String,
+
     pub main_class_mode: Option<MainClassMode>,
+    pub arg_split_by_space: bool,
 }
 
 pub enum SelectedState {
@@ -435,6 +440,7 @@ impl MenuModsDownload {
 pub struct MenuLauncherSettings {
     pub temp_scale: f64,
     pub selected_tab: LauncherSettingsTab,
+    pub arg_split_by_space: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

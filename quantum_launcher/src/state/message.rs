@@ -86,6 +86,7 @@ pub enum EditInstanceMessage {
     JavaArgs(ListMessage),
     JavaArgsModeChanged(bool),
     GameArgs(ListMessage),
+    ToggleSplitArg(bool),
 
     PreLaunchPrefix(ListMessage),
     PreLaunchPrefixModeChanged(PreLaunchPrefixMode),
@@ -290,13 +291,13 @@ pub enum ListMessage {
 }
 
 impl ListMessage {
-    pub fn apply(self, l: &mut Vec<String>) {
+    pub fn apply(self, l: &mut Vec<String>, split: bool) {
         match self {
             ListMessage::Add => {
                 l.push(String::new());
             }
             ListMessage::Edit(msg, idx) => {
-                if msg.contains(' ') {
+                if split && msg.contains(' ') {
                     l.remove(idx);
                     let mut insert_idx = idx;
                     for s in msg.split(' ').filter(|n| !n.is_empty()) {

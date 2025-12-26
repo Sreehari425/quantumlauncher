@@ -299,7 +299,7 @@ impl MenuEditMods {
                     icons::bin_s(14),
                     widget::text("Uninstall OptiFine").size(14)
                 ]
-                .align_y(iced::alignment::Vertical::Center)
+                .align_y(Alignment::Center)
                 .spacing(11)
                 .padding(2),
             )
@@ -321,7 +321,7 @@ impl MenuEditMods {
                 icons::bin_s(14),
                 widget::text!("Uninstall {mod_type}").size(14)
             ]
-            .align_y(iced::alignment::Vertical::Center)
+            .align_y(Alignment::Center)
             .spacing(11)
             .padding(2),
         )
@@ -364,7 +364,7 @@ impl MenuEditMods {
                             // Hamburger dropdown
                             widget::button(
                                 widget::row![icons::lines_s(12)]
-                                    .align_y(iced::alignment::Vertical::Center)
+                                    .align_y(Alignment::Center)
                                     .padding(1),
                             )
                             .style(|t: &LauncherTheme, s| {
@@ -375,7 +375,7 @@ impl MenuEditMods {
                             // Search button
                             widget::button(
                                 widget::row![icons::search_s(12)]
-                                    .align_y(iced::alignment::Vertical::Center)
+                                    .align_y(Alignment::Center)
                                     .padding(1),
                             )
                             .style(|t: &LauncherTheme, s| {

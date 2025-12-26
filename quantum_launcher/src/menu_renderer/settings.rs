@@ -7,7 +7,7 @@ use super::{
     back_button, button_with_icon, get_mode_selector, sidebar_button, underline, Element, DISCORD,
     GITHUB,
 };
-use crate::menu_renderer::edit_instance::{get_args_list, resolution_dialog};
+use crate::menu_renderer::edit_instance::{args_split_by_space, get_args_list, resolution_dialog};
 use crate::menu_renderer::{back_to_launch_screen, checkered_list, sidebar, tsubtitle};
 use crate::{
     config::LauncherConfig,
@@ -26,6 +26,8 @@ pub static IMG_ICED: LazyLock<widget::image::Handle> = LazyLock::new(|| {
 
 const SETTINGS_SPACING: f32 = 10.0;
 const SETTING_WIDTH: u16 = 180;
+
+pub const PREFIX_EXPLANATION: &str = "Commands to add before the game launch command\nEg: 'prime-run' to force NVIDIA GPU on Linux with Optimus";
 
 impl MenuLauncherSettings {
     pub fn view<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {
@@ -226,19 +228,12 @@ impl LauncherSettingsTab {
                 ),
                 widget::horizontal_rule(1),
                 "Global Java Arguments:",
-                get_args_list(
-                    config.extra_java_args.as_deref(),
-                    |msg| {
-                        Message::LauncherSettings(LauncherSettingsMessage::GlobalJavaArgs(msg))
-                    },
-                ),
+                get_args_list(config.extra_java_args.as_deref(), |msg| {
+                    Message::LauncherSettings(LauncherSettingsMessage::GlobalJavaArgs(msg))
+                }),
                 widget::Space::with_height(5),
                 "Global Pre-Launch Prefix:",
-                widget::text(
-                    "Commands to prepend to the game launch command.\nExample: Use 'prime-run' to force NVIDIA GPU usage on Linux with Optimus graphics."
-                )
-                .size(12)
-                .style(tsubtitle),
+                widget::text(PREFIX_EXPLANATION).size(12).style(tsubtitle),
                 get_args_list(
                     config
                         .global_settings
@@ -248,6 +243,7 @@ impl LauncherSettingsTab {
                         n
                     )),
                 ),
+                args_split_by_space(menu.arg_split_by_space),
                 widget::horizontal_rule(1),
                 widget::row![
                     button_with_icon(icons::bin(), "Clear Java installs", 16).on_press(

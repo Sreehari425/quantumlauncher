@@ -1,6 +1,8 @@
 use crate::{
     icons,
-    menu_renderer::{button_with_icon, checkered_list, tsubtitle, FONT_MONO},
+    menu_renderer::{
+        button_with_icon, checkered_list, settings::PREFIX_EXPLANATION, tsubtitle, FONT_MONO,
+    },
     state::{
         CustomJarState, EditInstanceMessage, ListMessage, MenuEditInstance, Message, NONE_JAR_NAME,
     },
@@ -145,7 +147,9 @@ impl MenuEditInstance {
                 EditInstanceMessage::GameArgs(n)
             )),
             sp(),
-            self.item_args_prefix(prefix_mode)
+            self.item_args_prefix(prefix_mode),
+            sp(),
+            args_split_by_space(self.arg_split_by_space),
         )
         .spacing(7)
         .width(Length::Fill)
@@ -168,8 +172,7 @@ impl MenuEditInstance {
             .text_size(12);
 
         widget::column![
-            widget::row!["Pre-launch prefix:", horizontal_space()]
-                .push(checkbox)
+            widget::row!["Pre-launch prefix:", horizontal_space(), checkbox]
                 .align_y(Alignment::Center),
             widget::row![get_args_list(
                 self.config
@@ -192,16 +195,17 @@ impl MenuEditInstance {
                                     EditInstanceMessage::PreLaunchPrefixModeChanged(n),
                                 )
                             })
-                            .style(|t: &LauncherTheme, s| t.style_radio(s, Color::Mid))
-                            .size(14)
+                            .style(|t: &LauncherTheme, s| t.style_radio(s, Color::SecondLight))
+                            .size(10)
                             .text_size(10)
                             .into()
                         }),
                     )
-                    .spacing(5),
+                    .spacing(1),
                 ),
             )
-            .spacing(10)
+            .spacing(10),
+            widget::text(PREFIX_EXPLANATION).size(12).style(tsubtitle),
         ]
         .width(Length::Fill)
         .spacing(7)
@@ -232,27 +236,31 @@ Heavy modpacks / High settings: 4-8 GB"
                 )
                 .step(0.1),
             ]
-            .spacing(5)
+            .align_y(Alignment::Center)
+            .spacing(10)
         ]
         .spacing(5)
     }
 
     fn item_java_override(&self) -> widget::Column<'_, Message, LauncherTheme> {
+        // TODO: Allow the user to select launcher-provided Java-s too (java_8, java_17, ...)
+        let java_override = self.config.java_override.as_deref().unwrap_or_default();
         widget::column![
             "Custom Java executable (full path)",
             widget::text("Note: The launcher already sets up Java automatically,\nYou won't need this in most cases").size(12).style(tsubtitle),
-            widget::row![
-                widget::text_input(
-                    "Leave blank if none",
-                    self.config.java_override.as_deref().unwrap_or_default()
-                )
+            widget::row![widget::text_input("Leave blank if none", java_override)
                 .size(14)
                 .font(FONT_MONO)
-                .on_input(|t| Message::EditInstance(EditInstanceMessage::JavaOverride(t))),
-                button_with_icon(icons::folder_s(14), "Browse", 13)
-                    .padding([5, 10])
-                    .on_press(Message::EditInstance(EditInstanceMessage::BrowseJavaOverride))
-            ].spacing(5)
+                .on_input(|t| Message::EditInstance(EditInstanceMessage::JavaOverride(t)))]
+            .push_maybe((!java_override.trim().is_empty()).then_some(
+                button_with_icon(icons::close_s(9), "", 13)
+                    .padding([8.0, 11.0])
+                    .on_press(Message::EditInstance(EditInstanceMessage::JavaOverride(String::new()))),
+            ))
+            .push(button_with_icon(icons::folder_s(14), "", 13)
+                .padding([5, 10])
+                .on_press(Message::EditInstance(EditInstanceMessage::BrowseJavaOverride)))
+            .spacing(5)
         ]
         .spacing(10)
     }
@@ -323,6 +331,7 @@ Heavy modpacks / High settings: 4-8 GB"
                     .on_input(|t| Message::EditInstance(
                         EditInstanceMessage::SetMainClass(Some(MainClassMode::Custom), Some(t))
                     ))
+                    .font(FONT_MONO)
                     .size(13)
                 )
             )
@@ -390,7 +399,7 @@ pub fn resolution_dialog<'a>(
             .width(100),
         ]
         .spacing(10)
-        .align_y(iced::alignment::Vertical::Center),
+        .align_y(Alignment::Center),
     ]
     .spacing(5)
 }
@@ -431,10 +440,18 @@ pub fn get_args_list(
                 },
             ))),
         )
-        .push(get_args_list_add_button(msg))
+        .push(widget::row![get_args_list_add_button(msg)].spacing(10))
         .spacing(5)
         .width(Length::Fill)
         .into()
+}
+
+pub fn args_split_by_space(split: bool) -> widget::Checkbox<'static, Message, LauncherTheme> {
+    widget::checkbox("Split arguments by spaces", split)
+        .style(|t: &LauncherTheme, s| t.style_checkbox(s, Some(Color::SecondLight)))
+        .size(12)
+        .text_size(12)
+        .on_toggle(|t| Message::EditInstance(EditInstanceMessage::ToggleSplitArg(t)))
 }
 
 fn get_args_list_add_button(
@@ -442,7 +459,7 @@ fn get_args_list_add_button(
 ) -> widget::Button<'static, Message, LauncherTheme> {
     widget::button(
         widget::row![icons::new_s(13), widget::text("Add").size(13)]
-            .align_y(iced::alignment::Vertical::Center)
+            .align_y(Alignment::Center)
             .spacing(8)
             .padding([1, 2]),
     )

@@ -37,7 +37,6 @@ impl Launcher {
 
                 if let (Some(edit), LaunchTabId::Edit) = (&edit_instance, tab) {
                     let config = edit.config.clone();
-                    self.autosave.remove(&AutoSaveKind::LauncherConfig);
                     self.tick_edit_instance(config, &mut commands);
                 }
                 self.tick_processes_and_logs();

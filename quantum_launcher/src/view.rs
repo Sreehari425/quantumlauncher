@@ -204,7 +204,7 @@ impl Launcher {
             widget::mouse_area(
                 widget::row![widget::button(
                     widget::row![icon.style(|t: &LauncherTheme| t.style_text(Color::Mid))]
-                        .align_y(iced::alignment::Vertical::Center)
+                        .align_y(Alignment::Center)
                         .padding([4, 10]),
                 )
                 .padding(0)
