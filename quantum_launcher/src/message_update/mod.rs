@@ -548,14 +548,20 @@ impl Launcher {
                 self.config.c_global().window_height = input.trim().parse::<u32>().ok();
             }
             LauncherSettingsMessage::GlobalJavaArgs(msg) => {
-                msg.apply(self.config.extra_java_args.get_or_insert_with(Vec::new));
+                let split = self.should_split_args();
+                msg.apply(
+                    self.config.extra_java_args.get_or_insert_with(Vec::new),
+                    split,
+                );
             }
             LauncherSettingsMessage::GlobalPreLaunchPrefix(msg) => {
+                let split = self.should_split_args();
                 msg.apply(
                     self.config
                         .c_global()
                         .pre_launch_prefix
                         .get_or_insert_with(Vec::new),
+                    split,
                 );
             }
             LauncherSettingsMessage::ToggleWindowDecorations(b) => {
@@ -584,6 +590,20 @@ impl Launcher {
         Task::none()
     }
 
+    pub fn should_split_args(&self) -> bool {
+        if let State::Launch(MenuLaunch {
+            edit_instance: Some(menu),
+            ..
+        }) = &self.state
+        {
+            menu.arg_split_by_space
+        } else if let State::LauncherSettings(menu) = &self.state {
+            menu.arg_split_by_space
+        } else {
+            true
+        }
+    }
+
     fn confirm_clear_java_installs(&mut self) {
         self.state = State::ConfirmAction {
             msg1: "delete auto-installed Java files".to_owned(),
@@ -602,6 +622,7 @@ impl Launcher {
         self.state = State::LauncherSettings(state::MenuLauncherSettings {
             temp_scale: self.config.ui_scale.unwrap_or(1.0),
             selected_tab: state::LauncherSettingsTab::UserInterface,
+            arg_split_by_space: true,
         });
     }
 

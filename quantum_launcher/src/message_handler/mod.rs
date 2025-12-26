@@ -196,6 +196,7 @@ impl Launcher {
             old_instance_name: instance_name.to_owned(),
             slider_text: format_memory(memory_mb),
             is_editing_name: false,
+            arg_split_by_space: true,
         });
         Ok(())
     }

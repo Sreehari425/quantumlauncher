@@ -313,6 +313,7 @@ impl Launcher {
                         self.state = State::LauncherSettings(MenuLauncherSettings {
                             temp_scale: self.config.ui_scale.unwrap_or(1.0),
                             selected_tab: LauncherSettingsTab::About,
+                            arg_split_by_space: true,
                         });
                     }
                 }

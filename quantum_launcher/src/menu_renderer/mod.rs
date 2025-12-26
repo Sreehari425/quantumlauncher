@@ -153,8 +153,9 @@ pub fn button_with_icon<'a>(
     size: u16,
 ) -> widget::Button<'a, Message, LauncherTheme> {
     widget::button(
-        widget::row![icon.into(), widget::text(text).size(size)]
-            .align_y(iced::alignment::Vertical::Center)
+        widget::row![icon.into()]
+            .push_maybe((!text.is_empty()).then_some(widget::text(text).size(size)))
+            .align_y(Alignment::Center)
             .spacing(size as f32 / 1.6),
     )
     .padding([7, 13])
