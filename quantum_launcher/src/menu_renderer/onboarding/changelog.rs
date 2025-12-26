@@ -28,8 +28,8 @@ pub fn changelog<'a>() -> Element<'a> {
 
         widget::text("Mod Loaders").size(32),
         widget::column![
-            "- Manage loaders from the CLI with `quantum_launcher loaders install/info/uninstall`",
             "- You can now install OptiFine and Forge together!",
+            "- Added CLI commands to manage loaders: `quantum_launcher loader install/info/uninstall`",
             "Added alternate fabric implementations for versions without official Fabric support:",
             widget::text("- Legacy Fabric (1.3-1.13)").size(14),
             widget::text("- OrnitheMC (b1.7-1.13)").size(14),
@@ -130,6 +130,7 @@ pub fn changelog<'a>() -> Element<'a> {
             widget::text("- File location on linux has moved from `~/.config` to `~/.local/share` (with auto-migration)").size(14),
             widget::text("- Added option to redownload libraries and assets").size(14),
             widget::text("- Added warning for mistakenly downloading Windows 32-bit build").size(14),
+            widget::text("- Added option to input arguments with spaces").size(14),
         ].spacing(5),
 
         widget::horizontal_rule(1),
