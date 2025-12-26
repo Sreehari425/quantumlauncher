@@ -3,16 +3,18 @@ use ql_core::{
     err, err_no_log, file_utils::DirItem, info_no_log, InstanceSelection, IntoIoError,
     IntoStringError,
 };
-use ql_instances::UpdateCheckInfo;
 use std::fmt::Write;
 use tokio::io::AsyncWriteExt;
+
+#[allow(unused)]
+use owo_colors::OwoColorize;
 
 use crate::{
     message_handler::{SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT},
     state::{
         AutoSaveKind, CustomJarState, GameProcess, LaunchTabId, Launcher, LauncherSettingsMessage,
-        ManageModsMessage, MenuExportInstance, MenuLaunch, MenuLauncherUpdate, MenuLicense,
-        MenuWelcome, Message, ProgressBar, State,
+        ManageModsMessage, MenuExportInstance, MenuLaunch, MenuLicense, MenuWelcome, Message,
+        ProgressBar, State,
     },
     stylesheet::styles::LauncherThemeLightness,
 };
@@ -46,7 +48,7 @@ impl Launcher {
                 }
             }
 
-            Message::UpdateCheckResult(Err(err)) | Message::CoreCleanComplete(Err(err)) => {
+            Message::CoreCleanComplete(Err(err)) => {
                 err_no_log!("{err}");
             }
 
@@ -73,10 +75,7 @@ impl Launcher {
             Message::LaunchInstanceSelected { name, is_server } => {
                 let inst = InstanceSelection::new(&name, is_server);
                 self.selected_instance = Some(inst.clone());
-                self.load_edit_instance(None);
-                if let State::Launch(menu) = &mut self.state {
-                    return menu.reload_notes(inst);
-                }
+                return self.on_instance_selected();
             }
             Message::LauncherSettings(msg) => return self.update_launcher_settings(msg),
             Message::InstallOptifine(msg) => return self.update_install_optifine(msg),
@@ -104,7 +103,7 @@ impl Launcher {
                         .map(InstanceSelection::is_server))
                     .unwrap_or_default();
                 if clear_selection {
-                    self.selected_instance = None;
+                    self.unselect_instance();
                 }
 
                 return if is_server {
@@ -222,15 +221,18 @@ impl Launcher {
                 }
             },
             #[cfg(feature = "auto_update")]
-            Message::UpdateCheckResult(Ok(info)) => match info {
-                UpdateCheckInfo::UpToDate => {
-                    info_no_log!("Launcher is latest version. No new updates");
+            Message::UpdateCheckResult(res) => match res {
+                Ok(ql_instances::UpdateCheckInfo::UpToDate) => {
+                    ql_core::pt_no_log!("{}", "Latest version".bright_black());
                 }
-                UpdateCheckInfo::NewVersion { url } => {
-                    self.state = State::UpdateFound(MenuLauncherUpdate {
+                Ok(ql_instances::UpdateCheckInfo::NewVersion { url }) => {
+                    self.state = State::UpdateFound(crate::state::MenuLauncherUpdate {
                         url,
                         progress: None,
                     });
+                }
+                Err(err) => {
+                    ql_core::pt_no_log!("{}", err.bright_black());
                 }
             },
             #[cfg(feature = "auto_update")]
@@ -266,11 +268,7 @@ impl Launcher {
                 }
             }
             Message::CoreListLoaded(Ok((list, is_server))) => {
-                if is_server {
-                    self.server_list = Some(list);
-                } else {
-                    self.client_list = Some(list);
-                }
+                self.core_list_loaded(list, is_server)
             }
             Message::CoreCopyText(txt) => {
                 return iced::clipboard::write(txt);
@@ -471,6 +469,25 @@ impl Launcher {
             }
         }
         Task::none()
+    }
+
+    fn core_list_loaded(&mut self, list: Vec<String>, is_server: bool) {
+        let persistent = self.config.c_persistent();
+        if is_server {
+            if let Some(n) = &persistent.selected_server {
+                if !list.contains(n) {
+                    self.unselect_instance();
+                }
+            }
+            self.server_list = Some(list);
+        } else {
+            if let Some(n) = &persistent.selected_instance {
+                if !list.contains(n) {
+                    self.unselect_instance();
+                }
+            }
+            self.client_list = Some(list);
+        }
     }
 
     fn task_read_system_theme(&mut self) -> Task<Message> {

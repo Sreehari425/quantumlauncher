@@ -52,7 +52,7 @@ pub enum CreateInstanceMessage {
         is_server: bool,
     },
 
-    VersionsLoaded(Res<(Vec<ListEntry>, String)>, bool),
+    VersionsLoaded(Res<(Vec<ListEntry>, String)>),
     VersionSelected(ListEntry),
     NameInput(String),
     ChangeAssetToggle(bool),
@@ -64,7 +64,6 @@ pub enum CreateInstanceMessage {
 
     Start,
     End(Res<InstanceSelection>),
-    Cancel,
 
     #[allow(unused)]
     Import,
@@ -273,6 +272,7 @@ pub enum LauncherSettingsMessage {
 
     ToggleAntialiasing(bool),
     ToggleWindowSize(bool),
+    ToggleInstanceRemembering(bool),
     #[allow(unused)]
     ToggleWindowDecorations(bool),
 
@@ -425,8 +425,10 @@ pub enum Message {
     LaunchUploadLog,
     LaunchUploadLogResult(Res<String>),
 
+    #[allow(unused)]
     UpdateCheckResult(Res<UpdateCheckInfo>),
     UpdateDownloadStart,
+    #[allow(unused)]
     UpdateDownloadEnd(Res),
 
     ServerCommandEdit(String),

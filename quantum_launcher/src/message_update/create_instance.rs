@@ -1,8 +1,5 @@
 use iced::Task;
-use ql_core::{
-    DownloadProgress, InstanceSelection, IntoStringError, JsonDownloadError, ListEntry,
-    ListEntryKind,
-};
+use ql_core::{DownloadProgress, InstanceSelection, IntoStringError, ListEntry, ListEntryKind};
 
 use crate::state::{
     CreateInstanceMessage, Launcher, MenuCreateInstance, Message, ProgressBar, State,
@@ -21,11 +18,16 @@ macro_rules! iflet {
 impl Launcher {
     pub fn update_create_instance(&mut self, message: CreateInstanceMessage) -> Task<Message> {
         match message {
+            CreateInstanceMessage::End(Err(err))
+            | CreateInstanceMessage::VersionsLoaded(Err(err))
+            | CreateInstanceMessage::ImportResult(Err(err)) => {
+                self.set_error(err);
+            }
             CreateInstanceMessage::ScreenOpen { is_server } => {
                 return self.go_to_create_screen(is_server)
             }
-            CreateInstanceMessage::VersionsLoaded(result, is_server) => {
-                self.create_instance_finish_loading_versions_list(result, is_server);
+            CreateInstanceMessage::VersionsLoaded(Ok((versions, latest))) => {
+                self.create_instance_finish_loading_versions_list(versions, latest);
             }
             CreateInstanceMessage::VersionSelected(ver) => {
                 iflet!(self, selected_version; {
@@ -38,17 +40,24 @@ impl Launcher {
                 });
             }
             CreateInstanceMessage::SearchSubmit => {
-                iflet!(self, search_box, selected_version, is_server, selected_categories; {
-                    if let Some(sel) = self.version_list_cache.list
-                        .as_deref()
-                        .unwrap()
+                iflet!(self, search_box, selected_version, is_server, selected_categories, list; {
+                    let iter = || list
                         .iter()
+                        .flatten()
                         .filter(|n| n.supports_server || !*is_server)
                         .filter(|n| selected_categories.contains(&n.kind))
-                        .find(|n|
+                        .filter(|n|
                             search_box.trim().is_empty()
                             || n.name.trim().to_lowercase().contains(&search_box.trim().to_lowercase())
-                        ) {
+                        );
+
+                    // Search priority order
+                    // - Exact name match
+                    // - Name contains search term
+                    // - Special lwjgl3 "ports" of normal versions (de-prioritized)
+                    if let Some(sel) = list.iter().flatten().find(|n| n.name == *search_box)
+                        .or(iter().find(|n| !n.name.ends_with("-lwjgl3"))
+                        .or(iter().next())) {
                         *selected_version = sel.clone();
                     }
                 })
@@ -72,18 +81,15 @@ impl Launcher {
             }
             CreateInstanceMessage::NameInput(name) => self.update_created_instance_name(name),
             CreateInstanceMessage::Start => return self.create_instance(),
-            CreateInstanceMessage::End(result) => match result {
-                Ok(instance) => {
-                    let is_server = instance.is_server();
-                    self.selected_instance = Some(instance);
-                    return if is_server {
-                        self.go_to_server_manage_menu(Some("Created Server".to_owned()))
-                    } else {
-                        self.go_to_launch_screen(Some("Created Instance"))
-                    };
-                }
-                Err(n) => self.set_error(n),
-            },
+            CreateInstanceMessage::End(Ok(instance)) => {
+                let is_server = instance.is_server();
+                self.selected_instance = Some(instance);
+                return if is_server {
+                    self.go_to_server_manage_menu(Some("Created Server".to_owned()))
+                } else {
+                    self.go_to_launch_screen(Some("Created Instance"))
+                };
+            }
             CreateInstanceMessage::ChangeAssetToggle(t) => {
                 if let State::Create(MenuCreateInstance::Choosing {
                     download_assets, ..
@@ -91,9 +97,6 @@ impl Launcher {
                 {
                     *download_assets = t;
                 }
-            }
-            CreateInstanceMessage::Cancel => {
-                return self.go_to_main_menu_with_message(None::<String>)
             }
             CreateInstanceMessage::Import => {
                 if let Some(file) = rfd::FileDialog::new()
@@ -113,103 +116,75 @@ impl Launcher {
                     );
                 }
             }
-            CreateInstanceMessage::ImportResult(res) => match res {
-                Ok(instance) => {
-                    let is_valid_modpack = instance.is_some();
-                    self.selected_instance = instance;
-                    if is_valid_modpack {
-                        return self.go_to_main_menu_with_message(None::<String>);
-                    }
-                    self.set_error(
-                        r#"the file you imported isn't a valid QuantumLauncher/MultiMC instance.
+            CreateInstanceMessage::ImportResult(Ok(instance)) => {
+                let is_valid_modpack = instance.is_some();
+                self.selected_instance = instance;
+                if is_valid_modpack {
+                    return self.go_to_main_menu_with_message(None::<String>);
+                }
+                self.set_error(
+                    r#"the file you imported isn't a valid QuantumLauncher/MultiMC instance.
 
 If you meant to import a Modrinth/Curseforge/Preset pack,
 create a instance with the matching version,
 then go to "Mods->Add File""#,
-                    );
-                }
-                Err(err) => self.set_error(err),
-            },
+                );
+            }
         }
         Task::none()
     }
 
     fn create_instance_finish_loading_versions_list(
         &mut self,
-        result: Result<(Vec<ListEntry>, String), String>,
-        is_server: bool,
+        versions: Vec<ListEntry>,
+        latest: String,
     ) {
-        match result {
-            Ok((versions, latest)) => {
-                self.version_list_cache.list = Some(versions.clone());
-                self.version_list_cache.latest_stable = Some(latest.clone());
+        if let State::Create(MenuCreateInstance::Choosing {
+            selected_version,
+            list,
+            ..
+        }) = &mut self.state
+        {
+            let mut offset = 0.0;
+            let len = versions.len();
 
-                if let State::Create(MenuCreateInstance::LoadingList { .. }) = &self.state {
-                    let mut offset = 0.0;
-                    let len = versions.len();
-
-                    self.state = State::Create(MenuCreateInstance::Choosing {
-                        instance_name: String::new(),
-                        selected_version: versions
-                            .iter()
-                            .enumerate()
-                            .filter(|n| n.1.kind != ListEntryKind::Snapshot)
-                            .find(|n| n.1.name == latest)
-                            .map(|n| {
-                                offset = n.0 as f32 / len as f32;
-                                n.1.clone()
-                            })
-                            .unwrap_or_else(|| ListEntry::new(latest)),
-                        download_assets: true,
-                        search_box: String::new(),
-                        show_category_dropdown: false,
-                        selected_categories: ListEntryKind::default_selected(),
-                        is_server,
-                    });
-                }
-            }
-            Err(n) => self.set_error(n),
+            *selected_version = versions
+                .iter()
+                .enumerate()
+                .filter(|n| n.1.kind != ListEntryKind::Snapshot)
+                .find(|n| n.1.name == latest)
+                .map(|n| {
+                    offset = n.0 as f32 / len as f32;
+                    n.1.clone()
+                })
+                .unwrap_or_else(|| ListEntry::new(latest));
+            *list = Some(versions);
         }
     }
 
     pub fn go_to_create_screen(&mut self, is_server: bool) -> Task<Message> {
-        if let Some(list) = &self.version_list_cache.list {
-            self.state = State::Create(MenuCreateInstance::Choosing {
-                instance_name: String::new(),
-                selected_version: self
-                    .version_list_cache
-                    .latest_stable
-                    .as_ref()
-                    .map(|latest| {
-                        list.iter()
-                            .find(|n| n.name == *latest)
-                            .cloned()
-                            .unwrap_or_else(|| ListEntry::new(latest.to_owned()))
-                    })
-                    .or_else(|| list.first().cloned())
-                    .unwrap(),
-                download_assets: true,
-                search_box: String::new(),
-                show_category_dropdown: false,
-                selected_categories: ListEntryKind::default_selected(),
-                is_server,
-            });
-            Task::none()
-        } else {
-            let msg = move |n: Result<(Vec<ListEntry>, String), JsonDownloadError>| {
-                Message::CreateInstance(CreateInstanceMessage::VersionsLoaded(
-                    n.strerr(),
-                    is_server,
-                ))
-            };
-            let (task, handle) = Task::perform(ql_instances::list_versions(), msg).abortable();
+        let (task, handle) = Task::perform(ql_instances::list_versions(), |n| {
+            Message::CreateInstance(CreateInstanceMessage::VersionsLoaded(n.strerr()))
+        })
+        .abortable();
 
-            self.state = State::Create(MenuCreateInstance::LoadingList {
-                _handle: handle.abort_on_drop(),
-            });
+        self.state = State::Create(MenuCreateInstance::Choosing {
+            _loading_list_handle: handle.abort_on_drop(),
+            list: None,
+            selected_version: ListEntry {
+                name: String::new(),
+                supports_server: true,
+                kind: ListEntryKind::Release,
+            },
+            instance_name: String::new(),
+            download_assets: true,
+            search_box: String::new(),
+            show_category_dropdown: false,
+            selected_categories: ListEntryKind::default_selected(),
+            is_server,
+        });
 
-            task
-        }
+        task
     }
 
     fn update_created_instance_name(&mut self, name: String) {
@@ -228,6 +203,23 @@ then go to "Mods->Add File""#,
         }) = &mut self.state
         {
             let is_server = *is_server;
+
+            let already_exists = {
+                let existing_instances = if is_server {
+                    self.server_list.as_ref()
+                } else {
+                    self.client_list.as_ref()
+                };
+                existing_instances.is_some_and(|n| {
+                    n.contains(instance_name)
+                        || (instance_name.is_empty() && n.contains(&selected_version.name))
+                })
+            };
+
+            if already_exists {
+                return Task::none();
+            }
+
             let (sender, receiver) = std::sync::mpsc::channel::<DownloadProgress>();
             let progress = ProgressBar {
                 num: 0.0,

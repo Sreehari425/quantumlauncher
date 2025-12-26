@@ -112,7 +112,7 @@ impl MenuInstallFabric {
                     back_button().on_press(Message::ManageMods(
                         ManageModsMessage::ScreenOpenWithoutUpdate
                     )),
-                    widget::text!("Loading {loader_name} version list{dots}",).size(20)
+                    widget::text!("Loading {loader_name} version list{dots}").size(20)
                 ]
             }
             MenuInstallFabric::Loaded {

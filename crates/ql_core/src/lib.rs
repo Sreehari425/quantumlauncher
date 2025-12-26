@@ -320,17 +320,13 @@ impl ListEntry {
         }
     }
 
+    #[must_use]
     pub fn with_kind(name: String, ty: &str) -> Self {
         Self {
             kind: ListEntryKind::calculate(&name, ty),
             supports_server: Version::guess_if_supports_server(&name),
             name,
         }
-    }
-
-    #[must_use]
-    pub fn kind(&self) -> ListEntryKind {
-        todo!()
     }
 }
 
@@ -409,7 +405,7 @@ impl ListEntryKind {
             ListEntryKind::Preclassic
         } else if id.starts_with("c0.") {
             ListEntryKind::Classic
-        } else if id.contains("w") {
+        } else if id.contains('w') {
             ListEntryKind::Snapshot
         } else {
             ListEntryKind::Release

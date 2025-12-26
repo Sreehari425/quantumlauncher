@@ -1,11 +1,11 @@
 use crate::config::SIDEBAR_WIDTH;
-use crate::state::{GameProcess, MenuInstallOptifine};
+use crate::state::{AutoSaveKind, GameProcess, MenuCreateInstance, MenuInstallOptifine};
 use crate::tick::sort_dependencies;
 use crate::{
     get_entries,
     state::{
         EditPresetsMessage, ManageModsMessage, MenuEditInstance, MenuEditMods, MenuInstallForge,
-        MenuLaunch, MenuLauncherUpdate, ProgressBar, SelectedState, State, OFFLINE_ACCOUNT_NAME,
+        MenuLaunch, ProgressBar, SelectedState, State, OFFLINE_ACCOUNT_NAME,
     },
     Launcher, Message,
 };
@@ -36,6 +36,28 @@ pub const SIDEBAR_LIMIT_LEFT: f32 = 135.0;
 mod iced_event;
 
 impl Launcher {
+    pub fn on_instance_selected(&mut self) -> Task<Message> {
+        let instance = self.instance().clone();
+
+        self.load_edit_instance(None);
+
+        {
+            let persistent = self.config.c_persistent();
+            if persistent.selected_remembered {
+                match instance.clone() {
+                    InstanceSelection::Instance(n) => persistent.selected_instance = Some(n),
+                    InstanceSelection::Server(n) => persistent.selected_server = Some(n),
+                }
+                self.autosave.remove(&AutoSaveKind::LauncherConfig);
+            }
+        }
+        if let State::Launch(menu) = &mut self.state {
+            menu.reload_notes(instance)
+        } else {
+            Task::none()
+        }
+    }
+
     pub fn launch_game(&mut self, account_data: Option<AccountData>) -> Task<Message> {
         let username = if let Some(account_data) = &account_data {
             // Logged in account
@@ -133,12 +155,19 @@ impl Launcher {
             return Task::none();
         }
 
-        self.selected_instance = None;
+        self.unselect_instance();
         if is_server {
             self.go_to_server_manage_menu(Some("Deleted Server".to_owned()))
         } else {
             self.go_to_launch_screen(Some("Deleted Instance".to_owned()))
         }
+    }
+
+    pub fn unselect_instance(&mut self) {
+        self.selected_instance = None;
+        self.config.c_persistent().selected_instance = None;
+        self.config.c_persistent().selected_server = None;
+        self.autosave.remove(&AutoSaveKind::LauncherConfig);
     }
 
     pub fn load_edit_instance_inner(
@@ -380,6 +409,21 @@ impl Launcher {
         }
     }
 
+    pub fn server_selected(&self) -> bool {
+        self.selected_instance
+            .as_ref()
+            .is_some_and(|n| n.is_server())
+            || if let State::Launch(menu) = &self.state {
+                menu.is_viewing_server
+            } else if let State::Create(MenuCreateInstance::Choosing { is_server, .. }) =
+                &self.state
+            {
+                *is_server
+            } else {
+                false
+            }
+    }
+
     pub fn get_selected_dot_minecraft_dir(&self) -> Option<PathBuf> {
         Some(self.selected_instance.as_ref()?.get_dot_minecraft_path())
     }
@@ -467,7 +511,9 @@ impl Launcher {
     }
     #[cfg(feature = "auto_update")]
     pub fn update_download_start(&mut self) -> Task<Message> {
-        if let State::UpdateFound(MenuLauncherUpdate { url, progress, .. }) = &mut self.state {
+        if let State::UpdateFound(crate::state::MenuLauncherUpdate { url, progress, .. }) =
+            &mut self.state
+        {
             let (sender, update_receiver) = std::sync::mpsc::channel();
             *progress = Some(ProgressBar::with_recv_and_msg(
                 update_receiver,

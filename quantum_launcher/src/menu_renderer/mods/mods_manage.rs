@@ -2,7 +2,7 @@ use iced::widget::tooltip::Position;
 use iced::{widget, Alignment, Length};
 use ql_core::{InstanceSelection, Loader, SelectedMod};
 
-use crate::menu_renderer::{ctxbox, select_box, subbutton_with_icon, tsubtitle, FONT_MONO};
+use crate::menu_renderer::{ctxbox, dots, select_box, subbutton_with_icon, tsubtitle, FONT_MONO};
 use crate::message_handler::ForgeKind;
 use crate::state::{ImageState, InstallPaperMessage, MenuEditModsModal};
 use crate::stylesheet::widgets::StyleButton;
@@ -159,8 +159,7 @@ impl MenuEditMods {
 
     fn get_mod_update_pane(&'_ self, tick_timer: usize) -> Element<'_> {
         if self.update_check_handle.is_some() {
-            let dots = ".".repeat((tick_timer % 3) + 1);
-            widget::text!("Checking for mod updates{dots}")
+            widget::text!("Checking for mod updates{}", dots(tick_timer))
                 .size(12)
                 .into()
         } else if self.available_updates.is_empty() {

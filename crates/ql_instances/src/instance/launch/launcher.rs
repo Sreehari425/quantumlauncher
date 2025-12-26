@@ -735,7 +735,6 @@ impl GameLauncher {
         };
         if main_class != "org.mcphackers.launchwrapper.Launch" && library_path.contains("20230311")
         {
-            println!("  (skipping json-20230311.jar)");
             return Ok(());
         }
         if library_path.contains("paulscode")

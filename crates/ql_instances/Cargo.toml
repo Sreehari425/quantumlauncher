@@ -7,6 +7,7 @@ license = "GPL-3.0-only"
 [features]
 default = []
 simulate_linux_arm64 = ["ql_core/simulate_linux_arm64"]
+simulate_linux_arm32 = ["ql_core/simulate_linux_arm32"]
 simulate_macos_arm64 = ["ql_core/simulate_macos_arm64"]
 
 [dependencies]
@@ -16,6 +17,7 @@ ql_java_handler.path = "../ql_java_handler"
 chrono.workspace = true
 semver.workspace = true
 zip.workspace = true
+cfg-if.workspace = true
 
 reqwest.workspace = true
 tokio.workspace = true

@@ -226,35 +226,31 @@ pub async fn get_list_of_versions_from_backend(
                 version: "b1.7.3".to_owned(),
             },
         }]
-    } else {
-        if let BackendType::OrnitheMCFabric | BackendType::OrnitheMCQuilt = backend {
-            let name = if backend.is_quilt() {
-                "quilt"
-            } else {
-                "fabric"
-            };
-            let url1 = format!("https://meta.ornithemc.net/v3/versions/{name}-loader/{version}");
-            let url2 = format!(
-                "https://meta.ornithemc.net/v3/versions/{name}-loader/{version}-{}",
-                if is_server { "server" } else { "client" }
-            );
+    } else if let BackendType::OrnitheMCFabric | BackendType::OrnitheMCQuilt = backend {
+        let name = if backend.is_quilt() {
+            "quilt"
+        } else {
+            "fabric"
+        };
+        let url1 = format!("https://meta.ornithemc.net/v3/versions/{name}-loader/{version}");
+        let url2 = format!(
+            "https://meta.ornithemc.net/v3/versions/{name}-loader/{version}-{}",
+            if is_server { "server" } else { "client" }
+        );
 
-            let list = file_utils::download_file_to_json::<List>(&url1, false).await?;
-            if list.is_empty() {
-                if let Ok(new_list) = file_utils::download_file_to_json::<List>(&url2, false).await
-                {
-                    new_list
-                } else {
-                    list
-                }
+        let list = file_utils::download_file_to_json::<List>(&url1, false).await?;
+        if list.is_empty() {
+            if let Ok(new_list) = file_utils::download_file_to_json::<List>(&url2, false).await {
+                new_list
             } else {
                 list
             }
         } else {
-            let list =
-                download_file_to_string(&format!("/versions/loader/{version}"), backend).await?;
-            serde_json::from_str(&list).json(list)?
+            list
         }
+    } else {
+        let list = download_file_to_string(&format!("/versions/loader/{version}"), backend).await?;
+        serde_json::from_str(&list).json(list)?
     };
     Ok(versions)
 }

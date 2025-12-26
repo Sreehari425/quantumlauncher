@@ -90,6 +90,8 @@ pub struct LauncherConfig {
     pub extra_java_args: Option<Vec<String>>,
     // Since: v0.4.3
     pub ui: Option<UiSettings>,
+    // Since: v0.4.3
+    pub persistent: Option<PersistentSettings>,
 }
 
 impl Default for LauncherConfig {
@@ -109,6 +111,7 @@ impl Default for LauncherConfig {
             global_settings: None,
             extra_java_args: None,
             ui: None,
+            persistent: None,
         }
     }
 }
@@ -235,6 +238,11 @@ impl LauncherConfig {
         self.global_settings
             .get_or_insert_with(GlobalSettings::default)
     }
+
+    pub fn c_persistent(&mut self) -> &mut PersistentSettings {
+        self.persistent
+            .get_or_insert_with(PersistentSettings::default)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -349,3 +357,20 @@ pub enum UiWindowDecorations {
         Self::Right
     }
 }*/
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PersistentSettings {
+    pub selected_instance: Option<String>,
+    pub selected_server: Option<String>,
+    pub selected_remembered: bool,
+}
+
+impl Default for PersistentSettings {
+    fn default() -> Self {
+        Self {
+            selected_instance: None,
+            selected_server: None,
+            selected_remembered: true,
+        }
+    }
+}

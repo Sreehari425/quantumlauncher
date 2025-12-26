@@ -135,6 +135,9 @@ impl MenuLauncherSettings {
 
                 widget::checkbox("Remember window size", config.window.as_ref().is_none_or(|n| n.save_window_size))
                     .on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::ToggleWindowSize(n))),
+                widget::Space::with_height(5),
+                widget::checkbox("Remember last selected instance", config.persistent.clone().unwrap_or_default().selected_remembered)
+                    .on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::ToggleInstanceRemembering(n))),
             ]
             .spacing(5)
             .into(),

@@ -117,11 +117,14 @@ impl Launcher {
                 &self.state,
             ) {
                 ("q", true, _, true, _) => Message::CoreTryQuit,
+
+                // ========
+                // MANAGE MODS MENU
+                // ========
                 ("a", true, _, true, State::EditMods(_)) => {
                     Message::ManageMods(crate::state::ManageModsMessage::SelectAll)
                 }
-
-                // Ctrl-F search in mods list
+                // Ctrl-F search in mods list (with toggling)
                 #[rustfmt::skip]
                 ("f", true, _, _, State::EditMods(MenuEditMods { search: Some(_), .. })) => {
                     Message::ManageMods(crate::state::ManageModsMessage::SetSearch(None))
@@ -132,14 +135,21 @@ impl Launcher {
                     ))),
                     Message::CoreFocusNext,
                 ]),
-                ("f", true, _, _, State::Create(MenuCreateInstance::Choosing { .. }))
-                | ("/", _, _, true, State::Create(MenuCreateInstance::Choosing { .. })) => {
-                    Message::CoreFocusNext
-                }
 
+                // Search Action (general)
+                ("f", true, _, _, State::Create(MenuCreateInstance::Choosing { .. }))
+                | ("/", _, _, true, State::Create(MenuCreateInstance::Choosing { .. }))
+                | ("f", true, _, _, State::ModsDownload(_))
+                | ("/", _, _, true, State::ModsDownload(_)) => Message::CoreFocusNext,
+
+                // Misc
                 ("a", true, _, true, State::EditJarMods(_)) => {
                     Message::ManageJarMods(crate::state::ManageJarModsMessage::SelectAll)
                 }
+
+                // ========
+                // MAIN MENU
+                // ========
                 ("n", true, _, _, State::Launch(n)) => {
                     Message::CreateInstance(CreateInstanceMessage::ScreenOpen {
                         is_server: n.is_viewing_server,
@@ -188,6 +198,14 @@ impl Launcher {
             } else if let Key::Named(Named::Backspace) = key {
                 if modifiers.command() {
                     return Task::done(Message::LaunchKill);
+                }
+            }
+        } else if let State::Create(MenuCreateInstance::Choosing { list: Some(_), .. }) =
+            &self.state
+        {
+            if let Key::Named(Named::Enter) = key {
+                if modifiers.command() {
+                    return Task::done(Message::CreateInstance(CreateInstanceMessage::Start));
                 }
             }
         }
@@ -275,9 +293,7 @@ impl Launcher {
                 mod_update_progress: None,
                 ..
             })
-            | State::Create(
-                MenuCreateInstance::LoadingList { .. } | MenuCreateInstance::Choosing { .. },
-            )
+            | State::Create(MenuCreateInstance::Choosing { .. })
             | State::Error { .. }
             | State::UpdateFound(MenuLauncherUpdate { progress: None, .. })
             | State::LauncherSettings(_)
@@ -381,21 +397,6 @@ impl Launcher {
         )
     }
 
-    pub fn server_selected(&self) -> bool {
-        self.selected_instance
-            .as_ref()
-            .is_some_and(|n| n.is_server())
-            || if let State::Launch(menu) = &self.state {
-                menu.is_viewing_server
-            } else if let State::Create(MenuCreateInstance::Choosing { is_server, .. }) =
-                &self.state
-            {
-                *is_server
-            } else {
-                false
-            }
-    }
-
     fn hide_submenu(&mut self) -> bool {
         if let State::EditMods(menu) = &mut self.state {
             if menu.modal.is_some() {
@@ -489,12 +490,9 @@ impl Launcher {
         );
 
         if did_scroll {
-            self.load_edit_instance(None);
-            let instance = self.instance().clone();
-            if let State::Launch(menu) = &mut self.state {
-                return Task::batch([menu.reload_notes(instance), scroll_task]);
-            }
+            Task::batch([scroll_task, self.on_instance_selected()])
+        } else {
+            scroll_task
         }
-        scroll_task
     }
 }

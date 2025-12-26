@@ -64,8 +64,8 @@ impl IsFlat for StyleButton {
 impl IsFlat for StyleScrollable {
     fn is_flat(&self) -> bool {
         match self {
-            StyleScrollable::Round => false,
-            StyleScrollable::FlatExtraDark | StyleScrollable::FlatDark => true,
+            Self::Round => false,
+            Self::FlatExtraDark | Self::FlatDark => true,
         }
     }
 }

@@ -104,10 +104,7 @@ impl Launcher {
                 &self.images,
                 self.window_state.size.1,
             ),
-            State::Create(menu) => menu.view(
-                self.client_list.as_deref(),
-                self.version_list_cache.list.as_deref(),
-            ),
+            State::Create(menu) => menu.view(self.client_list.as_deref(), self.tick_timer),
             State::ConfirmAction {
                 msg1,
                 msg2,

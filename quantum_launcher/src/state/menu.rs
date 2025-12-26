@@ -317,10 +317,10 @@ pub struct MenuEditJarMods {
 }
 
 pub enum MenuCreateInstance {
-    LoadingList {
-        _handle: iced::task::Handle,
-    },
     Choosing {
+        _loading_list_handle: iced::task::Handle,
+        list: Option<Vec<ListEntry>>,
+        // UI:
         is_server: bool,
         search_box: String,
         show_category_dropdown: bool,
@@ -375,6 +375,7 @@ pub struct MenuInstallForge {
     pub is_java_getting_installed: bool,
 }
 
+#[allow(unused)]
 pub struct MenuLauncherUpdate {
     pub url: String,
     pub progress: Option<ProgressBar<GenericProgress>>,

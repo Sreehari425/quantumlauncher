@@ -339,7 +339,8 @@ impl Library {
                             target_arch = "arm",
                             target_arch = "x86",
                             feature = "simulate_linux_arm64",
-                            feature = "simulate_macos_arm64"
+                            feature = "simulate_macos_arm64",
+                            feature = "simulate_linux_arm32",
                         ))] {
                             if os.name == format!("{OS_NAME}-{ARCH}") {
                                 allowed = rule.action == "allow";
@@ -407,7 +408,11 @@ impl Debug for Library {
             s = s.field("extract", &extract);
         }
         if let Some(rules) = &self.rules {
-            s = s.field("rules", &rules);
+            if rules.len() == 1 {
+                s = s.field("rule", &rules[0]);
+            } else {
+                s = s.field("rules", &rules);
+            }
         }
         if let Some(natives) = &self.natives {
             s = s.field("natives", &natives);
@@ -486,9 +491,9 @@ pub struct LibraryRule {
 impl Debug for LibraryRule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(os) = &self.os {
-            write!(f, "Rule: {} for {os:?}", self.action)
+            write!(f, "{} for {os:?}", self.action)
         } else {
-            write!(f, "Rule: {}", self.action)
+            write!(f, "{}", self.action)
         }
     }
 }
@@ -505,12 +510,26 @@ impl Debug for LibraryRuleOS {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct LibraryDownloadArtifact {
     pub path: Option<String>,
     pub sha1: String,
     pub size: serde_json::Number,
     pub url: String,
+}
+
+impl Debug for LibraryDownloadArtifact {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut s = f.debug_struct("LibraryDownloadArtifact");
+        let mut s = &mut s;
+        if let Some(path) = &self.path {
+            s = s.field("path", path);
+        }
+        s = s.field("url", &self.url);
+        s = s.field("sha1", &self.sha1);
+        s = s.field("size", &self.size.as_i64());
+        s.finish()
+    }
 }
 
 impl LibraryDownloadArtifact {

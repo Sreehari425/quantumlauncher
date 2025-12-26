@@ -232,7 +232,7 @@ pub async fn install_client(
     if let Some(progress) = &progress {
         _ = progress.send(GenericProgress::default());
     }
-    info!("Finished installing {backend}",);
+    info!("Finished installing {backend}");
 
     Ok(())
 }
