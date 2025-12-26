@@ -10,7 +10,7 @@
 //!
 //! - ¹: Only Java 8 supported (Minecraft 1.16.5 and below)
 //! - ✅: Obtained [from Mojang](https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json)
-//! - 🟢: Supported through *Amazon Corretto Java*
+//! - 🟢: Supported through [Amazon Corretto Java](https://aws.amazon.com/corretto/)
 //!   which we provide an alternate installer for.
 //! - 🟢²: Uses Java 17+ (with backwards compatibility),
 //!   may not be stable
@@ -18,12 +18,12 @@
 //!   <https://github.com/Mrmayman/get-jdk>
 //!
 //! | Platforms   | 8  | 16 | 17 | 21 |
-//! |-------------|----|----|----|----|
-//! | **Windows** `x86_64`  | 🟢 | ✅ | ✅ | ✅  |
+//! |:------------|:--:|:--:|:--:|:--:|
+//! | **Windows** `x86_64`  | ✅ | ✅ | ✅ | ✅  |
 //! | **Windows** `i686`    | 🟢 | ✅ | ✅ | 🟢|
 //! | **Windows** `aarch64`²| 🟢²|🟢²| ✅ | ✅ |
 //! | | | | |
-//! | **macOS**   `x86_64`  | 🟢 | ✅  | ✅ | ✅ |
+//! | **macOS**   `x86_64`  | ✅ | ✅  | ✅ | ✅ |
 //! | **macOS**   `aarch64` | 🟢 | 🟢  | ✅ | ✅ |
 //! | | | | |
 //! | **Linux**   `x86_64`  | ✅ | ✅ | ✅ | ✅ |
@@ -32,7 +32,6 @@
 //! | **Linux**   `arm32`¹  | 🟢³|    |    |    |
 //! | | | | |
 //! | **FreeBSD** `x86_64`¹ | 🟢³|    |    |    |
-//! | | | | |
 //! | **Solaris** `x86_64`¹ | 🟢³|    |    |    |
 //! | **Solaris** `sparc64`¹| 🟢³|    |    |    |
 //!
