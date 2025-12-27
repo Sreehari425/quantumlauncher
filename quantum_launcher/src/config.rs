@@ -440,11 +440,7 @@ fn list_entry_kind_key(kind: ListEntryKind) -> &'static str {
 }
 
 fn parse_list_entry_kind(raw: &str) -> Option<ListEntryKind> {
-    let key = raw
-        .trim()
-        .to_lowercase()
-        .replace('_', "-")
-        .replace(' ', "-");
+    let key = raw.trim().to_lowercase().replace(['_', ' '], "-");
 
     match key.as_str() {
         "release" => Some(ListEntryKind::Release),
