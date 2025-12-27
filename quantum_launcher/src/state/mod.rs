@@ -9,8 +9,8 @@ use iced::Task;
 use notify::Watcher;
 use ql_core::{
     err, err_no_log, file_utils, read_log::LogLine, GenericProgress, InstanceSelection,
-    IntoIoError, IntoStringError, IoError, JsonFileError, LaunchedProcess, ModId, Progress,
-    LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
+    IntoIoError, IntoStringError, IoError, JsonFileError, LaunchedProcess, ListEntry,
+    ListEntryKind, ModId, Progress, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
 };
 use ql_instances::auth::{ms::CLIENT_ID, AccountData, AccountType};
 use tokio::process::ChildStdin;
@@ -58,14 +58,16 @@ pub struct Launcher {
     pub java_recv: Option<ProgressBar<GenericProgress>>,
     pub custom_jar: Option<CustomJarState>,
     pub mod_updates_checked: HashMap<InstanceSelection, Vec<(ModId, String, bool)>>,
-
-    /// See [`AutoSaveKind`]
     pub autosave: HashSet<AutoSaveKind>,
 
     pub accounts: HashMap<String, AccountData>,
     pub accounts_dropdown: Vec<String>,
     pub accounts_selected: Option<String>,
 
+    /// Remembers the last selection in the Create Instance "Version Types" filter.
+    pub create_instance_selected_categories: HashSet<ListEntryKind>,
+
+    pub version_list_cache: VersionListCache,
     pub client_list: Option<Vec<String>>,
     pub server_list: Option<Vec<String>>,
 
@@ -77,15 +79,6 @@ pub struct Launcher {
     pub modifiers_pressed: iced::keyboard::Modifiers,
 }
 
-/// Used to temporarily "block" auto-saving something,
-/// or indicate it was already saved.
-///
-/// On the [`Launcher`] struct,
-///
-/// - Use `self.autosave.remove(n)`
-///   to indicate a change was made
-/// - Use `self.autosave.insert(n)`
-///   to indicate it was saved, and doesn't need saving again
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum AutoSaveKind {
     LauncherConfig,
@@ -110,6 +103,12 @@ impl CustomJarState {
             Message::EditInstance(EditInstanceMessage::CustomJarLoaded(n.strerr()))
         })
     }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct VersionListCache {
+    pub list: Option<Vec<ListEntry>>,
+    pub latest_stable: Option<String>,
 }
 
 pub struct GameProcess {
@@ -162,15 +161,13 @@ impl Launcher {
 
         let (accounts, accounts_dropdown, selected_account) = load_accounts(&mut config);
 
-        let persistent = config.c_persistent();
+        let create_instance_selected_categories = config
+            .persistent
+            .as_ref()
+            .map(|n| n.get_create_instance_selected_categories())
+            .unwrap_or_else(ListEntryKind::default_selected);
 
         Ok(Self {
-            selected_instance: persistent
-                .selected_instance
-                .as_ref()
-                .filter(|_| persistent.selected_remembered)
-                .map(|n| InstanceSelection::new(n, false)),
-
             state,
             config,
             theme,
@@ -184,9 +181,13 @@ impl Launcher {
             },
             accounts_selected: Some(selected_account),
 
+            create_instance_selected_categories,
+
             client_list: None,
             server_list: None,
             java_recv: None,
+            version_list_cache: VersionListCache::default(),
+            selected_instance: None,
             custom_jar: None,
 
             logs: HashMap::new(),
@@ -231,6 +232,12 @@ impl Launcher {
             })
             .unwrap_or((LauncherConfig::default(), LauncherTheme::default()));
 
+        let create_instance_selected_categories = config
+            .persistent
+            .as_ref()
+            .map(|n| n.get_create_instance_selected_categories())
+            .unwrap_or_else(ListEntryKind::default_selected);
+
         let (window_width, window_height) = config.c_window_size();
 
         Self {
@@ -264,6 +271,8 @@ impl Launcher {
                 is_maximized: false,
             },
             autosave: HashSet::new(),
+            version_list_cache: VersionListCache::default(),
+            create_instance_selected_categories,
             accounts_dropdown: vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()],
             accounts_selected: Some(OFFLINE_ACCOUNT_NAME.to_owned()),
             modifiers_pressed: iced::keyboard::Modifiers::empty(),
@@ -555,7 +564,7 @@ fn migration(version: &str) -> Result<(), String> {
     let version = version.strip_prefix("v").unwrap_or(version);
     let version = semver::Version::parse(version).strerr()?;
 
-    if version <= ver(0, 4, 2) && (cfg!(target_os = "windows") || cfg!(target_os = "macos")) {
+    if version < ver(0, 4, 3) && (cfg!(target_os = "windows") || cfg!(target_os = "macos")) {
         // Mojang sneakily updated their Java 8 to fix certs.
         // Let's redownload it.
         let java_dir = LAUNCHER_DIR.join("java_installs/java_8");

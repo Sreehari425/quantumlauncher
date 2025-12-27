@@ -2,7 +2,7 @@ use iced::Task;
 use ql_core::{DownloadProgress, InstanceSelection, IntoStringError, ListEntry, ListEntryKind};
 
 use crate::state::{
-    CreateInstanceMessage, Launcher, MenuCreateInstance, Message, ProgressBar, State,
+    AutoSaveKind, CreateInstanceMessage, Launcher, MenuCreateInstance, Message, ProgressBar, State,
 };
 
 macro_rules! iflet {
@@ -77,6 +77,13 @@ impl Launcher {
                     } else {
                         selected_categories.insert(kind);
                     }
+
+                    // Remember selection in-memory and persist to config for next launch.
+                    self.create_instance_selected_categories = selected_categories.clone();
+                    self.config
+                        .c_persistent()
+                        .set_create_instance_selected_categories(&self.create_instance_selected_categories);
+                    self.autosave.remove(&AutoSaveKind::LauncherConfig);
                 })
             }
             CreateInstanceMessage::NameInput(name) => self.update_created_instance_name(name),
@@ -180,7 +187,7 @@ then go to "Mods->Add File""#,
             download_assets: true,
             search_box: String::new(),
             show_category_dropdown: false,
-            selected_categories: ListEntryKind::default_selected(),
+            selected_categories: self.create_instance_selected_categories.clone(),
             is_server,
         });
 
