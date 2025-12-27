@@ -17,23 +17,23 @@
 //! - 🟢³: Installed from
 //!   <https://github.com/Mrmayman/get-jdk>
 //!
-//! | Platforms   | 8  | 16 | 17 | 21 |
-//! |:------------|:--:|:--:|:--:|:--:|
-//! | **Windows** `x86_64`  | ✅ | ✅ | ✅ | ✅  |
-//! | **Windows** `i686`    | 🟢 | ✅ | ✅ | 🟢|
-//! | **Windows** `aarch64`²| 🟢²|🟢²| ✅ | ✅ |
-//! | | | | |
-//! | **macOS**   `x86_64`  | ✅ | ✅  | ✅ | ✅ |
-//! | **macOS**   `aarch64` | 🟢 | 🟢  | ✅ | ✅ |
-//! | | | | |
-//! | **Linux**   `x86_64`  | ✅ | ✅ | ✅ | ✅ |
-//! | **Linux**   `i686`¹   | ✅ |    |    |   |
-//! | **Linux**   `aarch64` | 🟢 | 🟢 | 🟢 | 🟢 |
-//! | **Linux**   `arm32`¹  | 🟢³|    |    |    |
-//! | | | | |
-//! | **FreeBSD** `x86_64`¹ | 🟢³|    |    |    |
-//! | **Solaris** `x86_64`¹ | 🟢³|    |    |    |
-//! | **Solaris** `sparc64`¹| 🟢³|    |    |    |
+//! | Platforms   | 8  | 16 | 17 | 21 | 25 |
+//! |:------------|:--:|:--:|:--:|:--:|:--:|
+//! | **Windows** `x86_64`  | ✅ | ✅ | ✅ | ✅ | ✅ |
+//! | **Windows** `i686`    | 🟢 | ✅ | ✅ | 🟢 | 🟢 |
+//! | **Windows** `aarch64`²| 🟢²| 🟢²| ✅ | ✅ | ✅ |
+//! | | | | | |
+//! | **macOS**   `x86_64`  | ✅ | ✅ | ✅ | ✅ | ✅ |
+//! | **macOS**   `aarch64` | 🟢 | 🟢 | ✅ | ✅ | ✅ |
+//! | | | | | |
+//! | **Linux**   `x86_64`  | ✅ | ✅ | ✅ | ✅ | ✅ |
+//! | **Linux**   `i686`¹   | ✅ |    |    |    |    |
+//! | **Linux**   `aarch64` | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 |
+//! | **Linux**   `arm32`¹  | 🟢³|    |    |    |    |
+//! | | | | | |
+//! | **FreeBSD** `x86_64`¹ | 🟢³|    |    |    |    |
+//! | **Solaris** `x86_64`¹ | 🟢³|    |    |    |    |
+//! | **Solaris** `sparc64`¹| 🟢³|    |    |    |    |
 //!
 //! # TODO
 //!
@@ -150,14 +150,10 @@ pub async fn get_java_binary(
     let is_incomplete_install = java_dir.join("install.lock").exists();
 
     if cfg!(target_os = "windows") && cfg!(target_arch = "aarch64") {
-        version = match version {
+        if let JavaVersion::Java8 | JavaVersion::Java16 = version {
             // Java 8 and 16 are unsupported on Windows aarch64.
-
-            // 17 should be backwards compatible with 8 and 16
-            // for the most part, but some things like Beta ModLoader
-            // might break?
-            JavaVersion::Java8 | JavaVersion::Java16 | JavaVersion::Java17 => JavaVersion::Java17,
-            JavaVersion::Java21 => JavaVersion::Java21,
+            // Use Java 17 instead, which should be mostly compatible?
+            version = JavaVersion::Java17;
         }
     }
 

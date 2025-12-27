@@ -103,6 +103,7 @@ impl JavaVersion {
                 JavaVersion::Java16 |
                 JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-alpine-jdk.tar.gz",
                 JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-x64-alpine-jdk.tar.gz",
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-x64-alpine-jdk.tar.gz"
                 JavaVersion::Java8 => "https://corretto.aws/downloads/latest/amazon-corretto-8-x64-alpine-jdk.tar.gz",
             });
         } else if #[cfg(all(target_env = "musl", target_arch = "aarch64"))] {
@@ -110,6 +111,7 @@ impl JavaVersion {
                 JavaVersion::Java16 |
                 JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-alpine-jdk.tar.gz",
                 JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-aarch64-alpine-jdk.tar.gz",
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-aarch64-alpine-jdk.tar.gz",
                 JavaVersion::Java8 => "https://corretto.aws/downloads/latest/amazon-corretto-8-aarch64-alpine-jdk.tar.gz",
             });
         } else if #[cfg(target_arch = "x86_64")] {
@@ -117,6 +119,7 @@ impl JavaVersion {
                 JavaVersion::Java16 |
                 JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-linux-jdk.tar.gz",
                 JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-x64-linux-jdk.tar.gz",
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-x64-linux-jdk.tar.gz",
                 JavaVersion::Java8 => "https://corretto.aws/downloads/latest/amazon-corretto-8-x64-linux-jdk.tar.gz",
             });
         } else if #[cfg(target_arch = "aarch64")] {
@@ -124,6 +127,7 @@ impl JavaVersion {
                 JavaVersion::Java16 |
                 JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-linux-jdk.tar.gz",
                 JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-aarch64-linux-jdk.tar.gz",
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-aarch64-linux-jdk.tar.gz"
                 JavaVersion::Java8 => "https://corretto.aws/downloads/latest/amazon-corretto-8-aarch64-linux-jdk.tar.gz"
             });
         } else if #[cfg(target_arch = "arm")] {
@@ -146,6 +150,7 @@ impl JavaVersion {
                 JavaVersion::Java16 |
                 JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-macos-jdk.tar.gz",
                 JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-x64-macos-jdk.tar.gz",
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-x64-macos-jdk.tar.gz",
                 JavaVersion::Java8  => "https://corretto.aws/downloads/latest/amazon-corretto-8-x64-macos-jdk.tar.gz",
             })
         } else if #[cfg(target_arch = "aarch64")] {
@@ -153,6 +158,7 @@ impl JavaVersion {
                 JavaVersion::Java16 |
                 JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-macos-jdk.tar.gz",
                 JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-aarch64-macos-jdk.tar.gz",
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-aarch64-macos-jdk.tar.gz",
                 JavaVersion::Java8  => "https://corretto.aws/downloads/latest/amazon-corretto-8-aarch64-macos-jdk.tar.gz",
             })
         });
@@ -167,6 +173,7 @@ impl JavaVersion {
                 JavaVersion::Java16 |
                 JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-windows-jdk.zip",
                 JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-x64-windows-jdk.zip",
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-x64-windows-jdk.zip",
                 JavaVersion::Java8  => "https://corretto.aws/downloads/latest/amazon-corretto-8-x64-windows-jdk.zip",
             });
         } else if #[cfg(target_arch = "x86")] {
@@ -174,6 +181,7 @@ impl JavaVersion {
                 JavaVersion::Java16 |
                 JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-x86-windows-jdk.zip",
                 JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-x86-windows-jdk.zip",
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-x86-windows-jdk.zip",
                 JavaVersion::Java8  => "https://corretto.aws/downloads/latest/amazon-corretto-8-x86-windows-jdk.zip",
             });
         });
