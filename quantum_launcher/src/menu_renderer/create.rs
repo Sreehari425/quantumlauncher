@@ -227,13 +227,16 @@ impl MenuCreateInstance {
                             .contains(&searchbox.trim().to_lowercase())
                 })
                 .map(|n| {
-                    let label = widget::text(&n.name).size(14).style(|t: &LauncherTheme| {
-                        t.style_text(if n.kind == ListEntryKind::Snapshot {
-                            Color::SecondLight
-                        } else {
-                            Color::Light
-                        })
-                    });
+                    let label = widget::text(&n.name)
+                        .shaping(widget::text::Shaping::Advanced)
+                        .size(14)
+                        .style(|t: &LauncherTheme| {
+                            t.style_text(if n.kind == ListEntryKind::Snapshot {
+                                Color::SecondLight
+                            } else {
+                                Color::Light
+                            })
+                        });
 
                     sidebar_button(
                         n,

@@ -338,6 +338,7 @@ impl MenuCurseforgeManualDownload {
                     widget::row![
                         widget::button(widget::text("Open link").size(14)).on_press(Message::CoreOpenLink(url)),
                         widget::text(&entry.name)
+                            .shaping(widget::text::Shaping::Advanced)
                     ]
                     .align_y(Alignment::Center)
                     .spacing(10)
