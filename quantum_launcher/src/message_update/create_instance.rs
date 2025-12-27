@@ -78,11 +78,8 @@ impl Launcher {
                         selected_categories.insert(kind);
                     }
 
-                    // Remember selection in-memory and persist to config for next launch.
-                    self.create_instance_selected_categories = selected_categories.clone();
                     self.config
-                        .c_persistent()
-                        .set_create_instance_selected_categories(&self.create_instance_selected_categories);
+                        .c_persistent().create_instance_filters = Some(selected_categories.clone());
                     self.autosave.remove(&AutoSaveKind::LauncherConfig);
                 })
             }
@@ -187,7 +184,7 @@ then go to "Mods->Add File""#,
             download_assets: true,
             search_box: String::new(),
             show_category_dropdown: false,
-            selected_categories: self.create_instance_selected_categories.clone(),
+            selected_categories: self.config.c_persistent().get_create_instance_filters(),
             is_server,
         });
 

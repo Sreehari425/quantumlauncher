@@ -6,6 +6,7 @@ use ql_core::{
     err, IntoIoError, IntoJsonError, JsonFileError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::{collections::HashMap, path::Path};
 
 pub const SIDEBAR_WIDTH: f32 = 0.33;
@@ -365,12 +366,8 @@ pub struct PersistentSettings {
     pub selected_server: Option<String>,
     pub selected_remembered: bool,
 
-    /// Remembers the selected "Version Types" in Create Instance between launches.
-    ///
-    /// Stored as stable string identifiers for backwards compatibility.
-    /// Examples: "release", "snapshot", "pre-classic", "april-fools".
-    #[serde(default)]
-    pub create_instance_selected_categories: Option<Vec<String>>,
+    /// Remembers version filters (eg: snapshot, release, etc) in Create Instance
+    pub create_instance_filters: Option<HashSet<ListEntryKind>>,
 }
 
 impl Default for PersistentSettings {
@@ -379,80 +376,17 @@ impl Default for PersistentSettings {
             selected_instance: None,
             selected_server: None,
             selected_remembered: true,
-            create_instance_selected_categories: None,
+            create_instance_filters: None,
         }
     }
 }
 
 impl PersistentSettings {
     #[must_use]
-    pub fn get_create_instance_selected_categories(
-        &self,
-    ) -> std::collections::HashSet<ListEntryKind> {
-        let Some(list) = &self.create_instance_selected_categories else {
-            return ListEntryKind::default_selected();
-        };
-
-        let mut set = std::collections::HashSet::new();
-        for raw in list {
-            if let Some(kind) = parse_list_entry_kind(raw) {
-                set.insert(kind);
-            }
-        }
-
-        if set.is_empty() {
-            ListEntryKind::default_selected()
-        } else {
-            set
-        }
-    }
-
-    pub fn set_create_instance_selected_categories(
-        &mut self,
-        set: &std::collections::HashSet<ListEntryKind>,
-    ) {
-        let mut list: Vec<String> = set
-            .iter()
-            .copied()
-            .map(list_entry_kind_key)
-            .map(str::to_owned)
-            .collect();
-
-        // Keep config diffs stable.
-        list.sort();
-        self.create_instance_selected_categories = Some(list);
-    }
-}
-
-fn list_entry_kind_key(kind: ListEntryKind) -> &'static str {
-    match kind {
-        ListEntryKind::Release => "release",
-        ListEntryKind::Snapshot => "snapshot",
-        ListEntryKind::Preclassic => "pre-classic",
-        ListEntryKind::Classic => "classic",
-        ListEntryKind::Indev => "indev",
-        ListEntryKind::Infdev => "infdev",
-        ListEntryKind::Alpha => "alpha",
-        ListEntryKind::Beta => "beta",
-        ListEntryKind::AprilFools => "april-fools",
-        ListEntryKind::Special => "special",
-    }
-}
-
-fn parse_list_entry_kind(raw: &str) -> Option<ListEntryKind> {
-    let key = raw.trim().to_lowercase().replace(['_', ' '], "-");
-
-    match key.as_str() {
-        "release" => Some(ListEntryKind::Release),
-        "snapshot" => Some(ListEntryKind::Snapshot),
-        "pre-classic" | "preclassic" => Some(ListEntryKind::Preclassic),
-        "classic" => Some(ListEntryKind::Classic),
-        "indev" => Some(ListEntryKind::Indev),
-        "infdev" => Some(ListEntryKind::Infdev),
-        "alpha" => Some(ListEntryKind::Alpha),
-        "beta" => Some(ListEntryKind::Beta),
-        "april-fools" | "aprilfools" => Some(ListEntryKind::AprilFools),
-        "special" => Some(ListEntryKind::Special),
-        _ => None,
+    pub fn get_create_instance_filters(&self) -> std::collections::HashSet<ListEntryKind> {
+        self.create_instance_filters
+            .clone()
+            .filter(|n| !n.is_empty())
+            .unwrap_or_else(ListEntryKind::default_selected)
     }
 }
