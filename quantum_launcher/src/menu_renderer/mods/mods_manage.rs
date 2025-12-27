@@ -499,6 +499,7 @@ impl MenuEditMods {
                         widget::row![
                             image,
                             widget::text(&config.name)
+                                .shaping(widget::text::Shaping::Advanced)
                                 .style(move |t: &LauncherTheme| {
                                     t.style_text(if is_enabled {
                                         Color::SecondLight
@@ -574,7 +575,10 @@ impl MenuEditMods {
                         widget::text("(dependency) ")
                             .size(12)
                             .style(|t: &LauncherTheme| t.style_text(Color::Mid)),
-                        widget::text(&config.name).size(13).style(tsubtitle)
+                        widget::text(&config.name)
+                            .shaping(widget::text::Shaping::Advanced)
+                            .size(13)
+                            .style(tsubtitle)
                     ]
                     .padding(PADDING)
                     .into()
@@ -596,6 +600,7 @@ impl MenuEditMods {
                                 .to_owned(),
                         )
                         .font(FONT_MONO)
+                        .shaping(widget::text::Shaping::Advanced)
                         .style(move |t: &LauncherTheme| {
                             t.style_text(if is_enabled {
                                 Color::SecondLight
