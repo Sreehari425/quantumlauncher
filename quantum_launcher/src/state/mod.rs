@@ -58,6 +58,7 @@ pub struct Launcher {
     pub java_recv: Option<ProgressBar<GenericProgress>>,
     pub custom_jar: Option<CustomJarState>,
     pub mod_updates_checked: HashMap<InstanceSelection, Vec<(ModId, String, bool)>>,
+    /// See [`AutoSaveKind`]
     pub autosave: HashSet<AutoSaveKind>,
 
     pub accounts: HashMap<String, AccountData>,
@@ -75,6 +76,15 @@ pub struct Launcher {
     pub modifiers_pressed: iced::keyboard::Modifiers,
 }
 
+/// Used to temporarily "block" auto-saving something,
+/// or indicate it was already saved.
+///
+/// On the [`Launcher`] struct,
+///
+/// - Use `self.autosave.remove(n)`
+///   to indicate a change was made
+/// - Use `self.autosave.insert(n)`
+///   to indicate it was saved, and doesn't need saving again
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum AutoSaveKind {
     LauncherConfig,
@@ -151,7 +161,14 @@ impl Launcher {
 
         let (accounts, accounts_dropdown, selected_account) = load_accounts(&mut config);
 
+        let persistent = config.c_persistent();
+
         Ok(Self {
+            selected_instance: persistent
+                .selected_instance
+                .as_ref()
+                .filter(|_| persistent.selected_remembered)
+                .map(|n| InstanceSelection::new(n, false)),
             state,
             config,
             theme,
@@ -168,7 +185,6 @@ impl Launcher {
             client_list: None,
             server_list: None,
             java_recv: None,
-            selected_instance: None,
             custom_jar: None,
 
             logs: HashMap::new(),
@@ -537,7 +553,7 @@ fn migration(version: &str) -> Result<(), String> {
     let version = version.strip_prefix("v").unwrap_or(version);
     let version = semver::Version::parse(version).strerr()?;
 
-    if version < ver(0, 4, 3) && (cfg!(target_os = "windows") || cfg!(target_os = "macos")) {
+    if version <= ver(0, 4, 2) && (cfg!(target_os = "windows") || cfg!(target_os = "macos")) {
         // Mojang sneakily updated their Java 8 to fix certs.
         // Let's redownload it.
         let java_dir = LAUNCHER_DIR.join("java_installs/java_8");

@@ -389,6 +389,7 @@ impl ListEntryKind {
         let mut set = std::collections::HashSet::new();
         set.extend(Self::ALL);
         set.remove(&Self::Snapshot);
+        set.remove(&Self::Special);
         set
     }
 }
