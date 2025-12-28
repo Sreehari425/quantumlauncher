@@ -8,7 +8,7 @@ use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
 
 use crate::cli::EXPERIMENTAL_SERVERS;
 use crate::menu_renderer::onboarding::x86_warning;
-use crate::menu_renderer::{tsubtitle, underline, FONT_MONO};
+use crate::menu_renderer::{tsubtitle, underline, underline_maybe, FONT_MONO};
 use crate::state::{InstanceNotes, NotesMessage, WindowMessage};
 use crate::{
     icons,
@@ -336,28 +336,22 @@ impl Launcher {
                 };
 
                 let text = widget::text(name).size(15).style(tsubtitle);
+                let is_selected = selected_instance_s == Some(name);
 
-                if selected_instance_s == Some(name) {
-                    widget::container(widget::row!(widget::Space::with_width(5), text))
-                        .style(LauncherTheme::style_container_selected_flat_button)
-                        .width(Length::Fill)
-                        .padding(5)
-                        .into()
-                } else {
-                    underline(
-                        widget::button(widget::row![text].push_maybe(playing_icon))
-                            .style(|n: &LauncherTheme, status| {
-                                n.style_button(status, StyleButton::FlatExtraDark)
-                            })
-                            .on_press(Message::LaunchInstanceSelected {
-                                name: name.clone(),
-                                is_server: menu.is_viewing_server,
-                            })
-                            .width(Length::Fill),
-                        Color::Dark,
-                    )
-                    .into()
-                }
+                underline_maybe(
+                    widget::button(widget::row![text].push_maybe(playing_icon))
+                        .style(|n: &LauncherTheme, status| {
+                            n.style_button(status, StyleButton::FlatExtraDark)
+                        })
+                        .on_press_maybe((!is_selected).then_some(Message::LaunchInstanceSelected {
+                            name: name.clone(),
+                            is_server: menu.is_viewing_server,
+                        }))
+                        .width(Length::Fill),
+                    Color::Dark,
+                    !is_selected,
+                )
+                .into()
             }))
         } else {
             let dots = ".".repeat((self.tick_timer % 3) + 1);

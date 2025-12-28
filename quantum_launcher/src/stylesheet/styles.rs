@@ -605,8 +605,8 @@ impl LauncherTheme {
                     StyleButton::FlatDark
                     | StyleButton::SemiDark(_)
                     | StyleButton::SemiDarkBorder(_)
-                    | StyleButton::FlatExtraDark
                     | StyleButton::SemiExtraDark(_) => Color::ExtraDark,
+                    StyleButton::FlatExtraDark => Color::SecondDark,
                 };
                 widget::button::Style {
                     background: Some(self.get_bg(color)),

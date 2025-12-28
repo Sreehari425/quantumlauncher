@@ -104,6 +104,14 @@ pub fn underline<'a>(
     )
 }
 
+pub fn underline_maybe<'a>(e: impl Into<Element<'a>>, color: Color, un: bool) -> Element<'a> {
+    if un {
+        underline(e, color).into()
+    } else {
+        e.into()
+    }
+}
+
 pub fn center_x<'a>(e: impl Into<Element<'a>>) -> widget::Row<'a, Message, LauncherTheme> {
     widget::row![
         widget::horizontal_space(),
@@ -175,24 +183,13 @@ fn sidebar_button<'a, A: PartialEq>(
     text: impl Into<Element<'a>>,
     message: Message,
 ) -> Element<'a> {
-    if current == selected {
-        widget::container(widget::row!(widget::Space::with_width(5), text.into()))
-            .style(LauncherTheme::style_container_selected_flat_button)
-            .width(Length::Fill)
-            .padding(5)
-            .into()
-    } else {
-        underline(
-            widget::button(text)
-                .on_press(message)
-                .style(|n: &LauncherTheme, status| {
-                    n.style_button(status, StyleButton::FlatExtraDark)
-                })
-                .width(Length::Fill),
-            Color::SecondDark,
-        )
-        .into()
-    }
+    let is_selected = current == selected;
+    let button = widget::button(text)
+        .on_press_maybe((!is_selected).then_some(message))
+        .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatExtraDark))
+        .width(Length::Fill);
+
+    underline_maybe(button, Color::SecondDark, !is_selected).into()
 }
 
 fn tsubtitle(t: &LauncherTheme) -> widget::text::Style {
