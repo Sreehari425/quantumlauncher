@@ -10,8 +10,8 @@ use crate::{
     cli::EXPERIMENTAL_MMC_IMPORT,
     icons,
     menu_renderer::{
-        back_button, button_with_icon, ctxbox, dots, shortcut_ctrl, sidebar, sidebar_button,
-        tooltip, tsubtitle, Element,
+        button_with_icon, ctxbox, dots, shortcut_ctrl, sidebar, sidebar_button, tooltip, tsubtitle,
+        Element,
     },
     state::{CreateInstanceMessage, MenuCreateInstance, Message},
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
@@ -31,44 +31,65 @@ impl MenuCreateInstance {
                 list,
                 ..
             } => {
-                let pb = iced::Padding::new(7.0).left(10.0).right(10.0);
+                let pb = [4, 10];
                 let opened_controls = *show_category_dropdown;
-                let header = column![
-                    row![
-                        back_button()
-                            .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
-                            .on_press(Message::LaunchScreenOpen {
-                                message: None,
-                                clear_selection: false,
-                                is_server: Some(*is_server),
-                            }),
-                        widget::button(icons::filter_s(14))
-                            .padding(pb)
-                            .style(move |t: &LauncherTheme, s| t.style_button(
-                                s,
-                                if opened_controls {
-                                    StyleButton::Round
-                                } else {
-                                    StyleButton::RoundDark
-                                }
-                            ))
-                            .on_press(Message::CreateInstance(
-                                CreateInstanceMessage::ContextMenuToggle
-                            ))
-                    ]
-                    .spacing(5),
+                let hidden = selected_categories.len() == ListEntryKind::ALL.len();
+
+                let header = column![row![
+                    button_with_icon(icons::back_s(12), "Back", 13)
+                        .padding(pb)
+                        .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
+                        .on_press(Message::LaunchScreenOpen {
+                            message: None,
+                            clear_selection: false,
+                            is_server: Some(*is_server),
+                        }),
+                    button_with_icon(
+                        icons::filter_s(12),
+                        if hidden { "Filters" } else { "Filters •" },
+                        13
+                    )
+                    .padding(pb)
+                    .style(move |t: &LauncherTheme, s| t.style_button(
+                        s,
+                        if opened_controls {
+                            StyleButton::Round
+                        } else {
+                            StyleButton::RoundDark
+                        }
+                    ))
+                    .on_press(Message::CreateInstance(
+                        CreateInstanceMessage::ContextMenuToggle
+                    ))
+                ]
+                .spacing(5)]
+                .push_maybe(
+                    (!hidden).then_some(
+                        widget::text!(
+                            "Some versions are hidden {}\n(click \"Filters\" to show)",
+                            if selected_categories.contains(&ListEntryKind::Release) {
+                                ""
+                            } else {
+                                "(!)"
+                            }
+                        )
+                        .size(10)
+                        .style(tsubtitle),
+                    ),
+                )
+                .push(
                     widget::text_input("Search...", search_box)
                         .size(14)
                         .on_input(|t| {
                             Message::CreateInstance(CreateInstanceMessage::SearchInput(t))
                         })
                         .on_submit(Message::CreateInstance(CreateInstanceMessage::SearchSubmit)),
-                ]
+                )
                 .push_maybe(
                     (!search_box.trim().is_empty())
-                        .then_some(widget::text("Search Results:").size(12)),
+                        .then_some(widget::text("Search Results:").style(tsubtitle).size(12)),
                 )
-                .spacing(10);
+                .spacing(7);
 
                 let sidebar = Self::get_sidebar_contents(
                     list.as_deref(),

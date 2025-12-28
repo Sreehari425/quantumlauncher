@@ -21,6 +21,7 @@ use crate::{
 use futures::StreamExt;
 use json::VersionDetails;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Debug, Display},
     future::Future,
@@ -336,7 +337,8 @@ impl Display for ListEntry {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "kebab-case")]
 pub enum ListEntryKind {
     Release,
     Snapshot,
@@ -381,12 +383,13 @@ impl ListEntryKind {
         ListEntryKind::Special,
     ];
 
-    /// Returns the default selected categories (Release only)
+    /// Returns the default selected categories
     #[must_use]
     pub fn default_selected() -> std::collections::HashSet<ListEntryKind> {
         let mut set = std::collections::HashSet::new();
         set.extend(Self::ALL);
         set.remove(&Self::Snapshot);
+        set.remove(&Self::Special);
         set
     }
 }
