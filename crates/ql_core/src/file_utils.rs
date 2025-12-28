@@ -718,3 +718,7 @@ pub fn canonicalize_s(p: impl AsRef<Path>) -> PathBuf {
 }
 
 // ========
+
+pub async fn exists(p: impl AsRef<Path>) -> bool {
+    tokio::fs::try_exists(p).await.is_ok_and(|n| n)
+}

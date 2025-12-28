@@ -85,26 +85,45 @@ pub enum IoError {
 /// // will tell you what path it tried writing to.
 /// # Ok(())
 /// ```
-pub trait IntoIoError<T> {
+pub trait IntoIoError<T = ()> {
+    type Output;
     #[allow(clippy::missing_errors_doc)]
-    fn path(self, p: impl Into<PathBuf>) -> Result<T, IoError>;
+    fn path(self, p: impl Into<PathBuf>) -> Self::Output;
     #[allow(clippy::missing_errors_doc)]
-    fn dir(self, p: impl Into<PathBuf>) -> Result<T, IoError>;
+    fn dir(self, p: impl Into<PathBuf>) -> Self::Output;
 }
 
 impl<T> IntoIoError<T> for std::io::Result<T> {
+    type Output = Result<T, IoError>;
     fn path(self, p: impl Into<PathBuf>) -> Result<T, IoError> {
-        self.map_err(|err: std::io::Error| IoError::Io {
+        self.map_err(|err| IoError::Io {
             error: err.to_string(),
             path: p.into().clone(),
         })
     }
 
     fn dir(self, p: impl Into<PathBuf>) -> Result<T, IoError> {
-        self.map_err(|err: std::io::Error| IoError::ReadDir {
+        self.map_err(|err| IoError::ReadDir {
             error: err.to_string(),
             parent: p.into(),
         })
+    }
+}
+
+impl IntoIoError for std::io::Error {
+    type Output = IoError;
+    fn path(self, p: impl Into<PathBuf>) -> IoError {
+        IoError::Io {
+            error: self.to_string(),
+            path: p.into().clone(),
+        }
+    }
+
+    fn dir(self, p: impl Into<PathBuf>) -> IoError {
+        IoError::ReadDir {
+            error: self.to_string(),
+            parent: p.into(),
+        }
     }
 }
 
