@@ -63,6 +63,17 @@ impl Launcher {
         message: EditInstanceMessage,
     ) -> Result<Task<Message>, String> {
         match message {
+            EditInstanceMessage::ToggleSplitArg(t) => {
+                if let State::Launch(MenuLaunch {
+                    edit_instance: Some(menu),
+                    ..
+                }) = &mut self.state
+                {
+                    menu.arg_split_by_space = t;
+                } else if let State::LauncherSettings(menu) = &mut self.state {
+                    menu.arg_split_by_space = t;
+                }
+            }
             EditInstanceMessage::JavaOverride(n) => {
                 if let State::Launch(MenuLaunch {
                     edit_instance: Some(menu),
@@ -121,18 +132,21 @@ impl Launcher {
                 });
             }
             EditInstanceMessage::JavaArgs(msg) => {
+                let split = self.should_split_args();
                 iflet_config!(&mut self.state, java_args, {
-                    msg.apply(java_args.get_or_insert_with(Vec::new));
+                    msg.apply(java_args.get_or_insert_with(Vec::new), split);
                 });
             }
             EditInstanceMessage::GameArgs(msg) => {
+                let split = self.should_split_args();
                 iflet_config!(&mut self.state, game_args, {
-                    msg.apply(game_args.get_or_insert_with(Vec::new));
+                    msg.apply(game_args.get_or_insert_with(Vec::new), split);
                 });
             }
             EditInstanceMessage::PreLaunchPrefix(msg) => {
+                let split = self.should_split_args();
                 iflet_config!(&mut self.state, prefix, |pre_launch_prefix| {
-                    msg.apply(pre_launch_prefix.get_or_insert_with(Vec::new));
+                    msg.apply(pre_launch_prefix.get_or_insert_with(Vec::new), split);
                 });
             }
             EditInstanceMessage::PreLaunchPrefixModeChanged(mode) => {

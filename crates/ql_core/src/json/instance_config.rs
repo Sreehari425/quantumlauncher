@@ -229,6 +229,7 @@ impl InstanceConfigJson {
             .get_or_insert_with(GlobalSettings::default)
     }
 
+    #[must_use]
     pub fn get_main_class_mode(&self) -> Option<MainClassMode> {
         self.custom_jar
             .as_ref()
@@ -241,6 +242,7 @@ impl InstanceConfigJson {
                 .then_some(MainClassMode::Custom))
     }
 
+    #[must_use]
     pub fn get_java_override(&self) -> Option<PathBuf> {
         fn inner(path: &str) -> Option<PathBuf> {
             if path.is_empty() {
@@ -289,7 +291,7 @@ pub struct GlobalSettings {
     pub window_height: Option<u32>,
     /// This is an optional list of commands to prepend
     /// to the launch command (e.g., "prime-run" for NVIDIA GPU usage on Linux).
-    // Since: v0.4.3
+    // Since: v0.5.0
     pub pre_launch_prefix: Option<Vec<String>>,
 }
 

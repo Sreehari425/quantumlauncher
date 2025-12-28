@@ -1,7 +1,11 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    io::ErrorKind,
+};
 
 use ql_core::{info, InstanceSelection, IntoIoError, IntoJsonError, JsonFileError};
 use serde::{Deserialize, Serialize};
+use tokio::fs;
 
 use super::ModError;
 
@@ -36,40 +40,47 @@ impl ModIndex {
 
         let mods_dir = dot_mc_dir.join("mods");
         if !mods_dir.exists() {
-            tokio::fs::create_dir(&mods_dir).await.path(&mods_dir)?;
+            fs::create_dir(&mods_dir).await.path(&mods_dir)?;
         }
 
         let index_path = dot_mc_dir.join("mod_index.json");
         let old_index_path = mods_dir.join("index.json");
 
-        if index_path.exists() {
-            let index = tokio::fs::read_to_string(&index_path)
-                .await
-                .path(index_path)?;
-            Ok(serde_json::from_str(&index).json(index)?)
-        } else if old_index_path.exists() {
-            // Migrate old index to new location
-            let index = tokio::fs::read_to_string(&old_index_path)
-                .await
-                .path(&old_index_path)?;
-            let mod_index = serde_json::from_str(&index).json(index.clone())?;
+        // 1) Try migrating old index
+        match fs::read_to_string(&old_index_path).await {
+            Ok(index) => {
+                let mod_index = serde_json::from_str(&index).json(index.clone())?;
 
-            tokio::fs::remove_file(&old_index_path)
-                .await
-                .path(old_index_path)?;
-            tokio::fs::write(&index_path, &index)
-                .await
-                .path(index_path)?;
+                fs::write(&index_path, &index).await.path(index_path)?;
+                fs::remove_file(&old_index_path)
+                    .await
+                    .path(old_index_path)?;
 
-            Ok(mod_index)
-        } else {
-            let index = ModIndex::new(selected_instance);
-            let index_str = serde_json::to_string(&index).json_to()?;
-            tokio::fs::write(&index_path, &index_str)
-                .await
-                .path(index_path)?;
-            Ok(index)
+                return Ok(mod_index);
+            }
+            Err(e) if e.kind() != ErrorKind::NotFound => {
+                return Err(e.path(index_path).into());
+            }
+            _ => {}
         }
+
+        // 2. Try current index
+        match fs::read_to_string(&index_path).await {
+            Ok(index) => return Ok(serde_json::from_str::<Self>(&index).json(index)?),
+            Err(e) if e.kind() != ErrorKind::NotFound => {
+                return Err(e.path(index_path).into());
+            }
+            _ => {}
+        }
+
+        let index = ModIndex::new(selected_instance);
+        let index_str = serde_json::to_string(&index).json_to()?;
+
+        let tmp = index_path.with_extension("json.tmp");
+        fs::write(&tmp, &index_str).await.path(&tmp)?;
+        fs::rename(&tmp, &index_path).await.path(&tmp)?;
+
+        Ok(index)
     }
 
     pub async fn save(&mut self, selected_instance: &InstanceSelection) -> Result<(), ModError> {
@@ -80,9 +91,7 @@ impl ModIndex {
             .join("mod_index.json");
 
         let index_str = serde_json::to_string(&self).json_to()?;
-        tokio::fs::write(&index_dir, &index_str)
-            .await
-            .path(index_dir)?;
+        fs::write(&index_dir, &index_str).await.path(index_dir)?;
         Ok(())
     }
 
@@ -96,7 +105,7 @@ impl ModIndex {
     pub async fn fix(&mut self, selected_instance: &InstanceSelection) -> Result<(), ModError> {
         let mods_dir = selected_instance.get_dot_minecraft_path().join("mods");
         if !mods_dir.exists() {
-            tokio::fs::create_dir(&mods_dir).await.path(&mods_dir)?;
+            fs::create_dir(&mods_dir).await.path(&mods_dir)?;
             return Ok(());
         }
 

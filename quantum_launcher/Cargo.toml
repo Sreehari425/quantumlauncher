@@ -1,6 +1,6 @@
 [package]
 name = "quantum_launcher"
-version = "0.4.3"
+version = "0.5.0"
 edition = "2021"
 
 authors = ["Mrmayman <navneetkrishna22@gmail.com>"]
@@ -28,6 +28,7 @@ auto_update = []
 
 debug = ["iced/debug"]
 simulate_linux_arm64 = ["ql_instances/simulate_linux_arm64"]
+simulate_linux_arm32 = ["ql_instances/simulate_linux_arm32"]
 simulate_macos_arm64 = ["ql_instances/simulate_macos_arm64"]
 
 [dependencies]

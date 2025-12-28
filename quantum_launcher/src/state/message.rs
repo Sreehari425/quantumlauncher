@@ -52,7 +52,7 @@ pub enum CreateInstanceMessage {
         is_server: bool,
     },
 
-    VersionsLoaded(Res<(Vec<ListEntry>, String)>, bool),
+    VersionsLoaded(Res<(Vec<ListEntry>, String)>),
     VersionSelected(ListEntry),
     NameInput(String),
     ChangeAssetToggle(bool),
@@ -64,7 +64,6 @@ pub enum CreateInstanceMessage {
 
     Start,
     End(Res<InstanceSelection>),
-    Cancel,
 
     #[allow(unused)]
     Import,
@@ -87,6 +86,7 @@ pub enum EditInstanceMessage {
     JavaArgs(ListMessage),
     JavaArgsModeChanged(bool),
     GameArgs(ListMessage),
+    ToggleSplitArg(bool),
 
     PreLaunchPrefix(ListMessage),
     PreLaunchPrefixModeChanged(PreLaunchPrefixMode),
@@ -286,6 +286,7 @@ pub enum LauncherSettingsMessage {
 
     ToggleAntialiasing(bool),
     ToggleWindowSize(bool),
+    ToggleInstanceRemembering(bool),
     #[allow(unused)]
     ToggleWindowDecorations(bool),
 
@@ -303,13 +304,13 @@ pub enum ListMessage {
 }
 
 impl ListMessage {
-    pub fn apply(self, l: &mut Vec<String>) {
+    pub fn apply(self, l: &mut Vec<String>, split: bool) {
         match self {
             ListMessage::Add => {
                 l.push(String::new());
             }
             ListMessage::Edit(msg, idx) => {
-                if msg.contains(' ') {
+                if split && msg.contains(' ') {
                     l.remove(idx);
                     let mut insert_idx = idx;
                     for s in msg.split(' ').filter(|n| !n.is_empty()) {
@@ -439,8 +440,10 @@ pub enum Message {
     LaunchUploadLog,
     LaunchUploadLogResult(Res<String>),
 
+    #[allow(unused)]
     UpdateCheckResult(Res<UpdateCheckInfo>),
     UpdateDownloadStart,
+    #[allow(unused)]
     UpdateDownloadEnd(Res),
 
     ServerCommandEdit(String),

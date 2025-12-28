@@ -1,10 +1,12 @@
 use crate::stylesheet::styles::{LauncherTheme, LauncherThemeColor, LauncherThemeLightness};
 use crate::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use ql_core::json::GlobalSettings;
+use ql_core::ListEntryKind;
 use ql_core::{
     err, IntoIoError, IntoJsonError, JsonFileError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::{collections::HashMap, path::Path};
 
 pub const SIDEBAR_WIDTH: f32 = 0.33;
@@ -86,10 +88,12 @@ pub struct LauncherConfig {
     /// Settings that apply both on a per-instance basis and with global overrides.
     // Since: v0.4.2
     pub global_settings: Option<GlobalSettings>,
-    // Since: v0.4.3
+    // Since: v0.5.0
     pub extra_java_args: Option<Vec<String>>,
-    // Since: v0.4.3
+    // Since: v0.5.0
     pub ui: Option<UiSettings>,
+    // Since: v0.5.0
+    pub persistent: Option<PersistentSettings>,
 }
 
 impl Default for LauncherConfig {
@@ -109,6 +113,7 @@ impl Default for LauncherConfig {
             global_settings: None,
             extra_java_args: None,
             ui: None,
+            persistent: None,
         }
     }
 }
@@ -235,6 +240,11 @@ impl LauncherConfig {
         self.global_settings
             .get_or_insert_with(GlobalSettings::default)
     }
+
+    pub fn c_persistent(&mut self) -> &mut PersistentSettings {
+        self.persistent
+            .get_or_insert_with(PersistentSettings::default)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -306,11 +316,11 @@ impl Default for WindowProperties {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct UiSettings {
-    // Since: v0.4.3
+    // Since: v0.5.0
     pub window_decorations: UiWindowDecorations,
-    // Since: v0.4.3
+    // Since: v0.5.0
     pub window_opacity: f32,
-    // Since: v0.4.3
+    // Since: v0.5.0
     pub idle_fps: Option<u64>,
 }
 
@@ -349,3 +359,34 @@ pub enum UiWindowDecorations {
         Self::Right
     }
 }*/
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PersistentSettings {
+    pub selected_instance: Option<String>,
+    pub selected_server: Option<String>,
+    pub selected_remembered: bool,
+
+    /// Remembers version filters (eg: snapshot, release, etc) in Create Instance
+    pub create_instance_filters: Option<HashSet<ListEntryKind>>,
+}
+
+impl Default for PersistentSettings {
+    fn default() -> Self {
+        Self {
+            selected_instance: None,
+            selected_server: None,
+            selected_remembered: true,
+            create_instance_filters: None,
+        }
+    }
+}
+
+impl PersistentSettings {
+    #[must_use]
+    pub fn get_create_instance_filters(&self) -> std::collections::HashSet<ListEntryKind> {
+        self.create_instance_filters
+            .clone()
+            .filter(|n| !n.is_empty())
+            .unwrap_or_else(ListEntryKind::default_selected)
+    }
+}

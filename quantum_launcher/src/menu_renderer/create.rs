@@ -10,26 +10,16 @@ use crate::{
     cli::EXPERIMENTAL_MMC_IMPORT,
     icons,
     menu_renderer::{
-        back_button, button_with_icon, ctxbox, sidebar, sidebar_button, tooltip, tsubtitle, Element,
+        button_with_icon, ctxbox, dots, shortcut_ctrl, sidebar, sidebar_button, tooltip, tsubtitle,
+        Element,
     },
     state::{CreateInstanceMessage, MenuCreateInstance, Message},
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
 
 impl MenuCreateInstance {
-    pub fn view<'a>(
-        &'a self,
-        existing_instances: Option<&[String]>,
-        versions: Option<&'a [ListEntry]>,
-    ) -> Element<'a> {
+    pub fn view<'a>(&'a self, existing_instances: Option<&[String]>, timer: usize) -> Element<'a> {
         match self {
-            MenuCreateInstance::LoadingList { .. } => column![
-                back_button().on_press(Message::CreateInstance(CreateInstanceMessage::Cancel)),
-                widget::text("Loading version list...").size(20),
-            ]
-            .padding(10)
-            .spacing(10)
-            .into(),
             MenuCreateInstance::Choosing {
                 instance_name,
                 selected_version,
@@ -38,53 +28,77 @@ impl MenuCreateInstance {
                 is_server,
                 show_category_dropdown,
                 selected_categories,
+                list,
+                ..
             } => {
-                let pb = iced::Padding::new(7.0).left(10.0).right(10.0);
+                let pb = [4, 10];
                 let opened_controls = *show_category_dropdown;
-                let header = column![
-                    row![
-                        back_button()
-                            .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
-                            .on_press(Message::LaunchScreenOpen {
-                                message: None,
-                                clear_selection: false,
-                                is_server: Some(*is_server),
-                            }),
-                        widget::button(icons::filter())
-                            .padding(pb)
-                            .style(move |t: &LauncherTheme, s| t.style_button(
-                                s,
-                                if opened_controls {
-                                    StyleButton::Round
-                                } else {
-                                    StyleButton::RoundDark
-                                }
-                            ))
-                            .on_press(Message::CreateInstance(
-                                CreateInstanceMessage::ContextMenuToggle
-                            ))
-                    ]
-                    .spacing(5),
+                let hidden = selected_categories.len() == ListEntryKind::ALL.len();
+
+                let header = column![row![
+                    button_with_icon(icons::back_s(12), "Back", 13)
+                        .padding(pb)
+                        .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
+                        .on_press(Message::LaunchScreenOpen {
+                            message: None,
+                            clear_selection: false,
+                            is_server: Some(*is_server),
+                        }),
+                    button_with_icon(
+                        icons::filter_s(12),
+                        if hidden { "Filters" } else { "Filters •" },
+                        13
+                    )
+                    .padding(pb)
+                    .style(move |t: &LauncherTheme, s| t.style_button(
+                        s,
+                        if opened_controls {
+                            StyleButton::Round
+                        } else {
+                            StyleButton::RoundDark
+                        }
+                    ))
+                    .on_press(Message::CreateInstance(
+                        CreateInstanceMessage::ContextMenuToggle
+                    ))
+                ]
+                .spacing(5)]
+                .push_maybe(
+                    (!hidden).then_some(
+                        widget::text!(
+                            "Some versions are hidden {}\n(click \"Filters\" to show)",
+                            if selected_categories.contains(&ListEntryKind::Release) {
+                                ""
+                            } else {
+                                "(!)"
+                            }
+                        )
+                        .size(10)
+                        .style(tsubtitle),
+                    ),
+                )
+                .push(
                     widget::text_input("Search...", search_box)
                         .size(14)
                         .on_input(|t| {
                             Message::CreateInstance(CreateInstanceMessage::SearchInput(t))
                         })
                         .on_submit(Message::CreateInstance(CreateInstanceMessage::SearchSubmit)),
-                ]
+                )
                 .push_maybe(
                     (!search_box.trim().is_empty())
-                        .then_some(widget::text("Search Results:").size(12)),
+                        .then_some(widget::text("Search Results:").style(tsubtitle).size(12)),
                 )
-                .spacing(10);
+                .spacing(7);
 
                 let sidebar = Self::get_sidebar_contents(
-                    versions,
+                    list.as_deref(),
                     selected_version,
                     *is_server,
                     header.into(),
                     search_box,
                     selected_categories,
+                    timer,
                 );
 
                 let view = row![
@@ -99,10 +113,10 @@ impl MenuCreateInstance {
                 ]
                 .width(Length::Fill);
 
-                widget::stack!(view,)
-                    .push_maybe(show_category_dropdown.then_some(widget::row![
+                widget::stack!(view)
+                    .push_maybe(show_category_dropdown.then_some(row![
                         widget::Space::with_width(97),
-                        widget::column![
+                        column![
                             widget::Space::with_height(50),
                             ctxbox(Self::get_category_dropdown(selected_categories))
                         ]
@@ -133,9 +147,12 @@ impl MenuCreateInstance {
         existing_instances: Option<&[String]>,
         is_server: bool,
     ) -> widget::Column<'static, Message, LauncherTheme> {
-        let already_exists = existing_instances.is_some_and(|n| n.contains(instance_name));
+        let already_exists = existing_instances.is_some_and(|n| {
+            n.contains(instance_name)
+                || (instance_name.is_empty() && n.contains(&selected_version.name))
+        });
 
-        column![
+        let main_part = column![
             widget::text!("Create {}", if is_server { "Server" } else { "Instance" })
                 .size(24),
             row![
@@ -156,26 +173,11 @@ impl MenuCreateInstance {
                 Position::FollowCursor
             ),
             widget::horizontal_rule(1),
-            column![
-                widget::text("- To install Fabric/Forge/OptiFine/etc and mods, click on Mods after installing the instance").size(12).style(tsubtitle),
-                row!(
-                    widget::text("- To sideload your own custom JARs, create an instance with a similar version, then go to").size(12).style(tsubtitle),
-                    widget::text(" \"Edit->Custom Jar File\"").size(12).style(tsubtitle)
-                ).wrap(),
-            ].spacing(5),
-            widget::vertical_space(),
-            row![widget::horizontal_space()].push_maybe(
-                EXPERIMENTAL_MMC_IMPORT.read().unwrap().then_some(
-                    tooltip(
-                        button_with_icon(icons::upload(), "Import from MultiMC...", 16)
-                        .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
-                        widget::text("Import Instance... (VERY EXPERIMENTAL right now)").size(14),
-                        Position::Top
-                    )
-                )
-            )
-            .push(get_create_button(already_exists))
-            .spacing(5)
+            widget::text("- To install Fabric/Forge/OptiFine/etc and mods, click on Mods after installing the instance").size(12).style(tsubtitle),
+            row!(
+                widget::text("- To sideload your own custom JARs, create an instance with a similar version, then go to").size(12).style(tsubtitle),
+                widget::text(" \"Edit->Custom Jar File\"").size(12).style(tsubtitle)
+            ).wrap(),
         ].push_maybe({
             let real_platform = if cfg!(target_arch = "x86") { "x86_64" } else { "aarch64" };
             (cfg!(target_os = "linux") && (cfg!(target_arch = "x86") || cfg!(target_arch = "arm")))
@@ -184,7 +186,27 @@ impl MenuCreateInstance {
                 widget::text("Warning: On your platform (Linux 32 bit) only Minecraft 1.16.5 and below are supported.").size(20),
                 widget::text!("If your computer isn't outdated, you might have wanted to download QuantumLauncher 64 bit ({real_platform})"),
             ])
-        }).spacing(10).padding(10)
+        }).spacing(16).padding(16);
+
+        column![
+            widget::scrollable(main_part)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .style(|t: &LauncherTheme, s| t.style_scrollable_flat_dark(s)),
+            row![widget::horizontal_space()]
+                .push_maybe(
+                    EXPERIMENTAL_MMC_IMPORT.read().unwrap().then_some(tooltip(
+                        button_with_icon(icons::upload(), "Import from MultiMC...", 16)
+                            .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
+                        widget::text("Import Instance... (VERY EXPERIMENTAL right now)").size(14),
+                        Position::Top
+                    ))
+                )
+                .push(get_create_button(already_exists))
+                .padding(16)
+                .spacing(5)
+        ]
+        .spacing(10)
     }
 
     fn get_sidebar_contents<'a>(
@@ -194,13 +216,29 @@ impl MenuCreateInstance {
         header: Element<'static>,
         searchbox: &str,
         selected_categories: &HashSet<ListEntryKind>,
+        timer: usize,
     ) -> widget::Container<'a, Message, LauncherTheme> {
+        let Some(versions) = versions else {
+            return widget::container(
+                column![
+                    header,
+                    widget::text!(" Loading versions{}", dots(timer))
+                        .style(tsubtitle)
+                        .size(14)
+                ]
+                .spacing(10)
+                .padding(10),
+            )
+            .width(190)
+            .height(Length::Fill)
+            .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark));
+        };
+
         sidebar(
             "MenuCreateInstance:sidebar",
             Some(header),
             versions
-                .into_iter()
-                .flatten()
+                .iter()
                 .filter(|n| n.supports_server || !is_server)
                 .filter(|n| selected_categories.contains(&n.kind))
                 .filter(|n| {
@@ -210,19 +248,13 @@ impl MenuCreateInstance {
                             .contains(&searchbox.trim().to_lowercase())
                 })
                 .map(|n| {
-                    let label = widget::text(&n.name)
-                        .size(if n.kind == ListEntryKind::Snapshot {
-                            14
+                    let label = widget::text(&n.name).size(14).style(|t: &LauncherTheme| {
+                        t.style_text(if n.kind == ListEntryKind::Snapshot {
+                            Color::SecondLight
                         } else {
-                            15
+                            Color::Light
                         })
-                        .style(|t: &LauncherTheme| {
-                            t.style_text(if n.kind == ListEntryKind::Snapshot {
-                                Color::SecondLight
-                            } else {
-                                Color::Light
-                            })
-                        });
+                    });
 
                     sidebar_button(
                         n,
@@ -255,7 +287,7 @@ impl MenuCreateInstance {
     }
 }
 
-fn get_create_button(already_exists: bool) -> Element<'static> {
+fn get_create_button(already_exists: bool) -> widget::Tooltip<'static, Message, LauncherTheme> {
     let create_button = button_with_icon(icons::new(), "Create", 16).on_press_maybe(
         (!already_exists).then_some(Message::CreateInstance(CreateInstanceMessage::Start)),
     );
@@ -266,8 +298,7 @@ fn get_create_button(already_exists: bool) -> Element<'static> {
             "An instance with that name already exists!",
             Position::FollowCursor,
         )
-        .into()
     } else {
-        create_button.into()
+        tooltip(create_button, shortcut_ctrl("Enter"), Position::Bottom)
     }
 }

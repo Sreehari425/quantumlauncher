@@ -2,7 +2,7 @@ use iced::widget::tooltip::Position;
 use iced::{widget, Alignment, Length};
 use ql_core::{InstanceSelection, Loader, SelectedMod};
 
-use crate::menu_renderer::{ctxbox, select_box, subbutton_with_icon, tsubtitle, FONT_MONO};
+use crate::menu_renderer::{ctxbox, dots, select_box, subbutton_with_icon, tsubtitle, FONT_MONO};
 use crate::message_handler::ForgeKind;
 use crate::state::{ImageState, InstallPaperMessage, MenuEditModsModal};
 use crate::stylesheet::widgets::StyleButton;
@@ -159,8 +159,7 @@ impl MenuEditMods {
 
     fn get_mod_update_pane(&'_ self, tick_timer: usize) -> Element<'_> {
         if self.update_check_handle.is_some() {
-            let dots = ".".repeat((tick_timer % 3) + 1);
-            widget::text!("Checking for mod updates{dots}")
+            widget::text!("Checking for mod updates{}", dots(tick_timer))
                 .size(12)
                 .into()
         } else if self.available_updates.is_empty() {
@@ -300,7 +299,7 @@ impl MenuEditMods {
                     icons::bin_s(14),
                     widget::text("Uninstall OptiFine").size(14)
                 ]
-                .align_y(iced::alignment::Vertical::Center)
+                .align_y(Alignment::Center)
                 .spacing(11)
                 .padding(2),
             )
@@ -322,7 +321,7 @@ impl MenuEditMods {
                 icons::bin_s(14),
                 widget::text!("Uninstall {mod_type}").size(14)
             ]
-            .align_y(iced::alignment::Vertical::Center)
+            .align_y(Alignment::Center)
             .spacing(11)
             .padding(2),
         )
@@ -365,7 +364,7 @@ impl MenuEditMods {
                             // Hamburger dropdown
                             widget::button(
                                 widget::row![icons::lines_s(12)]
-                                    .align_y(iced::alignment::Vertical::Center)
+                                    .align_y(Alignment::Center)
                                     .padding(1),
                             )
                             .style(|t: &LauncherTheme, s| {
@@ -376,7 +375,7 @@ impl MenuEditMods {
                             // Search button
                             widget::button(
                                 widget::row![icons::search_s(12)]
-                                    .align_y(iced::alignment::Vertical::Center)
+                                    .align_y(Alignment::Center)
                                     .padding(1),
                             )
                             .style(|t: &LauncherTheme, s| {
@@ -500,6 +499,7 @@ impl MenuEditMods {
                         widget::row![
                             image,
                             widget::text(&config.name)
+                                .shaping(widget::text::Shaping::Advanced)
                                 .style(move |t: &LauncherTheme| {
                                     t.style_text(if is_enabled {
                                         Color::SecondLight
@@ -575,7 +575,10 @@ impl MenuEditMods {
                         widget::text("(dependency) ")
                             .size(12)
                             .style(|t: &LauncherTheme| t.style_text(Color::Mid)),
-                        widget::text(&config.name).size(13).style(tsubtitle)
+                        widget::text(&config.name)
+                            .shaping(widget::text::Shaping::Advanced)
+                            .size(13)
+                            .style(tsubtitle)
                     ]
                     .padding(PADDING)
                     .into()
@@ -597,6 +600,7 @@ impl MenuEditMods {
                                 .to_owned(),
                         )
                         .font(FONT_MONO)
+                        .shaping(widget::text::Shaping::Advanced)
                         .style(move |t: &LauncherTheme| {
                             t.style_text(if is_enabled {
                                 Color::SecondLight

@@ -281,10 +281,14 @@ impl MenuModsDownload {
                 .spacing(5),
                 widget::row!(
                     images.view(&hit.icon_url, Some(32.0), Some(32.0), "".into()),
-                    widget::text(&hit.title).size(24)
+                    widget::text(&hit.title)
+                        .shaping(widget::text::Shaping::Advanced)
+                        .size(24)
                 )
                 .spacing(10),
-                widget::text(&hit.description).size(20),
+                widget::text(&hit.description)
+                    .shaping(widget::text::Shaping::Advanced)
+                    .size(20),
                 markdown_description
             )
             .padding(20)

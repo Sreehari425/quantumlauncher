@@ -21,6 +21,7 @@ use crate::{
 use futures::StreamExt;
 use json::VersionDetails;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Debug, Display},
     future::Future,
@@ -320,17 +321,13 @@ impl ListEntry {
         }
     }
 
+    #[must_use]
     pub fn with_kind(name: String, ty: &str) -> Self {
         Self {
             kind: ListEntryKind::calculate(&name, ty),
             supports_server: Version::guess_if_supports_server(&name),
             name,
         }
-    }
-
-    #[must_use]
-    pub fn kind(&self) -> ListEntryKind {
-        todo!()
     }
 }
 
@@ -340,7 +337,8 @@ impl Display for ListEntry {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "kebab-case")]
 pub enum ListEntryKind {
     Release,
     Snapshot,
@@ -385,12 +383,13 @@ impl ListEntryKind {
         ListEntryKind::Special,
     ];
 
-    /// Returns the default selected categories (Release only)
+    /// Returns the default selected categories
     #[must_use]
     pub fn default_selected() -> std::collections::HashSet<ListEntryKind> {
         let mut set = std::collections::HashSet::new();
         set.extend(Self::ALL);
         set.remove(&Self::Snapshot);
+        set.remove(&Self::Special);
         set
     }
 }
@@ -409,7 +408,7 @@ impl ListEntryKind {
             ListEntryKind::Preclassic
         } else if id.starts_with("c0.") {
             ListEntryKind::Classic
-        } else if id.contains("w") {
+        } else if id.contains('w') {
             ListEntryKind::Snapshot
         } else {
             ListEntryKind::Release
@@ -456,7 +455,7 @@ impl ListEntryKind {
     }
 }
 
-pub const LAUNCHER_VERSION_NAME: &str = "0.4.3";
+pub const LAUNCHER_VERSION_NAME: &str = "0.5.0";
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ModId {

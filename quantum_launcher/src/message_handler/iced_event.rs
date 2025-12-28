@@ -1,9 +1,9 @@
 use crate::message_update::MSG_RESIZE;
 use crate::state::{
-    CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage, LauncherSettingsTab,
-    MenuCreateInstance, MenuEditMods, MenuEditPresets, MenuExportInstance, MenuInstallFabric,
-    MenuInstallOptifine, MenuInstallPaper, MenuLauncherSettings, MenuLauncherUpdate,
-    MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, Message, State,
+    AutoSaveKind, CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage,
+    LauncherSettingsTab, MenuCreateInstance, MenuEditMods, MenuEditPresets, MenuExportInstance,
+    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLauncherSettings,
+    MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, Message, State,
 };
 use iced::{
     keyboard::{self, key::Named, Key},
@@ -24,11 +24,17 @@ impl Launcher {
                 }
                 iced::window::Event::Resized(size) => {
                     self.window_state.size = (size.width, size.height);
-                    // Save window size to config for persistence
+
+                    // Remember window height
                     let window = self.config.window.get_or_insert_with(Default::default);
                     window.width = Some(size.width);
                     window.height = Some(size.height);
+                    if window.save_window_size {
+                        self.autosave.remove(&AutoSaveKind::LauncherConfig);
+                    }
 
+                    // Clear the "Resize the window to apply changes"
+                    // after changing UI scale
                     if let State::GenericMessage(msg) = &self.state {
                         if msg == MSG_RESIZE {
                             return self.update(Message::LauncherSettings(
@@ -117,11 +123,14 @@ impl Launcher {
                 &self.state,
             ) {
                 ("q", true, _, true, _) => Message::CoreTryQuit,
+
+                // ========
+                // MANAGE MODS MENU
+                // ========
                 ("a", true, _, true, State::EditMods(_)) => {
                     Message::ManageMods(crate::state::ManageModsMessage::SelectAll)
                 }
-
-                // Ctrl-F search in mods list
+                // Ctrl-F search in mods list (with toggling)
                 #[rustfmt::skip]
                 ("f", true, _, _, State::EditMods(MenuEditMods { search: Some(_), .. })) => {
                     Message::ManageMods(crate::state::ManageModsMessage::SetSearch(None))
@@ -132,14 +141,21 @@ impl Launcher {
                     ))),
                     Message::CoreFocusNext,
                 ]),
-                ("f", true, _, _, State::Create(MenuCreateInstance::Choosing { .. }))
-                | ("/", _, _, true, State::Create(MenuCreateInstance::Choosing { .. })) => {
-                    Message::CoreFocusNext
-                }
 
+                // Search Action (general)
+                ("f", true, _, _, State::Create(MenuCreateInstance::Choosing { .. }))
+                | ("/", _, _, true, State::Create(MenuCreateInstance::Choosing { .. }))
+                | ("f", true, _, _, State::ModsDownload(_))
+                | ("/", _, _, true, State::ModsDownload(_)) => Message::CoreFocusNext,
+
+                // Misc
                 ("a", true, _, true, State::EditJarMods(_)) => {
                     Message::ManageJarMods(crate::state::ManageJarModsMessage::SelectAll)
                 }
+
+                // ========
+                // MAIN MENU
+                // ========
                 ("n", true, _, _, State::Launch(n)) => {
                     Message::CreateInstance(CreateInstanceMessage::ScreenOpen {
                         is_server: n.is_viewing_server,
@@ -188,6 +204,14 @@ impl Launcher {
             } else if let Key::Named(Named::Backspace) = key {
                 if modifiers.command() {
                     return Task::done(Message::LaunchKill);
+                }
+            }
+        } else if let State::Create(MenuCreateInstance::Choosing { list: Some(_), .. }) =
+            &self.state
+        {
+            if let Key::Named(Named::Enter) = key {
+                if modifiers.command() {
+                    return Task::done(Message::CreateInstance(CreateInstanceMessage::Start));
                 }
             }
         }
@@ -275,9 +299,7 @@ impl Launcher {
                 mod_update_progress: None,
                 ..
             })
-            | State::Create(
-                MenuCreateInstance::LoadingList { .. } | MenuCreateInstance::Choosing { .. },
-            )
+            | State::Create(MenuCreateInstance::Choosing { .. })
             | State::Error { .. }
             | State::UpdateFound(MenuLauncherUpdate { progress: None, .. })
             | State::LauncherSettings(_)
@@ -297,6 +319,7 @@ impl Launcher {
                         self.state = State::LauncherSettings(MenuLauncherSettings {
                             temp_scale: self.config.ui_scale.unwrap_or(1.0),
                             selected_tab: LauncherSettingsTab::About,
+                            arg_split_by_space: true,
                         });
                     }
                 }
@@ -380,21 +403,6 @@ impl Launcher {
             ret_to_main_screen | ret_to_mods | ret_to_mod_store,
             Task::none(),
         )
-    }
-
-    pub fn server_selected(&self) -> bool {
-        self.selected_instance
-            .as_ref()
-            .is_some_and(|n| n.is_server())
-            || if let State::Launch(menu) = &self.state {
-                menu.is_viewing_server
-            } else if let State::Create(MenuCreateInstance::Choosing { is_server, .. }) =
-                &self.state
-            {
-                *is_server
-            } else {
-                false
-            }
     }
 
     fn hide_submenu(&mut self) -> bool {
@@ -490,12 +498,9 @@ impl Launcher {
         );
 
         if did_scroll {
-            self.load_edit_instance(None);
-            let instance = self.instance().clone();
-            if let State::Launch(menu) = &mut self.state {
-                return Task::batch([menu.reload_notes(instance), scroll_task]);
-            }
+            Task::batch([scroll_task, self.on_instance_selected()])
+        } else {
+            scroll_task
         }
-        scroll_task
     }
 }

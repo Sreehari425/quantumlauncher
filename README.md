@@ -104,7 +104,7 @@ Structure:
 # Licensing and Credits
 
 - Most of this launcher is licensed under the **GNU General Public License v3**
-- There are a few exceptions such as GitHub actions and assets. ([more info](assets/README.md))
+- Some assets have additional licensing ([more info](assets/README.md))
 
 > Many parts of the launcher were inspired by
 > <https://github.com/alexivkin/minecraft-launcher/>.

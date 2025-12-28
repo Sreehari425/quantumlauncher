@@ -318,6 +318,7 @@ pub async fn loader(cmd: QLoader, servers: bool) -> Result<(), Box<dyn std::erro
                 .copied()
                 .find(|n| n.to_modrinth_str().eq_ignore_ascii_case(&loader))
             else {
+                err!("Invalid loader: {loader}");
                 exit(1)
             };
 

@@ -40,23 +40,17 @@ impl Launcher {
 
                 if let (Some(edit), LaunchTabId::Edit) = (&menu.edit_instance, &menu.tab) {
                     let config = edit.config.clone();
-                    self.autosave.remove(&AutoSaveKind::LauncherConfig);
                     self.tick_edit_instance(config, &mut commands);
                 }
                 self.tick_processes_and_logs();
 
-                if self.tick_timer.is_multiple_of(5)
-                    && self.autosave.insert(AutoSaveKind::LauncherConfig)
-                {
-                    let launcher_config = self.config.clone();
-                    commands.push(Task::perform(
-                        async move { launcher_config.save().await.strerr() },
-                        Message::CoreTickConfigSaved,
-                    ));
-                }
+                commands.push(self.autosave_config());
                 return Task::batch(commands);
             }
-            State::Create(menu) => menu.tick(),
+            State::Create(menu) => {
+                menu.tick();
+                return self.autosave_config();
+            }
             State::EditMods(menu) => {
                 let instance_selection = self.selected_instance.as_ref().unwrap();
                 let update_locally_installed_mods = menu.tick(instance_selection);
@@ -168,6 +162,18 @@ impl Launcher {
         }
 
         Task::none()
+    }
+
+    pub fn autosave_config(&mut self) -> Task<Message> {
+        if self.tick_timer % 5 == 0 && self.autosave.insert(AutoSaveKind::LauncherConfig) {
+            let launcher_config = self.config.clone();
+            Task::perform(
+                async move { launcher_config.save().await.strerr() },
+                Message::CoreTickConfigSaved,
+            )
+        } else {
+            Task::none()
+        }
     }
 
     fn tick_edit_instance(&self, config: InstanceConfigJson, commands: &mut Vec<Task<Message>>) {
@@ -343,7 +349,7 @@ impl MenuEditMods {
 impl MenuCreateInstance {
     pub fn tick(&mut self) {
         match self {
-            MenuCreateInstance::LoadingList { .. } | MenuCreateInstance::Choosing { .. } => {}
+            MenuCreateInstance::Choosing { .. } => {}
             MenuCreateInstance::DownloadingInstance(progress) => {
                 progress.tick();
             }

@@ -138,12 +138,17 @@ impl MenuLaunch {
 /// The screen where you can edit an instance/server.
 pub struct MenuEditInstance {
     pub config: InstanceConfigJson,
+
+    // Renaming Instance:
     pub is_editing_name: bool,
     pub instance_name: String,
     pub old_instance_name: String,
+    // Changing RAM:
     pub slider_value: f32,
     pub slider_text: String,
+
     pub main_class_mode: Option<MainClassMode>,
+    pub arg_split_by_space: bool,
 }
 
 pub enum SelectedState {
@@ -319,10 +324,10 @@ pub struct MenuEditJarMods {
 }
 
 pub enum MenuCreateInstance {
-    LoadingList {
-        _handle: iced::task::Handle,
-    },
     Choosing {
+        _loading_list_handle: iced::task::Handle,
+        list: Option<Vec<ListEntry>>,
+        // UI:
         is_server: bool,
         search_box: String,
         show_category_dropdown: bool,
@@ -397,6 +402,7 @@ pub struct MenuInstallForge {
     pub is_java_getting_installed: bool,
 }
 
+#[allow(unused)]
 pub struct MenuLauncherUpdate {
     pub url: String,
     pub progress: Option<ProgressBar<GenericProgress>>,
@@ -456,6 +462,7 @@ impl MenuModsDownload {
 pub struct MenuLauncherSettings {
     pub temp_scale: f64,
     pub selected_tab: LauncherSettingsTab,
+    pub arg_split_by_space: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

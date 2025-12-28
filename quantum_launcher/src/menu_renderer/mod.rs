@@ -3,7 +3,6 @@ use iced::{widget, Alignment, Length};
 use ql_core::{Progress, WEBSITE};
 use ql_instances::auth::AccountType;
 
-use crate::state::ImageState;
 use crate::stylesheet::styles::{LauncherThemeLightness, BORDER_RADIUS, BORDER_WIDTH};
 use crate::{
     config::LauncherConfig,
@@ -106,6 +105,14 @@ pub fn underline<'a>(
     )
 }
 
+pub fn underline_maybe<'a>(e: impl Into<Element<'a>>, color: Color, un: bool) -> Element<'a> {
+    if un {
+        underline(e, color).into()
+    } else {
+        e.into()
+    }
+}
+
 pub fn center_x<'a>(e: impl Into<Element<'a>>) -> widget::Row<'a, Message, LauncherTheme> {
     widget::row![
         widget::horizontal_space(),
@@ -128,7 +135,7 @@ pub fn back_button<'a>() -> widget::Button<'a, Message, LauncherTheme> {
 }
 
 pub fn ctxbox<'a>(inner: impl Into<Element<'a>>) -> widget::Container<'a, Message, LauncherTheme> {
-    widget::container(widget::mouse_area(inner))
+    widget::container(widget::mouse_area(inner).on_press(Message::Nothing))
         .padding(10)
         .style(|t: &LauncherTheme| {
             t.style_container_round_box(BORDER_WIDTH, Color::Dark, BORDER_RADIUS)
@@ -142,7 +149,7 @@ pub fn subbutton_with_icon<'a>(
     widget::button(
         widget::row![icon.into()]
             .push_maybe((!text.is_empty()).then_some(widget::text(text).size(12)))
-            .align_y(iced::alignment::Vertical::Center)
+            .align_y(Alignment::Center)
             .spacing(8)
             .padding(1),
     )
@@ -155,13 +162,15 @@ pub fn button_with_icon<'a>(
     size: u16,
 ) -> widget::Button<'a, Message, LauncherTheme> {
     widget::button(
-        widget::row![icon.into(), widget::text(text).size(size)]
-            .align_y(iced::alignment::Vertical::Center)
+        widget::row![icon.into()]
+            .push_maybe((!text.is_empty()).then_some(widget::text(text).size(size)))
+            .align_y(Alignment::Center)
             .spacing(size as f32 / 1.6),
     )
     .padding([7, 13])
 }
 
+#[allow(unreachable_code)]
 pub fn shortcut_ctrl<'a>(key: &str) -> Element<'a> {
     #[cfg(target_os = "macos")]
     return widget::text!("Command + {key}").size(12).into();
@@ -175,24 +184,13 @@ fn sidebar_button<'a, A: PartialEq>(
     text: impl Into<Element<'a>>,
     message: Message,
 ) -> Element<'a> {
-    if current == selected {
-        widget::container(widget::row!(widget::Space::with_width(5), text.into()))
-            .style(LauncherTheme::style_container_selected_flat_button)
-            .width(Length::Fill)
-            .padding(5)
-            .into()
-    } else {
-        underline(
-            widget::button(text)
-                .on_press(message)
-                .style(|n: &LauncherTheme, status| {
-                    n.style_button(status, StyleButton::FlatExtraDark)
-                })
-                .width(Length::Fill),
-            Color::SecondDark,
-        )
-        .into()
-    }
+    let is_selected = current == selected;
+    let button = widget::button(text)
+        .on_press_maybe((!is_selected).then_some(message))
+        .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatExtraDark))
+        .width(Length::Fill);
+
+    underline_maybe(button, Color::SecondDark, !is_selected).into()
 }
 
 fn tsubtitle(t: &LauncherTheme) -> widget::text::Style {
@@ -220,7 +218,9 @@ fn sidebar<'a>(
     .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark))
 }
 
-impl ImageState {}
+fn dots(tick_timer: usize) -> String {
+    ".".repeat((tick_timer % 3) + 1)
+}
 
 impl MenuLauncherUpdate {
     pub fn view(&'_ self) -> Element<'_> {
@@ -336,6 +336,7 @@ impl MenuCurseforgeManualDownload {
                     widget::row![
                         widget::button(widget::text("Open link").size(14)).on_press(Message::CoreOpenLink(url)),
                         widget::text(&entry.name)
+                            .shaping(widget::text::Shaping::Advanced)
                     ]
                     .align_y(Alignment::Center)
                     .spacing(10)
@@ -516,7 +517,7 @@ pub fn view_confirm<'a>(
                     icons::cross().style(t_white),
                     widget::text("No").style(t_white)
                 ]
-                .align_y(iced::alignment::Vertical::Center)
+                .align_y(Alignment::Center)
                 .spacing(10)
                 .padding(3),
             )
@@ -529,7 +530,7 @@ pub fn view_confirm<'a>(
                     icons::deselectall().style(t_white),
                     widget::text("Yes").style(t_white)
                 ]
-                .align_y(iced::alignment::Vertical::Center)
+                .align_y(Alignment::Center)
                 .spacing(10)
                 .padding(3),
             )

@@ -8,7 +8,7 @@ use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
 
 use crate::cli::EXPERIMENTAL_SERVERS;
 use crate::menu_renderer::onboarding::x86_warning;
-use crate::menu_renderer::{tsubtitle, underline, FONT_MONO};
+use crate::menu_renderer::{tsubtitle, underline, underline_maybe, FONT_MONO};
 use crate::state::{InstanceNotes, NotesMessage, WindowMessage};
 use crate::{
     icons,
@@ -177,7 +177,12 @@ impl Launcher {
             widget::row![widget::text(selected.get_name()).font(FONT_MONO).size(20)]
                 .push_maybe(is_running.then_some(icons::play_s(20)))
                 .push_maybe(
-                    is_running.then_some(widget::text("Running...").size(16).style(tsubtitle))
+                    is_running.then_some(
+                        widget::text("Running...")
+                            .size(16)
+                            .style(tsubtitle)
+                            .font(FONT_MONO)
+                    )
                 )
                 .spacing(16)
                 .align_y(Alignment::Center),
@@ -193,7 +198,7 @@ impl Launcher {
                                 icons::edit_s(10),
                                 widget::text("Edit Notes").size(12).style(tsubtitle)
                             ]
-                            .align_y(iced::alignment::Vertical::Center)
+                            .align_y(Alignment::Center)
                             .spacing(8),
                         )
                         .padding([4, 8])
@@ -331,28 +336,22 @@ impl Launcher {
                 };
 
                 let text = widget::text(name).size(15).style(tsubtitle);
+                let is_selected = selected_instance_s == Some(name);
 
-                if selected_instance_s == Some(name) {
-                    widget::container(widget::row!(widget::Space::with_width(5), text))
-                        .style(LauncherTheme::style_container_selected_flat_button)
-                        .width(Length::Fill)
-                        .padding(5)
-                        .into()
-                } else {
-                    underline(
-                        widget::button(widget::row![text].push_maybe(playing_icon))
-                            .style(|n: &LauncherTheme, status| {
-                                n.style_button(status, StyleButton::FlatExtraDark)
-                            })
-                            .on_press(Message::LaunchInstanceSelected {
-                                name: name.clone(),
-                                is_server: menu.is_viewing_server,
-                            })
-                            .width(Length::Fill),
-                        Color::Dark,
-                    )
-                    .into()
-                }
+                underline_maybe(
+                    widget::button(widget::row![text].push_maybe(playing_icon))
+                        .style(|n: &LauncherTheme, status| {
+                            n.style_button(status, StyleButton::FlatExtraDark)
+                        })
+                        .on_press_maybe((!is_selected).then_some(Message::LaunchInstanceSelected {
+                            name: name.clone(),
+                            is_server: menu.is_viewing_server,
+                        }))
+                        .width(Length::Fill),
+                    Color::Dark,
+                    !is_selected,
+                )
+                .into()
             }))
         } else {
             let dots = ".".repeat((self.tick_timer % 3) + 1);
@@ -648,6 +647,8 @@ fn get_footer_text() -> widget::Column<'static, Message, LauncherTheme> {
     cfg_if! (
         if #[cfg(feature = "simulate_linux_arm64")] {
             let subtext = "(Simulating Linux aarch64)";
+        } else if #[cfg(feature = "simulate_linux_arm32")] {
+            let subtext = "(Simulating Linux arm32)";
         } else if #[cfg(feature = "simulate_macos_arm64")] {
             let subtext = "(Simulating macOS aarch64)";
         } else if #[cfg(target_arch = "aarch64")] {
@@ -683,7 +684,7 @@ fn get_sidebar_new_button(
 ) -> widget::Button<'_, Message, LauncherTheme> {
     widget::button(
         widget::row![icons::new(), widget::text("New").size(15)]
-            .align_y(iced::alignment::Vertical::Center)
+            .align_y(Alignment::Center)
             .height(tab_height(decor) - 6.0)
             .spacing(10),
     )

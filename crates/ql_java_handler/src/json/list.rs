@@ -8,10 +8,11 @@ use crate::JsonDownloadError;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum JavaVersion {
+    Java8,
     Java16,
     Java17,
     Java21,
-    Java8,
+    Java25,
 }
 
 impl Display for JavaVersion {
@@ -20,10 +21,11 @@ impl Display for JavaVersion {
             f,
             "{}",
             match self {
-                JavaVersion::Java16 => "java_16",
-                JavaVersion::Java17 => "java_17",
-                JavaVersion::Java21 => "java_21",
-                JavaVersion::Java8 => "java_8",
+                Self::Java8 => "java_8",
+                Self::Java16 => "java_16",
+                Self::Java17 => "java_17",
+                Self::Java21 => "java_21",
+                Self::Java25 => "java_25",
             }
         )
     }
@@ -35,6 +37,7 @@ impl From<JavaVersionJson> for JavaVersion {
             8 => JavaVersion::Java8,
             16 => JavaVersion::Java16,
             17 => JavaVersion::Java17,
+            25 => JavaVersion::Java25,
             _ => JavaVersion::Java21,
         }
     }
@@ -103,6 +106,7 @@ impl JavaListJson {
                 }
             }
             JavaVersion::Java21 => &java_list.java_runtime_delta,
+            JavaVersion::Java25 => &java_list.java_runtime_epsilon,
             JavaVersion::Java8 => &java_list.jre_legacy,
         };
 
@@ -124,6 +128,8 @@ pub struct JavaList {
     java_runtime_gamma: Vec<JavaInstallListing>,
     /// Java 17.0.8
     java_runtime_gamma_snapshot: Vec<JavaInstallListing>,
+    /// Java 25.0.1
+    java_runtime_epsilon: Vec<JavaInstallListing>,
     /// Java 8
     jre_legacy: Vec<JavaInstallListing>,
     // Ugly windows specific thing that doesn't seem to be required?
