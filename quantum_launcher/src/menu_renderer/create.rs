@@ -33,8 +33,10 @@ impl MenuCreateInstance {
             } => {
                 let pb = [4, 10];
                 let opened_controls = *show_category_dropdown;
+                let hidden = selected_categories.len() == ListEntryKind::ALL.len();
+
                 let header = column![row![
-                    button_with_icon(icons::back_s(12), "Back", 14)
+                    button_with_icon(icons::back_s(12), "Back", 13)
                         .padding(pb)
                         .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
                         .on_press(Message::LaunchScreenOpen {
@@ -42,26 +44,37 @@ impl MenuCreateInstance {
                             clear_selection: false,
                             is_server: Some(*is_server),
                         }),
-                    button_with_icon(icons::filter_s(12), "Filters", 14)
-                        .padding(pb)
-                        .style(move |t: &LauncherTheme, s| t.style_button(
-                            s,
-                            if opened_controls {
-                                StyleButton::Round
-                            } else {
-                                StyleButton::RoundDark
-                            }
-                        ))
-                        .on_press(Message::CreateInstance(
-                            CreateInstanceMessage::ContextMenuToggle
-                        ))
+                    button_with_icon(
+                        icons::filter_s(12),
+                        if hidden { "Filters" } else { "Filters •" },
+                        13
+                    )
+                    .padding(pb)
+                    .style(move |t: &LauncherTheme, s| t.style_button(
+                        s,
+                        if opened_controls {
+                            StyleButton::Round
+                        } else {
+                            StyleButton::RoundDark
+                        }
+                    ))
+                    .on_press(Message::CreateInstance(
+                        CreateInstanceMessage::ContextMenuToggle
+                    ))
                 ]
                 .spacing(5)]
                 .push_maybe(
-                    (selected_categories.len() != ListEntryKind::ALL.len()).then_some(
-                        widget::text!("Some versions are hidden\n(click \"Filters\" to show)")
-                            .size(10)
-                            .style(tsubtitle),
+                    (!hidden).then_some(
+                        widget::text!(
+                            "Some versions are hidden {}\n(click \"Filters\" to show)",
+                            if selected_categories.contains(&ListEntryKind::Release) {
+                                ""
+                            } else {
+                                "(!)"
+                            }
+                        )
+                        .size(10)
+                        .style(tsubtitle),
                     ),
                 )
                 .push(

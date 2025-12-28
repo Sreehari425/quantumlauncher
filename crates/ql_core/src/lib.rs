@@ -383,7 +383,7 @@ impl ListEntryKind {
         ListEntryKind::Special,
     ];
 
-    /// Returns the default selected categories (Release only)
+    /// Returns the default selected categories
     #[must_use]
     pub fn default_selected() -> std::collections::HashSet<ListEntryKind> {
         let mut set = std::collections::HashSet::new();
