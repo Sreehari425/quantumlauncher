@@ -41,16 +41,13 @@ impl Launcher {
                 }
                 self.tick_processes_and_logs();
 
-                if self.tick_timer % 5 == 0 && self.autosave.insert(AutoSaveKind::LauncherConfig) {
-                    let launcher_config = self.config.clone();
-                    commands.push(Task::perform(
-                        async move { launcher_config.save().await.strerr() },
-                        Message::CoreTickConfigSaved,
-                    ));
-                }
+                commands.push(self.autosave_config());
                 return Task::batch(commands);
             }
-            State::Create(menu) => menu.tick(),
+            State::Create(menu) => {
+                menu.tick();
+                return self.autosave_config();
+            }
             State::EditMods(menu) => {
                 let instance_selection = self.selected_instance.as_ref().unwrap();
                 let update_locally_installed_mods = menu.tick(instance_selection);
@@ -161,6 +158,18 @@ impl Launcher {
         }
 
         Task::none()
+    }
+
+    pub fn autosave_config(&mut self) -> Task<Message> {
+        if self.tick_timer % 5 == 0 && self.autosave.insert(AutoSaveKind::LauncherConfig) {
+            let launcher_config = self.config.clone();
+            Task::perform(
+                async move { launcher_config.save().await.strerr() },
+                Message::CoreTickConfigSaved,
+            )
+        } else {
+            Task::none()
+        }
     }
 
     fn tick_edit_instance(&self, config: InstanceConfigJson, commands: &mut Vec<Task<Message>>) {
