@@ -223,12 +223,17 @@ impl ForgeInstaller {
 
         self.run_installer_create_garbage_files().await?;
 
-        let java_version = self
-            .version_json
-            .javaVersion
-            .clone()
-            .map(JavaVersion::from)
-            .unwrap_or(JavaVersion::Java21);
+        let java_version = if cfg!(target_os = "windows") {
+            // WTF: No clue why this is needed but it won't work without this.
+            // Hey, that's what you get for not using PrismLauncher!
+            self.version_json
+                .javaVersion
+                .clone()
+                .map(JavaVersion::from)
+                .unwrap_or(JavaVersion::Java21)
+        } else {
+            JavaVersion::Java8
+        };
         let java_path = get_java_binary(java_version, JAVA, j_progress).await?;
         info!("Running Installer...");
         self.send_progress(ForgeInstallProgress::P4RunningInstaller);

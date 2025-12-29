@@ -111,20 +111,6 @@ impl GameLauncher {
             }
         }
 
-        // Only applies to experimental builds of QuantumLauncher
-        // made after v0.4.1 but before the next update
-        if self.version_json.needs_launchwrapper_fix() {
-            // Fixes a crash in modern Minecraft
-
-            // WTF: No one will need this except for me
-            // who plays a lot of instances created in this version
-            // and daily-drives bleeding edge code.
-
-            // Thanks to [@Lassebq](https://github.com/Lassebq)
-            // for pointing this out :)
-            game_arguments.push("--disableSkinFix".to_owned());
-        }
-
         // Add custom resolution arguments if specified
         // Priority: Instance-specific setting > Global default > Minecraft default
         let (width_to_use, height_to_use) = self
