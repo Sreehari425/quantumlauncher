@@ -453,6 +453,10 @@ impl MenuEditMods {
             vertical: widget::scrollable::Scrollbar::new(),
             horizontal: widget::scrollable::Scrollbar::new(),
         })
+        .id(widget::scrollable::Id::new("MenuEditMods:mods"))
+        .on_scroll(|viewport| {
+            Message::ManageMods(ManageModsMessage::ListScrolled(viewport.absolute_offset()))
+        })
         .style(LauncherTheme::style_scrollable_flat_extra_dark)
         .width(Length::Fill)
         .height(Length::Fill)
@@ -542,7 +546,7 @@ impl MenuEditMods {
                         .padding(PADDING)
                         .spacing(SPACING),
                         is_selected,
-                        Message::ManageMods(ManageModsMessage::ToggleCheckbox(
+                        Message::ManageMods(ManageModsMessage::SelectMod(
                             config.name.clone(),
                             Some(id.clone()),
                         )),
@@ -562,7 +566,7 @@ impl MenuEditMods {
                             rightclick
                         } else {
                             Message::Multiple(vec![
-                                Message::ManageMods(ManageModsMessage::ToggleCheckbox(
+                                Message::ManageMods(ManageModsMessage::SelectEnsure(
                                     config.name.clone(),
                                     Some(id.clone()),
                                 )),
@@ -612,7 +616,7 @@ impl MenuEditMods {
                     ]
                     .spacing(SPACING),
                     is_selected,
-                    Message::ManageMods(ManageModsMessage::ToggleCheckbox(file_name.clone(), None)),
+                    Message::ManageMods(ManageModsMessage::SelectMod(file_name.clone(), None)),
                 )
                 .padding(PADDING)
                 .width(size.width);

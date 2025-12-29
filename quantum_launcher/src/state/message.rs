@@ -5,7 +5,7 @@ use crate::{
     state::MenuEditModsModal,
     stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
 };
-use iced::widget;
+use iced::widget::{self, scrollable::AbsoluteOffset};
 use ql_core::{
     file_utils::DirItem,
     jarmod::JarMods,
@@ -107,7 +107,11 @@ pub enum ManageModsMessage {
     ScreenOpen,
     ScreenOpenWithoutUpdate,
 
-    ToggleCheckbox(String, Option<ModId>),
+    ListScrolled(AbsoluteOffset),
+    /// Simple, dumb selection
+    SelectEnsure(String, Option<ModId>),
+    /// More nuanced selection with ctrl/shift multi-select
+    SelectMod(String, Option<ModId>),
 
     DeleteSelected,
     DeleteOptiforge(String),

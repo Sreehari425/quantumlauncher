@@ -10,6 +10,7 @@ use crate::{
     Launcher, Message,
 };
 use iced::futures::executor::block_on;
+use iced::widget::scrollable::AbsoluteOffset;
 use iced::Task;
 use ql_core::json::instance_config::ModTypeInfo;
 use ql_core::json::VersionDetails;
@@ -255,6 +256,7 @@ impl Launcher {
                 search: None,
                 width_name: 220.0,
                 list_shift_index: None,
+                list_scroll: AbsoluteOffset::default(),
             });
 
             Ok(Task::batch([update_local_mods_task, update_cmd]))

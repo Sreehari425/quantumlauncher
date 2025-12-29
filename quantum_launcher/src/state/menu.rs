@@ -224,6 +224,7 @@ pub struct MenuEditMods {
     pub update_check_handle: Option<iced::task::Handle>,
     pub available_updates: Vec<(ModId, String, bool)>,
 
+    pub list_scroll: AbsoluteOffset,
     /// Index of the item selected before pressing shift
     pub list_shift_index: Option<usize>,
     pub drag_and_drop_hovered: bool,
