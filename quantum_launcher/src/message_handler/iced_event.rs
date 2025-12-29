@@ -334,6 +334,7 @@ impl Launcher {
                 }
             }
             State::InstallOptifine(MenuInstallOptifine::Choosing { .. })
+            | State::InstallFabric(MenuInstallFabric::Loading { .. })
             | State::InstallFabric(MenuInstallFabric::Loaded { progress: None, .. })
             | State::EditJarMods(_)
             | State::ExportMods(_)
