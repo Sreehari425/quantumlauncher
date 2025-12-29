@@ -191,7 +191,7 @@ fn main() {
             size: iced::Size { width, height },
             min_size: Some(iced::Size {
                 width: 420.0,
-                height: 300.0,
+                height: 310.0,
             }),
             decorations,
             transparent: true,

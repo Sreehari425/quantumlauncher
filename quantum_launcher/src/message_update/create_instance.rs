@@ -1,9 +1,12 @@
-use iced::Task;
+use iced::{widget::pane_grid, Task};
 use ql_core::{DownloadProgress, InstanceSelection, IntoStringError, ListEntry, ListEntryKind};
 
-use crate::state::{
-    AutoSaveKind, CreateInstanceMessage, Launcher, MenuCreateInstance, MenuCreateInstanceChoosing,
-    Message, ProgressBar, State,
+use crate::{
+    message_handler::{SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT},
+    state::{
+        AutoSaveKind, CreateInstanceMessage, Launcher, MenuCreateInstance,
+        MenuCreateInstanceChoosing, Message, ProgressBar, State,
+    },
 };
 
 macro_rules! iflet {
@@ -59,6 +62,18 @@ impl Launcher {
                         *selected_version = sel.clone();
                     }
                 })
+            }
+            CreateInstanceMessage::SidebarResize(ratio) => {
+                let window_width = self.window_state.size.0;
+                let ratio = ratio * window_width;
+                iflet!(self, sidebar_split, sidebar_grid_state; {
+                    if let Some(split) = *sidebar_split {
+                        sidebar_grid_state.resize(
+                            split,
+                            ratio.clamp(SIDEBAR_LIMIT_LEFT, window_width - SIDEBAR_LIMIT_RIGHT) / window_width
+                        );
+                    }
+                });
             }
             CreateInstanceMessage::ContextMenuToggle => iflet!(self, show_category_dropdown; {
                 *show_category_dropdown = !*show_category_dropdown;
@@ -158,6 +173,16 @@ then go to "Mods->Add File""#,
         })
         .abortable();
 
+        let (mut sidebar_grid_state, pane) = pane_grid::State::new(true);
+        let sidebar_split = if let Some((_, split)) =
+            sidebar_grid_state.split(pane_grid::Axis::Vertical, pane, false)
+        {
+            sidebar_grid_state.resize(split, 0.33);
+            Some(split)
+        } else {
+            None
+        };
+
         self.state = State::Create(MenuCreateInstance::Choosing(MenuCreateInstanceChoosing {
             _loading_list_handle: handle.abort_on_drop(),
             list: None,
@@ -172,6 +197,8 @@ then go to "Mods->Add File""#,
             show_category_dropdown: false,
             selected_categories: self.config.c_persistent().get_create_instance_filters(),
             is_server,
+            sidebar_grid_state,
+            sidebar_split,
         }));
 
         task

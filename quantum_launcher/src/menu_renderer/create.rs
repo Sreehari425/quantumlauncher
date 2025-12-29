@@ -10,11 +10,14 @@ use crate::{
     cli::EXPERIMENTAL_MMC_IMPORT,
     icons,
     menu_renderer::{
-        button_with_icon, ctxbox, dots, shortcut_ctrl, sidebar, sidebar_button, tooltip, tsubtitle,
-        Element,
+        button_with_icon, ctxbox, dots, shortcut_ctrl, sidebar_button, tooltip, tsubtitle, Element,
     },
     state::{CreateInstanceMessage, MenuCreateInstance, MenuCreateInstanceChoosing, Message},
-    stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
+    stylesheet::{
+        color::Color,
+        styles::{LauncherTheme, BORDER_RADIUS, BORDER_WIDTH},
+        widgets::StyleButton,
+    },
 };
 
 impl MenuCreateInstance {
@@ -41,16 +44,22 @@ impl MenuCreateInstance {
 
 impl MenuCreateInstanceChoosing {
     pub fn view(&self, existing_instances: Option<&[String]>, timer: usize) -> Element<'_> {
-        let sidebar = self.get_sidebar_contents(timer);
-        let main_page = self.get_main_page(existing_instances);
-
-        let view = row![sidebar, main_page].width(Length::Fill);
+        let view = widget::pane_grid(&self.sidebar_grid_state, |_, is_sidebar, _| {
+            if *is_sidebar {
+                self.get_sidebar_contents(timer).into()
+            } else {
+                self.get_main_page(existing_instances).into()
+            }
+        })
+        .on_resize(10, |t| {
+            Message::CreateInstance(CreateInstanceMessage::SidebarResize(t.ratio))
+        });
 
         widget::stack!(view)
             .push_maybe(self.show_category_dropdown.then_some(row![
-                widget::Space::with_width(97),
+                widget::Space::with_width(90),
                 column![
-                    widget::Space::with_height(50),
+                    widget::Space::with_height(40),
                     ctxbox(Self::get_category_dropdown(&self.selected_categories))
                 ]
             ]))
@@ -79,20 +88,21 @@ impl MenuCreateInstanceChoosing {
             .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark));
         };
 
-        sidebar(
-            "MenuCreateInstance:sidebar",
-            Some(header.into()),
-            versions
-                .iter()
-                .filter(|n| n.supports_server || !self.is_server)
-                .filter(|n| self.selected_categories.contains(&n.kind))
-                .filter(|n| {
-                    self.search_box.trim().is_empty()
-                        || n.name
-                            .to_lowercase()
-                            .contains(&self.search_box.trim().to_lowercase())
-                })
-                .map(|n| {
+        let versions_iter = versions
+            .iter()
+            .filter(|n| n.supports_server || !self.is_server)
+            .filter(|n| self.selected_categories.contains(&n.kind))
+            .filter(|n| {
+                self.search_box.trim().is_empty()
+                    || n.name
+                        .to_lowercase()
+                        .contains(&self.search_box.trim().to_lowercase())
+            });
+
+        widget::container(
+            widget::column![
+                widget::column![header].padding(10),
+                widget::scrollable(widget::column(versions_iter.map(|n| {
                     let label = widget::text(&n.name).size(14).style(|t: &LauncherTheme| {
                         t.style_text(if n.kind == ListEntryKind::Snapshot {
                             Color::SecondLight
@@ -107,9 +117,17 @@ impl MenuCreateInstanceChoosing {
                         label,
                         Message::CreateInstance(CreateInstanceMessage::VersionSelected(n.clone())),
                     )
-                }),
+                }),))
+                .style(LauncherTheme::style_scrollable_flat_extra_dark)
+                .height(Length::Fill)
+                .id(iced::widget::scrollable::Id::new(
+                    "MenuCreateInstance:sidebar"
+                ))
+            ]
+            .spacing(10),
         )
         .width(Length::Fill)
+        .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark))
     }
 
     fn get_sidebar_header(&self) -> widget::Column<'_, Message, LauncherTheme> {
@@ -144,11 +162,12 @@ impl MenuCreateInstanceChoosing {
                 CreateInstanceMessage::ContextMenuToggle
             ))
         ]
-        .spacing(5)]
+        .spacing(5)
+        .wrap()]
         .push_maybe(
             (!hidden).then_some(
                 widget::text!(
-                    "Some versions are hidden {}\n(click \"Filters\" to show)",
+                    "Some versions are hidden {}\n(Click \"Filters\" to show)",
                     if self.selected_categories.contains(&ListEntryKind::Release) {
                         ""
                     } else {
@@ -172,10 +191,7 @@ impl MenuCreateInstanceChoosing {
         .spacing(7)
     }
 
-    fn get_main_page(
-        &self,
-        existing_instances: Option<&[String]>,
-    ) -> widget::Column<'static, Message, LauncherTheme> {
+    fn get_main_page(&self, existing_instances: Option<&[String]>) -> Element<'_> {
         let already_exists = existing_instances.is_some_and(|n| {
             n.contains(&self.instance_name)
                 || (self.instance_name.is_empty() && n.contains(&self.selected_version.name))
@@ -204,8 +220,7 @@ impl MenuCreateInstanceChoosing {
             widget::horizontal_rule(1),
             widget::text("- To install Fabric/Forge/OptiFine/etc and mods, click on Mods after installing the instance").size(12).style(tsubtitle),
             row!(
-                widget::text("- To sideload your own custom JARs, create an instance with a similar version, then go to").size(12).style(tsubtitle),
-                widget::text(" \"Edit->Custom Jar File\"").size(12).style(tsubtitle)
+                widget::text("- To sideload your own custom JARs, create an instance with a similar version, then go to \"Edit->Custom Jar File\"").size(12).style(tsubtitle)
             ).wrap(),
         ].push_maybe({
             let real_platform = if cfg!(target_arch = "x86") { "x86_64" } else { "aarch64" };
@@ -215,13 +230,10 @@ impl MenuCreateInstanceChoosing {
                 widget::text("Warning: On your platform (Linux 32 bit) only Minecraft 1.16.5 and below are supported.").size(20),
                 widget::text!("If your computer isn't outdated, you might have wanted to download QuantumLauncher 64 bit ({real_platform})"),
             ])
-        }).spacing(16).padding(16);
+        }).spacing(12);
 
-        column![
-            widget::scrollable(main_part)
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .style(|t: &LauncherTheme, s| t.style_scrollable_flat_dark(s)),
+        let menu = column![
+            widget::column![main_part, widget::vertical_space()],
             row![widget::horizontal_space()]
                 .push_maybe(
                     EXPERIMENTAL_MMC_IMPORT.read().unwrap().then_some(tooltip(
@@ -232,10 +244,17 @@ impl MenuCreateInstanceChoosing {
                     ))
                 )
                 .push(get_create_button(already_exists))
-                .padding(16)
                 .spacing(5)
         ]
         .spacing(10)
+        .padding(16);
+
+        widget::container(widget::container(menu).style(|t: &LauncherTheme| {
+            t.style_container_round_box(BORDER_WIDTH, Color::Dark, BORDER_RADIUS)
+        }))
+        .padding(5)
+        .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark))
+        .into()
     }
 
     fn get_category_dropdown(

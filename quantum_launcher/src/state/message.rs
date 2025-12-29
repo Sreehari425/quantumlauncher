@@ -51,6 +51,7 @@ pub enum CreateInstanceMessage {
     ScreenOpen {
         is_server: bool,
     },
+    SidebarResize(f32),
 
     VersionsLoaded(Res<(Vec<ListEntry>, String)>),
     VersionSelected(ListEntry),

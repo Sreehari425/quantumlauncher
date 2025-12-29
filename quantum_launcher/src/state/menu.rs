@@ -336,6 +336,9 @@ pub struct MenuCreateInstanceChoosing {
     pub search_box: String,
     pub show_category_dropdown: bool,
     pub selected_categories: HashSet<ql_core::ListEntryKind>,
+    // Sidebar resizing:
+    pub sidebar_grid_state: widget::pane_grid::State<bool>,
+    pub sidebar_split: Option<widget::pane_grid::Split>,
     // Instance info:
     pub selected_version: ListEntry,
     pub instance_name: String,
