@@ -198,7 +198,7 @@ fn tsubtitle(t: &LauncherTheme) -> widget::text::Style {
 
 fn sidebar<'a>(
     id: &'static str,
-    header: Option<Element<'static>>,
+    header: Option<Element<'a>>,
     children: impl IntoIterator<Item = Element<'a>>,
 ) -> widget::Container<'a, Message, LauncherTheme> {
     widget::container(

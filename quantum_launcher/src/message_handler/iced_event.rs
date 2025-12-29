@@ -1,9 +1,10 @@
 use crate::message_update::MSG_RESIZE;
 use crate::state::{
     AutoSaveKind, CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage,
-    LauncherSettingsTab, MenuCreateInstance, MenuEditMods, MenuEditPresets, MenuExportInstance,
-    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLauncherSettings,
-    MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, Message, State,
+    LauncherSettingsTab, MenuCreateInstance, MenuCreateInstanceChoosing, MenuEditMods,
+    MenuEditPresets, MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper,
+    MenuLauncherSettings, MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods,
+    Message, State,
 };
 use iced::{
     keyboard::{self, key::Named, Key},
@@ -206,8 +207,10 @@ impl Launcher {
                     return Task::done(Message::LaunchKill);
                 }
             }
-        } else if let State::Create(MenuCreateInstance::Choosing { list: Some(_), .. }) =
-            &self.state
+        } else if let State::Create(MenuCreateInstance::Choosing(MenuCreateInstanceChoosing {
+            list: Some(_),
+            ..
+        })) = &self.state
         {
             if let Key::Named(Named::Enter) = key {
                 if modifiers.command() {
@@ -414,10 +417,10 @@ impl Launcher {
                 menu.search = None;
                 return true;
             }
-        } else if let State::Create(MenuCreateInstance::Choosing {
+        } else if let State::Create(MenuCreateInstance::Choosing(MenuCreateInstanceChoosing {
             show_category_dropdown,
             ..
-        }) = &mut self.state
+        })) = &mut self.state
         {
             if *show_category_dropdown {
                 *show_category_dropdown = false;

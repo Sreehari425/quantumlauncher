@@ -323,21 +323,23 @@ pub struct MenuEditJarMods {
 }
 
 pub enum MenuCreateInstance {
-    Choosing {
-        _loading_list_handle: iced::task::Handle,
-        list: Option<Vec<ListEntry>>,
-        // UI:
-        is_server: bool,
-        search_box: String,
-        show_category_dropdown: bool,
-        selected_categories: HashSet<ql_core::ListEntryKind>,
-        // Instance info:
-        selected_version: ListEntry,
-        instance_name: String,
-        download_assets: bool,
-    },
+    Choosing(MenuCreateInstanceChoosing),
     DownloadingInstance(ProgressBar<DownloadProgress>),
     ImportingInstance(ProgressBar<GenericProgress>),
+}
+
+pub struct MenuCreateInstanceChoosing {
+    pub _loading_list_handle: iced::task::Handle,
+    pub list: Option<Vec<ListEntry>>,
+    // UI:
+    pub is_server: bool,
+    pub search_box: String,
+    pub show_category_dropdown: bool,
+    pub selected_categories: HashSet<ql_core::ListEntryKind>,
+    // Instance info:
+    pub selected_version: ListEntry,
+    pub instance_name: String,
+    pub download_assets: bool,
 }
 
 pub enum MenuInstallFabric {

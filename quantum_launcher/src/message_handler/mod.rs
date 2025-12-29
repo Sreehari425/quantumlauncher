@@ -1,5 +1,7 @@
 use crate::config::SIDEBAR_WIDTH;
-use crate::state::{AutoSaveKind, GameProcess, MenuCreateInstance, MenuInstallOptifine};
+use crate::state::{
+    AutoSaveKind, GameProcess, MenuCreateInstance, MenuCreateInstanceChoosing, MenuInstallOptifine,
+};
 use crate::tick::sort_dependencies;
 use crate::{
     get_entries,
@@ -418,8 +420,9 @@ impl Launcher {
             .is_some_and(|n| n.is_server())
             || if let State::Launch(menu) = &self.state {
                 menu.is_viewing_server
-            } else if let State::Create(MenuCreateInstance::Choosing { is_server, .. }) =
-                &self.state
+            } else if let State::Create(MenuCreateInstance::Choosing(
+                MenuCreateInstanceChoosing { is_server, .. },
+            )) = &self.state
             {
                 *is_server
             } else {
