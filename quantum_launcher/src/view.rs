@@ -130,7 +130,7 @@ impl Launcher {
                 widget::scrollable(
                     widget::column!(
                         button_with_icon(icons::back(), "Skip", 16).on_press(back_msg.clone()),
-                        changelog(),
+                        changelog(&self.config),
                         button_with_icon(icons::back(), "Continue", 16).on_press(back_msg),
                     )
                     .padding(10)

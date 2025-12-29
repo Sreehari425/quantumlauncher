@@ -326,7 +326,7 @@ impl Launcher {
             }
             Message::LaunchSidebarResize(ratio) => {
                 if let State::Launch(menu) = &mut self.state {
-                    self.autosave.remove(&AutoSaveKind::LauncherConfig);
+                    // self.autosave.remove(&AutoSaveKind::LauncherConfig);
                     let window_width = self.window_state.size.0;
                     let ratio = ratio * window_width;
                     menu.resize_sidebar(

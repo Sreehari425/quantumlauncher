@@ -166,6 +166,8 @@ Only increase if progress bars stutter or "not responding" dialogs show"#).size(
 
 fn get_ui_opacity(config: &LauncherConfig) -> widget::Column<'static, Message, LauncherTheme> {
     let ui_opacity = config.c_ui_opacity();
+    let t = |t| widget::text(t).size(12).style(tsubtitle);
+
     widget::column![
         widget::row![
             widget::text!("Window Opacity ({ui_opacity:.2}x)")
@@ -178,9 +180,8 @@ fn get_ui_opacity(config: &LauncherConfig) -> widget::Column<'static, Message, L
         ]
         .spacing(5)
         .align_y(Alignment::Center),
-        widget::text("Window background transparency\n0.5 (translucent) ..  1.0 (opaque)")
-            .size(12)
-            .style(tsubtitle),
+        t("Window background transparency\n(May not work on all systems/GPUs)"),
+        t("0.5 (translucent) ..  1.0 (opaque)"),
     ]
     .spacing(5)
 }
