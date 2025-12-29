@@ -18,7 +18,7 @@ pub fn search_for_window(pid: u32, sys: &sysinfo::System) -> bool {
     }
 
     kill_proc(pid, sys);
-    false
+    true
 }
 
 fn get_all_windows_with_pids() -> Vec<(HWND, u32)> {

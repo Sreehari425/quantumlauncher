@@ -50,7 +50,7 @@ pub static LAUNCHER_DIR: LazyLock<PathBuf> = LazyLock::new(|| get_launcher_dir()
 /// - if the launcher directory could not be created (permissions issue)
 #[allow(clippy::doc_markdown)]
 pub fn get_launcher_dir() -> Result<PathBuf, IoError> {
-    let launcher_directory = if let Ok(n) = std::env::var("QL_DIR") {
+    let launcher_directory = if let Ok(n) = std::env::var("QL_DIR").or(std::env::var("QLDIR")) {
         canonicalize_s(&n)
     } else if let Some(n) = check_qlportable_file() {
         canonicalize_s(&n.path)

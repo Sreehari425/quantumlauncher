@@ -53,7 +53,7 @@ impl Launcher {
                     // - Exact name match
                     // - Name contains search term
                     // - Special lwjgl3 "ports" of normal versions (de-prioritized)
-                    if let Some(sel) = list.iter().flatten().find(|n| n.name == *search_box)
+                    if let Some(sel) = list.iter().flatten().find(|n| n.name == search_box.trim())
                         .or(iter().find(|n| !n.name.ends_with("-lwjgl3"))
                         .or(iter().next())) {
                         *selected_version = sel.clone();

@@ -42,9 +42,9 @@ struct Cli {
 enum QSubCommand {
     #[command(about = "Creates a new Minecraft instance")]
     Create {
-        instance_name: String,
         #[arg(help = "Version of Minecraft to download")]
         version: String,
+        instance_name: String,
         #[arg(short, long)]
         #[arg(help = "Skips downloading game assets (sound/music) to speed up downloads")]
         skip_assets: bool,

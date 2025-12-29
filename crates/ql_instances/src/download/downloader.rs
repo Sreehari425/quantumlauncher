@@ -17,7 +17,7 @@ use ql_core::{
     ListEntry, Loader, RequestError,
 };
 use thiserror::Error;
-use tokio::sync::Mutex;
+use tokio::{fs, sync::Mutex};
 
 const DOWNLOAD_ERR_PREFIX: &str = "while creating instance:\n";
 
@@ -80,7 +80,16 @@ impl GameDownloader {
             ));
         };
         let version_json =
-            GameDownloader::new_download_version_json(version, sender.as_ref()).await?;
+            match GameDownloader::new_download_version_json(version, sender.as_ref()).await {
+                Ok(n) => n,
+                Err(DownloadError::VersionNotFoundInManifest(v)) => {
+                    fs::remove_dir_all(&instance_dir)
+                        .await
+                        .path(&instance_dir)?;
+                    return Err(DownloadError::VersionNotFoundInManifest(v));
+                }
+                Err(err) => return Err(err),
+            };
 
         Ok(Self {
             instance_dir,
