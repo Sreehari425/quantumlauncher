@@ -757,7 +757,7 @@ impl MenuEditMods {
             idx
         } else {
             debug_assert!(false, "couldn't find index of mod");
-            return 0;
+            0
         }
     }
 

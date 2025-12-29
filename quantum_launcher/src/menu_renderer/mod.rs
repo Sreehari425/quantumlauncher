@@ -189,7 +189,7 @@ fn sidebar_button<'a, A: PartialEq>(
         .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatExtraDark))
         .width(Length::Fill);
 
-    underline_maybe(button, Color::SecondDark, !is_selected).into()
+    underline_maybe(button, Color::SecondDark, !is_selected)
 }
 
 fn tsubtitle(t: &LauncherTheme) -> widget::text::Style {

@@ -351,7 +351,6 @@ impl Launcher {
                     Color::Dark,
                     !is_selected,
                 )
-                .into()
             }))
         } else {
             let dots = ".".repeat((self.tick_timer % 3) + 1);
