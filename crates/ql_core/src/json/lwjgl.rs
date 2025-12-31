@@ -68,6 +68,49 @@ pub fn is_lwjgl3(version: &str) -> bool {
     version.starts_with('3')
 }
 
+/// Check if a version string represents LWJGL version before 3.3.2
+/// lwjgl-freetype module was first released in 3.3.2
+pub fn is_before_332(version: &str) -> bool {
+    if !is_lwjgl3(version) {
+        // LWJGL 2.x is always before 3.3.2
+        return true;
+    }
+
+    // Parse version string "3.3.1" -> (3, 3, 1)
+    let parts: Vec<&str> = version.split('.').collect();
+    if parts.len() < 2 {
+        return true; // Malformed version, assume it's old
+    }
+    // Major version (first part)
+    if let Ok(major) = parts[0].parse::<u32>() {
+        if major < 3 {
+            return true;
+        }
+        if major > 3 {
+            return false;
+        }
+    }
+
+    // Minor version (second part)
+    if let Ok(minor) = parts[1].parse::<u32>() {
+        if minor < 3 {
+            return true;
+        }
+        if minor > 3 {
+            return false;
+        }
+    }
+
+    // Patch version (third part) - only matters if major=3, minor=3
+    if parts.len() >= 3 {
+        if let Ok(patch) = parts[2].parse::<u32>() {
+            return patch < 2;
+        }
+    }
+
+    false
+}
+
 /// Get the Maven group ID for the given LWJGL version
 /// LWJGL 3.x: "org.lwjgl"
 /// LWJGL 2.x: "org.lwjgl.lwjgl"

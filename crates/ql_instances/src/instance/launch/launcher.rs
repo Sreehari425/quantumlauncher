@@ -830,6 +830,11 @@ impl GameLauncher {
         classifier: Option<&str>,
         dest_path: &Path,
     ) -> Result<(), GameLaunchError> {
+        // Skip lwjgl-freetype for versions before 3.3.2 (it didn't exist)
+        if module == "lwjgl-freetype" && lwjgl::is_before_332(version) {
+            return Ok(());
+        }
+
         let url = lwjgl::build_lwjgl_maven_url(version, module, classifier);
 
         // Create parent directories
