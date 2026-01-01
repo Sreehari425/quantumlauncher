@@ -327,8 +327,7 @@ impl Launcher {
                     msg1: format!("uninstall \"{}\"", mod_title),
                     msg2: "This will remove the mod and its dependencies".to_owned(),
                     yes: Message::InstallMods(InstallModsMessage::UninstallConfirm(
-                        mod_id,
-                        mod_title,
+                        mod_id, mod_title,
                     )),
                     no: Message::InstallMods(InstallModsMessage::Open),
                 };

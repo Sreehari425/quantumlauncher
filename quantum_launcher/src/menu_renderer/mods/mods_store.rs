@@ -176,7 +176,14 @@ impl MenuModsDownload {
             // Uninstall button - darker to respect theme
             widget::button(widget::row![icons::bin()].spacing(10).padding(5))
                 .height(70)
-                .style(|t: &LauncherTheme, s| t.style_button(s, crate::stylesheet::widgets::StyleButton::SemiDarkBorder([true, true, true, true])))
+                .style(|t: &LauncherTheme, s| {
+                    t.style_button(
+                        s,
+                        crate::stylesheet::widgets::StyleButton::SemiDarkBorder([
+                            true, true, true, true,
+                        ]),
+                    )
+                })
                 .on_press(Message::InstallMods(InstallModsMessage::Uninstall(i)))
         } else {
             // Download button
@@ -184,7 +191,7 @@ impl MenuModsDownload {
                 .height(70)
                 .on_press_maybe(
                     (!is_downloading)
-                        .then_some(Message::InstallMods(InstallModsMessage::Download(i)))
+                        .then_some(Message::InstallMods(InstallModsMessage::Download(i))),
                 )
         };
 
