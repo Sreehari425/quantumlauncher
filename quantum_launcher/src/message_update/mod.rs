@@ -139,7 +139,8 @@ impl Launcher {
             InstallModsMessage::LoadData(Err(err))
             | InstallModsMessage::DownloadComplete(Err(err))
             | InstallModsMessage::SearchResult(Err(err))
-            | InstallModsMessage::IndexUpdated(Err(err)) => {
+            | InstallModsMessage::IndexUpdated(Err(err))
+            | InstallModsMessage::UninstallComplete(Err(err)) => {
                 self.set_error(err);
             }
 
@@ -304,6 +305,58 @@ impl Launcher {
                     },
                     |n| Message::InstallMods(InstallModsMessage::DownloadComplete(n.strerr())),
                 );
+            }
+            InstallModsMessage::Uninstall(index) => {
+                let State::ModsDownload(menu) = &self.state else {
+                    return Task::none();
+                };
+                let Some(results) = &menu.results else {
+                    err!("Couldn't uninstall mod: Search results empty");
+                    return Task::none();
+                };
+                let Some(hit) = results.mods.get(index) else {
+                    err!("Couldn't uninstall mod: Index out of range");
+                    return Task::none();
+                };
+
+                let mod_id = ModId::from_pair(&hit.id, results.backend);
+                let mod_title = hit.title.clone();
+
+                // Show confirmation dialog
+                self.state = State::ConfirmAction {
+                    msg1: format!("uninstall \"{}\"", mod_title),
+                    msg2: "This will remove the mod and its dependencies".to_owned(),
+                    yes: Message::InstallMods(InstallModsMessage::UninstallConfirm(
+                        mod_id,
+                        mod_title,
+                    )),
+                    no: Message::InstallMods(InstallModsMessage::Open),
+                };
+            }
+            InstallModsMessage::UninstallConfirm(mod_id, _mod_title) => {
+                let Some(selected_instance) = self.selected_instance.clone() else {
+                    return Task::none();
+                };
+
+                self.state = State::GenericMessage("Uninstalling mod...".to_owned());
+
+                return Task::perform(
+                    async move {
+                        ql_mod_manager::store::delete_mods(vec![mod_id], selected_instance).await
+                    },
+                    |n| Message::InstallMods(InstallModsMessage::UninstallComplete(n.strerr())),
+                );
+            }
+            InstallModsMessage::UninstallComplete(result) => {
+                match result {
+                    Ok(_) => {
+                        // Refresh the mod index and go back to the store
+                        return self.go_to_edit_mods_menu(false);
+                    }
+                    Err(err) => {
+                        self.set_error(err);
+                    }
+                }
             }
         }
         Task::none()

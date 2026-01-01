@@ -166,17 +166,30 @@ impl MenuModsDownload {
         images: &'a ImageState,
         backend: StoreBackendType,
     ) -> Element<'a> {
-        widget::row!(
+        let is_installed = self.mod_index.mods.contains_key(&hit.id)
+            || self.mod_index.mods.values().any(|n| n.name == hit.title);
+        let is_downloading = self
+            .mods_download_in_progress
+            .contains_key(&ModId::from_pair(&hit.id, backend));
+
+        let action_button = if is_installed {
+            // Uninstall button - darker to respect theme
+            widget::button(widget::row![icons::bin()].spacing(10).padding(5))
+                .height(70)
+                .style(|t: &LauncherTheme, s| t.style_button(s, crate::stylesheet::widgets::StyleButton::SemiDarkBorder([true, true, true, true])))
+                .on_press(Message::InstallMods(InstallModsMessage::Uninstall(i)))
+        } else {
+            // Download button
             widget::button(widget::row![icons::download()].spacing(10).padding(5))
                 .height(70)
                 .on_press_maybe(
-                    (!self
-                        .mods_download_in_progress
-                        .contains_key(&ModId::from_pair(&hit.id, backend))
-                        && !self.mod_index.mods.contains_key(&hit.id)
-                        && !self.mod_index.mods.values().any(|n| n.name == hit.title))
-                    .then_some(Message::InstallMods(InstallModsMessage::Download(i)))
-                ),
+                    (!is_downloading)
+                        .then_some(Message::InstallMods(InstallModsMessage::Download(i)))
+                )
+        };
+
+        widget::row!(
+            action_button,
             widget::button(
                 widget::row!(
                     images.view(
