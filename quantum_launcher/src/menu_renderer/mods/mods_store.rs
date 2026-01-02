@@ -126,8 +126,8 @@ impl MenuModsDownload {
         if self.mods_download_in_progress.is_empty() || self.results.is_none() {
             normal_controls.into()
         } else {
-            // Mods are being installed. Can't back out.
-            // Show list of mods being installed.
+            // Mod operations (installing or uninstalling) are in progress. Can't back out.
+            // Show list of mods being installed or uninstalled.
             column!("Installing:", {
                 widget::column(self.mods_download_in_progress.values().map(
                     |(title, operation)| {
