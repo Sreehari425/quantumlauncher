@@ -30,6 +30,8 @@ pub struct ModDownloader<'a> {
     pub not_allowed: HashSet<CurseforgeNotAllowed>,
     pub already_installed: HashSet<String>,
     pub sender: Option<&'a Sender<GenericProgress>>,
+
+    _guard: tokio::sync::MutexGuard<'a, ()>,
 }
 
 impl<'a> ModDownloader<'a> {
@@ -46,6 +48,7 @@ impl<'a> ModDownloader<'a> {
                 .await?
                 .not_vanilla()
                 .map(|n| n.to_curseforge_num()),
+            _guard: lock().await, // Before ModIndex::load
             index: ModIndex::load(&instance).await?,
             dirs: DirStructure::new(&instance, &version_json).await?,
             already_installed: HashSet::new(),
@@ -57,8 +60,6 @@ impl<'a> ModDownloader<'a> {
     }
 
     pub async fn download(&mut self, id: &str, dependent: Option<&str>) -> Result<(), ModError> {
-        let _guard = lock().await;
-
         // Mod already installed.
         if !self.already_installed.insert(id.to_owned()) {
             return Ok(());

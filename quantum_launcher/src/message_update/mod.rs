@@ -334,6 +334,7 @@ impl Launcher {
                 if let State::ModsDownload(menu) = &mut self.state {
                     for id in ids {
                         menu.mods_download_in_progress.remove(&id);
+                        menu.mod_index.mods.remove(&id.get_index_str());
                     }
                 }
             }
@@ -356,7 +357,7 @@ impl Launcher {
         };
 
         menu.mods_download_in_progress.insert(
-            ModId::Modrinth(hit.id.clone()),
+            ModId::from_pair(&hit.id, results.backend),
             (hit.title.clone(), ModOperation::Downloading),
         );
 

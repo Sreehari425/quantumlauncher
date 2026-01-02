@@ -178,7 +178,10 @@ impl MenuModsDownload {
         images: &'a ImageState,
         backend: StoreBackendType,
     ) -> Element<'a> {
-        let is_installed = self.mod_index.mods.contains_key(&hit.id)
+        let is_installed = self
+            .mod_index
+            .mods
+            .contains_key(&hit.get_id(backend).get_index_str())
             || self.mod_index.mods.values().any(|n| n.name == hit.title);
         let is_downloading = self
             .mods_download_in_progress

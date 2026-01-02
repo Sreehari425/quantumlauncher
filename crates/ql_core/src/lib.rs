@@ -498,9 +498,10 @@ impl ModId {
 
     #[must_use]
     pub fn from_pair(n: &str, t: StoreBackendType) -> Self {
+        let n = n.to_owned();
         match t {
-            StoreBackendType::Modrinth => Self::Modrinth(n.to_owned()),
-            StoreBackendType::Curseforge => Self::Curseforge(n.to_owned()),
+            StoreBackendType::Modrinth => Self::Modrinth(n),
+            StoreBackendType::Curseforge => Self::Curseforge(n),
         }
     }
 
