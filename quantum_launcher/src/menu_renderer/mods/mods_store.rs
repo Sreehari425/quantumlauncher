@@ -130,10 +130,10 @@ impl MenuModsDownload {
             // Show list of mods being installed.
             column!("Installing:", {
                 widget::column(self.mods_download_in_progress.values().map(
-                    |(title, is_downloading)| {
+                    |(title, operation)| {
                         widget::text!(
                             "{} {title}",
-                            match is_downloading {
+                            match operation {
                                 ModOperation::Downloading => "-",
                                 ModOperation::Deleting => "x",
                             }
