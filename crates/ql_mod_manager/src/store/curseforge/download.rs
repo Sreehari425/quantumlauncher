@@ -7,10 +7,13 @@ use ql_core::{
     err, file_utils, info, json::VersionDetails, pt, GenericProgress, InstanceSelection, ModId,
 };
 
-use crate::store::{
-    curseforge::{get_query_type, ModQuery},
-    install_modpack, CurseforgeNotAllowed, DirStructure, ModConfig, ModError, ModFile, ModIndex,
-    QueryType, SOURCE_ID_CURSEFORGE,
+use crate::{
+    rate_limiter::lock,
+    store::{
+        curseforge::{get_query_type, ModQuery},
+        install_modpack, CurseforgeNotAllowed, DirStructure, ModConfig, ModError, ModFile,
+        ModIndex, QueryType, SOURCE_ID_CURSEFORGE,
+    },
 };
 
 use super::Mod;
@@ -54,6 +57,8 @@ impl<'a> ModDownloader<'a> {
     }
 
     pub async fn download(&mut self, id: &str, dependent: Option<&str>) -> Result<(), ModError> {
+        let _guard = lock().await;
+
         // Mod already installed.
         if !self.already_installed.insert(id.to_owned()) {
             return Ok(());
