@@ -126,22 +126,31 @@ impl MenuModsDownload {
         if self.mods_download_in_progress.is_empty() || self.results.is_none() {
             normal_controls.into()
         } else {
-            // Mod operations (installing or uninstalling) are in progress. Can't back out.
-            // Show list of mods being installed or uninstalled.
-            column!("Installing:", {
-                widget::column(self.mods_download_in_progress.values().map(
-                    |(title, operation)| {
-                        widget::text!(
-                            "{} {title}",
-                            match operation {
-                                ModOperation::Downloading => "-",
-                                ModOperation::Deleting => "x",
-                            }
-                        )
-                        .into()
-                    },
-                ))
+            // Mod operations (installing/uninstalling) are in progress.
+            // Can't back out. Show list of operations in progress.
+            column!("In progress:", {
+                widget::column(
+                    self.mods_download_in_progress
+                        .values()
+                        .map(|(title, operation)| {
+                            const SIZE: u16 = 12;
+                            widget::container(
+                                widget::row![
+                                    match operation {
+                                        ModOperation::Downloading => icons::download_s(SIZE),
+                                        ModOperation::Deleting => icons::bin_s(SIZE),
+                                    },
+                                    widget::text(title).size(SIZE)
+                                ]
+                                .spacing(4),
+                            )
+                            .padding(8)
+                            .into()
+                        }),
+                )
+                .spacing(5)
             })
+            .spacing(5)
             .into()
         }
     }
@@ -189,7 +198,7 @@ impl MenuModsDownload {
 
         let side_button = |icon| widget::button(row![icon].padding(5)).height(70);
 
-        let action_button: Element = if is_installed {
+        let action_button: Element = if is_installed && !is_downloading {
             // Uninstall button - darker to respect theme
             tooltip(
                 side_button(icons::bin())
