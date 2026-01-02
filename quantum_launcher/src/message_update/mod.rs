@@ -20,7 +20,7 @@ mod presets;
 mod recommended;
 
 use crate::config::UiWindowDecorations;
-use crate::state::{InstanceNotes, MenuLaunch, NotesMessage};
+use crate::state::{InstanceNotes, MenuLaunch, ModOperation, NotesMessage};
 use crate::{
     config::UiSettings,
     state::{
@@ -32,9 +32,6 @@ use crate::{
 };
 
 pub const MSG_RESIZE: &str = "Resize your window to apply the changes.";
-
-const A_DOWNLOADING: bool = true;
-const A_DELETING: bool = false;
 
 impl Launcher {
     pub fn update_install_fabric(&mut self, message: InstallFabricMessage) -> Task<Message> {
@@ -324,7 +321,8 @@ impl Launcher {
                 };
 
                 let mod_id = ModId::from_pair(&hit.id, results.backend);
-                mods_download_in_progress.insert(mod_id.clone(), (hit.title.clone(), A_DELETING));
+                mods_download_in_progress
+                    .insert(mod_id.clone(), (hit.title.clone(), ModOperation::Deleting));
                 let selected_instance = self.instance().clone();
 
                 return Task::perform(
@@ -359,7 +357,7 @@ impl Launcher {
 
         menu.mods_download_in_progress.insert(
             ModId::Modrinth(hit.id.clone()),
-            (hit.title.clone(), A_DOWNLOADING),
+            (hit.title.clone(), ModOperation::Downloading),
         );
 
         let project_id = hit.id.clone();

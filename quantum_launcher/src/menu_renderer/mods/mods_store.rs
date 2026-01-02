@@ -9,7 +9,9 @@ use ql_mod_manager::store::{QueryType, SearchMod};
 use crate::{
     icons,
     menu_renderer::{back_button, button_with_icon, tooltip, Element, FONT_DEFAULT, FONT_MONO},
-    state::{ImageState, InstallModsMessage, ManageModsMessage, MenuModsDownload, Message},
+    state::{
+        ImageState, InstallModsMessage, ManageModsMessage, MenuModsDownload, Message, ModOperation,
+    },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
 
@@ -129,7 +131,14 @@ impl MenuModsDownload {
             column!("Installing:", {
                 widget::column(self.mods_download_in_progress.values().map(
                     |(title, is_downloading)| {
-                        widget::text!("{} {title}", if *is_downloading { "-" } else { "x" }).into()
+                        widget::text!(
+                            "{} {title}",
+                            match is_downloading {
+                                ModOperation::Downloading => "-",
+                                ModOperation::Deleting => "x",
+                            }
+                        )
+                        .into()
                     },
                 ))
             })
