@@ -20,7 +20,7 @@ mod presets;
 mod recommended;
 
 use crate::config::UiWindowDecorations;
-use crate::state::{InstanceNotes, MenuLaunch, NotesMessage};
+use crate::state::{InstanceNotes, MenuLaunch, ModOperation, NotesMessage};
 use crate::{
     config::UiSettings,
     state::{
@@ -139,7 +139,8 @@ impl Launcher {
             InstallModsMessage::LoadData(Err(err))
             | InstallModsMessage::DownloadComplete(Err(err))
             | InstallModsMessage::SearchResult(Err(err))
-            | InstallModsMessage::IndexUpdated(Err(err)) => {
+            | InstallModsMessage::IndexUpdated(Err(err))
+            | InstallModsMessage::UninstallComplete(Err(err)) => {
                 self.set_error(err);
             }
 
@@ -305,14 +306,44 @@ impl Launcher {
                     |n| Message::InstallMods(InstallModsMessage::DownloadComplete(n.strerr())),
                 );
             }
+            InstallModsMessage::Uninstall(index) => {
+                let State::ModsDownload(MenuModsDownload {
+                    results: Some(results),
+                    mods_download_in_progress,
+                    ..
+                }) = &mut self.state
+                else {
+                    return Task::none();
+                };
+                let Some(hit) = results.mods.get(index) else {
+                    err!("Couldn't uninstall mod: Index out of range");
+                    return Task::none();
+                };
+
+                let mod_id = ModId::from_pair(&hit.id, results.backend);
+                mods_download_in_progress
+                    .insert(mod_id.clone(), (hit.title.clone(), ModOperation::Deleting));
+                let selected_instance = self.instance().clone();
+
+                return Task::perform(
+                    ql_mod_manager::store::delete_mods(vec![mod_id], selected_instance),
+                    |n| Message::InstallMods(InstallModsMessage::UninstallComplete(n.strerr())),
+                );
+            }
+            InstallModsMessage::UninstallComplete(Ok(ids)) => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    for id in ids {
+                        menu.mods_download_in_progress.remove(&id);
+                        menu.mod_index.mods.remove(&id.get_index_str());
+                    }
+                }
+            }
         }
         Task::none()
     }
 
     fn mod_download(&mut self, index: usize) -> Task<Message> {
-        let Some(selected_instance) = self.selected_instance.clone() else {
-            return Task::none();
-        };
+        let selected_instance = self.instance().clone();
         let State::ModsDownload(menu) = &mut self.state else {
             return Task::none();
         };
@@ -325,8 +356,10 @@ impl Launcher {
             return Task::none();
         };
 
-        menu.mods_download_in_progress
-            .insert(ModId::Modrinth(hit.id.clone()), hit.title.clone());
+        menu.mods_download_in_progress.insert(
+            ModId::from_pair(&hit.id, results.backend),
+            (hit.title.clone(), ModOperation::Downloading),
+        );
 
         let project_id = hit.id.clone();
         let backend = menu.backend;

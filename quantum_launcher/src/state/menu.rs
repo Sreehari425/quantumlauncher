@@ -392,13 +392,19 @@ pub struct MenuLauncherUpdate {
     pub progress: Option<ProgressBar<GenericProgress>>,
 }
 
+#[derive(Clone, Copy)]
+pub enum ModOperation {
+    Downloading,
+    Deleting,
+}
+
 pub struct MenuModsDownload {
     pub query: String,
     pub results: Option<SearchResult>,
     pub description: Option<MarkState>,
 
     pub mod_descriptions: HashMap<ModId, String>,
-    pub mods_download_in_progress: HashMap<ModId, String>,
+    pub mods_download_in_progress: HashMap<ModId, (String, ModOperation)>,
     pub opened_mod: Option<usize>,
     pub latest_load: Instant,
     pub scroll_offset: AbsoluteOffset,

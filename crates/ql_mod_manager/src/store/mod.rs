@@ -255,6 +255,12 @@ pub struct SearchMod {
     pub icon_url: String,
 }
 
+impl SearchMod {
+    pub fn get_id(&self, backend: StoreBackendType) -> ModId {
+        ModId::from_pair(&self.id, backend)
+    }
+}
+
 struct DirStructure {
     mods: PathBuf,
     resource_packs: PathBuf,

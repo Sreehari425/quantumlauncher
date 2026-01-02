@@ -178,6 +178,8 @@ pub enum InstallModsMessage {
     IndexUpdated(Res<ModIndex>),
     Scrolled(widget::scrollable::Viewport),
     InstallModpack(ModId),
+    Uninstall(usize),
+    UninstallComplete(Res<Vec<ModId>>),
 
     ChangeBackend(StoreBackendType),
     ChangeQueryType(QueryType),
