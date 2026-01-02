@@ -124,11 +124,11 @@ impl MenuModsDownload {
             // Mods are being installed. Can't back out.
             // Show list of mods being installed.
             widget::column!("Installing:", {
-                widget::column(
-                    self.mods_download_in_progress
-                        .values()
-                        .map(|title| widget::text!("- {title}").into()),
-                )
+                widget::column(self.mods_download_in_progress.values().map(
+                    |(title, is_downloading)| {
+                        widget::text!("{} {title}", if *is_downloading { "-" } else { "x" }).into()
+                    },
+                ))
             })
             .into()
         }

@@ -398,7 +398,7 @@ pub struct MenuModsDownload {
     pub description: Option<MarkState>,
 
     pub mod_descriptions: HashMap<ModId, String>,
-    pub mods_download_in_progress: HashMap<ModId, String>,
+    pub mods_download_in_progress: HashMap<ModId, (String, bool)>,
     pub opened_mod: Option<usize>,
     pub latest_load: Instant,
     pub scroll_offset: AbsoluteOffset,

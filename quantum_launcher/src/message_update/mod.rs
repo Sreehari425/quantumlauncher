@@ -33,6 +33,9 @@ use crate::{
 
 pub const MSG_RESIZE: &str = "Resize your window to apply the changes.";
 
+const A_DOWNLOADING: bool = true;
+const A_DELETING: bool = false;
+
 impl Launcher {
     pub fn update_install_fabric(&mut self, message: InstallFabricMessage) -> Task<Message> {
         match message {
@@ -307,11 +310,12 @@ impl Launcher {
                 );
             }
             InstallModsMessage::Uninstall(index) => {
-                let State::ModsDownload(menu) = &self.state else {
-                    return Task::none();
-                };
-                let Some(results) = &menu.results else {
-                    err!("Couldn't uninstall mod: Search results empty");
+                let State::ModsDownload(MenuModsDownload {
+                    results: Some(results),
+                    mods_download_in_progress,
+                    ..
+                }) = &mut self.state
+                else {
                     return Task::none();
                 };
                 let Some(hit) = results.mods.get(index) else {
@@ -320,40 +324,18 @@ impl Launcher {
                 };
 
                 let mod_id = ModId::from_pair(&hit.id, results.backend);
-                let mod_title = hit.title.clone();
-
-                // Show confirmation dialog
-                self.state = State::ConfirmAction {
-                    msg1: format!("uninstall \"{}\"", mod_title),
-                    msg2: "This will remove the mod and its dependencies".to_owned(),
-                    yes: Message::InstallMods(InstallModsMessage::UninstallConfirm(
-                        mod_id, mod_title,
-                    )),
-                    no: Message::InstallMods(InstallModsMessage::Open),
-                };
-            }
-            InstallModsMessage::UninstallConfirm(mod_id, _mod_title) => {
-                let Some(selected_instance) = self.selected_instance.clone() else {
-                    return Task::none();
-                };
-
-                self.state = State::GenericMessage("Uninstalling mod...".to_owned());
+                mods_download_in_progress.insert(mod_id.clone(), (hit.title.clone(), A_DELETING));
+                let selected_instance = self.instance().clone();
 
                 return Task::perform(
-                    async move {
-                        ql_mod_manager::store::delete_mods(vec![mod_id], selected_instance).await
-                    },
+                    ql_mod_manager::store::delete_mods(vec![mod_id], selected_instance),
                     |n| Message::InstallMods(InstallModsMessage::UninstallComplete(n.strerr())),
                 );
             }
-            InstallModsMessage::UninstallComplete(result) => {
-                match result {
-                    Ok(_) => {
-                        // Refresh the mod index and go back to the store
-                        return self.go_to_edit_mods_menu(false);
-                    }
-                    Err(err) => {
-                        self.set_error(err);
+            InstallModsMessage::UninstallComplete(Ok(ids)) => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    for id in ids {
+                        menu.mods_download_in_progress.remove(&id);
                     }
                 }
             }
@@ -362,9 +344,7 @@ impl Launcher {
     }
 
     fn mod_download(&mut self, index: usize) -> Task<Message> {
-        let Some(selected_instance) = self.selected_instance.clone() else {
-            return Task::none();
-        };
+        let selected_instance = self.instance().clone();
         let State::ModsDownload(menu) = &mut self.state else {
             return Task::none();
         };
@@ -377,8 +357,10 @@ impl Launcher {
             return Task::none();
         };
 
-        menu.mods_download_in_progress
-            .insert(ModId::Modrinth(hit.id.clone()), hit.title.clone());
+        menu.mods_download_in_progress.insert(
+            ModId::Modrinth(hit.id.clone()),
+            (hit.title.clone(), A_DOWNLOADING),
+        );
 
         let project_id = hit.id.clone();
         let backend = menu.backend;
