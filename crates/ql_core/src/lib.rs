@@ -65,6 +65,9 @@ pub static REGEX_SNAPSHOT: LazyLock<Regex> =
 
 pub const CLASSPATH_SEPARATOR: char = if cfg!(unix) { ':' } else { ';' };
 
+/// Redact sensitive info like username, UUID, session ID, etc.
+///
+/// Default: `true`. Use `--no-redact-info` in CLI to set `false`.
 pub static REDACT_SENSITIVE_INFO: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(true));
 
 pub const WEBSITE: &str = "https://mrmayman.github.io/quantumlauncher";

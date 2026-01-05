@@ -14,8 +14,8 @@ use tokio::{
 };
 
 use crate::{
-    err, json::VersionDetails, InstanceSelection, IoError, JsonError, JsonFileError,
-    REDACT_SENSITIVE_INFO,
+    err, json::VersionDetails, print::REDACTION_USERNAME, InstanceSelection, IoError, JsonError,
+    JsonFileError, REDACT_SENSITIVE_INFO,
 };
 
 /// Reads log output from the given instance
@@ -109,9 +109,15 @@ pub(crate) async fn read_logs(
 
 fn censor(input: &str, censors: &[String]) -> String {
     if *REDACT_SENSITIVE_INFO.lock().unwrap() {
-        censors.iter().fold(input.to_string(), |acc, censor| {
+        let mut out = censors.iter().fold(input.to_string(), |acc, censor| {
             acc.replace(censor, "[REDACTED]")
-        })
+        });
+        if let Some((home_dir, username)) = &*REDACTION_USERNAME {
+            if out.contains(home_dir) {
+                out = out.replace(username, "[REDACTED]");
+            }
+        }
+        out
     } else {
         input.to_string()
     }

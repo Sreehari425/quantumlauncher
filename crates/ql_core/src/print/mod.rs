@@ -8,43 +8,33 @@ use std::{
 use chrono::{Datelike, Timelike};
 use regex::Regex;
 
-use crate::{eeprintln, file_utils};
+use crate::{eeprintln, file_utils, REDACT_SENSITIVE_INFO};
 
 pub mod macros;
 
-/// Redaction patterns compiled once at startup for zero-cost automatic redaction.
-static REDACTION_PATTERNS: LazyLock<Vec<(String, &'static str)>> = LazyLock::new(|| {
-    let mut patterns = Vec::new();
-
-    // Get system username
-    if let Ok(username) = std::env::var("USER")
-        .or_else(|_| std::env::var("USERNAME"))
-        .or_else(|_| std::env::var("LOGNAME"))
-    {
-        patterns.push((username, "[REDACTED]"));
-    }
-
-    // Get home directory path
+/// Censor username for privacy
+pub static REDACTION_USERNAME: LazyLock<Option<(String, String)>> = LazyLock::new(|| {
     if let Some(home_dir) = dirs::home_dir() {
-        if let Some(home_str) = home_dir.to_str() {
-            patterns.push((home_str.to_owned(), "/home/[REDACTED]"));
+        if let (Some(home_str), Some(username)) = (
+            home_dir.to_str(),
+            home_dir.file_name().and_then(|n| n.to_str()),
+        ) {
+            return Some((home_str.to_owned(), username.to_owned()));
         }
     }
-
-    // Windows user profile
-    if let Ok(userprofile) = std::env::var("USERPROFILE") {
-        patterns.push((userprofile, "C:\\Users\\[REDACTED]"));
-    }
-
-    patterns
+    None
 });
 
 /// Automatically redact sensitive information from log messages.
 /// This is called by all logging macros to ensure no username/path exposure.
 pub fn auto_redact(message: &str) -> String {
     let mut redacted = message.to_string();
-    for (pattern, replacement) in REDACTION_PATTERNS.iter() {
-        redacted = redacted.replace(pattern, replacement);
+    if *REDACT_SENSITIVE_INFO.lock().unwrap() {
+        if let Some((home_str, username)) = &*REDACTION_USERNAME {
+            if redacted.contains(home_str) {
+                redacted = redacted.replace(username, "[REDACTED]");
+            }
+        }
     }
     redacted
 }

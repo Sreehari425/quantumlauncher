@@ -27,11 +27,11 @@ use std::{borrow::Cow, time::Duration};
 
 use config::LauncherConfig;
 use iced::{Settings, Task};
+use owo_colors::OwoColorize;
 use state::{get_entries, Launcher, Message};
 
 use ql_core::{
-    constants::OS_NAME, err, err_no_log, file_utils, info_no_log, pt_no_log, IntoStringError,
-    JsonFileError,
+    constants::OS_NAME, err, err_no_log, file_utils, info_no_log, IntoStringError, JsonFileError,
 };
 
 use crate::{menu_renderer::FONT_DEFAULT, state::CustomJarState};
@@ -157,7 +157,11 @@ fn main() {
 
     info_no_log!("Starting up the launcher... (OS: {OS_NAME})");
     if let Some(dir) = &launcher_dir {
-        pt_no_log!("{}", dir.to_string_lossy());
+        eprintln!(
+            "{} {}",
+            "-".bright_white(),
+            dir.to_string_lossy().bright_black().underline()
+        );
     }
 
     let icon = load_icon();
