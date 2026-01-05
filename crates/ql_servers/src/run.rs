@@ -15,6 +15,12 @@ use tokio::process::Command;
 
 use crate::ServerError;
 
+fn redact_args(args: &[String]) -> Vec<String> {
+    args.iter()
+        .map(|arg| ql_core::redact_path(arg))
+        .collect()
+}
+
 /// Runs a server.
 ///
 /// # Arguments
@@ -48,8 +54,8 @@ pub async fn run(
     let mut game_args = launcher.config.game_args.clone().unwrap_or_default();
     game_args.push("nogui".to_owned());
 
-    info!("Java: {java_path:?}\n");
-    info!("Java args: {java_args:?}\n");
+    info!("Java: {}\n", ql_core::redact_path(&java_path.to_string_lossy()));
+    info!("Java args: {:?}\n", redact_args(&java_args));
     info!("Server args: {game_args:?}\n");
 
     let mut command = Command::new(java_path);

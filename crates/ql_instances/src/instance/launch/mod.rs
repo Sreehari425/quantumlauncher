@@ -87,7 +87,7 @@ pub async fn launch(
     );
     java_arguments.push(main_class);
 
-    info!("Java args: {java_arguments:?}\n");
+    info!("Java args: {:?}\n", redact_args(&java_arguments));
 
     print_censored_args(auth.as_ref(), &mut game_arguments);
 
@@ -171,6 +171,12 @@ fn censor_string<F: FnOnce(&mut Vec<String>)>(vec: &[String], argument: &str, co
     }
 
     code(&mut new);
+}
+
+fn redact_args(args: &[String]) -> Vec<String> {
+    args.iter()
+        .map(|arg| ql_core::redact_path(arg))
+        .collect()
 }
 
 fn replace_var(string: &mut String, var: &str, value: &str) {
