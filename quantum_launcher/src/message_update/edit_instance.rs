@@ -1,7 +1,10 @@
 use iced::Task;
 use ql_core::{
     err,
-    json::{instance_config::CustomJarConfig, GlobalSettings, InstanceConfigJson},
+    json::{
+        instance_config::{CustomJarConfig, MainClassMode},
+        GlobalSettings, InstanceConfigJson,
+    },
     IntoIoError, IntoStringError, LAUNCHER_DIR,
 };
 
@@ -15,9 +18,19 @@ use crate::{
 };
 
 macro_rules! iflet_config {
+    ($state:expr, $config:ident <- $body:block) => {
+        if let State::Launch(MenuLaunch {
+            edit_instance: Some(MenuEditInstance {
+                config: $config, ..
+            }),
+            ..
+        }) = $state
+        $body
+    };
+
     ($state:expr, $field:ident : $pat:pat, $body:block) => {
         if let State::Launch(MenuLaunch {
-            tab_edit_instance: Some(MenuEditInstance {
+            edit_instance: Some(MenuEditInstance {
                 config: InstanceConfigJson {
                     $field: $pat,
                     ..
@@ -38,7 +51,7 @@ macro_rules! iflet_config {
             let global_settings =
                 global_settings.get_or_insert_with(GlobalSettings::default);
             let $prefix =
-                global_settings.pre_launch_prefix.get_or_insert_with(Vec::new);
+                &mut global_settings.pre_launch_prefix;
             $body
         });
     };
@@ -50,18 +63,43 @@ impl Launcher {
         message: EditInstanceMessage,
     ) -> Result<Task<Message>, String> {
         match message {
+            EditInstanceMessage::ToggleSplitArg(t) => {
+                if let State::Launch(MenuLaunch {
+                    edit_instance: Some(menu),
+                    ..
+                }) = &mut self.state
+                {
+                    menu.arg_split_by_space = t;
+                } else if let State::LauncherSettings(menu) = &mut self.state {
+                    menu.arg_split_by_space = t;
+                }
+            }
             EditInstanceMessage::JavaOverride(n) => {
                 if let State::Launch(MenuLaunch {
-                    tab_edit_instance: Some(menu),
+                    edit_instance: Some(menu),
                     ..
                 }) = &mut self.state
                 {
                     menu.config.java_override = Some(n);
                 }
             }
+            EditInstanceMessage::BrowseJavaOverride => {
+                if let Some(file) = rfd::FileDialog::new()
+                    .set_title("Select Java Executable (./bin/java)")
+                    .pick_file()
+                {
+                    if let State::Launch(MenuLaunch {
+                        edit_instance: Some(menu),
+                        ..
+                    }) = &mut self.state
+                    {
+                        menu.config.java_override = Some(file.to_string_lossy().to_string());
+                    }
+                }
+            }
             EditInstanceMessage::MemoryChanged(new_slider_value) => {
                 if let State::Launch(MenuLaunch {
-                    tab_edit_instance: Some(menu),
+                    edit_instance: Some(menu),
                     ..
                 }) = &mut self.state
                 {
@@ -72,7 +110,7 @@ impl Launcher {
             }
             EditInstanceMessage::LoggingToggle(t) => {
                 if let State::Launch(MenuLaunch {
-                    tab_edit_instance: Some(menu),
+                    edit_instance: Some(menu),
                     ..
                 }) = &mut self.state
                 {
@@ -81,7 +119,7 @@ impl Launcher {
             }
             EditInstanceMessage::CloseLauncherToggle(t) => {
                 if let State::Launch(MenuLaunch {
-                    tab_edit_instance: Some(menu),
+                    edit_instance: Some(menu),
                     ..
                 }) = &mut self.state
                 {
@@ -94,18 +132,21 @@ impl Launcher {
                 });
             }
             EditInstanceMessage::JavaArgs(msg) => {
+                let split = self.should_split_args();
                 iflet_config!(&mut self.state, java_args, {
-                    msg.apply(java_args.get_or_insert_with(Vec::new));
+                    msg.apply(java_args.get_or_insert_with(Vec::new), split);
                 });
             }
             EditInstanceMessage::GameArgs(msg) => {
+                let split = self.should_split_args();
                 iflet_config!(&mut self.state, game_args, {
-                    msg.apply(game_args.get_or_insert_with(Vec::new));
+                    msg.apply(game_args.get_or_insert_with(Vec::new), split);
                 });
             }
             EditInstanceMessage::PreLaunchPrefix(msg) => {
+                let split = self.should_split_args();
                 iflet_config!(&mut self.state, prefix, |pre_launch_prefix| {
-                    msg.apply(pre_launch_prefix);
+                    msg.apply(pre_launch_prefix.get_or_insert_with(Vec::new), split);
                 });
             }
             EditInstanceMessage::PreLaunchPrefixModeChanged(mode) => {
@@ -115,7 +156,7 @@ impl Launcher {
             }
             EditInstanceMessage::RenameToggle => {
                 if let State::Launch(MenuLaunch {
-                    tab_edit_instance: Some(menu),
+                    edit_instance: Some(menu),
                     ..
                 }) = &mut self.state
                 {
@@ -130,7 +171,7 @@ impl Launcher {
             }
             EditInstanceMessage::RenameEdit(n) => {
                 if let State::Launch(MenuLaunch {
-                    tab_edit_instance: Some(menu),
+                    edit_instance: Some(menu),
                     ..
                 }) = &mut self.state
                 {
@@ -140,28 +181,20 @@ impl Launcher {
             EditInstanceMessage::RenameApply => return self.rename_instance(),
             EditInstanceMessage::ConfigSaved(res) => res?,
             EditInstanceMessage::WindowWidthChanged(width) => {
-                if let State::Launch(MenuLaunch {
-                    tab_edit_instance: Some(menu),
-                    ..
-                }) = &mut self.state
-                {
-                    menu.config.c_global_settings().window_width = width.parse::<u32>().ok();
-                }
+                iflet_config!(&mut self.state, config <- {
+                    config.c_global_settings().window_width = width.parse::<u32>().ok();
+                });
             }
             EditInstanceMessage::WindowHeightChanged(height) => {
-                if let State::Launch(MenuLaunch {
-                    tab_edit_instance: Some(menu),
-                    ..
-                }) = &mut self.state
-                {
-                    menu.config.c_global_settings().window_height = height.parse::<u32>().ok();
-                }
+                iflet_config!(&mut self.state, config <- {
+                    config.c_global_settings().window_height = height.parse::<u32>().ok();
+                });
             }
             EditInstanceMessage::CustomJarPathChanged(path) => {
                 if path == ADD_JAR_NAME {
                     return Ok(self.add_custom_jar());
                 } else if let State::Launch(MenuLaunch {
-                    tab_edit_instance: Some(menu),
+                    edit_instance: Some(menu),
                     ..
                 }) = &mut self.state
                 {
@@ -197,22 +230,28 @@ impl Launcher {
                 }
                 Err(err) => err!("Couldn't load list of custom jars (1)! {err}"),
             },
-            EditInstanceMessage::AutoSetMainClassToggle(t) => {
+            EditInstanceMessage::SetMainClass(t, cls) => {
                 if let State::Launch(MenuLaunch {
-                    tab_edit_instance:
+                    edit_instance:
                         Some(MenuEditInstance {
-                            config:
-                                InstanceConfigJson {
-                                    custom_jar: Some(custom_jar),
-                                    ..
-                                },
+                            config,
+                            main_class_mode,
                             ..
                         }),
                     ..
                 }) = &mut self.state
                 {
-                    custom_jar.autoset_main_class = t;
-                }
+                    *main_class_mode = t;
+                    let (name, autos) = match t {
+                        Some(MainClassMode::Custom) => (cls, false),
+                        Some(MainClassMode::SafeFallback) => (None, true),
+                        None => (None, false),
+                    };
+                    config.main_class_override = name;
+                    if let Some(c) = &mut config.custom_jar {
+                        c.autoset_main_class = autos;
+                    }
+                };
             }
             EditInstanceMessage::ReinstallLibraries => {
                 return Ok(self.instance_redownload_stage(
@@ -274,7 +313,7 @@ impl Launcher {
         // If the currently selected jar got deleted/renamed
         // then unselect it
         if let State::Launch(MenuLaunch {
-            tab_edit_instance: Some(menu),
+            edit_instance: Some(menu),
             ..
         }) = &mut self.state
         {
@@ -291,7 +330,7 @@ impl Launcher {
         if let (
             Some(custom_jars),
             State::Launch(MenuLaunch {
-                tab_edit_instance: Some(menu),
+                edit_instance: Some(menu),
                 ..
             }),
             Some((path, file_name)),
@@ -328,7 +367,7 @@ impl Launcher {
 
     fn rename_instance(&mut self) -> Result<Task<Message>, String> {
         let State::Launch(MenuLaunch {
-            tab_edit_instance: Some(menu),
+            edit_instance: Some(menu),
             ..
         }) = &mut self.state
         else {

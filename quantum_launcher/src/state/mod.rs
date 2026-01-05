@@ -8,8 +8,8 @@ use std::{
 use iced::Task;
 use notify::Watcher;
 use ql_core::{
-    err, file_utils, read_log::LogLine, GenericProgress, InstanceSelection, IntoIoError,
-    IntoStringError, IoError, JsonFileError, LaunchedProcess, ListEntry, ModId, Progress,
+    err, err_no_log, file_utils, read_log::LogLine, GenericProgress, InstanceSelection,
+    IntoIoError, IntoStringError, IoError, JsonFileError, LaunchedProcess, ModId, Progress,
     LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
 };
 use ql_instances::auth::{ms::CLIENT_ID, AccountData, AccountType};
@@ -58,13 +58,13 @@ pub struct Launcher {
     pub java_recv: Option<ProgressBar<GenericProgress>>,
     pub custom_jar: Option<CustomJarState>,
     pub mod_updates_checked: HashMap<InstanceSelection, Vec<(ModId, String, bool)>>,
+    /// See [`AutoSaveKind`]
     pub autosave: HashSet<AutoSaveKind>,
 
     pub accounts: HashMap<String, AccountData>,
     pub accounts_dropdown: Vec<String>,
     pub accounts_selected: Option<String>,
 
-    pub version_list_cache: VersionListCache,
     pub client_list: Option<Vec<String>>,
     pub server_list: Option<Vec<String>>,
 
@@ -76,6 +76,15 @@ pub struct Launcher {
     pub modifiers_pressed: iced::keyboard::Modifiers,
 }
 
+/// Used to temporarily "block" auto-saving something,
+/// or indicate it was already saved.
+///
+/// On the [`Launcher`] struct,
+///
+/// - Use `self.autosave.remove(n)`
+///   to indicate a change was made
+/// - Use `self.autosave.insert(n)`
+///   to indicate it was saved, and doesn't need saving again
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum AutoSaveKind {
     LauncherConfig,
@@ -85,7 +94,7 @@ pub enum AutoSaveKind {
 pub struct WindowState {
     pub size: (f32, f32),
     pub mouse_pos: (f32, f32),
-    pub is_maximized: bool,
+    // pub is_maximized: bool,
 }
 
 pub struct CustomJarState {
@@ -100,12 +109,6 @@ impl CustomJarState {
             Message::EditInstance(EditInstanceMessage::CustomJarLoaded(n.strerr()))
         })
     }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct VersionListCache {
-    pub list: Option<Vec<ListEntry>>,
-    pub latest_stable: Option<String>,
 }
 
 pub struct GameProcess {
@@ -149,13 +152,23 @@ impl Launcher {
         } else if version == LAUNCHER_VERSION_NAME {
             launch
         } else {
+            if let Err(err) = migration(version) {
+                err_no_log!("{err}")
+            }
             config.version = Some(LAUNCHER_VERSION_NAME.to_owned());
             State::ChangeLog
         };
 
         let (accounts, accounts_dropdown, selected_account) = load_accounts(&mut config);
 
+        let persistent = config.c_persistent();
+
         Ok(Self {
+            selected_instance: persistent
+                .selected_instance
+                .as_ref()
+                .filter(|_| persistent.selected_remembered)
+                .map(|n| InstanceSelection::new(n, false)),
             state,
             config,
             theme,
@@ -165,15 +178,12 @@ impl Launcher {
             window_state: WindowState {
                 size: (window_width, window_height),
                 mouse_pos: (0.0, 0.0),
-                is_maximized: false,
             },
             accounts_selected: Some(selected_account),
 
             client_list: None,
             server_list: None,
             java_recv: None,
-            version_list_cache: VersionListCache::default(),
-            selected_instance: None,
             custom_jar: None,
 
             logs: HashMap::new(),
@@ -248,10 +258,8 @@ impl Launcher {
             window_state: WindowState {
                 size: (window_width, window_height),
                 mouse_pos: (0.0, 0.0),
-                is_maximized: false,
             },
             autosave: HashSet::new(),
-            version_list_cache: VersionListCache::default(),
             accounts_dropdown: vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()],
             accounts_selected: Some(OFFLINE_ACCOUNT_NAME.to_owned()),
             modifiers_pressed: iced::keyboard::Modifiers::empty(),
@@ -276,7 +284,18 @@ impl Launcher {
         };
         menu_launch.resize_sidebar(SIDEBAR_WIDTH);
         self.state = State::Launch(menu_launch);
-        Task::perform(get_entries(false), Message::CoreListLoaded)
+
+        let get_entries = Task::perform(get_entries(false), Message::CoreListLoaded);
+        match &self.selected_instance {
+            Some(i @ InstanceSelection::Instance(_)) => {
+                if let State::Launch(menu) = &mut self.state {
+                    return Task::batch([menu.reload_notes(i.clone()), get_entries]);
+                }
+            }
+            Some(InstanceSelection::Server(_)) => self.selected_instance = None,
+            None => {}
+        }
+        get_entries
     }
 }
 
@@ -287,21 +306,21 @@ fn load_accounts(
 
     let mut accounts_dropdown = vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()];
 
-    if let Some(config_accounts) = config.accounts.as_mut() {
-        let mut accounts_to_remove = Vec::new();
+    let mut accounts_to_remove = Vec::new();
 
-        for (username, account) in config_accounts.iter_mut() {
-            load_account(
-                &mut accounts,
-                &mut accounts_dropdown,
-                &mut accounts_to_remove,
-                username,
-                account,
-            );
-        }
+    for (username, account) in config.accounts.iter_mut().flatten() {
+        load_account(
+            &mut accounts,
+            &mut accounts_dropdown,
+            &mut accounts_to_remove,
+            username,
+            account,
+        );
+    }
 
+    if let Some(accounts) = &mut config.accounts {
         for rem in accounts_to_remove {
-            config_accounts.remove(&rem);
+            accounts.remove(&rem);
         }
     }
 
@@ -516,4 +535,31 @@ pub fn dir_watch<P: AsRef<Path>>(
     watcher.watch(path.as_ref(), notify::RecursiveMode::NonRecursive)?;
 
     Ok((rx, watcher))
+}
+
+fn migration(version: &str) -> Result<(), String> {
+    fn ver(major: u64, minor: u64, patch: u64) -> semver::Version {
+        semver::Version {
+            major,
+            minor,
+            patch,
+            pre: semver::Prerelease::default(),
+            build: semver::BuildMetadata::default(),
+        }
+    }
+
+    let version = version.strip_prefix("v").unwrap_or(version);
+    let version = semver::Version::parse(version).strerr()?;
+
+    if version <= ver(0, 4, 2) && (cfg!(target_os = "windows") || cfg!(target_os = "macos")) {
+        // Mojang sneakily updated their Java 8 to fix certs.
+        // Let's redownload it.
+        let java_dir = LAUNCHER_DIR.join("java_installs/java_8");
+        if java_dir.is_dir() {
+            std::fs::remove_dir_all(&java_dir)
+                .path(&java_dir)
+                .strerr()?;
+        }
+    }
+    Ok(())
 }

@@ -50,22 +50,10 @@ pub static LAUNCHER_DIR: LazyLock<PathBuf> = LazyLock::new(|| get_launcher_dir()
 /// - if the launcher directory could not be created (permissions issue)
 #[allow(clippy::doc_markdown)]
 pub fn get_launcher_dir() -> Result<PathBuf, IoError> {
-    let launcher_directory = if let Ok(n) = std::env::var("QL_DIR") {
-        #[allow(unused_mut)]
-        if let Ok(mut n) = std::fs::canonicalize(&n) {
-            #[cfg(target_os = "windows")]
-            {
-                let s = n.to_string_lossy();
-                if let Some(s) = s.strip_prefix("\\\\?\\") {
-                    n = PathBuf::from(s);
-                }
-            }
-            n
-        } else {
-            PathBuf::from(n)
-        }
+    let launcher_directory = if let Ok(n) = std::env::var("QL_DIR").or(std::env::var("QLDIR")) {
+        canonicalize_s(&n)
     } else if let Some(n) = check_qlportable_file() {
-        strip_verbatim_prefix(&std::fs::canonicalize(&n.path).unwrap_or(n.path))
+        canonicalize_s(&n.path)
     } else {
         dirs::data_dir()
             .ok_or(IoError::LauncherDirNotFound)?
@@ -74,17 +62,6 @@ pub fn get_launcher_dir() -> Result<PathBuf, IoError> {
 
     std::fs::create_dir_all(&launcher_directory).path(&launcher_directory)?;
     Ok(launcher_directory)
-}
-
-fn strip_verbatim_prefix(path: &Path) -> PathBuf {
-    let Some(path_str) = path.to_str() else {
-        return path.to_owned();
-    };
-    if cfg!(target_os = "windows") && path_str.starts_with(r"\\?\") {
-        PathBuf::from(&path_str[4..])
-    } else {
-        path.to_owned()
-    }
 }
 
 struct QlDirInfo {
@@ -291,7 +268,7 @@ pub async fn download_file_to_bytes(url: &str, user_agent: bool) -> Result<Vec<u
 pub async fn download_file_to_path(
     url: &str,
     user_agent: bool,
-    path: &Path,
+    path: impl AsRef<Path>,
 ) -> Result<(), DownloadFileError> {
     async fn inner(url: &str, user_agent: bool, path: &Path) -> Result<(), DownloadFileError> {
         let mut get = CLIENT.get(url);
@@ -317,7 +294,7 @@ pub async fn download_file_to_path(
         Ok(())
     }
 
-    retry(|| async { inner(url, user_agent, path).await }).await
+    retry(|| async { inner(url, user_agent, path.as_ref()).await }).await
 }
 
 /// Downloads a file from the given URL into a `Vec<u8>`,
@@ -617,7 +594,7 @@ pub async fn extract_zip_archive<
     strip_toplevel: bool,
 ) -> Result<(), zip::result::ZipError> {
     let mut archive = ZipArchive::new(reader)?;
-    let extract_to = extract_to.as_ref().to_owned();
+    let extract_to = canonicalize_a(extract_to).await;
 
     if strip_toplevel {
         tokio::task::spawn_blocking(move || {
@@ -699,4 +676,49 @@ pub fn migration_launcher_dir() -> Option<PathBuf> {
         return None;
     }
     Some(dirs::data_dir()?.join("QuantumLauncher"))
+}
+
+// ========
+// This is one thing I find lacking in rust.
+// See https://journal.stuffwithstuff.com/2015/02/01/what-color-is-your-function/
+// for more info.
+
+pub async fn canonicalize_a(p: impl AsRef<Path>) -> PathBuf {
+    let p = p.as_ref();
+    #[allow(unused_mut)]
+    if let Ok(mut n) = tokio::fs::canonicalize(p).await {
+        #[cfg(target_os = "windows")]
+        {
+            let s = n.to_string_lossy();
+            if let Some(s) = s.strip_prefix("\\\\?\\") {
+                n = PathBuf::from(s);
+            }
+        }
+        n
+    } else {
+        p.to_owned()
+    }
+}
+
+pub fn canonicalize_s(p: impl AsRef<Path>) -> PathBuf {
+    let p = p.as_ref();
+    #[allow(unused_mut)]
+    if let Ok(mut n) = std::fs::canonicalize(p) {
+        #[cfg(target_os = "windows")]
+        {
+            let s = n.to_string_lossy();
+            if let Some(s) = s.strip_prefix("\\\\?\\") {
+                n = PathBuf::from(s);
+            }
+        }
+        n
+    } else {
+        p.to_owned()
+    }
+}
+
+// ========
+
+pub async fn exists(p: impl AsRef<Path>) -> bool {
+    tokio::fs::try_exists(p).await.is_ok_and(|n| n)
 }

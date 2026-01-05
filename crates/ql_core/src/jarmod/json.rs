@@ -8,7 +8,7 @@ pub struct JarMods {
 }
 
 impl JarMods {
-    pub async fn get(instance: &InstanceSelection) -> Result<Self, JsonFileError> {
+    pub async fn read(instance: &InstanceSelection) -> Result<Self, JsonFileError> {
         let path = instance.get_instance_path().join("jarmods.json");
 
         if path.is_file() {
@@ -51,6 +51,7 @@ impl JarMods {
         let existing_filenames: std::collections::HashSet<_> =
             self.mods.iter().map(|m| m.filename.clone()).collect();
 
+        // This could cause game crashes, not the best idea
         self.mods.extend(
             filenames
                 .into_iter()

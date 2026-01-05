@@ -3,16 +3,18 @@ use ql_core::{
     err, err_no_log, file_utils::DirItem, info_no_log, InstanceSelection, IntoIoError,
     IntoStringError, LAUNCHER_DIR,
 };
-use ql_instances::UpdateCheckInfo;
 use std::fmt::Write;
 use tokio::io::AsyncWriteExt;
+
+#[allow(unused)]
+use owo_colors::OwoColorize;
 
 use crate::{
     message_handler::{SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT},
     state::{
         dir_watch, AutoSaveKind, CustomJarState, GameProcess, LaunchTabId, Launcher,
-        LauncherSettingsMessage, ManageModsMessage, MenuExportInstance, MenuLaunch,
-        MenuLauncherUpdate, MenuLicense, MenuWelcome, Message, ProgressBar, SavesInfo, State,
+        LauncherSettingsMessage, ManageModsMessage, MenuExportInstance, MenuLaunch, MenuLicense,
+        MenuWelcome, Message, ProgressBar, SavesInfo, State,
     },
     stylesheet::styles::LauncherThemeLightness,
 };
@@ -46,7 +48,7 @@ impl Launcher {
                 }
             }
 
-            Message::UpdateCheckResult(Err(err)) | Message::CoreCleanComplete(Err(err)) => {
+            Message::CoreCleanComplete(Err(err)) => {
                 err_no_log!("{err}");
             }
 
@@ -67,12 +69,13 @@ impl Launcher {
             Message::ExportMods(msg) => return self.update_export_mods(msg),
             Message::ManageJarMods(msg) => return self.update_manage_jar_mods(msg),
             Message::RecommendedMods(msg) => return self.update_recommended_mods(msg),
-            Message::Window(msg) => return self.update_window_msg(msg),
+            // Message::Window(msg) => return self.update_window_msg(msg),
+            Message::Notes(msg) => return self.update_notes(msg),
 
             Message::LaunchInstanceSelected { name, is_server } => {
-                self.selected_instance = Some(InstanceSelection::new(&name, is_server));
-                self.load_tab_edit_instance(None);
-                return self.load_tab_saves(None, true);
+                let inst = InstanceSelection::new(&name, is_server);
+                self.selected_instance = Some(inst.clone());
+                return self.on_instance_selected();
             }
             Message::LauncherSettings(msg) => return self.update_launcher_settings(msg),
             Message::InstallOptifine(msg) => return self.update_install_optifine(msg),
@@ -100,7 +103,7 @@ impl Launcher {
                         .map(InstanceSelection::is_server))
                     .unwrap_or_default();
                 if clear_selection {
-                    self.selected_instance = None;
+                    self.unselect_instance();
                 }
 
                 return if is_server {
@@ -218,15 +221,18 @@ impl Launcher {
                 }
             },
             #[cfg(feature = "auto_update")]
-            Message::UpdateCheckResult(Ok(info)) => match info {
-                UpdateCheckInfo::UpToDate => {
-                    info_no_log!("Launcher is latest version. No new updates");
+            Message::UpdateCheckResult(res) => match res {
+                Ok(ql_instances::UpdateCheckInfo::UpToDate) => {
+                    ql_core::pt_no_log!("{}", "Latest version".bright_black());
                 }
-                UpdateCheckInfo::NewVersion { url } => {
-                    self.state = State::UpdateFound(MenuLauncherUpdate {
+                Ok(ql_instances::UpdateCheckInfo::NewVersion { url }) => {
+                    self.state = State::UpdateFound(crate::state::MenuLauncherUpdate {
                         url,
                         progress: None,
                     });
+                }
+                Err(err) => {
+                    ql_core::pt_no_log!("{}", err.bright_black());
                 }
             },
             #[cfg(feature = "auto_update")]
@@ -262,11 +268,7 @@ impl Launcher {
                 }
             }
             Message::CoreListLoaded(Ok((list, is_server))) => {
-                if is_server {
-                    self.server_list = Some(list);
-                } else {
-                    self.client_list = Some(list);
-                }
+                self.core_list_loaded(list, is_server)
             }
             Message::CoreCopyText(txt) => {
                 return iced::clipboard::write(txt);
@@ -325,7 +327,7 @@ impl Launcher {
             }
             Message::LaunchSidebarResize(ratio) => {
                 if let State::Launch(menu) = &mut self.state {
-                    self.autosave.remove(&AutoSaveKind::LauncherConfig);
+                    // self.autosave.remove(&AutoSaveKind::LauncherConfig);
                     let window_width = self.window_state.size.0;
                     let ratio = ratio * window_width;
                     menu.resize_sidebar(
@@ -435,7 +437,7 @@ impl Launcher {
                         if let Err(err) = std::fs::write(&path, bytes).path(path) {
                             self.set_error(err);
                         } else {
-                            return self.go_to_launch_screen(None::<String>);
+                            return self.go_to_main_menu_with_message(None::<String>);
                         }
                     }
                 }
@@ -513,6 +515,25 @@ impl Launcher {
         Task::none()
     }
 
+    fn core_list_loaded(&mut self, list: Vec<String>, is_server: bool) {
+        let persistent = self.config.c_persistent();
+        if is_server {
+            if let Some(n) = &persistent.selected_server {
+                if !list.contains(n) {
+                    self.unselect_instance();
+                }
+            }
+            self.server_list = Some(list);
+        } else {
+            if let Some(n) = &persistent.selected_instance {
+                if !list.contains(n) {
+                    self.unselect_instance();
+                }
+            }
+            self.client_list = Some(list);
+        }
+    }
+
     fn task_read_system_theme(&mut self) -> Task<Message> {
         const INTERVAL: usize = 4;
 
@@ -520,7 +541,7 @@ impl Launcher {
             .config
             .ui_mode
             .is_none_or(|n| n == LauncherThemeLightness::Auto);
-        let interval = self.tick_timer.is_multiple_of(INTERVAL);
+        let interval = self.tick_timer % INTERVAL == 0;
 
         if is_auto_theme && interval {
             Task::perform(tokio::task::spawn_blocking(dark_light::detect), |n| {
@@ -536,13 +557,11 @@ impl Launcher {
     pub fn load_tab_edit_instance(&mut self, new_tab: Option<LaunchTabId>) {
         if let State::Launch(_) = &self.state {
         } else {
-            _ = self.go_to_launch_screen(None::<String>);
+            _ = self.go_to_main_menu_with_message(None::<String>);
         }
 
         if let State::Launch(MenuLaunch {
-            tab,
-            tab_edit_instance: edit_instance,
-            ..
+            tab, edit_instance, ..
         }) = &mut self.state
         {
             if let (LaunchTabId::Edit, Some(selected_instance)) =

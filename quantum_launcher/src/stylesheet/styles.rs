@@ -248,8 +248,7 @@ impl LauncherTheme {
         let border = self.get_border_style(
             &style,
             match style {
-                StyleScrollable::Round => Color::Mid,
-                StyleScrollable::FlatDark => Color::SecondDark,
+                StyleScrollable::Round | StyleScrollable::FlatDark => Color::SecondDark,
                 StyleScrollable::FlatExtraDark => Color::Dark,
             },
         );
@@ -555,10 +554,7 @@ impl LauncherTheme {
                     StyleButton::FlatExtraDark | StyleButton::SemiExtraDark(_) => Color::ExtraDark,
                 };
                 widget::button::Style {
-                    background: Some({
-                        let (palette, color) = self.get_base(color);
-                        iced::Background::Color(palette.get(color))
-                    }),
+                    background: Some(self.get_bg(color)),
                     text_color: self.get(Color::White),
                     border: if let StyleButton::Round = style {
                         Border {
@@ -609,22 +605,52 @@ impl LauncherTheme {
                     StyleButton::FlatDark
                     | StyleButton::SemiDark(_)
                     | StyleButton::SemiDarkBorder(_)
-                    | StyleButton::FlatExtraDark
                     | StyleButton::SemiExtraDark(_) => Color::ExtraDark,
+                    StyleButton::FlatExtraDark => Color::SecondDark,
                 };
                 widget::button::Style {
                     background: Some(self.get_bg(color)),
                     text_color: self.get(Color::ExtraDark),
-                    border: self.get_border_style(
-                        &style,
-                        match style {
-                            StyleButton::Round => Color::SecondDark,
-                            _ => color,
-                        },
-                    ),
+                    border: if let StyleButton::Round = style {
+                        let (palette, color) = self.get_base(Color::SecondDark);
+                        iced::Border {
+                            color: palette.get(color),
+                            width: 0.5,
+                            radius: BORDER_RADIUS.into(),
+                        }
+                    } else {
+                        self.get_border_style(&style, color)
+                    },
                     ..Default::default()
                 }
             }
+        }
+    }
+
+    pub fn style_radio(&self, status: widget::radio::Status, color: Color) -> widget::radio::Style {
+        match status {
+            widget::radio::Status::Active { is_selected } => widget::radio::Style {
+                background: self.get_bg(Color::Dark),
+                dot_color: self.get(if is_selected {
+                    Color::SecondLight
+                } else {
+                    Color::ExtraDark
+                }),
+                border_width: BORDER_WIDTH,
+                border_color: self.get(Color::SecondLight),
+                text_color: Some(self.get(color)),
+            },
+            widget::radio::Status::Hovered { is_selected } => widget::radio::Style {
+                background: self.get_bg(Color::Dark),
+                dot_color: self.get(if is_selected {
+                    Color::White
+                } else {
+                    Color::SecondDark
+                }),
+                border_width: BORDER_WIDTH,
+                border_color: self.get(Color::SecondLight),
+                text_color: Some(self.get(color)),
+            },
         }
     }
 

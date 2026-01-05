@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     path::{Path, PathBuf},
     sync::mpsc::Sender,
 };
@@ -16,7 +17,7 @@ use ql_core::{
     ListEntry, Loader, RequestError,
 };
 use thiserror::Error;
-use tokio::sync::Mutex;
+use tokio::{fs, sync::Mutex};
 
 const DOWNLOAD_ERR_PREFIX: &str = "while creating instance:\n";
 
@@ -28,6 +29,7 @@ pub enum DownloadError {
     Request(#[from] RequestError),
     #[error("{DOWNLOAD_ERR_PREFIX}{0}")]
     Io(#[from] IoError),
+
     #[error("an instance with that name already exists: {0}")]
     InstanceAlreadyExists(String),
     #[error("{DOWNLOAD_ERR_PREFIX}version not found in manifest.json: {0}")]
@@ -35,12 +37,16 @@ pub enum DownloadError {
     #[error("{DOWNLOAD_ERR_PREFIX}in assets JSON, field not found: \"{0}\"")]
     AssetsJsonFieldNotFound(String),
     #[error("{DOWNLOAD_ERR_PREFIX}could not extract native libraries:\n{0}")]
-    NativesExtractError(#[from] zip::result::ZipError),
+    NativesExtractError(zip::result::ZipError),
     #[error("{DOWNLOAD_ERR_PREFIX}tried to remove natives outside folder. POTENTIAL SECURITY RISK AVOIDED")]
     NativesOutsideDirRemove,
 }
 
 impl_3_errs_jri!(DownloadError, Json, Request, Io);
+
+const SKIP_NATIVES: &[&str] = &[
+    "https://libraries.minecraft.net/ca/weblite/java-objc-bridge/1.0.0/java-objc-bridge-1.0.0.jar",
+];
 
 /// A struct that helps download a Minecraft instance.
 ///
@@ -50,6 +56,7 @@ pub(crate) struct GameDownloader {
     pub instance_dir: PathBuf,
     pub version_json: VersionDetails,
     sender: Option<Sender<DownloadProgress>>,
+    pub(crate) already_downloaded_natives: Mutex<HashSet<String>>,
 }
 
 impl GameDownloader {
@@ -73,12 +80,22 @@ impl GameDownloader {
             ));
         };
         let version_json =
-            GameDownloader::new_download_version_json(version, sender.as_ref()).await?;
+            match GameDownloader::new_download_version_json(version, sender.as_ref()).await {
+                Ok(n) => n,
+                Err(DownloadError::VersionNotFoundInManifest(v)) => {
+                    fs::remove_dir_all(&instance_dir)
+                        .await
+                        .path(&instance_dir)?;
+                    return Err(DownloadError::VersionNotFoundInManifest(v));
+                }
+                Err(err) => return Err(err),
+            };
 
         Ok(Self {
             instance_dir,
             version_json,
             sender,
+            already_downloaded_natives: already_downloaded_natives(),
         })
     }
 
@@ -92,6 +109,7 @@ impl GameDownloader {
             instance_dir,
             version_json,
             sender,
+            already_downloaded_natives: already_downloaded_natives(),
         }
     }
 
@@ -121,19 +139,12 @@ impl GameDownloader {
     }
 
     pub async fn download_logging_config(&self) -> Result<(), DownloadError> {
-        if let Some(ref logging) = self.version_json.logging {
-            info!("Downloading logging configuration.");
-            self.send_progress(DownloadProgress::DownloadingLoggingConfig, false);
-
+        if let Some(logging) = &self.version_json.logging {
             let log_config_name = format!("logging-{}", logging.client.file.id);
-
-            let log_config =
-                file_utils::download_file_to_string(&logging.client.file.url, false).await?;
-
             let config_path = self.instance_dir.join(log_config_name);
-            tokio::fs::write(&config_path, log_config.as_bytes())
-                .await
-                .path(config_path)?;
+
+            file_utils::download_file_to_path(&logging.client.file.url, false, &config_path)
+                .await?;
         }
         Ok(())
     }
@@ -409,4 +420,10 @@ impl GameDownloader {
 
         Ok(())
     }
+}
+
+fn already_downloaded_natives() -> Mutex<HashSet<String>> {
+    Mutex::new(HashSet::from_iter(
+        SKIP_NATIVES.iter().map(|n| n.to_string()),
+    ))
 }

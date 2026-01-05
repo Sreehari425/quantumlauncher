@@ -57,8 +57,7 @@ mod json_profiles;
 mod launcher_update_detector;
 
 pub use download::{create_instance, repeat_stage, DownloadError};
-pub use instance::launch::launch;
-pub use instance::list_versions::list_versions;
+pub use instance::{launch::launch, list_versions::list_versions, notes};
 pub use launcher_update_detector::{
     check_for_launcher_updates, install_launcher_update, UpdateCheckInfo, UpdateError,
 };
@@ -69,8 +68,8 @@ use semver::{BuildMetadata, Prerelease};
 
 const LAUNCHER_VERSION: semver::Version = semver::Version {
     major: 0,
-    minor: 4,
-    patch: 3,
+    minor: 5,
+    patch: 0,
     pre: Prerelease::EMPTY,
     build: BuildMetadata::EMPTY,
 };

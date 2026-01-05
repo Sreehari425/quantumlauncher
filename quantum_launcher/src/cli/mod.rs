@@ -1,3 +1,5 @@
+use std::sync::{LazyLock, RwLock};
+
 use clap::{Parser, Subcommand};
 use owo_colors::{OwoColorize, Style};
 use ql_core::{err, LAUNCHER_VERSION_NAME, REDACT_SENSITIVE_INFO, WEBSITE};
@@ -24,8 +26,14 @@ struct Cli {
     no_sandbox: Option<bool>,
     #[arg(long)]
     no_redact_info: bool,
+    #[arg(long)]
+    #[arg(help = "Enable experimental server manager (create, delete and host local servers)")]
+    enable_server_manager: bool,
+    #[arg(long)]
+    #[arg(help = "Enable experimental MultiMC import feature (in create instance screen)")]
+    enable_mmc_import: bool,
     #[arg(short, long)]
-    #[arg(help = "Manage servers, instead of instances")]
+    #[arg(help = "Operate on servers, not instances")]
     #[arg(hide = true)]
     server: bool,
 }
@@ -34,9 +42,9 @@ struct Cli {
 enum QSubCommand {
     #[command(about = "Creates a new Minecraft instance")]
     Create {
-        instance_name: String,
         #[arg(help = "Version of Minecraft to download")]
         version: String,
+        instance_name: String,
         #[arg(short, long)]
         #[arg(help = "Skips downloading game assets (sound/music) to speed up downloads")]
         skip_assets: bool,
@@ -76,14 +84,14 @@ Supported loaders: Fabric, Forge, Quilt, NeoForge, Paper, OptiFine
 (case-insensitive)"
 )]
 enum QLoader {
-    #[command(long_about = r"
-Installs the specified loader
+    #[command(about = "Installs the specified loader")]
+    #[command(long_about = r"Installs the specified loader
 
 Supported loaders: Fabric, Forge, Quilt, NeoForge, Paper, OptiFine
 (case-insensitive)")]
     Install {
-        instance: String,
         loader: String,
+        instance: String,
         more: Option<String>,
         #[arg(long)]
         version: Option<String>,
@@ -96,6 +104,9 @@ Supported loaders: Fabric, Forge, Quilt, NeoForge, Paper, OptiFine
         instance: String,
     },
 }
+
+pub static EXPERIMENTAL_SERVERS: LazyLock<RwLock<bool>> = LazyLock::new(|| RwLock::new(false));
+pub static EXPERIMENTAL_MMC_IMPORT: LazyLock<RwLock<bool>> = LazyLock::new(|| RwLock::new(false));
 
 fn long_about() -> String {
     format!(
@@ -178,6 +189,8 @@ fn get_right_text() -> String {
 pub fn start_cli(is_dir_err: bool) {
     let cli = Cli::parse();
     *REDACT_SENSITIVE_INFO.lock().unwrap() = !cli.no_redact_info;
+    *EXPERIMENTAL_SERVERS.write().unwrap() = cli.enable_server_manager;
+    *EXPERIMENTAL_MMC_IMPORT.write().unwrap() = cli.enable_mmc_import;
     if let Some(subcommand) = cli.command {
         if is_dir_err {
             std::process::exit(1);
@@ -190,26 +203,24 @@ pub fn start_cli(is_dir_err: bool) {
                 version,
                 skip_assets,
             } => {
-                quit(command::create_instance(
+                quit(runtime.block_on(command::create_instance(
                     instance_name,
                     version,
                     skip_assets,
-                    &runtime,
                     cli.server,
-                ));
+                )));
             }
             QSubCommand::Launch {
                 instance_name,
                 username,
                 use_account,
             } => {
-                quit(command::launch_instance(
+                quit(runtime.block_on(command::launch_instance(
                     instance_name,
                     username,
                     use_account,
-                    &runtime,
                     cli.server,
-                ));
+                )));
             }
             QSubCommand::ListAvailableVersions => {
                 command::list_available_versions();

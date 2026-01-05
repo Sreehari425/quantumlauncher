@@ -1,4 +1,5 @@
 use chrono::DateTime;
+use ini::Ini;
 use std::{
     path::Path,
     sync::{mpsc::Sender, Arc, Mutex},
@@ -7,11 +8,13 @@ use std::{
 use crate::{import::pipe_progress, import::OUT_OF, InstancePackageError};
 use ql_core::{
     do_jobs, err, file_utils, info,
+    jarmod::{JarMod, JarMods},
     json::{
         FabricJSON, InstanceConfigJson, Manifest, VersionDetails, V_1_12_2,
         V_OFFICIAL_FABRIC_SUPPORT,
     },
     pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, ListEntry, Loader,
+    LAUNCHER_DIR,
 };
 use ql_mod_manager::loaders::fabric::{self, get_list_of_versions_from_backend};
 use serde::{Deserialize, Serialize};
@@ -26,7 +29,7 @@ pub struct MmcPack {
 #[allow(non_snake_case)]
 pub struct MmcPackComponent {
     pub cachedName: String,
-    pub cachedVersion: String,
+    pub cachedVersion: Option<String>,
     pub uid: String,
 }
 
@@ -37,6 +40,7 @@ pub struct InstanceRecipe {
     loader: Option<Loader>,
     loader_version: Option<String>,
     force_vanilla_launch: bool,
+    jarmods: Vec<String>,
 }
 
 impl InstanceRecipe {
@@ -73,8 +77,8 @@ pub async fn import(
     let mmc_pack: MmcPack = serde_json::from_str(mmc_pack).json(mmc_pack.to_owned())?;
 
     let ini = read_config_ini(temp_dir).await?;
-    let instance = get_instance(&ini)?;
-    let instance_recipe = get_instance_recipe(&mmc_pack).await?;
+    let (instance, instance_recipe) =
+        tokio::try_join!(get_instance(&ini), get_instance_recipe(&mmc_pack))?;
 
     create_minecraft_instance(
         download_assets,
@@ -88,12 +92,46 @@ pub async fn import(
 
     copy_files(temp_dir, sender, &instance).await?;
 
+    tokio::try_join!(
+        setup_details(&instance),
+        async {
+            let mut config = InstanceConfigJson::read(&instance).await?;
+            setup_config(&ini, &instance_recipe, &mut config);
+            config.save(&instance).await?;
+            Ok(())
+        },
+        // Instance notes
+        async {
+            let notes = general_get(&ini, "notes").unwrap_or_default();
+            if !notes.is_empty() {
+                ql_instances::notes::write(instance.clone(), notes.to_owned()).await?;
+            }
+            Ok(())
+        },
+        async {
+            let mut jarmods = JarMods::read(&instance).await?;
+            jarmods
+                .mods
+                .extend(instance_recipe.jarmods.iter().map(|n| JarMod {
+                    filename: n.clone(),
+                    enabled: true,
+                }));
+            jarmods.save(&instance).await?;
+            Ok(())
+        }
+    )?;
+
+    info!("Finished importing MultiMC instance");
+    Ok(instance)
+}
+
+async fn setup_details(instance: &InstanceSelection) -> Result<(), InstancePackageError> {
     if instance
         .get_instance_path()
         .join("patches/org.lwjgl.json")
         .exists()
     {
-        let mut details = VersionDetails::load(&instance).await?;
+        let mut details = VersionDetails::load(instance).await?;
         details.libraries.retain(|lib| {
             if let Some(name) = &lib.name {
                 if name.starts_with("org.mcphackers:legacy-lwjgl3:") {
@@ -103,44 +141,80 @@ pub async fn import(
             }
             true
         });
-        details.save(&instance).await?;
+        details.save(instance).await?;
     }
-
-    let mut config = InstanceConfigJson::read(&instance).await?;
-    setup_config(&ini, &instance_recipe, &mut config);
-    config.save(&instance).await?;
-
-    info!("Finished importing MultiMC instance");
-    Ok(instance)
+    Ok(())
 }
 
-fn setup_config(ini: &ini::Ini, instance_recipe: &InstanceRecipe, config: &mut InstanceConfigJson) {
+fn setup_config(ini: &Ini, instance_recipe: &InstanceRecipe, config: &mut InstanceConfigJson) {
     if instance_recipe.force_vanilla_launch {
         config.main_class_override = Some("net.minecraft.client.Minecraft".to_owned());
     }
+    if let Ok("true") = general_get(ini, "CloseAfterLaunch") {
+        config.close_on_start = Some(true);
+    }
+    // TODO: `LaunchMaximized: bool`
 
-    if let Some(jvmargs) = ini.get_from(Some("General"), "JvmArgs") {
-        let mut java_args = config.java_args.clone().unwrap_or_default();
-        java_args.extend(jvmargs.split_whitespace().map(str::to_owned));
-        config.java_args = Some(java_args);
+    if let Ok(win_height) = general_get(ini, "MinecraftWinHeight") {
+        if let Ok(height) = win_height.parse::<u32>() {
+            config.c_global_settings().window_height = Some(height);
+        }
+    }
+    if let Ok(win_width) = general_get(ini, "MinecraftWinWidth") {
+        if let Ok(width) = win_width.parse::<u32>() {
+            config.c_global_settings().window_width = Some(width);
+        }
+    }
+
+    if let Ok(jvmargs) = general_get(ini, "JvmArgs") {
+        config
+            .java_args
+            .get_or_insert_with(Vec::new)
+            .extend(jvmargs.split_whitespace().map(str::to_owned));
+    }
+
+    if let Ok(prefix) = general_get(ini, "WrapperCommand") {
+        config.c_global_settings().pre_launch_prefix = Some(
+            prefix
+                .split_whitespace()
+                .filter(|n| !n.is_empty())
+                .map(str::to_owned)
+                .collect(),
+        );
     }
 }
 
-fn get_instance(ini: &ini::Ini) -> Result<InstanceSelection, InstancePackageError> {
-    let instance_name = ini
-        .get_from(Some("General"), "name")
-        .or(ini.get_from(None::<String>, "name"))
-        .ok_or_else(|| {
-            InstancePackageError::IniFieldMissing("General".to_owned(), "name".to_owned())
-        })?
-        .to_owned();
+fn general_get<'a>(ini: &'a Ini, key: &str) -> Result<&'a str, InstancePackageError> {
+    ini.get_from(Some("General"), key)
+        .or(ini.get_from(None::<String>, key))
+        .ok_or_else(|| InstancePackageError::IniFieldMissing("General".to_owned(), key.to_owned()))
+}
+
+async fn get_instance(ini: &Ini) -> Result<InstanceSelection, InstancePackageError> {
+    let mut instance_name = general_get(ini, "name")?.to_owned();
+
+    // If `MyInstance` exists, try `MyInstance (1)`, `(2)`...
+    let instance_dir = LAUNCHER_DIR.join("instances");
+    let mut path = instance_dir.join(&instance_name);
+
+    if fs::try_exists(&path).await.path(&path)? {
+        let mut name_i = 1;
+        let mut name = String::new();
+        while fs::try_exists(&path).await.path(&path)? {
+            name = format!("{instance_name} ({name_i})");
+            path = instance_dir.join(&name);
+            name_i += 1;
+        }
+        instance_name = name;
+    }
+
     Ok(InstanceSelection::new(&instance_name, false))
 }
 
-async fn read_config_ini(temp_dir: &Path) -> Result<ini::Ini, InstancePackageError> {
+async fn read_config_ini(temp_dir: &Path) -> Result<Ini, InstancePackageError> {
     let ini_path = temp_dir.join("instance.cfg");
     let ini = fs::read_to_string(&ini_path).await.path(ini_path)?;
-    Ok(ini::Ini::load_from_str(&filter_bytearray(&ini))?)
+    Ok(Ini::load_from_str(&filter_bytearray(&ini))?)
 }
 
 async fn get_instance_recipe(mmc_pack: &MmcPack) -> Result<InstanceRecipe, InstancePackageError> {
@@ -150,36 +224,43 @@ async fn get_instance_recipe(mmc_pack: &MmcPack) -> Result<InstanceRecipe, Insta
         loader: None,
         loader_version: None,
         force_vanilla_launch: false,
+        jarmods: Vec::new(),
     };
 
     for component in &mmc_pack.components {
         if component.uid.starts_with("custom.jarmod.") {
             recipe.force_vanilla_launch = true; // ?
         }
+        let version = component.cachedVersion.clone().unwrap_or_default();
 
         match component.cachedName.as_str() {
-            "Minecraft" => recipe.mc_version.clone_from(&component.cachedVersion),
+            "Minecraft" => recipe.mc_version.clone_from(&version),
 
             "Forge" => {
                 recipe.loader = Some(Loader::Forge);
-                recipe.loader_version = Some(component.cachedVersion.clone());
+                recipe.loader_version = Some(version);
             }
             "NeoForge" => {
                 recipe.loader = Some(Loader::Neoforge);
-                recipe.loader_version = Some(component.cachedVersion.clone());
+                recipe.loader_version = Some(version);
             }
             "Fabric Loader" => {
                 recipe.loader = Some(Loader::Fabric);
-                recipe.loader_version = Some(component.cachedVersion.clone());
+                recipe.loader_version = Some(version);
             }
             "Quilt Loader" => {
                 recipe.loader = Some(Loader::Quilt);
-                recipe.loader_version = Some(component.cachedVersion.clone());
+                recipe.loader_version = Some(version);
             }
 
             "LWJGL 3" => recipe.is_lwjgl3 = true,
 
             "LWJGL 2" | "Intermediary Mappings" => {}
+            name if name.contains("(jar mod)") => {
+                if let Some(jarmod_filename) = component.uid.split('.').next_back() {
+                    recipe.jarmods.push(format!("{jarmod_filename}.jar"));
+                }
+            }
             name => err!("Unknown MultiMC Component: {name}"),
         }
     }
@@ -420,11 +501,11 @@ async fn mmc_forge(
 
 fn filter_bytearray(input: &str) -> String {
     // PrismLauncher puts some weird ByteArray
-    // field in the INI config file, that our cute little ini parser
+    // field in the INI config file, that `ini`
     // doesn't understand. So we have to filter it out.
     input
         .lines()
-        .filter(|n| !n.starts_with("mods_Page\\Columns"))
+        .filter(|n| !n.contains("\\Columns=@ByteArray"))
         .collect::<Vec<_>>()
         .join("\n")
 }

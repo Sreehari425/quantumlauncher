@@ -1,8 +1,9 @@
 use iced::widget;
+use ql_instances::auth::AccountType;
 
 use crate::{
     config::LauncherConfig,
-    icon_manager,
+    icons,
     menu_renderer::{
         get_mode_selector,
         onboarding::x86_warning,
@@ -49,7 +50,7 @@ impl MenuWelcome {
                 widget::Space::with_height(5),
                 center_x("Oh, and also..."),
                 center_x(
-                    button_with_icon(icon_manager::chat(), "Join our Discord", 16)
+                    button_with_icon(icons::discord(), "Join our Discord", 16)
                         .on_press(Message::CoreOpenLink(DISCORD.to_owned()))
                 ),
                 widget::Space::with_height(5),
@@ -62,20 +63,23 @@ impl MenuWelcome {
                 widget::vertical_space(),
                 center_x(
                     widget::button("Login to Microsoft").on_press(Message::Account(
-                        AccountMessage::OpenMicrosoft {
-                            is_from_welcome_screen: true
+                        AccountMessage::OpenMenu {
+                            is_from_welcome_screen: true,
+                            kind: AccountType::Microsoft
                         }
                     ))
                 ),
                 center_x(widget::button("Login to ely.by").on_press(Message::Account(
-                    AccountMessage::OpenElyBy {
-                        is_from_welcome_screen: true
+                    AccountMessage::OpenMenu {
+                        is_from_welcome_screen: true,
+                        kind: AccountType::ElyBy
                     }
                 ))),
                 center_x(
                     widget::button("Login to littleskin").on_press(Message::Account(
-                        AccountMessage::OpenLittleSkin {
-                            is_from_welcome_screen: true
+                        AccountMessage::OpenMenu {
+                            is_from_welcome_screen: true,
+                            kind: AccountType::LittleSkin
                         }
                     ))
                 ),

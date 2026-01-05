@@ -1,5 +1,5 @@
-use iced::Task;
 use iced::{futures::executor::block_on, keyboard::Modifiers};
+use iced::{widget, Task};
 use ql_core::{
     err, err_no_log, jarmod::JarMods, InstanceSelection, IntoIoError, IntoStringError, ModId,
     SelectedMod,
@@ -27,62 +27,36 @@ impl Launcher {
             | ManageModsMessage::ToggleFinished(Err(err))
             | ManageModsMessage::UpdateModsFinished(Err(err)) => self.set_error(err),
 
-            ManageModsMessage::ToggleCheckbox(name, id) => {
+            ManageModsMessage::ListScrolled(offset) => {
                 if let State::EditMods(menu) = &mut self.state {
-                    menu.modal = None;
-                    let selected_mod = SelectedMod::from_pair(name, id);
-
-                    let pressed_ctrl = self.modifiers_pressed.contains(Modifiers::COMMAND);
-                    let pressed_shift = self.modifiers_pressed.contains(Modifiers::SHIFT);
-
-                    if pressed_ctrl {
-                        menu.shift_selected_mods.clear();
-                    }
-                    if !pressed_ctrl && !pressed_shift {
-                        menu.selected_mods.clear();
-                    }
-
-                    let Some(idx) = menu
-                        .sorted_mods_list
-                        .iter()
-                        .position(|n| selected_mod == *n)
-                    else {
-                        debug_assert!(false, "couldn't find index of mod");
-                        return Task::none();
-                    };
-
-                    match (pressed_shift, menu.list_shift_index) {
-                        // Range selection, shift pressed
-                        (true, Some(shift_idx)) if shift_idx != idx => {
-                            menu.selected_mods
-                                .retain(|n| !menu.shift_selected_mods.contains(n));
-                            menu.shift_selected_mods.clear();
-
-                            let (idx, shift_idx) =
-                                (std::cmp::min(idx, shift_idx), std::cmp::max(idx, shift_idx));
-
-                            for i in idx..=shift_idx {
-                                let current_mod: SelectedMod =
-                                    menu.sorted_mods_list[i].clone().into();
-                                if menu.selected_mods.insert(current_mod.clone()) {
-                                    menu.shift_selected_mods.insert(current_mod);
-                                }
-                            }
-                        }
-
-                        // Normal selection
-                        _ => {
-                            menu.list_shift_index = Some(idx);
-                            if menu.selected_mods.contains(&selected_mod) {
-                                menu.selected_mods.remove(&selected_mod);
-                            } else {
-                                menu.selected_mods.insert(selected_mod);
-                            }
-                        }
-                    }
-
-                    menu.update_selected_state();
+                    menu.list_scroll = offset;
                 }
+            }
+            ManageModsMessage::SelectEnsure(name, id) => {
+                let State::EditMods(menu) = &mut self.state else {
+                    return Task::none();
+                };
+                let selected_mod = SelectedMod::from_pair(name, id);
+                menu.list_shift_index = Some(menu.index(&selected_mod));
+                menu.shift_selected_mods.clear();
+                menu.selected_mods.clear();
+                menu.selected_mods.insert(selected_mod);
+                menu.update_selected_state();
+                return menu.scroll_fix();
+            }
+            ManageModsMessage::SelectMod(name, id) => {
+                let State::EditMods(menu) = &mut self.state else {
+                    return Task::none();
+                };
+
+                let selected_mod = SelectedMod::from_pair(name, id);
+
+                let pressed_ctrl = self.modifiers_pressed.contains(Modifiers::COMMAND);
+                let pressed_shift = self.modifiers_pressed.contains(Modifiers::SHIFT);
+
+                menu.select_mod(selected_mod, pressed_ctrl, pressed_shift);
+                menu.update_selected_state();
+                return menu.scroll_fix();
             }
             ManageModsMessage::AddFile(delete_file) => {
                 return self.add_file_select(delete_file);
@@ -297,6 +271,7 @@ impl Launcher {
                             self.window_state.mouse_pos,
                         ));
                     }
+                    return menu.scroll_fix();
                 }
             }
         }
@@ -420,7 +395,7 @@ impl Launcher {
 
     pub fn update_manage_jar_mods(&mut self, msg: ManageJarModsMessage) -> Task<Message> {
         match msg {
-            ManageJarModsMessage::Open => match block_on(JarMods::get(self.instance())) {
+            ManageJarModsMessage::Open => match block_on(JarMods::read(self.instance())) {
                 Ok(jarmods) => {
                     self.state = State::EditJarMods(MenuEditJarMods {
                         jarmods,
@@ -716,4 +691,78 @@ async fn delete_file_wrapper(path: PathBuf) -> Result<(), String> {
         return Ok(());
     }
     tokio::fs::remove_file(&path).await.path(path).strerr()
+}
+
+impl MenuEditMods {
+    pub fn select_mod(
+        &mut self,
+        selected_mod: SelectedMod,
+        pressed_ctrl: bool,
+        pressed_shift: bool,
+    ) {
+        self.modal = None;
+
+        match (pressed_ctrl, pressed_shift) {
+            (true, _) => {
+                self.shift_selected_mods.clear();
+            }
+            (_, false) => {
+                let single = if let Some(m) = self.selected_mods.iter().next() {
+                    selected_mod == *m && self.selected_mods.len() == 1
+                } else {
+                    false
+                };
+
+                if !pressed_ctrl && !single {
+                    self.selected_mods.clear();
+                }
+            }
+            _ => {}
+        }
+
+        let idx = self.index(&selected_mod);
+
+        match (pressed_shift, self.list_shift_index) {
+            // Range selection, shift pressed
+            (true, Some(shift_idx)) if shift_idx != idx => {
+                self.selected_mods
+                    .retain(|n| !self.shift_selected_mods.contains(n));
+                self.shift_selected_mods.clear();
+
+                let (idx, shift_idx) =
+                    (std::cmp::min(idx, shift_idx), std::cmp::max(idx, shift_idx));
+
+                for i in idx..=shift_idx {
+                    let current_mod: SelectedMod = self.sorted_mods_list[i].clone().into();
+                    if self.selected_mods.insert(current_mod.clone()) {
+                        self.shift_selected_mods.insert(current_mod);
+                    }
+                }
+            }
+
+            // Normal selection
+            _ => {
+                self.list_shift_index = Some(idx);
+                if self.selected_mods.contains(&selected_mod) {
+                    self.selected_mods.remove(&selected_mod);
+                } else {
+                    self.selected_mods.insert(selected_mod);
+                }
+            }
+        }
+    }
+
+    fn index(&self, m: &SelectedMod) -> usize {
+        if let Some(idx) = self.sorted_mods_list.iter().position(|n| m == n) {
+            idx
+        } else {
+            debug_assert!(false, "couldn't find index of mod");
+            0
+        }
+    }
+
+    fn scroll_fix(&self) -> Task<Message> {
+        let id = widget::scrollable::Id::new("MenuEditMods:mods");
+        widget::scrollable::scroll_to(id, self.list_scroll)
+    }
 }

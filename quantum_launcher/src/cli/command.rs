@@ -1,6 +1,6 @@
 use owo_colors::{OwoColorize, Style};
 use ql_core::{
-    err, info,
+    eeprintln, err, info,
     json::{InstanceConfigJson, VersionDetails},
     InstanceSelection, IntoStringError, ListEntry, Loader, OptifineUniqueVersion, LAUNCHER_DIR,
 };
@@ -19,7 +19,7 @@ use super::PrintCmd;
 pub fn list_available_versions() {
     use std::io::Write;
 
-    eprintln!("Listing downloadable versions...");
+    eeprintln!("Listing downloadable versions...");
     let (versions, _) = match tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(ql_instances::list_versions())
@@ -132,23 +132,17 @@ pub fn list_instances(
     Ok(())
 }
 
-pub fn create_instance(
+pub async fn create_instance(
     instance_name: String,
     version: String,
     skip_assets: bool,
-    runtime: &tokio::runtime::Runtime,
     servers: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let entry = ListEntry::new(version);
     if servers {
-        runtime.block_on(ql_servers::create_server(instance_name, entry, None))?;
+        ql_servers::create_server(instance_name, entry, None).await?;
     } else {
-        runtime.block_on(ql_instances::create_instance(
-            instance_name,
-            entry,
-            None,
-            !skip_assets,
-        ))?;
+        ql_instances::create_instance(instance_name, entry, None, !skip_assets).await?;
     }
 
     Ok(())
@@ -203,27 +197,27 @@ fn confirm_action() -> bool {
     res
 }
 
-pub fn launch_instance(
+pub async fn launch_instance(
     instance_name: String,
     username: String,
     use_account: bool,
-    runtime: &tokio::runtime::Runtime,
     servers: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let account = refresh_account(&username, use_account, runtime)?;
+    let account = refresh_account(&username, use_account).await?;
 
     let child = if servers {
         // TODO: stdin input
-        runtime.block_on(ql_servers::run(instance_name.clone(), None))?
+        ql_servers::run(instance_name.clone(), None).await?
     } else {
-        runtime.block_on(ql_instances::launch(
+        ql_instances::launch(
             instance_name.clone(),
             username,
             None,
             account.clone(),
             None, // No global defaults in CLI mode
             Vec::new(),
-        ))?
+        )
+        .await?
     };
 
     let mut censors = Vec::new();
@@ -232,7 +226,7 @@ pub fn launch_instance(
     }
 
     if let Some(f) = child.read_logs(censors, None) {
-        match runtime.block_on(f) {
+        match f.await {
             Ok((s, _, diag)) => {
                 info!("Game exited with code {s}");
                 if let Some(diag) = diag {
@@ -246,21 +240,18 @@ pub fn launch_instance(
     Ok(())
 }
 
-fn refresh_account(
+async fn refresh_account(
     username: &String,
     use_account: bool,
-    runtime: &tokio::runtime::Runtime,
 ) -> Result<Option<auth::AccountData>, Box<dyn std::error::Error>> {
     Ok(if use_account {
         let config = LauncherConfig::load_s()?;
-        let Some(accounts) = config.accounts else {
-            err!("You haven't paired any accounts yet! Use the graphical interface to add some.");
-            exit(1);
-        };
-        let Some((real_name, account)) = accounts.get_key_value(username).or_else(|| {
-            accounts
-                .iter()
-                .find(|n| n.1.username_nice.as_ref().is_some_and(|n| n == username))
+        let Some((real_name, account)) = config.accounts.as_ref().and_then(|accounts| {
+            accounts.get_key_value(username).or_else(|| {
+                accounts
+                    .iter()
+                    .find(|n| n.1.username_nice.as_ref().is_some_and(|n| n == username))
+            })
         }) else {
             err!("No logged-in account called {username:?} was found!");
             exit(1);
@@ -275,19 +266,18 @@ fn refresh_account(
                     AccountType::LittleSkin
                 };
                 let refresh_token = auth::read_refresh_token(real_name, account_type)?;
-                Some(runtime.block_on(auth::yggdrasil::login_refresh(
-                    real_name.clone(),
-                    refresh_token,
-                    account_type,
-                ))?)
+                Some(
+                    auth::yggdrasil::login_refresh(
+                        real_name.to_owned(),
+                        refresh_token,
+                        account_type,
+                    )
+                    .await?,
+                )
             }
             _ => {
                 let refresh_token = auth::read_refresh_token(real_name, AccountType::Microsoft)?;
-                Some(runtime.block_on(auth::ms::login_refresh(
-                    real_name.clone(),
-                    refresh_token,
-                    None,
-                ))?)
+                Some(auth::ms::login_refresh(real_name.clone(), refresh_token, None).await?)
             }
         }
     } else {
@@ -328,6 +318,7 @@ pub async fn loader(cmd: QLoader, servers: bool) -> Result<(), Box<dyn std::erro
                 .copied()
                 .find(|n| n.to_modrinth_str().eq_ignore_ascii_case(&loader))
             else {
+                err!("Invalid loader: {loader}");
                 exit(1)
             };
 

@@ -1,17 +1,19 @@
 use iced::{widget, Alignment, Length};
 use ql_core::{Progress, WEBSITE};
+use ql_instances::auth::AccountType;
 
-use crate::menu_renderer::ui::{back_button, button_with_icon, sidebar_button};
-use crate::state::ImageState;
-use crate::stylesheet::styles::LauncherThemeLightness;
+use crate::menu_renderer::{back_button, button_with_icon, sidebar_button};
 use crate::{
     config::LauncherConfig,
-    icon_manager,
+    icons,
     state::{
         AccountMessage, InstallModsMessage, LauncherSettingsMessage, LicenseTab, ManageModsMessage,
         MenuCurseforgeManualDownload, MenuLauncherUpdate, MenuLicense, Message, ProgressBar,
     },
-    stylesheet::{color::Color, styles::LauncherTheme},
+    stylesheet::{
+        color::Color,
+        styles::{LauncherTheme, LauncherThemeLightness},
+    },
 };
 
 mod create;
@@ -24,6 +26,7 @@ mod onboarding;
 mod settings;
 /// Helpful UI components/handrolled widgets
 pub mod ui;
+pub use ui::*;
 
 pub use onboarding::changelog;
 
@@ -48,7 +51,7 @@ fn tsubtitle(t: &LauncherTheme) -> widget::text::Style {
 
 fn sidebar<'a>(
     id: &'static str,
-    header: Option<Element<'static>>,
+    header: Option<Element<'a>>,
     children: impl IntoIterator<Item = Element<'a>>,
 ) -> widget::Container<'a, Message, LauncherTheme> {
     widget::container(
@@ -67,7 +70,9 @@ fn sidebar<'a>(
     .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark))
 }
 
-impl ImageState {}
+fn dots(tick_timer: usize) -> String {
+    ".".repeat((tick_timer % 3) + 1)
+}
 
 impl MenuLauncherUpdate {
     pub fn view(&'_ self) -> Element<'_> {
@@ -80,7 +85,7 @@ impl MenuLauncherUpdate {
             "A new launcher update has been found! Do you want to download it?",
             widget::Row::new()
             .push_maybe((!cfg!(target_os = "macos")).then_some(
-                button_with_icon(icon_manager::download(), "Download", 16)
+                button_with_icon(icons::download(), "Download", 16)
                     .on_press(Message::UpdateDownloadStart))
             )
             .push(back_button().on_press(
@@ -90,7 +95,7 @@ impl MenuLauncherUpdate {
                     is_server: None
                 }
             ))
-            .push(button_with_icon(icon_manager::globe(), "Open Website", 16)
+            .push(button_with_icon(icons::globe(), "Open Website", 16)
                 .on_press(Message::CoreOpenLink(WEBSITE.to_owned())))
             .spacing(5).wrap(),
         )
@@ -121,9 +126,9 @@ pub fn get_mode_selector(config: &LauncherConfig) -> Element<'static> {
     widget::row(LauncherThemeLightness::ALL.iter().map(|n| {
         let name = widget::text(n.to_string()).size(14);
         let icon = match n {
-            LauncherThemeLightness::Light => icon_manager::mode_light_with_size(14),
-            LauncherThemeLightness::Dark => icon_manager::mode_dark_with_size(14),
-            LauncherThemeLightness::Auto => icon_manager::update_with_size(14),
+            LauncherThemeLightness::Light => icons::mode_light_s(14),
+            LauncherThemeLightness::Dark => icons::mode_dark_s(14),
+            LauncherThemeLightness::Auto => icons::refresh_s(14),
         };
 
         if *n == theme {
@@ -160,7 +165,7 @@ impl<T: Progress> ProgressBar<T> {
                 widget::text(message)
             )
         } else {
-            widget::column!(widget::progress_bar(0.0..=total, self.num),)
+            widget::column!(widget::progress_bar(0.0..=total, self.num))
         }
         .spacing(10)
     }
@@ -183,6 +188,7 @@ impl MenuCurseforgeManualDownload {
                     widget::row![
                         widget::button(widget::text("Open link").size(14)).on_press(Message::CoreOpenLink(url)),
                         widget::text(&entry.name)
+                            .shaping(widget::text::Shaping::Advanced)
                     ]
                     .align_y(Alignment::Center)
                     .spacing(10)
@@ -258,18 +264,21 @@ pub fn view_account_login<'a>() -> Element<'a> {
             widget::column![
                 widget::text("Login").size(20),
                 widget::button("Login with Microsoft").on_press(Message::Account(
-                    AccountMessage::OpenMicrosoft {
-                        is_from_welcome_screen: false
+                    AccountMessage::OpenMenu {
+                        is_from_welcome_screen: false,
+                        kind: AccountType::Microsoft
                     }
                 )),
                 widget::button("Login with ely.by").on_press(Message::Account(
-                    AccountMessage::OpenElyBy {
-                        is_from_welcome_screen: false
+                    AccountMessage::OpenMenu {
+                        is_from_welcome_screen: false,
+                        kind: AccountType::ElyBy
                     }
                 )),
                 widget::button("Login with littleskin").on_press(Message::Account(
-                    AccountMessage::OpenLittleSkin {
-                        is_from_welcome_screen: false
+                    AccountMessage::OpenMenu {
+                        is_from_welcome_screen: false,
+                        kind: AccountType::LittleSkin
                     }
                 )),
             ]
@@ -357,10 +366,10 @@ pub fn view_confirm<'a>(
         widget::row![
             widget::button(
                 widget::row![
-                    icon_manager::cross().style(t_white),
+                    icons::cross().style(t_white),
                     widget::text("No").style(t_white)
                 ]
-                .align_y(iced::alignment::Vertical::Center)
+                .align_y(Alignment::Center)
                 .spacing(10)
                 .padding(3),
             )
@@ -370,10 +379,10 @@ pub fn view_confirm<'a>(
             }),
             widget::button(
                 widget::row![
-                    icon_manager::tick().style(t_white),
+                    icons::deselectall().style(t_white),
                     widget::text("Yes").style(t_white)
                 ]
-                .align_y(iced::alignment::Vertical::Center)
+                .align_y(Alignment::Center)
                 .spacing(10)
                 .padding(3),
             )

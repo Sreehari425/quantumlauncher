@@ -3,7 +3,9 @@ use std::{
     time::Instant,
 };
 
-use crate::{config::SIDEBAR_WIDTH, message_handler::get_locally_installed_mods};
+use crate::{
+    config::SIDEBAR_WIDTH, message_handler::get_locally_installed_mods, state::NotesMessage,
+};
 use frostmark::MarkState;
 use iced::{
     widget::{self, scrollable::AbsoluteOffset},
@@ -12,9 +14,9 @@ use iced::{
 use ql_core::{
     file_utils::DirItem,
     jarmod::JarMods,
-    json::{InstanceConfigJson, VersionDetails},
-    DownloadProgress, GenericProgress, InstanceSelection, ListEntry, ModId, OptifineUniqueVersion,
-    Save, SelectedMod, StoreBackendType,
+    json::{instance_config::MainClassMode, InstanceConfigJson, VersionDetails},
+    DownloadProgress, GenericProgress, InstanceSelection, IntoStringError, ListEntry, ModId,
+    OptifineUniqueVersion, Save, SelectedMod, StoreBackendType,
 };
 use ql_mod_manager::loaders::paper::PaperVersion;
 use ql_mod_manager::{
@@ -50,13 +52,34 @@ impl std::fmt::Display for LaunchTabId {
     }
 }
 
+pub enum InstanceNotes {
+    Viewing {
+        content: String,
+        mark_state: MarkState,
+    },
+    Editing {
+        original: String,
+        text_editor: widget::text_editor::Content,
+    },
+}
+
+impl InstanceNotes {
+    pub fn get_text(&self) -> &str {
+        match self {
+            InstanceNotes::Viewing { content, .. } => content,
+            InstanceNotes::Editing { original, .. } => original,
+        }
+    }
+}
+
 /// The home screen of the launcher.
 pub struct MenuLaunch {
     pub message: String,
     pub login_progress: Option<ProgressBar<GenericProgress>>,
 
     pub tab: LaunchTabId,
-    pub tab_edit_instance: Option<MenuEditInstance>,
+    pub edit_instance: Option<MenuEditInstance>,
+    pub notes: Option<InstanceNotes>,
     pub tab_saves: Option<Result<SavesInfo, String>>,
 
     pub sidebar_scrolled: f32,
@@ -88,7 +111,7 @@ impl MenuLaunch {
         Self {
             message,
             tab: LaunchTabId::default(),
-            tab_edit_instance: None,
+            edit_instance: None,
             tab_saves: None,
             login_progress: None,
             sidebar_scrolled: 100.0,
@@ -97,6 +120,7 @@ impl MenuLaunch {
             log_scroll: 0,
             is_uploading_mclogs: false,
             sidebar_split,
+            notes: None,
         }
     }
 
@@ -104,6 +128,13 @@ impl MenuLaunch {
         if let Some(split) = self.sidebar_split {
             self.sidebar_grid_state.resize(split, width);
         }
+    }
+
+    pub fn reload_notes(&mut self, instance: InstanceSelection) -> Task<Message> {
+        self.notes = None;
+        Task::perform(ql_instances::notes::read(instance), |n| {
+            Message::Notes(NotesMessage::Loaded(n.strerr()))
+        })
     }
 }
 
@@ -116,11 +147,17 @@ pub struct SavesInfo {
 /// The screen where you can edit an instance/server.
 pub struct MenuEditInstance {
     pub config: InstanceConfigJson,
+
+    // Renaming Instance:
     pub is_editing_name: bool,
     pub instance_name: String,
     pub old_instance_name: String,
+    // Changing RAM:
     pub slider_value: f32,
     pub slider_text: String,
+
+    pub main_class_mode: Option<MainClassMode>,
+    pub arg_split_by_space: bool,
 }
 
 pub enum SelectedState {
@@ -198,6 +235,7 @@ pub struct MenuEditMods {
     pub update_check_handle: Option<iced::task::Handle>,
     pub available_updates: Vec<(ModId, String, bool)>,
 
+    pub list_scroll: AbsoluteOffset,
     /// Index of the item selected before pressing shift
     pub list_shift_index: Option<usize>,
     pub drag_and_drop_hovered: bool,
@@ -296,21 +334,26 @@ pub struct MenuEditJarMods {
 }
 
 pub enum MenuCreateInstance {
-    LoadingList {
-        _handle: iced::task::Handle,
-    },
-    Choosing {
-        is_server: bool,
-        search_box: String,
-        show_category_dropdown: bool,
-        selected_categories: HashSet<ql_core::ListEntryKind>,
-        // Instance info:
-        selected_version: ListEntry,
-        instance_name: String,
-        download_assets: bool,
-    },
+    Choosing(MenuCreateInstanceChoosing),
     DownloadingInstance(ProgressBar<DownloadProgress>),
     ImportingInstance(ProgressBar<GenericProgress>),
+}
+
+pub struct MenuCreateInstanceChoosing {
+    pub _loading_list_handle: iced::task::Handle,
+    pub list: Option<Vec<ListEntry>>,
+    // UI:
+    pub is_server: bool,
+    pub search_box: String,
+    pub show_category_dropdown: bool,
+    pub selected_categories: HashSet<ql_core::ListEntryKind>,
+    // Sidebar resizing:
+    pub sidebar_grid_state: widget::pane_grid::State<bool>,
+    pub sidebar_split: Option<widget::pane_grid::Split>,
+    // Instance info:
+    pub selected_version: ListEntry,
+    pub instance_name: String,
+    pub download_assets: bool,
 }
 
 pub enum MenuInstallFabric {
@@ -354,9 +397,16 @@ pub struct MenuInstallForge {
     pub is_java_getting_installed: bool,
 }
 
+#[allow(unused)]
 pub struct MenuLauncherUpdate {
     pub url: String,
     pub progress: Option<ProgressBar<GenericProgress>>,
+}
+
+#[derive(Clone, Copy)]
+pub enum ModOperation {
+    Downloading,
+    Deleting,
 }
 
 pub struct MenuModsDownload {
@@ -365,7 +415,7 @@ pub struct MenuModsDownload {
     pub description: Option<MarkState>,
 
     pub mod_descriptions: HashMap<ModId, String>,
-    pub mods_download_in_progress: HashMap<ModId, String>,
+    pub mods_download_in_progress: HashMap<ModId, (String, ModOperation)>,
     pub opened_mod: Option<usize>,
     pub latest_load: Instant,
     pub scroll_offset: AbsoluteOffset,
@@ -413,6 +463,7 @@ impl MenuModsDownload {
 pub struct MenuLauncherSettings {
     pub temp_scale: f64,
     pub selected_tab: LauncherSettingsTab,
+    pub arg_split_by_space: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -498,7 +549,9 @@ pub struct MenuExportInstance {
 pub struct MenuLoginAlternate {
     pub username: String,
     pub password: String,
+
     pub show_password: bool,
+    pub is_incorrect_password: bool,
 
     pub is_loading: bool,
     pub otp: Option<String>,

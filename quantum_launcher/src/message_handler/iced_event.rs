@@ -1,9 +1,10 @@
 use crate::message_update::MSG_RESIZE;
 use crate::state::{
-    CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage, LauncherSettingsTab,
-    MenuCreateInstance, MenuEditMods, MenuEditPresets, MenuExportInstance, MenuInstallFabric,
-    MenuInstallOptifine, MenuInstallPaper, MenuLauncherSettings, MenuLauncherUpdate,
-    MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, Message, State,
+    AutoSaveKind, CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage,
+    LauncherSettingsTab, MenuCreateInstance, MenuCreateInstanceChoosing, MenuEditMods,
+    MenuEditPresets, MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper,
+    MenuLauncherSettings, MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods,
+    Message, State,
 };
 use iced::{
     keyboard::{self, key::Named, Key},
@@ -24,11 +25,17 @@ impl Launcher {
                 }
                 iced::window::Event::Resized(size) => {
                     self.window_state.size = (size.width, size.height);
-                    // Save window size to config for persistence
+
+                    // Remember window height
                     let window = self.config.window.get_or_insert_with(Default::default);
                     window.width = Some(size.width);
                     window.height = Some(size.height);
+                    if window.save_window_size {
+                        self.autosave.remove(&AutoSaveKind::LauncherConfig);
+                    }
 
+                    // Clear the "Resize the window to apply changes"
+                    // after changing UI scale
                     if let State::GenericMessage(msg) = &self.state {
                         if msg == MSG_RESIZE {
                             return self.update(Message::LauncherSettings(
@@ -104,23 +111,8 @@ impl Launcher {
         status: iced::event::Status,
     ) -> Task<Message> {
         let ignored = matches!(status, iced::event::Status::Ignored);
-        if ignored {
-            if let Key::Named(Named::Escape) = key {
-                return self.key_escape_back(true).1;
-            }
-            if let Key::Named(Named::ArrowUp) = key {
-                return self.key_change_selected_instance(false);
-            } else if let Key::Named(Named::ArrowDown) = key {
-                return self.key_change_selected_instance(true);
-            } else if let Key::Named(Named::Enter) = key {
-                if modifiers.command() {
-                    return self.launch_start();
-                }
-            } else if let Key::Named(Named::Backspace) = key {
-                if modifiers.command() {
-                    return Task::done(Message::LaunchKill);
-                }
-            }
+        if let (Key::Named(Named::Escape), true) = (key.clone(), ignored) {
+            return self.key_escape_back(true).1;
         }
 
         if let Key::Character(ch) = &key {
@@ -132,11 +124,14 @@ impl Launcher {
                 &self.state,
             ) {
                 ("q", true, _, true, _) => Message::CoreTryQuit,
+
+                // ========
+                // MANAGE MODS MENU
+                // ========
                 ("a", true, _, true, State::EditMods(_)) => {
                     Message::ManageMods(crate::state::ManageModsMessage::SelectAll)
                 }
-
-                // Ctrl-F search in mods list
+                // Ctrl-F search in mods list (with toggling)
                 #[rustfmt::skip]
                 ("f", true, _, _, State::EditMods(MenuEditMods { search: Some(_), .. })) => {
                     Message::ManageMods(crate::state::ManageModsMessage::SetSearch(None))
@@ -147,14 +142,21 @@ impl Launcher {
                     ))),
                     Message::CoreFocusNext,
                 ]),
-                ("f", true, _, _, State::Create(MenuCreateInstance::Choosing { .. }))
-                | ("/", _, _, true, State::Create(MenuCreateInstance::Choosing { .. })) => {
-                    Message::CoreFocusNext
-                }
 
+                // Search Action (general)
+                ("f", true, _, _, State::Create(MenuCreateInstance::Choosing { .. }))
+                | ("/", _, _, true, State::Create(MenuCreateInstance::Choosing { .. }))
+                | ("f", true, _, _, State::ModsDownload(_))
+                | ("/", _, _, true, State::ModsDownload(_)) => Message::CoreFocusNext,
+
+                // Misc
                 ("a", true, _, true, State::EditJarMods(_)) => {
                     Message::ManageJarMods(crate::state::ManageJarModsMessage::SelectAll)
                 }
+
+                // ========
+                // MAIN MENU
+                // ========
                 ("n", true, _, _, State::Launch(n)) => {
                     Message::CreateInstance(CreateInstanceMessage::ScreenOpen {
                         is_server: n.is_viewing_server,
@@ -167,6 +169,9 @@ impl Launcher {
                     Message::LaunchChangeTab(LaunchTabId::Edit)
                 }
                 ("3", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
+                    Message::LaunchChangeTab(LaunchTabId::Saves)
+                }
+                ("4", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
                     Message::LaunchChangeTab(LaunchTabId::Log)
                 }
                 (",", true, _, _, State::Launch(_)) => {
@@ -191,7 +196,7 @@ impl Launcher {
             } else if let Key::Named(Named::ArrowDown) = key {
                 return Task::done(Message::LicenseChangeTab(menu.selected_tab.next()));
             }
-        } else if let State::Launch(_) = &self.state {
+        } else if let (State::Launch(_), true) = (&self.state, ignored) {
             if let Key::Named(Named::ArrowUp) = key {
                 return self.key_change_selected_instance(false);
             } else if let Key::Named(Named::ArrowDown) = key {
@@ -203,6 +208,16 @@ impl Launcher {
             } else if let Key::Named(Named::Backspace) = key {
                 if modifiers.command() {
                     return Task::done(Message::LaunchKill);
+                }
+            }
+        } else if let State::Create(MenuCreateInstance::Choosing(MenuCreateInstanceChoosing {
+            list: Some(_),
+            ..
+        })) = &self.state
+        {
+            if let Key::Named(Named::Enter) = key {
+                if modifiers.command() {
+                    return Task::done(Message::CreateInstance(CreateInstanceMessage::Start));
                 }
             }
         }
@@ -276,9 +291,9 @@ impl Launcher {
     }
 
     pub fn key_escape_back(&mut self, affect: bool) -> (bool, Task<Message>) {
-        let mut should_return_to_main_screen = false;
-        let mut should_return_to_mods_screen = false;
-        let mut should_return_to_download_screen = false;
+        let mut ret_to_main_screen = false;
+        let mut ret_to_mods = false;
+        let mut ret_to_mod_store = false;
 
         if affect && self.hide_submenu() {
             return (true, Task::none());
@@ -290,9 +305,7 @@ impl Launcher {
                 mod_update_progress: None,
                 ..
             })
-            | State::Create(
-                MenuCreateInstance::LoadingList { .. } | MenuCreateInstance::Choosing { .. },
-            )
+            | State::Create(MenuCreateInstance::Choosing { .. })
             | State::Error { .. }
             | State::UpdateFound(MenuLauncherUpdate { progress: None, .. })
             | State::LauncherSettings(_)
@@ -303,7 +316,7 @@ impl Launcher {
                 is_loading: false, ..
             })
             | State::Welcome(_) => {
-                should_return_to_main_screen = true;
+                ret_to_main_screen = true;
             }
             State::License(_) => {
                 if affect {
@@ -312,6 +325,7 @@ impl Launcher {
                         self.state = State::LauncherSettings(MenuLauncherSettings {
                             temp_scale: self.config.ui_scale.unwrap_or(1.0),
                             selected_tab: LauncherSettingsTab::About,
+                            arg_split_by_space: true,
                         });
                     }
                 }
@@ -323,6 +337,7 @@ impl Launcher {
                 }
             }
             State::InstallOptifine(MenuInstallOptifine::Choosing { .. })
+            | State::InstallFabric(MenuInstallFabric::Loading { .. })
             | State::InstallFabric(MenuInstallFabric::Loaded { progress: None, .. })
             | State::EditJarMods(_)
             | State::ExportMods(_)
@@ -339,13 +354,13 @@ impl Launcher {
             | State::InstallPaper(
                 MenuInstallPaper::Loading { .. } | MenuInstallPaper::Loaded { .. },
             ) => {
-                should_return_to_mods_screen = true;
+                ret_to_mods = true;
             }
             State::ModsDownload(menu) if menu.opened_mod.is_some() => {
-                should_return_to_download_screen = true;
+                ret_to_mod_store = true;
             }
             State::ModsDownload(menu) if menu.mods_download_in_progress.is_empty() => {
-                should_return_to_mods_screen = true;
+                ret_to_mods = true;
             }
             State::InstallPaper(_)
             | State::ExportInstance(_)
@@ -369,13 +384,13 @@ impl Launcher {
         }
 
         if affect {
-            if should_return_to_main_screen {
-                return (true, self.go_to_launch_screen::<String>(None));
+            if ret_to_main_screen {
+                return (true, self.go_to_main_menu_with_message(None::<String>));
             }
-            if should_return_to_mods_screen {
+            if ret_to_mods {
                 return (true, self.go_to_edit_mods_menu(false));
             }
-            if should_return_to_download_screen {
+            if ret_to_mod_store {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.opened_mod = None;
                     menu.description = None;
@@ -391,9 +406,7 @@ impl Launcher {
         }
 
         (
-            should_return_to_main_screen
-                | should_return_to_mods_screen
-                | should_return_to_download_screen,
+            ret_to_main_screen | ret_to_mods | ret_to_mod_store,
             Task::none(),
         )
     }
@@ -408,10 +421,10 @@ impl Launcher {
                 menu.search = None;
                 return true;
             }
-        } else if let State::Create(MenuCreateInstance::Choosing {
+        } else if let State::Create(MenuCreateInstance::Choosing(MenuCreateInstanceChoosing {
             show_category_dropdown,
             ..
-        }) = &mut self.state
+        })) = &mut self.state
         {
             if *show_category_dropdown {
                 *show_category_dropdown = false;
@@ -480,24 +493,20 @@ impl Launcher {
             0
         };
 
-        let task_reload_saves = if did_scroll {
-            self.load_tab_edit_instance(None);
-            self.load_tab_saves(None, true)
-        } else {
-            Task::none()
-        };
-
         let scroll_pos = idx as f32 / (list.len() as f32 - 1.0);
         let scroll_pos = scroll_pos * sidebar_height;
-        Task::batch([
-            iced::widget::scrollable::scroll_to(
-                iced::widget::scrollable::Id::new("MenuLaunch:sidebar"),
-                iced::widget::scrollable::AbsoluteOffset {
-                    x: 0.0,
-                    y: scroll_pos,
-                },
-            ),
-            task_reload_saves,
-        ])
+        let scroll_task = iced::widget::scrollable::scroll_to(
+            iced::widget::scrollable::Id::new("MenuLaunch:sidebar"),
+            iced::widget::scrollable::AbsoluteOffset {
+                x: 0.0,
+                y: scroll_pos,
+            },
+        );
+
+        if did_scroll {
+            Task::batch([scroll_task, self.on_instance_selected()])
+        } else {
+            scroll_task
+        }
     }
 }

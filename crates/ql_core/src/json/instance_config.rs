@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -156,10 +156,7 @@ impl InstanceConfigJson {
         )
     }
 
-    /// Gets Java arguments with global fallback/combination support.
-    ///
-    /// The behavior depends on the instance's `java_args_mode`.
-    /// See [`JavaArgsMode`] documentation for more info.
+    /// Gets Java arguments (combining them with global args based on configuration)
     #[must_use]
     #[allow(clippy::missing_panics_doc)] // Won't panic
     pub fn get_java_args(&self, global_args: &[String]) -> Vec<String> {
@@ -173,28 +170,19 @@ impl InstanceConfigJson {
         instance_args
     }
 
-    pub fn c_launch_prefix(&mut self) -> &mut Vec<String> {
-        self.c_global_settings()
-            .pre_launch_prefix
-            .get_or_insert_with(Vec::new)
-    }
-
-    /// Gets pre-launch prefix commands with global fallback/combination support.
+    /// Gets pre-launch prefix commands, (empty if none).
     ///
-    /// The behavior depends on the instance's `pre_launch_prefix_mode`:
-    /// - `Fallback`: Returns instance prefix if meaningful, otherwise global prefix
-    /// - `Override`: Returns instance prefix only (ignores global even if instance is empty)
-    /// - `CombineGlobalLocal`: Returns global prefix + instance prefix (global first, then instance)
-    /// - `CombineLocalGlobal`: Returns instance prefix + global prefix (instance first, then global)
-    ///
-    /// Returns an empty vector if no prefixes should be used.
+    /// Whether to combine with global prefixes, and how,
+    /// depends on the instance's [`PreLaunchPrefixMode`].
     #[must_use]
-    pub fn setup_launch_prefix(&mut self, global_prefix: &[String]) -> Vec<String> {
+    pub fn build_launch_prefix(&mut self, global_prefix: &[String]) -> Vec<String> {
         let mode = self.pre_launch_prefix_mode.unwrap_or_default();
 
         let mut instance_prefix: Vec<String> = self
-            .c_launch_prefix()
+            .c_global_settings()
+            .pre_launch_prefix
             .iter_mut()
+            .flatten()
             .map(|n| n.trim().to_owned())
             .filter(|n| !n.is_empty())
             .collect();
@@ -206,20 +194,7 @@ impl InstanceConfigJson {
             .collect();
 
         match mode {
-            PreLaunchPrefixMode::Fallback => {
-                if instance_prefix.is_empty() {
-                    global_prefix.clone()
-                } else {
-                    instance_prefix
-                }
-            }
-            PreLaunchPrefixMode::Disable => {
-                if instance_prefix.is_empty() {
-                    Vec::new()
-                } else {
-                    instance_prefix
-                }
-            }
+            PreLaunchPrefixMode::Disable => instance_prefix,
             PreLaunchPrefixMode::CombineGlobalLocal => {
                 global_prefix.extend(instance_prefix);
                 global_prefix
@@ -234,6 +209,44 @@ impl InstanceConfigJson {
     pub fn c_global_settings(&mut self) -> &mut GlobalSettings {
         self.global_settings
             .get_or_insert_with(GlobalSettings::default)
+    }
+
+    #[must_use]
+    pub fn get_main_class_mode(&self) -> Option<MainClassMode> {
+        self.custom_jar
+            .as_ref()
+            .is_some_and(|t| t.autoset_main_class)
+            .then_some(MainClassMode::SafeFallback)
+            .or(self
+                .main_class_override
+                .as_ref()
+                .is_some_and(|n| !n.is_empty())
+                .then_some(MainClassMode::Custom))
+    }
+
+    #[must_use]
+    pub fn get_java_override(&self) -> Option<PathBuf> {
+        fn inner(path: &str) -> Option<PathBuf> {
+            if path.is_empty() {
+                return None;
+            }
+            if path.starts_with("~/") || path.starts_with("~\\") {
+                if let Some(home_dir) = dirs::home_dir() {
+                    let without_tilde = &path[2..];
+                    let full_path = home_dir.join(without_tilde);
+                    return Some(full_path);
+                }
+            }
+            Some(PathBuf::from(path))
+        }
+        let java_override = self.java_override.as_ref()?.trim();
+        let path = inner(java_override)?;
+
+        if !path.exists() {
+            return None;
+        }
+
+        Some(path)
     }
 }
 
@@ -260,7 +273,7 @@ pub struct GlobalSettings {
     pub window_height: Option<u32>,
     /// This is an optional list of commands to prepend
     /// to the launch command (e.g., "prime-run" for NVIDIA GPU usage on Linux).
-    // Since: v0.4.3
+    // Since: v0.5.0
     pub pre_launch_prefix: Option<Vec<String>>,
 }
 
@@ -272,19 +285,17 @@ pub struct VersionInfo {
 /// Defines how instance pre-launch prefix commands should interact with global pre-launch prefix commands
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum PreLaunchPrefixMode {
-    /// Use global prefix only if instance prefix is empty
-    #[serde(rename = "fallback")]
-    Fallback,
     /// Only use instance prefix
     #[serde(rename = "disable")]
     Disable,
-    /// Combine global prefix + instance prefix (in order)
-    #[serde(rename = "combine_global_local")]
-    #[default]
-    CombineGlobalLocal,
     /// Combine instance prefix + global prefix (in order)
     #[serde(rename = "combine_local_global")]
     CombineLocalGlobal,
+    /// Combine global prefix + instance prefix (in order)
+    #[serde(rename = "combine_global_local")]
+    #[default]
+    #[serde(other)]
+    CombineGlobalLocal,
 }
 
 impl PreLaunchPrefixMode {
@@ -292,28 +303,26 @@ impl PreLaunchPrefixMode {
         Self::CombineGlobalLocal,
         Self::CombineLocalGlobal,
         Self::Disable,
-        Self::Fallback,
     ];
 
     #[must_use]
-    pub fn get_description(self) -> &'static str {
+    pub const fn get_description(self) -> &'static str {
         match self {
-            PreLaunchPrefixMode::Fallback => "Use global prefix only when instance has no prefix",
-            PreLaunchPrefixMode::Disable => "Use only instance prefix, ignore global prefix",
-            PreLaunchPrefixMode::CombineGlobalLocal => {
-                "Combine global + instance prefix (global first, then instance)"
-            }
-            PreLaunchPrefixMode::CombineLocalGlobal => {
-                "Combine instance + global prefix (instance first, then global)"
-            }
+            PreLaunchPrefixMode::Disable => "Only use instance prefix",
+            PreLaunchPrefixMode::CombineGlobalLocal => "Global + instance",
+            PreLaunchPrefixMode::CombineLocalGlobal => "Instance + global",
         }
+    }
+
+    #[must_use]
+    pub const fn is_disabled(self) -> bool {
+        matches!(self, PreLaunchPrefixMode::Disable)
     }
 }
 
 impl std::fmt::Display for PreLaunchPrefixMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PreLaunchPrefixMode::Fallback => write!(f, "Fallback"),
             PreLaunchPrefixMode::Disable => write!(f, "Disable"),
             PreLaunchPrefixMode::CombineGlobalLocal => write!(f, "Combine Global+Local (default)"),
             PreLaunchPrefixMode::CombineLocalGlobal => write!(f, "Combine Local+Global"),
@@ -326,4 +335,10 @@ impl std::fmt::Display for PreLaunchPrefixMode {
 pub struct CustomJarConfig {
     pub name: String,
     pub autoset_main_class: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MainClassMode {
+    SafeFallback,
+    Custom,
 }

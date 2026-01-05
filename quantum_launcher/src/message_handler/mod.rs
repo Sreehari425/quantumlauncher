@@ -1,15 +1,18 @@
 use crate::config::SIDEBAR_WIDTH;
-use crate::state::{GameProcess, MenuInstallOptifine};
+use crate::state::{
+    AutoSaveKind, GameProcess, MenuCreateInstance, MenuCreateInstanceChoosing, MenuInstallOptifine,
+};
 use crate::tick::sort_dependencies;
 use crate::{
     get_entries,
     state::{
         EditPresetsMessage, ManageModsMessage, MenuEditInstance, MenuEditMods, MenuInstallForge,
-        MenuLaunch, MenuLauncherUpdate, ProgressBar, SelectedState, State, OFFLINE_ACCOUNT_NAME,
+        MenuLaunch, ProgressBar, SelectedState, State, OFFLINE_ACCOUNT_NAME,
     },
     Launcher, Message,
 };
 use iced::futures::executor::block_on;
+use iced::widget::scrollable::AbsoluteOffset;
 use iced::Task;
 use ql_core::json::instance_config::ModTypeInfo;
 use ql_core::json::VersionDetails;
@@ -30,12 +33,35 @@ use std::{
 };
 use tokio::io::AsyncWriteExt;
 
-pub const SIDEBAR_LIMIT_RIGHT: f32 = 120.0;
+pub const SIDEBAR_LIMIT_RIGHT: f32 = 140.0;
 pub const SIDEBAR_LIMIT_LEFT: f32 = 135.0;
 
 mod iced_event;
 
 impl Launcher {
+    pub fn on_instance_selected(&mut self) -> Task<Message> {
+        let instance = self.instance().clone();
+
+        self.load_tab_edit_instance(None);
+        let tsaves = self.load_tab_saves(None, true);
+
+        {
+            let persistent = self.config.c_persistent();
+            if persistent.selected_remembered {
+                match instance.clone() {
+                    InstanceSelection::Instance(n) => persistent.selected_instance = Some(n),
+                    InstanceSelection::Server(n) => persistent.selected_server = Some(n),
+                }
+                self.autosave.remove(&AutoSaveKind::LauncherConfig);
+            }
+        }
+        if let State::Launch(menu) = &mut self.state {
+            Task::batch([menu.reload_notes(instance), tsaves])
+        } else {
+            tsaves
+        }
+    }
+
     pub fn launch_game(&mut self, account_data: Option<AccountData>) -> Task<Message> {
         let username = if let Some(account_data) = &account_data {
             // Logged in account
@@ -121,18 +147,31 @@ impl Launcher {
     }
 
     pub fn delete_instance_confirm(&mut self) -> Task<Message> {
-        if let State::ConfirmAction { .. } = &self.state {
-            let selected_instance = self.instance();
-            let deleted_instance_dir = selected_instance.get_instance_path();
-            if let Err(err) = std::fs::remove_dir_all(&deleted_instance_dir) {
-                self.set_error(err);
-                return Task::none();
-            }
+        let State::ConfirmAction { .. } = &self.state else {
+            return Task::none();
+        };
 
-            self.selected_instance = None;
-            return self.go_to_launch_screen(Some("Deleted Instance".to_owned()));
+        let selected_instance = self.instance();
+        let is_server = selected_instance.is_server();
+        let deleted_instance_dir = selected_instance.get_instance_path();
+        if let Err(err) = std::fs::remove_dir_all(&deleted_instance_dir) {
+            self.set_error(err);
+            return Task::none();
         }
-        Task::none()
+
+        self.unselect_instance();
+        if is_server {
+            self.go_to_server_manage_menu(Some("Deleted Server".to_owned()))
+        } else {
+            self.go_to_launch_screen(Some("Deleted Instance".to_owned()))
+        }
+    }
+
+    pub fn unselect_instance(&mut self) {
+        self.selected_instance = None;
+        self.config.c_persistent().selected_instance = None;
+        self.config.c_persistent().selected_server = None;
+        self.autosave.remove(&AutoSaveKind::LauncherConfig);
     }
 
     pub fn load_edit_instance_inner(
@@ -154,12 +193,14 @@ impl Launcher {
         let instance_name = selected_instance.get_name();
 
         *edit_instance = Some(MenuEditInstance {
+            main_class_mode: config_json.get_main_class_mode(),
             config: config_json,
             slider_value,
             instance_name: instance_name.to_owned(),
             old_instance_name: instance_name.to_owned(),
             slider_text: format_memory(memory_mb),
             is_editing_name: false,
+            arg_split_by_space: true,
         });
         Ok(())
     }
@@ -218,6 +259,7 @@ impl Launcher {
                 search: None,
                 width_name: 220.0,
                 list_shift_index: None,
+                list_scroll: AbsoluteOffset::default(),
             });
 
             Ok(Task::batch([update_local_mods_task, update_cmd]))
@@ -297,7 +339,18 @@ impl Launcher {
             menu_launch.resize_sidebar(SIDEBAR_WIDTH);
             self.state = State::Launch(menu_launch);
         }
-        Task::perform(get_entries(true), Message::CoreListLoaded)
+
+        let get_entries = Task::perform(get_entries(true), Message::CoreListLoaded);
+        match &self.selected_instance {
+            Some(InstanceSelection::Instance(_)) => self.selected_instance = None,
+            Some(i @ InstanceSelection::Server(_)) => {
+                if let State::Launch(menu) = &mut self.state {
+                    return Task::batch([get_entries, menu.reload_notes(i.clone())]);
+                }
+            }
+            None => {}
+        }
+        get_entries
     }
 
     pub fn install_forge(&mut self, kind: ForgeKind) -> Task<Message> {
@@ -355,10 +408,27 @@ impl Launcher {
         message: Option<impl ToString>,
     ) -> Task<Message> {
         let message = message.map(|n| n.to_string());
-        match &self.selected_instance {
-            None | Some(InstanceSelection::Instance(_)) => self.go_to_launch_screen(message),
-            Some(InstanceSelection::Server(_)) => self.go_to_server_manage_menu(message),
+        if self.server_selected() {
+            self.go_to_server_manage_menu(message)
+        } else {
+            self.go_to_launch_screen::<String>(message)
         }
+    }
+
+    pub fn server_selected(&self) -> bool {
+        self.selected_instance
+            .as_ref()
+            .is_some_and(|n| n.is_server())
+            || if let State::Launch(menu) = &self.state {
+                menu.is_viewing_server
+            } else if let State::Create(MenuCreateInstance::Choosing(
+                MenuCreateInstanceChoosing { is_server, .. },
+            )) = &self.state
+            {
+                *is_server
+            } else {
+                false
+            }
     }
 
     pub fn get_selected_dot_minecraft_dir(&self) -> Option<PathBuf> {
@@ -448,7 +518,9 @@ impl Launcher {
     }
     #[cfg(feature = "auto_update")]
     pub fn update_download_start(&mut self) -> Task<Message> {
-        if let State::UpdateFound(MenuLauncherUpdate { url, progress, .. }) = &mut self.state {
+        if let State::UpdateFound(crate::state::MenuLauncherUpdate { url, progress, .. }) =
+            &mut self.state
+        {
             let (sender, update_receiver) = std::sync::mpsc::channel();
             *progress = Some(ProgressBar::with_recv_and_msg(
                 update_receiver,

@@ -24,22 +24,20 @@ pub enum DownloadProgress {
         out_of: usize,
     },
     DownloadingJar,
-    DownloadingLoggingConfig,
 }
 
 impl Display for DownloadProgress {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DownloadProgress::DownloadingJsonManifest => write!(f, "Downloading Manifest JSON."),
-            DownloadProgress::DownloadingVersionJson => write!(f, "Downloading Version JSON."),
+            DownloadProgress::DownloadingJsonManifest => write!(f, "Downloading Manifest JSON"),
+            DownloadProgress::DownloadingVersionJson => write!(f, "Downloading Version JSON"),
             DownloadProgress::DownloadingAssets { progress, out_of } => {
-                write!(f, "Downloading asset {progress} / {out_of}.")
+                write!(f, "Downloading asset {progress} / {out_of}")
             }
             DownloadProgress::DownloadingLibraries { progress, out_of } => {
-                write!(f, "Downloading library {progress} / {out_of}.")
+                write!(f, "Downloading library {progress} / {out_of}")
             }
-            DownloadProgress::DownloadingJar => write!(f, "Downloading Game Jar file."),
-            DownloadProgress::DownloadingLoggingConfig => write!(f, "Downloading logging config."),
+            DownloadProgress::DownloadingJar => write!(f, "Downloading Game Jar file"),
         }
     }
 }
@@ -48,17 +46,14 @@ impl From<&DownloadProgress> for f32 {
     fn from(val: &DownloadProgress) -> Self {
         match val {
             DownloadProgress::DownloadingJsonManifest => 0.1,
-            DownloadProgress::DownloadingVersionJson => 0.3,
-            DownloadProgress::DownloadingLoggingConfig => 0.5,
-            DownloadProgress::DownloadingJar => 0.7,
-            DownloadProgress::DownloadingLibraries {
-                progress: progress_num,
-                out_of,
-            } => (*progress_num as f32 / *out_of as f32) + 1.0,
-            DownloadProgress::DownloadingAssets {
-                progress: progress_num,
-                out_of,
-            } => (*progress_num as f32 * 8.0 / *out_of as f32) + 2.0,
+            DownloadProgress::DownloadingVersionJson => 0.2,
+            DownloadProgress::DownloadingJar => 0.3,
+            DownloadProgress::DownloadingLibraries { progress, out_of } => {
+                (*progress as f32 / *out_of as f32) + 1.0
+            }
+            DownloadProgress::DownloadingAssets { progress, out_of } => {
+                (*progress as f32 * 8.0 / *out_of as f32) + 2.0
+            }
         }
     }
 }

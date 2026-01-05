@@ -2,24 +2,30 @@
 name = "tests"
 version = "0.1.0"
 edition = "2021"
+license = "GPL-3.0-only"
 
 [dependencies]
-ql_instances = { path = "../crates/ql_instances" }
-ql_mod_manager = { path = "../crates/ql_mod_manager" }
-ql_core = { path = "../crates/ql_core" }
-ql_servers = { path = "../crates/ql_servers" }
-ql_packager = { path = "../crates/ql_packager" }
+ql_instances.path = "../crates/ql_instances"
+ql_mod_manager.path = "../crates/ql_mod_manager"
+ql_core.path = "../crates/ql_core"
 
-tokio = { workspace = true }
-clap = { workspace = true }
-owo-colors = { workspace = true }
+tokio.workspace = true
+clap.workspace = true
+owo-colors.workspace = true
 
 duct = "1"
 sysinfo = "0.36"
 which = "8.0.0"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+core-graphics = { version = "0.25", features = ["catalina"] }
+core-foundation = "0.10"
+
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.52.0", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_System_Threading"] }
+windows = { version = "0.52", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_System_Threading"] }
 
 [features]
 default = ["tokio/rt-multi-thread"]
+simulate_linux_arm64 = ["ql_instances/simulate_linux_arm64"]
+simulate_linux_arm32 = ["ql_instances/simulate_linux_arm32"]
+simulate_macos_arm64 = ["ql_instances/simulate_macos_arm64"]

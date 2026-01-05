@@ -111,20 +111,6 @@ impl GameLauncher {
             }
         }
 
-        // Only applies to experimental builds of QuantumLauncher
-        // made after v0.4.1 but before the next update
-        if self.version_json.needs_launchwrapper_fix() {
-            // Fixes a crash in modern Minecraft
-
-            // WTF: No one will need this except for me
-            // who plays a lot of instances created in this version
-            // and daily-drives bleeding edge code.
-
-            // Thanks to [@Lassebq](https://github.com/Lassebq)
-            // for pointing this out :)
-            game_arguments.push("--disableSkinFix".to_owned());
-        }
-
         // Add custom resolution arguments if specified
         // Priority: Instance-specific setting > Global default > Minecraft default
         let (width_to_use, height_to_use) = self
@@ -140,7 +126,7 @@ impl GameLauncher {
             game_arguments.push(height.to_string());
         }
 
-        game_arguments.extend(self.config_json.game_args.iter().flatten().cloned());
+        game_arguments.extend(self.config_json.game_args.clone().unwrap_or_default());
 
         Ok(game_arguments)
     }
@@ -521,7 +507,7 @@ impl GameLauncher {
     }
 
     fn main_class_override(&self) -> Option<String> {
-        let main_class = if self.version_json.is_before_or_eq(V_PRECLASSIC_LAST) {
+        let forced_main_class = if self.version_json.is_before_or_eq(V_PRECLASSIC_LAST) {
             "com.mojang.minecraft.RubyDung"
         } else if self.version_json.is_before_or_eq(V_1_5_2) {
             "net.minecraft.launchwrapper.Launch"
@@ -532,7 +518,7 @@ impl GameLauncher {
             .custom_jar
             .as_ref()
             .is_some_and(|n| n.autoset_main_class)
-            .then_some(main_class.to_owned())
+            .then(|| forced_main_class.to_owned())
             .or_else(|| {
                 self.config_json
                     .main_class_override
@@ -735,7 +721,6 @@ impl GameLauncher {
         };
         if main_class != "org.mcphackers.launchwrapper.Launch" && library_path.contains("20230311")
         {
-            println!("  (skipping json-20230311.jar)");
             return Ok(());
         }
         if library_path.contains("paulscode")
@@ -758,10 +743,9 @@ impl GameLauncher {
     }
 
     pub async fn get_java_command(&mut self) -> Result<(Command, PathBuf), GameLaunchError> {
-        if let Some(java_override) = &self.config_json.java_override {
-            if !java_override.is_empty() {
-                return Ok((Command::new(java_override), PathBuf::from(java_override)));
-            }
+        if let Some(java_override) = self.config_json.get_java_override() {
+            info!("Java (override): {java_override:?}\n");
+            return Ok((Command::new(&java_override), java_override));
         }
         let version = if let Some(version) = self.version_json.javaVersion.clone() {
             version.into()
@@ -779,7 +763,7 @@ impl GameLauncher {
             self.java_install_progress_sender.take().as_ref(),
         )
         .await?;
-        info!("Java: {program:?}");
+        info!("Java: {program:?}\n");
         Ok((Command::new(&program), program))
     }
 
@@ -809,11 +793,10 @@ impl GameLauncher {
     ) -> Result<(Command, PathBuf), GameLaunchError> {
         let (mut command, mut path) = self.get_java_command().await?;
 
-        let prefix_commands = self.config_json.setup_launch_prefix(
-            &self
-                .global_settings
+        let prefix_commands = self.config_json.build_launch_prefix(
+            self.global_settings
                 .as_ref()
-                .and_then(|n| n.pre_launch_prefix.clone())
+                .and_then(|n| n.pre_launch_prefix.as_deref())
                 .unwrap_or_default(),
         );
         if prefix_commands.is_empty() {

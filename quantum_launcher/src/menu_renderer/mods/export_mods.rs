@@ -2,12 +2,8 @@ use iced::{widget, Length};
 use ql_core::{ModId, SelectedMod};
 
 use crate::{
-    icon_manager,
-    menu_renderer::{
-        tsubtitle,
-        ui::{back_button, underline},
-        Element,
-    },
+    icons,
+    menu_renderer::{back_button, tsubtitle, underline, Element},
     state::{ExportModsMessage, ManageModsMessage, MenuExportMods, Message},
     stylesheet::{
         color::Color,
@@ -50,7 +46,7 @@ impl MenuExportMods {
         widget::column![
             widget::text("Choose export format:").size(20),
             widget::row![
-                icon_manager::text_file_with_size(28),
+                icons::file_info_s(28),
                 widget::column![
                     widget::text("Export as Plain Text").size(17),
                     widget::text("Simple text file with mod names, one per line")
@@ -78,7 +74,7 @@ impl MenuExportMods {
             .align_y(iced::Alignment::Center)
             .padding([10, 20]),
             widget::row![
-                icon_manager::text_file_with_size(28),
+                icons::file_info_s(28),
                 widget::column![
                     widget::text("Export as Markdown")
                         .size(17)
@@ -101,7 +97,7 @@ impl MenuExportMods {
                             use crate::stylesheet::widgets::StyleButton;
                             theme.style_button(status, StyleButton::FlatDark)
                         })
-                        .on_press(Message::ExportMods(ExportModsMessage::ExportAsMarkdown,))
+                        .on_press(Message::ExportMods(ExportModsMessage::ExportAsMarkdown))
                 ]
                 .spacing(12)
             ]

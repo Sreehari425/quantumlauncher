@@ -3,6 +3,8 @@ use windows::Win32::{
     UI::WindowsAndMessaging::{EnumWindows, GetWindowThreadProcessId},
 };
 
+use crate::search::kill_proc;
+
 pub fn search_for_window(pid: u32, sys: &sysinfo::System) -> bool {
     let all_windows = get_all_windows_with_pids();
     let wins: Vec<HWND> = all_windows
@@ -15,13 +17,8 @@ pub fn search_for_window(pid: u32, sys: &sysinfo::System) -> bool {
         return false;
     }
 
-    for (proc_pid, proc) in sys.processes() {
-        if proc_pid.as_u32() == pid {
-            _ = proc.kill_and_wait();
-            return true;
-        }
-    }
-    false
+    kill_proc(pid, sys);
+    true
 }
 
 fn get_all_windows_with_pids() -> Vec<(HWND, u32)> {

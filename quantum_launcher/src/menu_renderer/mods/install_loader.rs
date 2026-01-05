@@ -4,11 +4,8 @@ use ql_mod_manager::loaders::fabric::{self, FabricVersionList, FabricVersionList
 
 use crate::state::{InstallPaperMessage, MenuInstallPaper};
 use crate::{
-    icon_manager,
-    menu_renderer::{
-        ui::{back_button, button_with_icon},
-        Element,
-    },
+    icons,
+    menu_renderer::{back_button, button_with_icon, Element},
     state::{
         InstallFabricMessage, InstallOptifineMessage, ManageModsMessage, MenuInstallFabric,
         MenuInstallForge, MenuInstallOptifine, Message,
@@ -115,7 +112,7 @@ impl MenuInstallFabric {
                     back_button().on_press(Message::ManageMods(
                         ManageModsMessage::ScreenOpenWithoutUpdate
                     )),
-                    widget::text!("Loading {loader_name} version list{dots}",).size(20)
+                    widget::text!("Loading {loader_name} version list{dots}").size(20)
                 ]
             }
             MenuInstallFabric::Loaded {
@@ -226,7 +223,7 @@ impl MenuInstallFabric {
                     widget::text!("Install {backend} for \"{}\"", selected_instance.get_name())
                         .size(20),
                     picker,
-                    button_with_icon(icon_manager::download(), "Install", 16)
+                    button_with_icon(icons::download(), "Install", 16)
                         .on_press(Message::InstallFabric(InstallFabricMessage::ButtonClicked)),
                 ]
             }
@@ -309,7 +306,7 @@ impl MenuInstallPaper {
                         .then_some("(latest, recommended)"),
                 )
                 .align_y(Alignment::Center),
-                button_with_icon(icon_manager::download(), "Install", 16)
+                button_with_icon(icons::download(), "Install", 16)
                     .on_press(Message::InstallPaper(InstallPaperMessage::ButtonClicked)),
             ]
             .padding(10)

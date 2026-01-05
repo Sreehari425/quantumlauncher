@@ -5,16 +5,18 @@ use crate::{
     state::MenuEditModsModal,
     stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
 };
-use iced::widget;
+use iced::widget::{self, scrollable::AbsoluteOffset};
 use ql_core::{
-    file_utils::DirItem, jarmod::JarMods, json::instance_config::PreLaunchPrefixMode,
-    read_log::Diagnostic, InstanceSelection, LaunchedProcess, ListEntry, Loader, ModId,
-    StoreBackendType,
+    file_utils::DirItem,
+    jarmod::JarMods,
+    json::instance_config::{MainClassMode, PreLaunchPrefixMode},
+    read_log::Diagnostic,
+    InstanceSelection, LaunchedProcess, ListEntry, Loader, ModId, StoreBackendType,
 };
 use ql_instances::{
     auth::{
         ms::{AuthCodeResponse, AuthTokenResponse},
-        AccountData,
+        AccountData, AccountType,
     },
     UpdateCheckInfo,
 };
@@ -49,8 +51,9 @@ pub enum CreateInstanceMessage {
     ScreenOpen {
         is_server: bool,
     },
+    SidebarResize(f32),
 
-    VersionsLoaded(Res<(Vec<ListEntry>, String)>, bool),
+    VersionsLoaded(Res<(Vec<ListEntry>, String)>),
     VersionSelected(ListEntry),
     NameInput(String),
     ChangeAssetToggle(bool),
@@ -62,7 +65,6 @@ pub enum CreateInstanceMessage {
 
     Start,
     End(Res<InstanceSelection>),
-    Cancel,
 
     #[allow(unused)]
     Import,
@@ -74,16 +76,18 @@ pub enum EditInstanceMessage {
     ConfigSaved(Res),
     ReinstallLibraries,
     UpdateAssets,
+    BrowseJavaOverride,
 
     JavaOverride(String),
     MemoryChanged(f32),
     LoggingToggle(bool),
     CloseLauncherToggle(bool),
-    AutoSetMainClassToggle(bool),
+    SetMainClass(Option<MainClassMode>, Option<String>),
 
     JavaArgs(ListMessage),
     JavaArgsModeChanged(bool),
     GameArgs(ListMessage),
+    ToggleSplitArg(bool),
 
     PreLaunchPrefix(ListMessage),
     PreLaunchPrefixModeChanged(PreLaunchPrefixMode),
@@ -104,7 +108,11 @@ pub enum ManageModsMessage {
     ScreenOpen,
     ScreenOpenWithoutUpdate,
 
-    ToggleCheckbox(String, Option<ModId>),
+    ListScrolled(AbsoluteOffset),
+    /// Simple, dumb selection
+    SelectEnsure(String, Option<ModId>),
+    /// More nuanced selection with ctrl/shift multi-select
+    SelectMod(String, Option<ModId>),
 
     DeleteSelected,
     DeleteOptiforge(String),
@@ -158,7 +166,7 @@ pub enum ManageJarModsMessage {
 #[derive(Debug, Clone)]
 pub enum InstallModsMessage {
     Open,
-    TickDesc,
+    TickDesc(frostmark::UpdateMsg),
     SearchInput(String),
     SearchResult(Res<SearchResult>),
 
@@ -170,6 +178,8 @@ pub enum InstallModsMessage {
     IndexUpdated(Res<ModIndex>),
     Scrolled(widget::scrollable::Viewport),
     InstallModpack(ModId),
+    Uninstall(usize),
+    UninstallComplete(Res<Vec<ModId>>),
 
     ChangeBackend(StoreBackendType),
     ChangeQueryType(QueryType),
@@ -204,7 +214,7 @@ pub enum RecommendedModMessage {
     DownloadEnd(Res<HashSet<CurseforgeNotAllowed>>),
 }
 
-#[derive(Debug, Clone)]
+/*#[derive(Debug, Clone)]
 pub enum WindowMessage {
     Dragged,
     // HOOK: Decorations
@@ -213,7 +223,7 @@ pub enum WindowMessage {
     ClickMinimize,
     ClickMaximize,
     // IsMaximized(bool),
-}
+}*/
 
 #[allow(unused)]
 #[derive(Debug, Clone)]
@@ -229,15 +239,9 @@ pub enum AccountMessage {
     LogoutConfirm,
     RefreshComplete(Res<AccountData>),
 
-    OpenMicrosoft {
+    OpenMenu {
         is_from_welcome_screen: bool,
-    },
-    OpenElyBy {
-        is_from_welcome_screen: bool,
-    },
-
-    OpenLittleSkin {
-        is_from_welcome_screen: bool,
+        kind: AccountType,
     },
 
     AltUsernameInput(String),
@@ -267,6 +271,7 @@ pub enum LauncherSettingsMessage {
     UiScale(f64),
     UiScaleApply,
     UiOpacity(f32),
+    UiIdleFps(f64),
     ClearJavaInstalls,
     ClearJavaInstallsConfirm,
     ChangeTab(LauncherSettingsTab),
@@ -275,6 +280,7 @@ pub enum LauncherSettingsMessage {
 
     ToggleAntialiasing(bool),
     ToggleWindowSize(bool),
+    ToggleInstanceRemembering(bool),
     #[allow(unused)]
     ToggleWindowDecorations(bool),
 
@@ -292,13 +298,13 @@ pub enum ListMessage {
 }
 
 impl ListMessage {
-    pub fn apply(self, l: &mut Vec<String>) {
+    pub fn apply(self, l: &mut Vec<String>, split: bool) {
         match self {
             ListMessage::Add => {
                 l.push(String::new());
             }
             ListMessage::Edit(msg, idx) => {
-                if msg.contains(' ') {
+                if split && msg.contains(' ') {
                     l.remove(idx);
                     let mut insert_idx = idx;
                     for s in msg.split(' ').filter(|n| !n.is_empty()) {
@@ -329,6 +335,15 @@ impl ListMessage {
 }
 
 #[derive(Debug, Clone)]
+pub enum NotesMessage {
+    Loaded(Res<String>),
+    OpenEdit,
+    Edit(widget::text_editor::Action),
+    SaveEdit,
+    CancelEdit,
+}
+
+#[derive(Debug, Clone)]
 pub enum Message {
     Nothing,
     Error(String),
@@ -350,6 +365,7 @@ pub enum Message {
     EditPresets(EditPresetsMessage),
     LauncherSettings(LauncherSettingsMessage),
     RecommendedMods(RecommendedModMessage),
+    Notes(NotesMessage),
 
     LaunchInstanceSelected {
         name: String,
@@ -357,13 +373,14 @@ pub enum Message {
     },
     LaunchUsernameSet(String),
     LaunchStart,
+    LaunchEnd(Res<LaunchedProcess>),
+    LaunchKill,
+
     LaunchScreenOpen {
         message: Option<String>,
         clear_selection: bool,
         is_server: Option<bool>,
     },
-    LaunchEnd(Res<LaunchedProcess>),
-    LaunchKill,
     LaunchChangeTab(LaunchTabId),
 
     LaunchSidebarResize(f32),
@@ -402,7 +419,7 @@ pub enum Message {
     CoreFocusNext,
     CoreTryQuit,
 
-    Window(WindowMessage),
+    // Window(WindowMessage),
     CoreImageDownloaded(Res<ImageResult>),
 
     CoreLogToggle,
@@ -416,8 +433,10 @@ pub enum Message {
     LaunchUploadLog,
     LaunchUploadLogResult(Res<String>),
 
+    #[allow(unused)]
     UpdateCheckResult(Res<UpdateCheckInfo>),
     UpdateDownloadStart,
+    #[allow(unused)]
     UpdateDownloadEnd(Res),
 
     ServerCommandEdit(String),

@@ -1,13 +1,16 @@
 use crate::stylesheet::styles::{LauncherTheme, LauncherThemeColor, LauncherThemeLightness};
 use crate::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use ql_core::json::GlobalSettings;
+use ql_core::ListEntryKind;
 use ql_core::{
     err, IntoIoError, IntoJsonError, JsonFileError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::{collections::HashMap, path::Path};
 
 pub const SIDEBAR_WIDTH: f32 = 0.33;
+const OPACITY: f32 = 0.9;
 
 /// Global launcher configuration stored in
 /// `QuantumLauncher/config.json`.
@@ -85,8 +88,12 @@ pub struct LauncherConfig {
     /// Settings that apply both on a per-instance basis and with global overrides.
     // Since: v0.4.2
     pub global_settings: Option<GlobalSettings>,
+    // Since: v0.5.0
     pub extra_java_args: Option<Vec<String>>,
+    // Since: v0.5.0
     pub ui: Option<UiSettings>,
+    // Since: v0.5.0
+    pub persistent: Option<PersistentSettings>,
 }
 
 impl Default for LauncherConfig {
@@ -106,6 +113,7 @@ impl Default for LauncherConfig {
             global_settings: None,
             extra_java_args: None,
             ui: None,
+            persistent: None,
         }
     }
 }
@@ -192,7 +200,7 @@ impl LauncherConfig {
             .unwrap_or(WINDOW_WIDTH * scale);
         let window_height = window.height.filter(|_| window.save_window_size).unwrap_or(
             (WINDOW_HEIGHT
-                + if self.c_window_decorations() {
+                + if self.uses_system_decorations() {
                     0.0
                 } else {
                     30.0
@@ -203,16 +211,10 @@ impl LauncherConfig {
     }
 
     pub fn c_ui_opacity(&self) -> f32 {
-        self.ui.as_ref().map_or(0.9, |n| n.window_opacity)
+        self.ui.as_ref().map_or(OPACITY, |n| n.window_opacity)
     }
 
-    pub fn c_launch_prefix(&mut self) -> &mut Vec<String> {
-        self.c_global()
-            .pre_launch_prefix
-            .get_or_insert_with(Vec::new)
-    }
-
-    pub fn c_window_decorations(&self) -> bool {
+    pub fn uses_system_decorations(&self) -> bool {
         self.ui
             .as_ref()
             .map(|n| matches!(n.window_decorations, UiWindowDecorations::System))
@@ -237,6 +239,11 @@ impl LauncherConfig {
     pub fn c_global(&mut self) -> &mut GlobalSettings {
         self.global_settings
             .get_or_insert_with(GlobalSettings::default)
+    }
+
+    pub fn c_persistent(&mut self) -> &mut PersistentSettings {
+        self.persistent
+            .get_or_insert_with(PersistentSettings::default)
     }
 }
 
@@ -309,16 +316,27 @@ impl Default for WindowProperties {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct UiSettings {
+    // Since: v0.5.0
     pub window_decorations: UiWindowDecorations,
+    // Since: v0.5.0
     pub window_opacity: f32,
+    // Since: v0.5.0
+    pub idle_fps: Option<u64>,
 }
 
 impl Default for UiSettings {
     fn default() -> Self {
         Self {
             window_decorations: UiWindowDecorations::default(),
-            window_opacity: 0.9,
+            window_opacity: OPACITY,
+            idle_fps: None,
         }
+    }
+}
+
+impl UiSettings {
+    pub fn get_idle_fps(&self) -> u64 {
+        self.idle_fps.unwrap_or(6)
     }
 }
 
@@ -341,3 +359,34 @@ pub enum UiWindowDecorations {
         Self::Right
     }
 }*/
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PersistentSettings {
+    pub selected_instance: Option<String>,
+    pub selected_server: Option<String>,
+    pub selected_remembered: bool,
+
+    /// Remembers version filters (eg: snapshot, release, etc) in Create Instance
+    pub create_instance_filters: Option<HashSet<ListEntryKind>>,
+}
+
+impl Default for PersistentSettings {
+    fn default() -> Self {
+        Self {
+            selected_instance: None,
+            selected_server: None,
+            selected_remembered: true,
+            create_instance_filters: None,
+        }
+    }
+}
+
+impl PersistentSettings {
+    #[must_use]
+    pub fn get_create_instance_filters(&self) -> std::collections::HashSet<ListEntryKind> {
+        self.create_instance_filters
+            .clone()
+            .filter(|n| !n.is_empty())
+            .unwrap_or_else(ListEntryKind::default_selected)
+    }
+}

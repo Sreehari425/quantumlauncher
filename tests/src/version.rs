@@ -6,7 +6,7 @@ const fn ver(name: &'static str) -> Version {
     Version(name, &[])
 }
 
-const FORGE_QUILT: [Loader; 2] = [Loader::Forge, Loader::Quilt];
+const FORGE_QUILT: [Loader; 1] = [Loader::Forge];
 
 pub const VERSIONS_LWJGL2: &[Version] = &[
     // last version of classic, should represent most early versions
@@ -14,7 +14,7 @@ pub const VERSIONS_LWJGL2: &[Version] = &[
     ver("a1.1.2_01"), // one of the most popular alpha versions
     ver("b1.7.3"),    // most popular beta version
     // last based on old launcher system
-    Version("1.5.2", &[Loader::Quilt]),
+    Version("1.5.2", &[]),
     // after migration to new launcher system
     Version("1.7.10", &FORGE_QUILT),
     // one of the most popular release versions
@@ -33,6 +33,6 @@ pub const VERSIONS_LWJGL3: &[Version] = &[
     Version("1.21.5", &[Loader::Forge, Loader::Quilt, Loader::Neoforge]),
     // last launchwrapper version
     Version("1.21.10", &[Loader::Forge, Loader::Quilt, Loader::Neoforge]),
-    // latest
-    ver("1.21.11-pre2"),
+    // TODO: Wait for a version to come out after 1.21.11, then add it here
+    // (BetterJSONs is, unfortunately, up-to-date so can't test without it)
 ];

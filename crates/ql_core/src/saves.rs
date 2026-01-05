@@ -61,6 +61,7 @@ pub async fn read_saves_info(instance: String) -> Result<Vec<Save>, IoError> {
         .join(&instance)
         .join(".minecraft/saves");
     if !saves_dir.exists() {
+        fs::create_dir_all(&saves_dir).await.path(&saves_dir)?;
         return Ok(Vec::new());
     }
 

@@ -1,5 +1,8 @@
+%undefine _hardened_build
+%global debug_package %{nil}
+
 Name:           quantum-launcher
-Version:        0.4.3
+Version:        0.5.0
 Release:        1%{?dist}
 Summary:        Simple Minecraft Launcher written in Rust
 
@@ -7,7 +10,7 @@ License:        GPLv3
 URL:            https://mrmayman.github.io/quantumlauncher
 Source:         {{{ git_dir_pack }}}
 
-BuildRequires:  rust cargo perl openssl-devel nasm
+BuildRequires:  rust cargo
 
 %global _description %{expand:
 A simple Minecraft Launcher written in Rust.}
@@ -19,10 +22,10 @@ A simple Minecraft Launcher written in Rust.}
 cargo fetch
 
 %build
-cargo build --profile release-ql
+cargo build --profile release
 
 %install
-install -Dm755 target/release-ql/quantum_launcher %{buildroot}%{_bindir}/quantum-launcher
+install -Dm755 target/release/quantum_launcher %{buildroot}%{_bindir}/quantum-launcher
 install -Dm644 assets/freedesktop/quantum-launcher.desktop %{buildroot}%{_datadir}/applications/quantum-launcher.desktop
 install -Dm644 assets/icon/256x256/ql_logo.png %{buildroot}%{_datadir}/pixmaps/io.github.Mrmayman.QuantumLauncher.png
 install -Dm644 assets/icon/256x256/ql_logo.png %{buildroot}%{_datadir}/icons/hicolor/256x256/apps/io.github.Mrmayman.QuantumLauncher.png
@@ -34,6 +37,7 @@ install -Dm644 assets/freedesktop/quantum-launcher.metainfo.xml %{buildroot}%{_d
 %{_bindir}/quantum-launcher
 %{_datadir}/applications/quantum-launcher.desktop
 %{_datadir}/pixmaps/io.github.Mrmayman.QuantumLauncher.png
+%{_datadir}/icons/hicolor/256x256/apps/io.github.Mrmayman.QuantumLauncher.png
 %{_datadir}/metainfo/quantum-launcher.metainfo.xml
 
 %changelog

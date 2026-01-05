@@ -2,13 +2,15 @@ use std::{
     fmt::Display,
     fs::{File, OpenOptions},
     io::{BufWriter, Write},
-    sync::{LazyLock, Mutex},
+    sync::{LazyLock, RwLock},
 };
 
 use chrono::{Datelike, Timelike};
 use regex::Regex;
 
-use crate::file_utils;
+use crate::{eeprintln, file_utils};
+
+pub mod macros;
 
 #[derive(Clone, Copy)]
 pub enum LogType {
@@ -56,16 +58,16 @@ pub struct LoggingState {
 
 impl LoggingState {
     #[must_use]
-    pub fn create() -> Option<Mutex<LoggingState>> {
-        Some(Mutex::new(Self::default()))
+    pub fn create() -> Option<RwLock<LoggingState>> {
+        Some(RwLock::new(Self::default()))
     }
 
-    pub fn write_to_storage(&mut self, s: &str, t: LogType) {
+    pub fn write_to_memory(&mut self, s: &str, t: LogType) {
         self.text.push((s.to_owned(), t));
     }
 
-    pub fn write_str(&mut self, s: &str, t: LogType) {
-        self.write_to_storage(s, t);
+    pub fn write_to_logfile(&mut self, s: &str, t: LogType) {
+        self.write_to_memory(s, t);
 
         if self.sender.is_none() {
             let (sender, receiver) = std::sync::mpsc::channel::<String>();
@@ -110,7 +112,7 @@ impl LoggingState {
 
 pub fn set_config(c: LogConfig) {
     if let Some(l) = &*LOGGER {
-        l.lock().unwrap().config = c;
+        l.write().unwrap().config = c;
     }
 }
 
@@ -136,41 +138,41 @@ fn get_logs_file() -> Option<File> {
     Some(file)
 }
 
-pub static LOGGER: LazyLock<Option<Mutex<LoggingState>>> = LazyLock::new(LoggingState::create);
+pub static LOGGER: LazyLock<Option<RwLock<LoggingState>>> = LazyLock::new(LoggingState::create);
 
 pub fn get() -> Vec<(String, LogType)> {
     LOGGER
         .as_ref()
-        .and_then(|l| l.lock().ok())
+        .and_then(|l| l.read().ok())
         .map_or(Vec::new(), |n| n.text.clone())
 }
 
 pub fn print_to_file(msg: &str, t: LogType) {
     if let Some(logger) = LOGGER.as_ref() {
-        if let Ok(mut lock) = logger.lock() {
-            lock.write_str(msg, t);
+        if let Ok(mut lock) = logger.write() {
+            lock.write_to_logfile(&strip_ansi_codes(msg), t);
         } else {
-            eprintln!("ql_core::print::print_to_file(): Logger thread panicked!\n[msg]: {msg}");
+            eeprintln!("ql_core::print::print_to_file(): Logger thread panicked!\n[msg]: {msg}");
         }
     }
 }
 
 pub fn logger_finish() {
     if let Some(logger) = LOGGER.as_ref() {
-        if let Ok(lock) = logger.lock() {
+        if let Ok(lock) = logger.write() {
             lock.finish();
         } else {
-            eprintln!("ql_core::print::logger_finish(): Logger thread panicked!");
+            eeprintln!("ql_core::print::logger_finish(): Logger thread panicked!");
         }
     }
 }
 
-pub fn print_to_storage(msg: &str, t: LogType) {
+pub fn print_to_memory(msg: &str, t: LogType) {
     if let Some(logger) = LOGGER.as_ref() {
-        if let Ok(mut lock) = logger.lock() {
-            lock.write_to_storage(msg, t);
+        if let Ok(mut lock) = logger.write() {
+            lock.write_to_memory(&strip_ansi_codes(msg), t);
         } else {
-            eprintln!("ql_core::print::print_to_storage(): Logger thread panicked!");
+            eeprintln!("ql_core::print::print_to_memory(): Logger thread panicked!");
         }
     }
 }
@@ -178,88 +180,10 @@ pub fn print_to_storage(msg: &str, t: LogType) {
 #[must_use]
 pub fn is_print() -> bool {
     if let Some(l) = &*LOGGER {
-        l.lock().unwrap().config.terminal
+        l.read().unwrap().config.terminal
     } else {
         true
     }
-}
-
-/// Print an informational message.
-/// Saved to a log file.
-#[macro_export]
-macro_rules! info {
-    ($($arg:tt)*) => {{
-        let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
-        if $crate::print::is_print() {
-            println!("{} {}", owo_colors::OwoColorize::yellow(&"[info]"), format_args!($($arg)*));
-        }
-        $crate::print::print_to_file(&plain_text, $crate::print::LogType::Info);
-    }};
-}
-
-/// Print an informational message.
-/// Not saved to a log file.
-#[macro_export]
-macro_rules! info_no_log {
-    ($($arg:tt)*) => {{
-        let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
-        if $crate::print::is_print() {
-            println!("{} {}", owo_colors::OwoColorize::yellow(&"[info]"), format_args!($($arg)*));
-        }
-        $crate::print::print_to_storage(&plain_text, $crate::print::LogType::Info);
-    }};
-}
-
-/// Print an error message.
-/// Not saved to a log file.
-#[macro_export]
-macro_rules! err_no_log {
-    ($($arg:tt)*) => {{
-        let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
-        if $crate::print::is_print() {
-            eprintln!("{} {}", owo_colors::OwoColorize::red(&"[error]"), format_args!($($arg)*));
-        }
-        $crate::print::print_to_storage(&plain_text, $crate::print::LogType::Error);
-    }};
-}
-
-/// Print an error message.
-/// Saved to a log file.
-#[macro_export]
-macro_rules! err {
-    ($($arg:tt)*) => {{
-        let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
-        if $crate::print::is_print() {
-            eprintln!("{} {}", owo_colors::OwoColorize::red(&"[error]"), format_args!($($arg)*));
-        }
-        $crate::print::print_to_file(&plain_text, $crate::print::LogType::Error);
-    }};
-}
-
-/// Print a point message, i.e. a small step in some process.
-/// Saved to a log file.
-#[macro_export]
-macro_rules! pt {
-    ($($arg:tt)*) => {{
-        let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
-        if $crate::print::is_print() {
-            println!("{} {}", owo_colors::OwoColorize::bold(&"-"), format_args!($($arg)*));
-        }
-        $crate::print::print_to_file(&plain_text, $crate::print::LogType::Point);
-    }};
-}
-
-/// Print a point message, i.e. a small step in some process.
-/// Not saved to a log file.
-#[macro_export]
-macro_rules! pt_no_log {
-    ($($arg:tt)*) => {{
-        let plain_text = $crate::print::strip_ansi_codes(&format!("{}", format_args!($($arg)*)));
-        if $crate::print::is_print() {
-            println!("{} {}", owo_colors::OwoColorize::bold(&"-"), format_args!($($arg)*));
-        }
-        $crate::print::print_to_storage(&plain_text, $crate::print::LogType::Point);
-    }};
 }
 
 /// Regex: ESC [ ... letters
@@ -271,3 +195,14 @@ static ANSI_REGEX: LazyLock<Regex> =
 pub fn strip_ansi_codes(input: &str) -> String {
     ANSI_REGEX.replace_all(input, "").to_string()
 }
+
+/// Used to fix a super annoying bug
+pub static IS_GIT_BASH: LazyLock<bool> = LazyLock::new(|| {
+    if cfg!(target_os = "windows") {
+        std::env::var_os("MSYSTEM").is_some()
+            || std::env::var_os("MSYS").is_some()
+            || std::env::var_os("MINGW_PREFIX").is_some()
+    } else {
+        false
+    }
+});

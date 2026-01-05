@@ -2,13 +2,11 @@ use iced::widget::tooltip::Position;
 use iced::{widget, Alignment, Length};
 use ql_core::{InstanceSelection, Loader, SelectedMod};
 
-use crate::menu_renderer::tsubtitle;
 use crate::{
-    icon_manager,
+    icons,
     menu_renderer::{
-        back_to_launch_screen,
-        ui::{back_button, button_with_icon, ctxbox, select_box, subbutton_with_icon, tooltip},
-        Element, FONT_MONO,
+        back_button, back_to_launch_screen, button_with_icon, ctxbox, dots, select_box,
+        subbutton_with_icon, tooltip, tsubtitle, Element, FONT_MONO,
     },
     message_handler::ForgeKind,
     state::{
@@ -126,12 +124,11 @@ impl MenuEditMods {
                         None
                     )),
                     tooltip(
-                        button_with_icon(icon_manager::folder_with_size(14), "Open", 14)
-                            .on_press_with(|| {
-                                Message::CoreOpenPath(
-                                    selected_instance.get_dot_minecraft_path().join("mods"),
-                                )
-                            }),
+                        button_with_icon(icons::folder_s(14), "Open", 14).on_press_with(|| {
+                            Message::CoreOpenPath(
+                                selected_instance.get_dot_minecraft_path().join("mods"),
+                            )
+                        }),
                         widget::text("Open Mods Folder").size(12),
                         Position::Bottom
                     )
@@ -139,16 +136,12 @@ impl MenuEditMods {
                 .spacing(5),
                 self.get_mod_installer_buttons(selected_instance),
                 widget::column!(
-                    button_with_icon(
-                        icon_manager::download_with_size(15),
-                        "Download Content...",
-                        14
-                    )
-                    .on_press(Message::InstallMods(InstallModsMessage::Open)),
-                    button_with_icon(icon_manager::jar_file(), "Jarmod Patches", 14)
+                    button_with_icon(icons::download_s(15), "Download Content...", 14)
+                        .on_press(Message::InstallMods(InstallModsMessage::Open)),
+                    button_with_icon(icons::file_jar(), "Jarmod Patches", 14)
                         .on_press(Message::ManageJarMods(ManageJarModsMessage::Open)),
                     tooltip(
-                        button_with_icon(icon_manager::blank_file(), "Add File", 14)
+                        button_with_icon(icons::file(), "Add File", 14)
                             .on_press(Message::ManageMods(ManageModsMessage::AddFile(false))),
                         widget::text("Includes mods and modpacks").size(12),
                         Position::Bottom
@@ -166,8 +159,7 @@ impl MenuEditMods {
 
     fn get_mod_update_pane(&'_ self, tick_timer: usize) -> Element<'_> {
         if self.update_check_handle.is_some() {
-            let dots = ".".repeat((tick_timer % 3) + 1);
-            widget::text!("Checking for mod updates{dots}")
+            widget::text!("Checking for mod updates{}", dots(tick_timer))
                 .size(12)
                 .into()
         } else if self.available_updates.is_empty() {
@@ -203,7 +195,7 @@ impl MenuEditMods {
                         }
                     ))
                     .spacing(10),
-                    button_with_icon(icon_manager::update(), "Update", 16)
+                    button_with_icon(icons::version_download(), "Update", 16)
                         .on_press(Message::ManageMods(ManageModsMessage::UpdateMods)),
                 )
                 .padding(10)
@@ -304,10 +296,10 @@ impl MenuEditMods {
         {
             widget::button(
                 widget::row![
-                    icon_manager::delete_with_size(14),
+                    icons::bin_s(14),
                     widget::text("Uninstall OptiFine").size(14)
                 ]
-                .align_y(iced::alignment::Vertical::Center)
+                .align_y(Alignment::Center)
                 .spacing(11)
                 .padding(2),
             )
@@ -326,10 +318,10 @@ impl MenuEditMods {
     fn get_uninstall_panel(mod_type: Loader) -> widget::Button<'static, Message, LauncherTheme> {
         widget::button(
             widget::row![
-                icon_manager::delete_with_size(14),
+                icons::bin_s(14),
                 widget::text!("Uninstall {mod_type}").size(14)
             ]
-            .align_y(iced::alignment::Vertical::Center)
+            .align_y(Alignment::Center)
             .spacing(11)
             .padding(2),
         )
@@ -371,8 +363,8 @@ impl MenuEditMods {
                         widget::row![
                             // Hamburger dropdown
                             widget::button(
-                                widget::row![icon_manager::three_lines_with_size(12)]
-                                    .align_y(iced::alignment::Vertical::Center)
+                                widget::row![icons::lines_s(12)]
+                                    .align_y(Alignment::Center)
                                     .padding(1),
                             )
                             .style(|t: &LauncherTheme, s| {
@@ -382,8 +374,8 @@ impl MenuEditMods {
 
                             // Search button
                             widget::button(
-                                widget::row![icon_manager::three_lines_with_size(12)]
-                                    .align_y(iced::alignment::Vertical::Center)
+                                widget::row![icons::search_s(12)]
+                                    .align_y(Alignment::Center)
                                     .padding(1),
                             )
                             .style(|t: &LauncherTheme, s| {
@@ -405,11 +397,11 @@ impl MenuEditMods {
                                 }
                             ),
 
-                            subbutton_with_icon(icon_manager::delete_with_size(12), "Delete")
+                            subbutton_with_icon(icons::bin_s(12), "Delete")
                             .on_press_maybe((!self.selected_mods.is_empty()).then_some(Message::ManageMods(ManageModsMessage::DeleteSelected))),
-                            subbutton_with_icon(icon_manager::toggle_off_with_size(12), "Toggle")
+                            subbutton_with_icon(icons::toggleoff_s(12), "Toggle")
                             .on_press_maybe((!self.selected_mods.is_empty()).then_some(Message::ManageMods(ManageModsMessage::ToggleSelected))),
-                            subbutton_with_icon(icon_manager::tick_with_size(12), if matches!(self.selected_state, SelectedState::All) {
+                            subbutton_with_icon(icons::deselectall_s(12), if matches!(self.selected_state, SelectedState::All) {
                                 "Unselect All"
                             } else {
                                 "Select All"
@@ -461,6 +453,10 @@ impl MenuEditMods {
             vertical: widget::scrollable::Scrollbar::new(),
             horizontal: widget::scrollable::Scrollbar::new(),
         })
+        .id(widget::scrollable::Id::new("MenuEditMods:mods"))
+        .on_scroll(|viewport| {
+            Message::ManageMods(ManageModsMessage::ListScrolled(viewport.absolute_offset()))
+        })
         .style(LauncherTheme::style_scrollable_flat_extra_dark)
         .width(Length::Fill)
         .height(Length::Fill)
@@ -507,6 +503,7 @@ impl MenuEditMods {
                         widget::row![
                             image,
                             widget::text(&config.name)
+                                .shaping(widget::text::Shaping::Advanced)
                                 .style(move |t: &LauncherTheme| {
                                     t.style_text(if is_enabled {
                                         Color::SecondLight
@@ -549,7 +546,7 @@ impl MenuEditMods {
                         .padding(PADDING)
                         .spacing(SPACING),
                         is_selected,
-                        Message::ManageMods(ManageModsMessage::ToggleCheckbox(
+                        Message::ManageMods(ManageModsMessage::SelectMod(
                             config.name.clone(),
                             Some(id.clone()),
                         )),
@@ -569,7 +566,7 @@ impl MenuEditMods {
                             rightclick
                         } else {
                             Message::Multiple(vec![
-                                Message::ManageMods(ManageModsMessage::ToggleCheckbox(
+                                Message::ManageMods(ManageModsMessage::SelectEnsure(
                                     config.name.clone(),
                                     Some(id.clone()),
                                 )),
@@ -582,7 +579,10 @@ impl MenuEditMods {
                         widget::text("(dependency) ")
                             .size(12)
                             .style(|t: &LauncherTheme| t.style_text(Color::Mid)),
-                        widget::text(&config.name).size(13).style(tsubtitle)
+                        widget::text(&config.name)
+                            .shaping(widget::text::Shaping::Advanced)
+                            .size(13)
+                            .style(tsubtitle)
                     ]
                     .padding(PADDING)
                     .into()
@@ -604,6 +604,7 @@ impl MenuEditMods {
                                 .to_owned(),
                         )
                         .font(FONT_MONO)
+                        .shaping(widget::text::Shaping::Advanced)
                         .style(move |t: &LauncherTheme| {
                             t.style_text(if is_enabled {
                                 Color::SecondLight
@@ -615,7 +616,7 @@ impl MenuEditMods {
                     ]
                     .spacing(SPACING),
                     is_selected,
-                    Message::ManageMods(ManageModsMessage::ToggleCheckbox(file_name.clone(), None)),
+                    Message::ManageMods(ManageModsMessage::SelectMod(file_name.clone(), None)),
                 )
                 .padding(PADDING)
                 .width(size.width);

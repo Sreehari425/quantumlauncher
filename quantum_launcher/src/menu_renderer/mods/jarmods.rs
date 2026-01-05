@@ -2,11 +2,8 @@ use iced::{widget, Length};
 use ql_core::InstanceSelection;
 
 use crate::{
-    icon_manager,
-    menu_renderer::{
-        ui::{back_button, button_with_icon, link},
-        Element,
-    },
+    icons,
+    menu_renderer::{back_button, button_with_icon, link, Element},
     state::{ManageJarModsMessage, ManageModsMessage, MenuEditJarMods, Message, SelectedState},
     stylesheet::{color::Color, styles::LauncherTheme},
 };
@@ -24,14 +21,10 @@ impl MenuEditJarMods {
                             {
                                 let path = selected_instance.get_instance_path().join("jarmods");
 
-                                button_with_icon(
-                                    icon_manager::folder_with_size(14),
-                                    "Open Folder",
-                                    14,
-                                )
-                                .on_press(Message::CoreOpenPath(path))
+                                button_with_icon(icons::folder_s(14), "Open Folder", 14)
+                                    .on_press(Message::CoreOpenPath(path))
                             },
-                            button_with_icon(icon_manager::create_with_size(14), "Add file", 14)
+                            button_with_icon(icons::new_s(14), "Add file", 14)
                                 .on_press(Message::ManageJarMods(ManageJarModsMessage::AddFile)),
                         ]
                         .spacing(5),
@@ -102,9 +95,9 @@ impl MenuEditJarMods {
                             "Select All"
                         })
                         .on_press(Message::ManageJarMods(ManageJarModsMessage::SelectAll)),
-                        widget::button(icon_manager::arrow_up())
+                        widget::button(icons::arrow_up())
                             .on_press(Message::ManageJarMods(ManageJarModsMessage::MoveUp)),
-                        widget::button(icon_manager::arrow_down())
+                        widget::button(icons::arrow_down())
                             .on_press(Message::ManageJarMods(ManageJarModsMessage::MoveDown)),
                     ]
                     .spacing(5)
@@ -120,7 +113,7 @@ impl MenuEditJarMods {
         .into()
     }
 
-    fn get_mod_list_contents<'a>(&'a self) -> Element<'a> {
+    fn get_mod_list_contents(&self) -> Element<'_> {
         widget::scrollable(
             widget::column({
                 self.jarmods.mods.iter().map(|jarmod| {

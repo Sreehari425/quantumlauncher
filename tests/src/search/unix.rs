@@ -1,5 +1,7 @@
 use ql_core::err;
 
+use crate::search::kill_proc;
+
 pub fn search_for_window(pid: u32, sys: &sysinfo::System) -> bool {
     if which::which("xdotool").is_err() {
         err!("xdotool isn't installed! Please install it first.");
@@ -15,7 +17,7 @@ pub fn search_for_window(pid: u32, sys: &sysinfo::System) -> bool {
         .run()
     {
         Ok(n) => {
-            if kill_proc(pid, sys, n) {
+            if kill_process(pid, sys, n) {
                 println!();
                 return true;
             }
@@ -26,7 +28,7 @@ pub fn search_for_window(pid: u32, sys: &sysinfo::System) -> bool {
             .run()
         {
             Ok(n) => {
-                if kill_proc(pid, sys, n) {
+                if kill_process(pid, sys, n) {
                     println!();
                     return true;
                 }
@@ -40,17 +42,14 @@ pub fn search_for_window(pid: u32, sys: &sysinfo::System) -> bool {
     false
 }
 
-fn kill_proc(pid: u32, sys: &sysinfo::System, n: std::process::Output) -> bool {
+fn kill_process(pid: u32, sys: &sysinfo::System, n: std::process::Output) -> bool {
     if String::from_utf8_lossy(&n.stdout)
         .lines()
         .map(|n| n.trim())
         .any(|n| !n.is_empty())
     {
-        for (proc_pid, proc) in sys.processes() {
-            if proc_pid.as_u32() == pid {
-                proc.kill();
-                return true;
-            }
+        if kill_proc(pid, sys) {
+            return true;
         }
     }
     false

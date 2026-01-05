@@ -27,11 +27,11 @@ use std::{borrow::Cow, time::Duration};
 
 use config::LauncherConfig;
 use iced::{Settings, Task};
+use owo_colors::OwoColorize;
 use state::{get_entries, Launcher, Message};
 
 use ql_core::{
-    constants::OS_NAME, err, err_no_log, file_utils, info, info_no_log, IntoStringError,
-    JsonFileError,
+    constants::OS_NAME, err, err_no_log, file_utils, info_no_log, IntoStringError, JsonFileError,
 };
 
 use crate::{menu_renderer::FONT_DEFAULT, state::CustomJarState};
@@ -42,7 +42,7 @@ mod cli;
 mod config;
 /// Definitions of certain icons (like Download,
 /// Play, Settings and so on) as `iced::widget`.
-mod icon_manager;
+mod icons;
 /// All the main structs and enums used in the launcher.
 mod state;
 
@@ -86,8 +86,6 @@ mod tick;
 const LAUNCHER_ICON: &[u8] = include_bytes!("../../assets/icon/ql_logo.ico");
 
 impl Launcher {
-    const TICKS_PER_SECOND: u64 = 5;
-
     fn new(
         is_new_user: bool,
         config: Result<LauncherConfig, JsonFileError>,
@@ -120,8 +118,10 @@ impl Launcher {
 
     #[allow(clippy::unused_self)]
     fn subscription(&self) -> iced::Subscription<Message> {
-        let tick = iced::time::every(Duration::from_millis(1000 / Self::TICKS_PER_SECOND))
-            .map(|_| Message::CoreTick);
+        let tick = iced::time::every(Duration::from_millis(
+            1000 / self.config.ui.unwrap_or_default().get_idle_fps(),
+        ))
+        .map(|_| Message::CoreTick);
         let events = iced::event::listen_with(|a, b, _| Some(Message::CoreEvent(a, b)));
 
         iced::Subscription::batch(vec![tick, events])
@@ -157,14 +157,18 @@ fn main() {
 
     info_no_log!("Starting up the launcher... (OS: {OS_NAME})");
     if let Some(dir) = &launcher_dir {
-        eprintln!("- {}", dir.to_string_lossy());
+        eprintln!(
+            "{} {}",
+            "-".bright_white(),
+            dir.to_string_lossy().bright_black().underline()
+        );
     }
 
     let icon = load_icon();
     let config = load_config(launcher_dir.is_some());
 
     let c = config.as_ref().cloned().unwrap_or_default();
-    let decorations = c.c_window_decorations();
+    let decorations = c.uses_system_decorations();
     let (width, height) = c.c_window_size();
 
     iced::application("QuantumLauncher", Launcher::update, Launcher::view)
@@ -187,7 +191,7 @@ fn main() {
             size: iced::Size { width, height },
             min_size: Some(iced::Size {
                 width: 420.0,
-                height: 300.0,
+                height: 310.0,
             }),
             decorations,
             transparent: true,
@@ -309,9 +313,9 @@ fn do_migration() {
         if let Err(e) = std::fs::rename(&legacy_dir, &new_dir) {
             eprintln!("Migration failed: {e}");
         } else if let Err(e) = file_utils::create_symlink(&new_dir, &legacy_dir) {
-            eprintln!("Migration successful but couldn't create symlink to the legacy dir: {e}",);
+            eprintln!("Migration successful but couldn't create symlink to the legacy dir: {e}");
         } else {
-            info!("Migration successful!\nYour launcher files are now in ~./local/share/QuantumLauncher");
+            ql_core::info!("Migration successful!\nYour launcher files are now in ~./local/share/QuantumLauncher");
         }
     }
 }

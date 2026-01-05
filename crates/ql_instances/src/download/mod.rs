@@ -34,21 +34,26 @@ pub async fn create_instance(
     progress_sender: Option<Sender<DownloadProgress>>,
     download_assets: bool,
 ) -> Result<String, DownloadError> {
-    info!("Started creating instance.");
+    info!(
+        "Started creating instance: {} (kind: {})",
+        version.name, version.kind
+    );
 
-    // An empty asset directory.
-    let launcher_dir = &*LAUNCHER_DIR;
-
-    let assets_dir = launcher_dir.join("assets/null");
-    tokio::fs::create_dir_all(&assets_dir)
-        .await
-        .path(assets_dir)?;
+    // An empty asset directory
+    if !download_assets {
+        let assets_dir = LAUNCHER_DIR.join("assets/null");
+        tokio::fs::create_dir_all(&assets_dir)
+            .await
+            .path(assets_dir)?;
+    }
 
     let mut game_downloader =
         GameDownloader::new(&instance_name, &version, progress_sender).await?;
 
-    game_downloader.download_logging_config().await?;
-    game_downloader.download_jar().await?;
+    tokio::try_join!(
+        game_downloader.download_logging_config(),
+        game_downloader.download_jar()
+    )?;
     game_downloader.download_libraries().await?;
     game_downloader.library_extras().await?;
 
@@ -63,7 +68,7 @@ pub async fn create_instance(
     game_downloader.create_profiles_json().await?;
     game_downloader.create_config_json().await?;
 
-    let version_file_path = launcher_dir
+    let version_file_path = LAUNCHER_DIR
         .join("instances")
         .join(&instance_name)
         .join("launcher_version.txt");
@@ -71,7 +76,7 @@ pub async fn create_instance(
         .await
         .path(version_file_path)?;
 
-    let mods_dir = launcher_dir
+    let mods_dir = LAUNCHER_DIR
         .join("instances")
         .join(&instance_name)
         .join(".minecraft/mods");
@@ -112,9 +117,6 @@ pub async fn repeat_stage(
         }
         DownloadProgress::DownloadingJar => {
             downloader.download_jar().await.strerr()?;
-        }
-        DownloadProgress::DownloadingLoggingConfig => {
-            downloader.download_logging_config().await.strerr()?;
         }
         DownloadProgress::DownloadingJsonManifest | DownloadProgress::DownloadingVersionJson => {
             unimplemented!()

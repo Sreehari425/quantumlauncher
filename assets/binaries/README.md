@@ -12,10 +12,13 @@ unlikely that you'll get matching binary-perfect builds.
 ---
 
 ## `freebsd/liblwjgl64_x86_64.so`
+
 - From [lwjgl 2.9.3](https://github.com/LWJGL/lwjgl/tree/70a8746f9aa1adaa440b61eb9f2d1b753d8a46f1)
 - Purpose: LWJGL backend for FreeBSD.
 - License: [LWJGL LICENSE](https://github.com/Mrmayman/quantumlauncher/tree/main/assets/licenses/LWJGL.txt)
+
 ### Compilation
+
 - Built on **FreeBSD 13.4** using a **chroot environment**
   inside FreeBSD 14.3.
 - Dependencies installed using `pkg`.

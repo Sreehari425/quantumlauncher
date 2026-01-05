@@ -155,8 +155,7 @@ async fn download_libraries(
         // WTF: I am NOT dealing with the unpack200 augmented library NONSENSE
         // because I haven't seen the launcher using it ONCE.
         // Please open an issue if you actually need it.
-        let file_bytes = file_utils::download_file_to_bytes(&url, false).await?;
-        fs::write(&file_path, &file_bytes).await.path(&file_path)?;
+        file_utils::download_file_to_path(&url, false, &file_path).await?;
     }
 
     let classpath_path = neoforge_dir.join("classpath.txt");
@@ -249,7 +248,7 @@ pub async fn get_versions(
     let version = version_json.get_id();
     let start_pattern = if REGEX_SNAPSHOT.is_match(version) {
         // Snapshot version
-        format!("0.{version}")
+        format!("0.{version}.")
     } else {
         // Release version
         let mut start_pattern = version[2..].to_owned();

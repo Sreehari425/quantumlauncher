@@ -1,20 +1,20 @@
-use iced::{widget, Alignment, Length};
+use iced::{widget, Length};
 
 use crate::{
-    config::UiWindowDecorations,
-    icon_manager,
+    icons,
     menu_renderer::{
-        ui::{button_with_icon, tooltip}, changelog, view_account_login, view_confirm, view_error,
-        view_log_upload_result, Element, FONT_MONO,
+        changelog,
+        ui::{button_with_icon, tooltip},
+        view_account_login, view_confirm, view_error, view_log_upload_result, Element, FONT_MONO,
     },
-    state::{Launcher, Message, State, WindowMessage},
-    stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
+    state::{Launcher, Message, State},
+    stylesheet::{styles::LauncherTheme, widgets::StyleButton},
     DEBUG_LOG_BUTTON_HEIGHT,
 };
 
 impl Launcher {
     pub fn view(&'_ self) -> Element<'_> {
-        let round = !self.config.c_window_decorations();
+        let round = !self.config.uses_system_decorations();
         let toggler = tooltip(
             widget::button(widget::row![
                 widget::horizontal_space(),
@@ -104,10 +104,7 @@ impl Launcher {
                 &self.images,
                 self.window_state.size.1,
             ),
-            State::Create(menu) => menu.view(
-                self.client_list.as_deref(),
-                self.version_list_cache.list.as_deref(),
-            ),
+            State::Create(menu) => menu.view(self.client_list.as_deref(), self.tick_timer),
             State::ConfirmAction {
                 msg1,
                 msg2,
@@ -116,7 +113,7 @@ impl Launcher {
             } => view_confirm(msg1, msg2, yes, no),
             State::Error { error } => view_error(error),
             State::InstallFabric(menu) => menu.view(self.instance(), self.tick_timer),
-            State::InstallJava => widget::column!(widget::text("Downloading Java").size(20),)
+            State::InstallJava => widget::column!(widget::text("Downloading Java").size(20))
                 .push_maybe(self.java_recv.as_ref().map(|n| n.view()))
                 .padding(10)
                 .spacing(10)
@@ -132,10 +129,9 @@ impl Launcher {
                 };
                 widget::scrollable(
                     widget::column!(
-                        button_with_icon(icon_manager::back(), "Skip", 16)
-                            .on_press(back_msg.clone()),
-                        changelog(),
-                        button_with_icon(icon_manager::back(), "Continue", 16).on_press(back_msg),
+                        button_with_icon(icons::back(), "Skip", 16).on_press(back_msg.clone()),
+                        changelog(&self.config),
+                        button_with_icon(icons::back(), "Continue", 16).on_press(back_msg),
                     )
                     .padding(10)
                     .spacing(10),
@@ -173,9 +169,9 @@ impl Launcher {
         if let State::Launch(_) = &self.state {
             menu
         } else {
-            let round = !self.config.c_window_decorations();
+            // let round = !self.config.uses_system_decorations();
             widget::Column::new()
-                .push_maybe({
+                /*.push_maybe({
                     let maximized = self.window_state.is_maximized;
                     let custom_decor = widget::mouse_area(
                         widget::container(self.view_window_decorations())
@@ -190,7 +186,7 @@ impl Launcher {
                     )
                     .on_press(Message::Window(WindowMessage::Dragged));
                     round.then_some(custom_decor)
-                })
+                })*/
                 .push(
                     widget::container(menu)
                         .style(move |t: &LauncherTheme| t.style_container_bg(0.0, None))
@@ -201,14 +197,14 @@ impl Launcher {
         }
     }
 
-    pub fn view_window_decorations(&self) -> widget::Row<'_, Message, LauncherTheme> {
+    /*pub fn view_window_decorations(&self) -> widget::Row<'_, Message, LauncherTheme> {
         const ICON_SIZE: u16 = 10;
 
         fn win_button(icon: widget::Text<'_, LauncherTheme>, m: Message) -> Element<'_> {
             widget::mouse_area(
                 widget::row![widget::button(
                     widget::row![icon.style(|t: &LauncherTheme| t.style_text(Color::Mid))]
-                        .align_y(iced::alignment::Vertical::Center)
+                        .align_y(Alignment::Center)
                         .padding([4, 10]),
                 )
                 .padding(0)
@@ -234,15 +230,15 @@ impl Launcher {
         let wcls_space = widget::mouse_area(widget::column![].height(Length::Fill).width(6.5))
             .on_press(Message::Window(WindowMessage::ClickClose));
         let wcls = win_button(
-            icon_manager::win_close_with_size(ICON_SIZE),
+            icons::close_s(ICON_SIZE),
             Message::Window(WindowMessage::ClickClose),
         );
         let wmax = win_button(
-            icon_manager::win_maximize_with_size(ICON_SIZE),
+            icons::maximize_s(ICON_SIZE),
             Message::Window(WindowMessage::ClickMaximize),
         );
         let wmin = win_button(
-            icon_manager::win_minimize_with_size(ICON_SIZE),
+            icons::minimize_s(ICON_SIZE),
             Message::Window(WindowMessage::ClickMinimize),
         );
         if right {
@@ -259,7 +255,7 @@ impl Launcher {
                 .push(wmax)
                 .push(wmin)
         }
-    }
+    }*/
 }
 
 // HOOK: Decorations

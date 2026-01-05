@@ -1,7 +1,7 @@
-use iced::{widget, Length};
+use iced::{widget, Alignment, Length};
 
 use crate::{
-    icon_manager,
+    icons,
     menu_renderer::Element,
     state::Message,
     stylesheet::{
@@ -10,6 +10,27 @@ use crate::{
         widgets::StyleButton,
     },
 };
+
+pub fn checkered_list<'a, Item: Into<Element<'a>>>(
+    children: impl IntoIterator<Item = Item>,
+) -> widget::Column<'a, Message, LauncherTheme> {
+    widget::column(children.into_iter().enumerate().map(|(i, e)| {
+        widget::container(e)
+            .width(Length::Fill)
+            .padding(16)
+            .style(move |t: &LauncherTheme| {
+                t.style_container_sharp_box(
+                    0.0,
+                    if i % 2 == 0 {
+                        Color::Dark
+                    } else {
+                        Color::ExtraDark
+                    },
+                )
+            })
+            .into()
+    }))
+}
 
 pub fn select_box<'a>(
     e: impl Into<Element<'a>>,
@@ -49,18 +70,25 @@ pub fn underline<'a>(
         widget::column![
             widget::vertical_space(),
             widget::horizontal_rule(1).style(move |t: &LauncherTheme| t.style_rule(color, 1)),
-            widget::Space::with_height(0.8),
+            widget::Space::with_height(1),
         ]
     )
 }
 
-pub fn center_x<'a>(e: impl Into<Element<'a>>) -> Element<'a> {
+pub fn underline_maybe<'a>(e: impl Into<Element<'a>>, color: Color, un: bool) -> Element<'a> {
+    if un {
+        underline(e, color).into()
+    } else {
+        e.into()
+    }
+}
+
+pub fn center_x<'a>(e: impl Into<Element<'a>>) -> widget::Row<'a, Message, LauncherTheme> {
     widget::row![
         widget::horizontal_space(),
         e.into(),
         widget::horizontal_space(),
     ]
-    .into()
 }
 
 pub fn tooltip<'a>(
@@ -73,11 +101,11 @@ pub fn tooltip<'a>(
 }
 
 pub fn back_button<'a>() -> widget::Button<'a, Message, LauncherTheme> {
-    button_with_icon(icon_manager::back_with_size(14), "Back", 14)
+    button_with_icon(icons::back_s(14), "Back", 14)
 }
 
 pub fn ctxbox<'a>(inner: impl Into<Element<'a>>) -> widget::Container<'a, Message, LauncherTheme> {
-    widget::container(inner)
+    widget::container(widget::mouse_area(inner).on_press(Message::Nothing))
         .padding(10)
         .style(|t: &LauncherTheme| {
             t.style_container_round_box(BORDER_WIDTH, Color::Dark, BORDER_RADIUS)
@@ -89,14 +117,13 @@ pub fn subbutton_with_icon<'a>(
     text: &'a str,
 ) -> widget::Button<'a, Message, LauncherTheme> {
     widget::button(
-        widget::row![icon.into(), widget::text(text).size(12)]
-            .align_y(iced::alignment::Vertical::Center)
+        widget::row![icon.into()]
+            .push_maybe((!text.is_empty()).then_some(widget::text(text).size(12)))
+            .align_y(Alignment::Center)
             .spacing(8)
             .padding(1),
     )
-    .style(|t: &LauncherTheme, s| {
-        t.style_button(s, crate::stylesheet::widgets::StyleButton::RoundDark)
-    })
+    .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
 }
 
 pub fn button_with_icon<'a>(
@@ -105,11 +132,12 @@ pub fn button_with_icon<'a>(
     size: u16,
 ) -> widget::Button<'a, Message, LauncherTheme> {
     widget::button(
-        widget::row![icon.into(), widget::text(text).size(size)]
-            .align_y(iced::alignment::Vertical::Center)
-            .spacing(10)
-            .padding(3),
+        widget::row![icon.into()]
+            .push_maybe((!text.is_empty()).then_some(widget::text(text).size(size)))
+            .align_y(Alignment::Center)
+            .spacing(size as f32 / 1.6),
     )
+    .padding([7, 13])
 }
 
 pub fn shortcut_ctrl<'a>(key: &str) -> Element<'a> {
@@ -125,17 +153,11 @@ pub fn sidebar_button<'a, A: PartialEq>(
     text: impl Into<Element<'a>>,
     message: Message,
 ) -> Element<'a> {
-    if current == selected {
-        widget::container(widget::row!(widget::Space::with_width(5), text.into()))
-            .style(LauncherTheme::style_container_selected_flat_button)
-            .width(Length::Fill)
-            .padding(5)
-            .into()
-    } else {
-        widget::button(text)
-            .on_press(message)
-            .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatExtraDark))
-            .width(Length::Fill)
-            .into()
-    }
+    let is_selected = current == selected;
+    let button = widget::button(text)
+        .on_press_maybe((!is_selected).then_some(message))
+        .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatExtraDark))
+        .width(Length::Fill);
+
+    underline_maybe(button, Color::SecondDark, !is_selected)
 }

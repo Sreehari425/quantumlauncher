@@ -1,51 +1,52 @@
 Plans for the future of QuantumLauncher.
 
-# Core
+# Platforms
 
-- [x] Instance creation, editing, launching
-- [x] Optional authentication with Microsoft, `ely.by`, `littleskin`
-- [x] Integration with Omniarchive, old version support
-- [ ] Full controller, keyboard-navigation support in UI
+| Architectures | Windows | macOS | Linux | FreeBSD |
+|:---:|:---:|:---:|:---:|:---:|
+| x86_64        | ✅      | 🟢    | ✅    | 🟠¹     |
+| i686          | 🟡      |      | 🔴    | 🔴      |
+| aarch64       | 🟡      | 🟢    | 🟢    | 🔴      |
+| arm32         |        |      | 🟠    | 🔴      |
+
+- ✅: **Perfect** support
+- 🟢: **Decent** support
+- 🟡: **Unstable**, may have bugs
+- 🟠: 1.16.5 and below
+- 🟠¹: 1.12.2 and below
+- 🔴: Not supported
+
+> Not all platforms are well supported due to lack of
+> development resources. If you can, consider
+> contributing and helping out.
+> 
+> Bug reports, PRs, anything is welcome!
+
+Future plans:
+
+- Haiku
+- Solaris
+- Redox OS
+- Android (unlikely)
 
 # Instances
 
-- [ ] Import MultiMC/PrismLauncher instances
-- [ ] Migrate from other launchers
-- [ ] Package QuantumLauncher instances (WIP)
-- [ ] Upgrading instances to a newer Minecraft version
-
-#
-
----
+- Import MultiMC/PrismLauncher instances
+- Migrate from other launchers
+- Package QuantumLauncher instances (WIP)
+- Upgrading instances to a newer Minecraft version
 
 # Mods
 
-## Loaders
+- Filters in Mod store
+- OptiFabric support
+- Modpack UI/UX improvements
 
-- [x] Fabric
-- [x] Forge
-- [x] Optifine
-- [x] Quilt
-- [x] Neoforge
-- [ ] OptiForge (WIP)
-- [ ] OptiFabric
-- [ ] Other Fabric implementations (WIP)
-- [x] Jar Mods
+# Misc
 
-## Sources
-
-- [x] Modrinth mods
-- [x] Curseforge mods
-- [x] Modrinth modpacks
-- [x] Curseforge modpacks
-
-## Features
-
-- [x] Mod store
-- [x] Mod presets (packaging mods)
-- [x] Mod updater
-- [ ] Modpack UI/UX improvements
-- [ ] Filters in Mod store
+- Integrate Java 25 (massive performance improvements)
+- Full controller, keyboard-navigation support in UI
+- Plugin system in lua ([abandoned implementation here](https://github.com/Mrmayman/quantumlauncher/blob/16e02b1e36a736fadb3214b84de908eb21635a55/plugins/README.md), scrapped due to complexity)
 
 ---
 
@@ -65,6 +66,7 @@ but local and ad-free.
 - [ ] Plugin store
 - [ ] [playit.gg](https://playit.gg) integration
 - [ ] Version-control based world rollback system
+- [ ] Detect `world/session.lock` error and auto-fix it
 
 ## Loaders
 
@@ -76,37 +78,12 @@ but local and ad-free.
 
 ---
 
-# Platforms
-
-> Everything **not highlighted in bold**
-> isn't 100% guaranteed to work, due to lack of development resources
-
-- [x] **Windows x86_64**
-- [x] **Linux x86_64**
-- [x] macOS x86_64
-
-- [x] Windows Aarch64
-- [x] Linux Aarch64
-- [x] Linux ARM32
-- [x] macOS Aarch64
-
-- [x] Windows i686
-- [ ] Linux i686
-
-- [x] FreeBSD (WIP, Minecraft 1.12.2 and below)
-- [ ] Haiku
-- [ ] Solaris
-- [ ] Android (in the distant future)
-
 # Command-Line interface
 
 - [x] `list-instances`, `-l`
 - [x] `list-available-versions`, `-a`
 - [x] `create NAME VERSION`
 - [x] `launch INSTANCE USERNAME`
-- [ ] Install loaders from CLI
+- [ ] `loader install/uninstall/info`
 - [ ] Mod installation features from CLI
 - [ ] Preset, modpack features from CLI
-
-# Misc
-- [ ] Plugin system in lua ([abandoned implementation here](https://github.com/Mrmayman/quantumlauncher/blob/16e02b1e36a736fadb3214b84de908eb21635a55/plugins/README.md), scrapped due to complexity)

@@ -3,6 +3,7 @@
 
 use std::{io::Cursor, path::Path, sync::mpsc::Sender};
 
+use cfg_if::cfg_if;
 use ql_core::{file_utils, GenericProgress};
 
 use crate::{extract_tar_gz, send_progress, JavaInstallError, JavaVersion};
@@ -66,149 +67,125 @@ impl JavaVersion {
         // https://aws.amazon.com/corretto/
         // https://github.com/Mrmayman/get-jdk/
 
-        if cfg!(target_os = "linux") {
-            self.get_url_linux()
-        } else if cfg!(target_os = "macos") {
-            self.get_url_macos()
-        } else if cfg!(target_os = "windows") {
-            self.get_url_windows()
-        } else if cfg!(target_os = "freebsd") {
+        cfg_if!(if #[cfg(target_os = "linux")] {
+            return self.get_url_linux();
+        } else if #[cfg(target_os = "macos")] {
+            return self.get_url_macos();
+        } else if #[cfg(target_os = "windows")] {
+            return self.get_url_windows();
+        } else if #[cfg(all(target_os = "freebsd", target_arch = "x86_64"))] {
             // # Sourcing
             // The following is a re-packaged version of:
             // <https://pkg.freebsd.org/FreeBSD:13:amd64/quarterly/All/openjdk8-8.452.09.1_1.pkg>
             //
-            // If the above link is dead, just search for `openjdk8` in FreeBSD `pkg`
-            //
             // No modifications were made to Java itself,
             // it was simply re-archived with a different directory structure
-            //
-            // For licensing/source code, consult the other files here,
-            // and FreeBSD's repositories too, as this was taken from there.
-            if let JavaVersion::Java8 = self {
-                if cfg!(target_arch = "x86_64") {
-                    Some("https://github.com/Mrmayman/get-jdk/releases/download/java8-1/jdk-8u452-freebsd-x64.tar.gz")
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        } else if cfg!(target_os = "solaris") {
-            if let JavaVersion::Java8 = self {
-                if cfg!(target_arch = "x86_64") {
-                    Some("https://github.com/Mrmayman/get-jdk/releases/download/java8-1/jdk-8u231-solaris-x64.tar.gz")
-                } else if cfg!(target_arch = "sparc64") {
-                    Some("https://github.com/Mrmayman/get-jdk/releases/download/java8-1/jdk-8u231-solaris-sparcv9.tar.gz")
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+            return matches!(self, JavaVersion::Java8).then_some(
+                "https://github.com/Mrmayman/get-jdk/releases/download/java8-1/jdk-8u452-freebsd-x64.tar.gz"
+            );
+        } else if #[cfg(all(target_os = "solaris", target_arch = "x86_64"))] {
+            return matches!(self, JavaVersion::Java8).then_some(
+                "https://github.com/Mrmayman/get-jdk/releases/download/java8-1/jdk-8u231-solaris-x64.tar.gz"
+            );
+        } else if #[cfg(all(target_os = "solaris", target_arch = "sparc64"))] {
+            return matches!(self, JavaVersion::Java8).then_some(
+                "https://github.com/Mrmayman/get-jdk/releases/download/java8-1/jdk-8u231-solaris-sparcv9.tar.gz"
+            );
+        });
+        #[allow(unreachable_code)]
+        None
     }
 
+    #[cfg(target_os = "linux")]
     fn get_url_linux(self) -> Option<&'static str> {
-        if cfg!(target_arch = "x86_64") {
-            Some(match self {
-                JavaVersion::Java16 | JavaVersion::Java17 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-linux-jdk.zip"
-                }
-                JavaVersion::Java21 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-21-x64-linux-jdk.zip"
-                }
-                JavaVersion::Java8 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-8-x64-linux-jdk.tar.gz"
-                }
-            })
-        } else if cfg!(target_arch = "aarch64") {
-            Some(match self {
-                JavaVersion::Java16 | JavaVersion::Java17 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-linux-jdk.tar.gz"
-                }
-                JavaVersion::Java21 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-21-aarch64-linux-jdk.tar.gz"
-                }
-                JavaVersion::Java8 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-8-aarch64-linux-jdk.tar.gz"
-                }
-            })
-        } else if cfg!(target_arch = "arm") {
-            if let JavaVersion::Java8 = self {
-                Some("https://github.com/Mrmayman/get-jdk/releases/download/java8-1/jdk-8u231-linux-arm32-vfp-hflt.tar.gz")
-            } else {
-                None
-            }
-        } else if cfg!(target_arch = "x86") {
-            if let JavaVersion::Java8 = self {
-                Some("https://github.com/hmsjy2017/get-jdk/releases/download/v8u231/jdk-8u231-linux-i586.tar.gz")
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+        cfg_if!(if #[cfg(all(target_env = "musl", target_arch = "x86_64"))] {
+            return Some(match self {
+                JavaVersion::Java16 |
+                JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-alpine-jdk.tar.gz",
+                JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-x64-alpine-jdk.tar.gz",
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-x64-alpine-jdk.tar.gz"
+                JavaVersion::Java8 => "https://corretto.aws/downloads/latest/amazon-corretto-8-x64-alpine-jdk.tar.gz",
+            });
+        } else if #[cfg(all(target_env = "musl", target_arch = "aarch64"))] {
+            return Some(match self {
+                JavaVersion::Java16 |
+                JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-alpine-jdk.tar.gz",
+                JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-aarch64-alpine-jdk.tar.gz",
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-aarch64-alpine-jdk.tar.gz",
+                JavaVersion::Java8 => "https://corretto.aws/downloads/latest/amazon-corretto-8-aarch64-alpine-jdk.tar.gz",
+            });
+        } else if #[cfg(target_arch = "x86_64")] {
+            return Some(match self {
+                JavaVersion::Java16 |
+                JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-linux-jdk.tar.gz",
+                JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-x64-linux-jdk.tar.gz",
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-x64-linux-jdk.tar.gz",
+                JavaVersion::Java8 => "https://corretto.aws/downloads/latest/amazon-corretto-8-x64-linux-jdk.tar.gz",
+            });
+        } else if #[cfg(target_arch = "aarch64")] {
+            return Some(match self {
+                JavaVersion::Java16 |
+                JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-linux-jdk.tar.gz",
+                JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-aarch64-linux-jdk.tar.gz",
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-aarch64-linux-jdk.tar.gz",
+                JavaVersion::Java8 => "https://corretto.aws/downloads/latest/amazon-corretto-8-aarch64-linux-jdk.tar.gz",
+            });
+        } else if #[cfg(target_arch = "arm")] {
+            return matches!(self, JavaVersion::Java8).then_some(
+                "https://github.com/Mrmayman/get-jdk/releases/download/java8-1/jdk-8u231-linux-arm32-vfp-hflt.tar.gz"
+            );
+        } else if #[cfg(target_arch = "x86")] {
+            return matches!(self, JavaVersion::Java8).then_some(
+                "https://github.com/hmsjy2017/get-jdk/releases/download/v8u231/jdk-8u231-linux-i586.tar.gz"
+            );
+        });
+        #[allow(unreachable_code)]
+        None
     }
 
+    #[cfg(target_os = "macos")]
     fn get_url_macos(self) -> Option<&'static str> {
-        if cfg!(target_arch = "x86_64") {
+        cfg_if!(if #[cfg(target_arch = "x86_64")] {
             Some(match self {
-                JavaVersion::Java16 | JavaVersion::Java17 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-macos-jdk.tar.gz"
-                }
-                JavaVersion::Java21 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-21-x64-macos-jdk.tar.gz"
-                }
-                JavaVersion::Java8 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-8-x64-macos-jdk.tar.gz"
-                }
+                JavaVersion::Java16 |
+                JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-macos-jdk.tar.gz",
+                JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-x64-macos-jdk.tar.gz",
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-x64-macos-jdk.tar.gz",
+                JavaVersion::Java8  => "https://corretto.aws/downloads/latest/amazon-corretto-8-x64-macos-jdk.tar.gz",
             })
-        } else if cfg!(target_arch = "aarch64") {
+        } else if #[cfg(target_arch = "aarch64")] {
             Some(match self {
-                JavaVersion::Java16 | JavaVersion::Java17 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-macos-jdk.tar.gz"
-                }
-                JavaVersion::Java21 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-21-aarch64-macos-jdk.tar.gz"
-                }
-                JavaVersion::Java8 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-8-aarch64-macos-jdk.tar.gz"
-                }
+                JavaVersion::Java16 |
+                JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-macos-jdk.tar.gz",
+                JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-aarch64-macos-jdk.tar.gz",
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-aarch64-macos-jdk.tar.gz",
+                JavaVersion::Java8  => "https://corretto.aws/downloads/latest/amazon-corretto-8-aarch64-macos-jdk.tar.gz",
             })
-        } else {
-            None
-        }
+        });
+        #[allow(unreachable_code)]
+        None
     }
 
+    #[cfg(target_os = "windows")]
     fn get_url_windows(self) -> Option<&'static str> {
-        if cfg!(target_arch = "x86_64") {
-            Some(match self {
-                JavaVersion::Java16 | JavaVersion::Java17 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-windows-jdk.zip"
-                }
-                JavaVersion::Java21 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-21-x64-windows-jdk.zip"
-                }
-                JavaVersion::Java8 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-8-x64-windows-jdk.zip"
-                }
-            })
-        } else if cfg!(target_arch = "x86") {
-            Some(match self {
-                JavaVersion::Java16 | JavaVersion::Java17 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-17-x86-windows-jdk.zip"
-                }
-                JavaVersion::Java21 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-21-x86-windows-jdk.zip"
-                }
-                JavaVersion::Java8 => {
-                    "https://corretto.aws/downloads/latest/amazon-corretto-8-x86-windows-jdk.zip"
-                }
-            })
-        } else {
-            None
-        }
+        cfg_if!(if #[cfg(target_arch = "x86_64")] {
+            return Some(match self {
+                JavaVersion::Java16 |
+                JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-x64-windows-jdk.zip",
+                JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-x64-windows-jdk.zip",
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-x64-windows-jdk.zip",
+                JavaVersion::Java8  => "https://corretto.aws/downloads/latest/amazon-corretto-8-x64-windows-jdk.zip",
+            });
+        } else if #[cfg(target_arch = "x86")] {
+            return Some(match self {
+                JavaVersion::Java16 |
+                JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-x86-windows-jdk.zip",
+                JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-x86-windows-jdk.zip",
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-x86-windows-jdk.zip",
+                JavaVersion::Java8  => "https://corretto.aws/downloads/latest/amazon-corretto-8-x86-windows-jdk.zip",
+            });
+        });
+        #[allow(unreachable_code)]
+        None
     }
 }

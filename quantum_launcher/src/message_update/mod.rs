@@ -1,6 +1,8 @@
 use std::path::Path;
 
+use frostmark::MarkState;
 use iced::futures::executor::block_on;
+use iced::widget::text_editor;
 use iced::{widget::scrollable::AbsoluteOffset, Task};
 use ql_core::{
     err, err_no_log, InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion,
@@ -18,13 +20,14 @@ mod presets;
 mod recommended;
 
 use crate::config::UiWindowDecorations;
+use crate::state::{InstanceNotes, MenuLaunch, ModOperation, NotesMessage};
 use crate::{
     config::UiSettings,
     state::{
         self, InstallFabricMessage, InstallModsMessage, InstallOptifineMessage,
         InstallPaperMessage, Launcher, LauncherSettingsMessage, MenuCurseforgeManualDownload,
         MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuModsDownload, Message,
-        ProgressBar, State, WindowMessage,
+        ProgressBar, State,
     },
 };
 
@@ -136,7 +139,8 @@ impl Launcher {
             InstallModsMessage::LoadData(Err(err))
             | InstallModsMessage::DownloadComplete(Err(err))
             | InstallModsMessage::SearchResult(Err(err))
-            | InstallModsMessage::IndexUpdated(Err(err)) => {
+            | InstallModsMessage::IndexUpdated(Err(err))
+            | InstallModsMessage::UninstallComplete(Err(err)) => {
                 self.set_error(err);
             }
 
@@ -187,13 +191,13 @@ impl Launcher {
                 Ok(command) => return command,
                 Err(err) => self.set_error(err),
             },
-            InstallModsMessage::TickDesc => {
+            InstallModsMessage::TickDesc(update_msg) => {
                 if let State::ModsDownload(MenuModsDownload {
-                    description: Some(d),
+                    description: Some(description),
                     ..
                 }) = &mut self.state
                 {
-                    d.update();
+                    description.update(update_msg);
                 }
             }
             InstallModsMessage::SearchInput(input) => {
@@ -302,14 +306,44 @@ impl Launcher {
                     |n| Message::InstallMods(InstallModsMessage::DownloadComplete(n.strerr())),
                 );
             }
+            InstallModsMessage::Uninstall(index) => {
+                let State::ModsDownload(MenuModsDownload {
+                    results: Some(results),
+                    mods_download_in_progress,
+                    ..
+                }) = &mut self.state
+                else {
+                    return Task::none();
+                };
+                let Some(hit) = results.mods.get(index) else {
+                    err!("Couldn't uninstall mod: Index out of range");
+                    return Task::none();
+                };
+
+                let mod_id = ModId::from_pair(&hit.id, results.backend);
+                mods_download_in_progress
+                    .insert(mod_id.clone(), (hit.title.clone(), ModOperation::Deleting));
+                let selected_instance = self.instance().clone();
+
+                return Task::perform(
+                    ql_mod_manager::store::delete_mods(vec![mod_id], selected_instance),
+                    |n| Message::InstallMods(InstallModsMessage::UninstallComplete(n.strerr())),
+                );
+            }
+            InstallModsMessage::UninstallComplete(Ok(ids)) => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    for id in ids {
+                        menu.mods_download_in_progress.remove(&id);
+                        menu.mod_index.mods.remove(&id.get_index_str());
+                    }
+                }
+            }
         }
         Task::none()
     }
 
     fn mod_download(&mut self, index: usize) -> Task<Message> {
-        let Some(selected_instance) = self.selected_instance.clone() else {
-            return Task::none();
-        };
+        let selected_instance = self.instance().clone();
         let State::ModsDownload(menu) = &mut self.state else {
             return Task::none();
         };
@@ -322,8 +356,10 @@ impl Launcher {
             return Task::none();
         };
 
-        menu.mods_download_in_progress
-            .insert(ModId::Modrinth(hit.id.clone()), hit.title.clone());
+        menu.mods_download_in_progress.insert(
+            ModId::from_pair(&hit.id, results.backend),
+            (hit.title.clone(), ModOperation::Downloading),
+        );
 
         let project_id = hit.id.clone();
         let backend = menu.backend;
@@ -505,6 +541,13 @@ impl Launcher {
                     self.state = State::GenericMessage(MSG_RESIZE.to_owned());
                 }
             }
+            LauncherSettingsMessage::UiIdleFps(fps) => {
+                debug_assert!(fps > 0.0);
+                self.config
+                    .ui
+                    .get_or_insert_with(UiSettings::default)
+                    .idle_fps = Some(fps as u64);
+            }
             LauncherSettingsMessage::ClearJavaInstalls => {
                 self.confirm_clear_java_installs();
             }
@@ -523,6 +566,14 @@ impl Launcher {
             LauncherSettingsMessage::ToggleWindowSize(t) => {
                 self.config.c_window().save_window_size = t;
             }
+            LauncherSettingsMessage::ToggleInstanceRemembering(t) => {
+                let persistent = self.config.c_persistent();
+                persistent.selected_remembered = t;
+                if !t {
+                    persistent.selected_instance = None;
+                    persistent.selected_server = None;
+                }
+            }
             LauncherSettingsMessage::DefaultMinecraftWidthChanged(input) => {
                 self.config.c_global().window_width = input.trim().parse::<u32>().ok();
             }
@@ -530,10 +581,21 @@ impl Launcher {
                 self.config.c_global().window_height = input.trim().parse::<u32>().ok();
             }
             LauncherSettingsMessage::GlobalJavaArgs(msg) => {
-                msg.apply(self.config.extra_java_args.get_or_insert_with(Vec::new));
+                let split = self.should_split_args();
+                msg.apply(
+                    self.config.extra_java_args.get_or_insert_with(Vec::new),
+                    split,
+                );
             }
             LauncherSettingsMessage::GlobalPreLaunchPrefix(msg) => {
-                msg.apply(self.config.c_launch_prefix());
+                let split = self.should_split_args();
+                msg.apply(
+                    self.config
+                        .c_global()
+                        .pre_launch_prefix
+                        .get_or_insert_with(Vec::new),
+                    split,
+                );
             }
             LauncherSettingsMessage::ToggleWindowDecorations(b) => {
                 let decor = if b {
@@ -561,6 +623,20 @@ impl Launcher {
         Task::none()
     }
 
+    pub fn should_split_args(&self) -> bool {
+        if let State::Launch(MenuLaunch {
+            edit_instance: Some(menu),
+            ..
+        }) = &self.state
+        {
+            menu.arg_split_by_space
+        } else if let State::LauncherSettings(menu) = &self.state {
+            menu.arg_split_by_space
+        } else {
+            true
+        }
+    }
+
     fn confirm_clear_java_installs(&mut self) {
         self.state = State::ConfirmAction {
             msg1: "delete auto-installed Java files".to_owned(),
@@ -579,6 +655,7 @@ impl Launcher {
         self.state = State::LauncherSettings(state::MenuLauncherSettings {
             temp_scale: self.config.ui_scale.unwrap_or(1.0),
             selected_tab: state::LauncherSettingsTab::UserInterface,
+            arg_split_by_space: true,
         });
     }
 
@@ -642,7 +719,7 @@ impl Launcher {
         Task::none()
     }
 
-    pub fn update_window_msg(&mut self, msg: WindowMessage) -> Task<Message> {
+    /*pub fn update_window_msg(&mut self, msg: WindowMessage) -> Task<Message> {
         match msg {
             WindowMessage::Dragged => iced::window::get_latest().and_then(iced::window::drag),
             // WindowMessage::Resized(dir) => {
@@ -663,5 +740,81 @@ impl Launcher {
             //     Task::none()
             // }
         }
+    }*/
+
+    pub fn update_notes(&mut self, msg: NotesMessage) -> Task<Message> {
+        match msg {
+            NotesMessage::Loaded(res) => match res {
+                Ok(notes) => {
+                    if let State::Launch(menu) = &mut self.state {
+                        let mark_state = MarkState::with_html_and_markdown(&notes);
+                        menu.notes = Some(InstanceNotes::Viewing {
+                            content: notes,
+                            mark_state,
+                        });
+                    }
+                }
+                Err(err) => err_no_log!("While loading instance notes: {err}"),
+            },
+            NotesMessage::OpenEdit => {
+                if let State::Launch(MenuLaunch {
+                    notes: Some(notes), ..
+                }) = &mut self.state
+                {
+                    let content = notes.get_text();
+                    *notes = InstanceNotes::Editing {
+                        text_editor: text_editor::Content::with_text(content),
+                        original: content.to_owned(),
+                    };
+                }
+            }
+            NotesMessage::Edit(action) => {
+                if let State::Launch(MenuLaunch {
+                    notes: Some(InstanceNotes::Editing { text_editor, .. }),
+                    ..
+                }) = &mut self.state
+                {
+                    text_editor.perform(action);
+                }
+            }
+            NotesMessage::SaveEdit => {
+                if let State::Launch(MenuLaunch {
+                    notes: Some(notes), ..
+                }) = &mut self.state
+                {
+                    if let InstanceNotes::Editing { text_editor, .. } = notes {
+                        let content = text_editor.text();
+
+                        *notes = InstanceNotes::Viewing {
+                            mark_state: MarkState::with_html_and_markdown(&content),
+                            content: content.clone(),
+                        };
+
+                        return Task::perform(
+                            ql_instances::notes::write(self.instance().clone(), content),
+                            |r| {
+                                if let Err(err) = r {
+                                    err_no_log!("While saving instance notes: {err}");
+                                }
+                                Message::Nothing
+                            },
+                        );
+                    }
+                }
+            }
+            NotesMessage::CancelEdit => {
+                if let State::Launch(MenuLaunch {
+                    notes: Some(notes), ..
+                }) = &mut self.state
+                {
+                    let content = notes.get_text();
+                    *notes = InstanceNotes::Viewing {
+                        mark_state: MarkState::with_html_and_markdown(content),
+                        content: content.to_owned(),
+                    }
+                }
+            }
+        }
+        Task::none()
     }
 }
