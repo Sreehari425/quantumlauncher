@@ -112,10 +112,9 @@ fn censor(input: &str, censors: &[String]) -> String {
         let mut out = censors.iter().fold(input.to_string(), |acc, censor| {
             acc.replace(censor, "[REDACTED]")
         });
-        if let Some((home_dir, username)) = &*REDACTION_USERNAME {
-            if out.contains(home_dir) {
-                out = out.replace(username, "[REDACTED]");
-            }
+        let (home_dir, username) = &*REDACTION_USERNAME;
+        if home_dir.iter().any(|n| input.contains(n)) {
+            out = out.replace(username, "[REDACTED]");
         }
         out
     } else {

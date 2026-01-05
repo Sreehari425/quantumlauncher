@@ -13,16 +13,23 @@ use crate::{eeprintln, file_utils, REDACT_SENSITIVE_INFO};
 pub mod macros;
 
 /// Censor username for privacy
-pub static REDACTION_USERNAME: LazyLock<Option<(String, String)>> = LazyLock::new(|| {
+pub static REDACTION_USERNAME: LazyLock<(Vec<String>, String)> = LazyLock::new(|| {
     if let Some(home_dir) = dirs::home_dir() {
         if let (Some(home_str), Some(username)) = (
             home_dir.to_str(),
             home_dir.file_name().and_then(|n| n.to_str()),
         ) {
-            return Some((home_str.to_owned(), username.to_owned()));
+            return (
+                vec![
+                    home_str.to_owned(),
+                    home_str.replace("\\", "/"),
+                    home_str.replace("\\", "\\\\"),
+                ],
+                username.to_owned(),
+            );
         }
     }
-    None
+    (Vec::new(), String::new())
 });
 
 /// Automatically redact sensitive information from log messages.
@@ -30,10 +37,9 @@ pub static REDACTION_USERNAME: LazyLock<Option<(String, String)>> = LazyLock::ne
 pub fn auto_redact(message: &str) -> String {
     let mut redacted = message.to_string();
     if *REDACT_SENSITIVE_INFO.lock().unwrap() {
-        if let Some((home_str, username)) = &*REDACTION_USERNAME {
-            if redacted.contains(home_str) {
-                redacted = redacted.replace(username, "[REDACTED]");
-            }
+        let (home_dir, username) = &*REDACTION_USERNAME;
+        if home_dir.iter().any(|n| message.contains(n)) {
+            redacted = redacted.replace(username, "[REDACTED]");
         }
     }
     redacted
