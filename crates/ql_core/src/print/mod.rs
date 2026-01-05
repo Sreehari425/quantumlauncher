@@ -12,6 +12,43 @@ use crate::{eeprintln, file_utils};
 
 pub mod macros;
 
+/// Redaction patterns compiled once at startup for zero-cost automatic redaction.
+static REDACTION_PATTERNS: LazyLock<Vec<(String, &'static str)>> = LazyLock::new(|| {
+    let mut patterns = Vec::new();
+
+    // Get system username
+    if let Ok(username) = std::env::var("USER")
+        .or_else(|_| std::env::var("USERNAME"))
+        .or_else(|_| std::env::var("LOGNAME"))
+    {
+        patterns.push((username, "[REDACTED]"));
+    }
+
+    // Get home directory path
+    if let Some(home_dir) = dirs::home_dir() {
+        if let Some(home_str) = home_dir.to_str() {
+            patterns.push((home_str.to_owned(), "/home/[REDACTED]"));
+        }
+    }
+
+    // Windows user profile
+    if let Ok(userprofile) = std::env::var("USERPROFILE") {
+        patterns.push((userprofile, "C:\\Users\\[REDACTED]"));
+    }
+
+    patterns
+});
+
+/// Automatically redact sensitive information from log messages.
+/// This is called by all logging macros to ensure no username/path exposure.
+pub fn auto_redact(message: &str) -> String {
+    let mut redacted = message.to_string();
+    for (pattern, replacement) in REDACTION_PATTERNS.iter() {
+        redacted = redacted.replace(pattern, replacement);
+    }
+    redacted
+}
+
 #[derive(Clone, Copy)]
 pub enum LogType {
     Info,

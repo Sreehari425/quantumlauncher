@@ -87,7 +87,7 @@ pub async fn launch(
     );
     java_arguments.push(main_class);
 
-    info!("Java args: {:?}\n", redact_args(&java_arguments));
+    info!("Java args: {java_arguments:?}\n");
 
     print_censored_args(auth.as_ref(), &mut game_arguments);
 
@@ -129,7 +129,7 @@ fn print_censored_args(auth: Option<&AccountData>, game_arguments: &mut Vec<Stri
                                 .and_then(|n| n.access_token.clone())
                                 .unwrap_or_default(),
                             |args| {
-                                info!("Game args: {:?}\n", redact_args(args));
+                                info!("Game args: {:?}\n", args);
                             },
                         );
                     });
@@ -137,7 +137,7 @@ fn print_censored_args(auth: Option<&AccountData>, game_arguments: &mut Vec<Stri
             });
         });
     } else {
-        info!("Game args: {:?}\n", redact_args(game_arguments));
+        info!("Game args: {:?}\n", game_arguments);
     }
 }
 
@@ -171,12 +171,6 @@ fn censor_string<F: FnOnce(&mut Vec<String>)>(vec: &[String], argument: &str, co
     }
 
     code(&mut new);
-}
-
-fn redact_args(args: &[String]) -> Vec<String> {
-    args.iter()
-        .map(|arg| ql_core::redact_path(arg))
-        .collect()
 }
 
 fn replace_var(string: &mut String, var: &str, value: &str) {

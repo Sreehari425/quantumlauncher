@@ -30,7 +30,8 @@ use iced::{Settings, Task};
 use state::{get_entries, Launcher, Message};
 
 use ql_core::{
-    constants::OS_NAME, err, err_no_log, file_utils, info_no_log, IntoStringError, JsonFileError,
+    constants::OS_NAME, err, err_no_log, file_utils, info_no_log, pt_no_log, IntoStringError,
+    JsonFileError,
 };
 
 use crate::{menu_renderer::FONT_DEFAULT, state::CustomJarState};
@@ -156,7 +157,7 @@ fn main() {
 
     info_no_log!("Starting up the launcher... (OS: {OS_NAME})");
     if let Some(dir) = &launcher_dir {
-        eprintln!("- {}", ql_core::redact_path(&dir.to_string_lossy()));
+        pt_no_log!("{}", dir.to_string_lossy());
     }
 
     let icon = load_icon();

@@ -763,7 +763,7 @@ impl GameLauncher {
             self.java_install_progress_sender.take().as_ref(),
         )
         .await?;
-        info!("Java: {}\n", ql_core::redact_path(&program.to_string_lossy()));
+        info!("Java: {program:?}\n");
         Ok((Command::new(&program), program))
     }
 
