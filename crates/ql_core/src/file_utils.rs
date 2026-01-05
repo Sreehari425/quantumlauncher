@@ -708,12 +708,11 @@ pub fn redact_path(path: &str) -> String {
     // Get home directory path and replace it
     if let Some(home_dir) = dirs::home_dir() {
         if let Some(home_str) = home_dir.to_str() {
-            // Replace full home path
             redacted = redacted.replace(home_str, "/home/[REDACTED]");
         }
     }
 
-    // Handle Windows-style paths
+    // For Windows-style paths
     if let Ok(userprofile) = std::env::var("USERPROFILE") {
         redacted = redacted.replace(&userprofile, "C:\\Users\\[REDACTED]");
     }
