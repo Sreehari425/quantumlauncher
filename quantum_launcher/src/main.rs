@@ -27,7 +27,6 @@ use std::{borrow::Cow, time::Duration};
 
 use config::LauncherConfig;
 use iced::{Settings, Task};
-use owo_colors::OwoColorize;
 use state::{get_entries, Launcher, Message};
 
 use ql_core::{
@@ -157,11 +156,7 @@ fn main() {
 
     info_no_log!("Starting up the launcher... (OS: {OS_NAME})");
     if let Some(dir) = &launcher_dir {
-        eprintln!(
-            "{} {}",
-            "-".bright_white(),
-            dir.to_string_lossy().bright_black().underline()
-        );
+        eprintln!("- {}", ql_core::redact_path(&dir.to_string_lossy()));
     }
 
     let icon = load_icon();

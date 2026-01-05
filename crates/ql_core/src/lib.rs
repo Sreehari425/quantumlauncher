@@ -23,6 +23,7 @@ use json::VersionDetails;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
+    ffi::OsStr,
     fmt::{Debug, Display},
     future::Future,
     path::{Path, PathBuf},
@@ -53,7 +54,7 @@ pub use error::{
     DownloadFileError, IntoIoError, IntoJsonError, IntoStringError, IoError, JsonDownloadError,
     JsonError, JsonFileError,
 };
-pub use file_utils::{RequestError, LAUNCHER_DIR};
+pub use file_utils::{redact_path, RequestError, LAUNCHER_DIR};
 pub use loader::Loader;
 pub use print::{logger_finish, LogType, LoggingState, LOGGER};
 pub use progress::{DownloadProgress, GenericProgress, Progress};
@@ -535,6 +536,54 @@ impl SelectedMod {
             Some(id) => Self::Downloaded { name, id },
             None => Self::Local { file_name: name },
         }
+    }
+}
+
+/// Opens the file explorer or browser
+/// (depending on path/link) to the corresponding link.
+///
+/// If you input a url (starting with `https://` for example),
+/// this will open the link with your default browser.
+///
+/// If you input a path (for example, `C:\Users\Mrmayman\Documents\`)
+/// this will open it in the file explorer using the system's default file manager.
+///
+/// # Platform details
+/// - Linux, BSDs: `xdg-open <PATH>`
+/// - macOS: `open <PATH>`
+/// - Windows: `cmd /c start /b <PATH>`
+///
+/// Unsupported platforms will log an error and not open anything.
+#[allow(clippy::zombie_processes)]
+pub fn open_file_explorer<S: AsRef<OsStr>>(path: S) {
+    use std::process::Command;
+
+    let path = path.as_ref();
+    info!("Opening link: {}", redact_path(&path.to_string_lossy()));
+
+    #[allow(unused)]
+    let result: std::io::Result<()> = Err(std::io::Error::other("Unsupported Platform!"));
+
+    #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"))]
+    let result = Command::new("xdg-open").arg(path).spawn();
+    #[cfg(target_os = "macos")]
+    let result = Command::new("open").arg(path).spawn();
+    #[cfg(target_os = "windows")]
+    let result = {
+        // To not flash a terminal window
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        // Respects the user's default file manager
+        Command::new("cmd")
+            .args(["/c", "start", "/b", ""])
+            .arg(path)
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
+    };
+
+    if let Err(err) = result {
+        err!("Could not open link: {err}");
     }
 }
 
