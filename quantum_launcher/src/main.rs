@@ -157,10 +157,10 @@ fn main() {
 
     info_no_log!("Starting up the launcher... (OS: {OS_NAME})");
     if let Some(dir) = &launcher_dir {
-        eprintln!(
+        info_no_log!(
             "{} {}",
             "-".bright_white(),
-            dir.to_string_lossy().bright_black().underline()
+            dir.to_string_lossy().bright_black().underline(),
         );
     }
 
