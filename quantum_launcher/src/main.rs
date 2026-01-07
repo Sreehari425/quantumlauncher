@@ -32,7 +32,10 @@ use state::{get_entries, Launcher, Message};
 
 use ql_core::{constants::OS_NAME, err, file_utils, info, pt, IntoStringError, JsonFileError};
 
-use crate::{menu_renderer::FONT_DEFAULT, state::CustomJarState};
+use crate::{
+    menu_renderer::FONT_DEFAULT,
+    state::{CustomJarState, State},
+};
 
 /// The CLI interface of the launcher.
 mod cli;
@@ -97,12 +100,23 @@ impl Launcher {
         let check_for_updates_command = Task::none();
 
         let get_entries_command = Task::perform(get_entries(false), Message::CoreListLoaded);
+        let mut launcher =
+            Launcher::load_new(None, is_new_user, config).unwrap_or_else(Launcher::with_error);
+
+        let load_notes_command = if let (Some(instance), State::Launch(menu)) =
+            (launcher.selected_instance.clone(), &mut launcher.state)
+        {
+            menu.reload_notes(instance)
+        } else {
+            Task::none()
+        };
 
         (
-            Launcher::load_new(None, is_new_user, config).unwrap_or_else(Launcher::with_error),
+            launcher,
             Task::batch([
                 check_for_updates_command,
                 get_entries_command,
+                load_notes_command,
                 Task::perform(ql_core::clean::dir("logs"), |n| {
                     Message::CoreCleanComplete(n.strerr())
                 }),
