@@ -1,7 +1,6 @@
 use iced::{futures::executor::block_on, Task};
 use ql_core::{
-    err, err_no_log, file_utils::DirItem, info_no_log, InstanceSelection, IntoIoError,
-    IntoStringError,
+    err, file_utils::DirItem, info, InstanceSelection, IntoIoError, IntoStringError,
 };
 use std::fmt::Write;
 use tokio::io::AsyncWriteExt;
@@ -37,7 +36,7 @@ impl Launcher {
                     && (self.key_escape_back(false).0 || matches!(self.state, State::Launch(_)));
 
                 if safe_to_exit {
-                    info_no_log!("CTRL-Q pressed, closing launcher...");
+                    info!(no_log, "CTRL-Q pressed, closing launcher...");
                     std::process::exit(1);
                 }
             }
@@ -49,7 +48,7 @@ impl Launcher {
             }
 
             Message::CoreCleanComplete(Err(err)) => {
-                err_no_log!("{err}");
+                err!(no_log, "{err}");
             }
 
             Message::UninstallLoaderEnd(Err(err))
@@ -223,7 +222,7 @@ impl Launcher {
             #[cfg(feature = "auto_update")]
             Message::UpdateCheckResult(res) => match res {
                 Ok(ql_instances::UpdateCheckInfo::UpToDate) => {
-                    ql_core::pt_no_log!("{}", "Latest version".bright_black());
+                    ql_core::pt!(no_log, "{}", "Latest version".bright_black());
                 }
                 Ok(ql_instances::UpdateCheckInfo::NewVersion { url }) => {
                     self.state = State::UpdateFound(crate::state::MenuLauncherUpdate {
@@ -232,7 +231,7 @@ impl Launcher {
                     });
                 }
                 Err(err) => {
-                    ql_core::pt_no_log!("{}", err.bright_black());
+                    ql_core::pt!(no_log, "{}", err.bright_black());
                 }
             },
             #[cfg(feature = "auto_update")]
