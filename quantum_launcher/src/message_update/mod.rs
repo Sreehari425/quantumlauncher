@@ -4,9 +4,7 @@ use frostmark::MarkState;
 use iced::futures::executor::block_on;
 use iced::widget::text_editor;
 use iced::{widget::scrollable::AbsoluteOffset, Task};
-use ql_core::{
-    err, err_no_log, InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion,
-};
+use ql_core::{err, InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion};
 use ql_mod_manager::{
     loaders,
     store::{get_description, QueryType},
@@ -616,7 +614,7 @@ impl Launcher {
                     // The system is just lagging, nothing we can do
                 }
                 Err(err) => {
-                    err_no_log!("while loading system theme: {err}");
+                    err!(no_log, "while loading system theme: {err}");
                 }
             },
         }
@@ -754,7 +752,7 @@ impl Launcher {
                         });
                     }
                 }
-                Err(err) => err_no_log!("While loading instance notes: {err}"),
+                Err(err) => err!(no_log, "While loading instance notes: {err}"),
             },
             NotesMessage::OpenEdit => {
                 if let State::Launch(MenuLaunch {
@@ -794,7 +792,7 @@ impl Launcher {
                             ql_instances::notes::write(self.instance().clone(), content),
                             |r| {
                                 if let Err(err) = r {
-                                    err_no_log!("While saving instance notes: {err}");
+                                    err!(no_log, "While saving instance notes: {err}");
                                 }
                                 Message::Nothing
                             },

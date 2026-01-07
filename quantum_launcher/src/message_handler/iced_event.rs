@@ -10,8 +10,11 @@ use iced::{
     keyboard::{self, key::Named, Key},
     Task,
 };
-use ql_core::jarmod::JarMods;
-use ql_core::{err, jarmod::JarMod, pt_no_log, InstanceSelection};
+use ql_core::{
+    err,
+    jarmod::{JarMod, JarMods},
+    pt, InstanceSelection,
+};
 use std::ffi::OsStr;
 use std::path::Path;
 
@@ -20,7 +23,7 @@ impl Launcher {
         match event {
             iced::Event::Window(event) => match event {
                 iced::window::Event::CloseRequested => {
-                    pt_no_log!("Closing...");
+                    pt!(no_log, "Closing...");
                     std::process::exit(0);
                 }
                 iced::window::Event::Resized(size) => {

@@ -30,9 +30,7 @@ use iced::{Settings, Task};
 use owo_colors::OwoColorize;
 use state::{get_entries, Launcher, Message};
 
-use ql_core::{
-    constants::OS_NAME, err, err_no_log, file_utils, info_no_log, IntoStringError, JsonFileError,
-};
+use ql_core::{constants::OS_NAME, err, file_utils, info, pt, IntoStringError, JsonFileError};
 
 use crate::{menu_renderer::FONT_DEFAULT, state::CustomJarState};
 
@@ -155,12 +153,12 @@ fn main() {
     let (launcher_dir, is_dir_err) = load_launcher_dir();
     cli::start_cli(is_dir_err);
 
-    info_no_log!("Starting up the launcher... (OS: {OS_NAME})");
+    info!(no_log, "Starting up the launcher... (OS: {OS_NAME})");
     if let Some(dir) = &launcher_dir {
-        info_no_log!(
-            "{} {}",
-            "-".bright_white(),
-            dir.to_string_lossy().bright_black().underline(),
+        pt!(
+            no_log,
+            "{}",
+            dir.to_string_lossy().bright_black().underline()
         );
     }
 
@@ -229,7 +227,7 @@ fn load_icon() -> Option<iced::window::Icon> {
     match iced::window::icon::from_file_data(LAUNCHER_ICON, None) {
         Ok(n) => Some(n),
         Err(err) => {
-            err_no_log!("Couldn't load launcher icon! (bug detected): {err}");
+            err!(no_log, "Couldn't load launcher icon! (bug detected): {err}");
             None
         }
     }
