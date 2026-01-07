@@ -51,7 +51,7 @@ impl Launcher {
                     msg1: format!("log out of your account: {username}"),
                     msg2: "You can always log in later".to_owned(),
                     yes: Message::Account(AccountMessage::LogoutConfirm),
-                    no: Message::LaunchScreenOpen {
+                    no: Message::MScreenOpen {
                         message: None,
                         clear_selection: false,
                         is_server: None,

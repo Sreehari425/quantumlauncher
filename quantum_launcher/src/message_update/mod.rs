@@ -18,7 +18,7 @@ mod presets;
 mod recommended;
 
 use crate::config::UiWindowDecorations;
-use crate::state::{InstanceNotes, MenuLaunch, ModOperation, NotesMessage};
+use crate::state::{GameLogMessage, InstanceNotes, MenuLaunch, ModOperation, NotesMessage};
 use crate::{
     config::UiSettings,
     state::{
@@ -812,6 +812,58 @@ impl Launcher {
                     }
                 }
             }
+        }
+        Task::none()
+    }
+
+    pub fn update_game_log(&mut self, msg: GameLogMessage) -> Task<Message> {
+        match msg {
+            GameLogMessage::Scroll(lines) => {
+                if let State::Launch(MenuLaunch { log_scroll, .. }) = &mut self.state {
+                    let new_scroll = *log_scroll - lines;
+                    if new_scroll >= 0 {
+                        *log_scroll = new_scroll;
+                    }
+                }
+            }
+            GameLogMessage::ScrollAbsolute(lines) => {
+                if let State::Launch(MenuLaunch { log_scroll, .. }) = &mut self.state {
+                    *log_scroll = lines;
+                }
+            }
+            GameLogMessage::Copy => {
+                let instance = self.instance();
+                if let Some(log) = self.logs.get(instance) {
+                    return iced::clipboard::write(log.log.join(""));
+                }
+            }
+            GameLogMessage::Upload => {
+                if let State::Launch(menu) = &mut self.state {
+                    menu.is_uploading_mclogs = true;
+                }
+
+                let instance = self.instance();
+
+                if let Some(log) = self.logs.get(instance) {
+                    let log_content = log.log.join("");
+                    if !log_content.trim().is_empty() {
+                        return Task::perform(
+                            crate::mclog_upload::upload_log(log_content),
+                            |res| Message::GameLog(GameLogMessage::Uploaded(res.strerr())),
+                        );
+                    }
+                }
+            }
+            GameLogMessage::Uploaded(res) => match res {
+                Ok(url) => {
+                    self.state = State::LogUploadResult { url };
+                }
+                Err(error) => {
+                    self.state = State::Error {
+                        error: format!("Failed to upload log: {error}"),
+                    };
+                }
+            },
         }
         Task::none()
     }

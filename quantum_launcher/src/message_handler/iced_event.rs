@@ -1,6 +1,6 @@
 use crate::message_update::MSG_RESIZE;
 use crate::state::{
-    AutoSaveKind, CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage,
+    AutoSaveKind, CreateInstanceMessage, LaunchTab, Launcher, LauncherSettingsMessage,
     LauncherSettingsTab, MenuCreateInstance, MenuCreateInstanceChoosing, MenuEditMods,
     MenuEditPresets, MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper,
     MenuLauncherSettings, MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods,
@@ -166,13 +166,13 @@ impl Launcher {
                     })
                 }
                 ("1", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
-                    Message::LaunchChangeTab(LaunchTabId::Buttons)
+                    Message::MChangeTab(LaunchTab::Buttons)
                 }
                 ("2", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
-                    Message::LaunchChangeTab(LaunchTabId::Edit)
+                    Message::MChangeTab(LaunchTab::Edit)
                 }
                 ("3", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
-                    Message::LaunchChangeTab(LaunchTabId::Log)
+                    Message::MChangeTab(LaunchTab::Log)
                 }
                 (",", true, _, _, State::Launch(_)) => {
                     Message::LauncherSettings(LauncherSettingsMessage::Open)
@@ -428,6 +428,11 @@ impl Launcher {
         {
             if *show_category_dropdown {
                 *show_category_dropdown = false;
+                return true;
+            }
+        } else if let State::Launch(menu) = &mut self.state {
+            if menu.modal.is_some() {
+                menu.modal = None;
                 return true;
             }
         }

@@ -2,7 +2,9 @@ use iced::widget::tooltip::Position;
 use iced::{widget, Alignment, Length};
 use ql_core::{InstanceSelection, Loader, SelectedMod};
 
-use crate::menu_renderer::{ctxbox, dots, select_box, subbutton_with_icon, tsubtitle, FONT_MONO};
+use crate::menu_renderer::{
+    ctx_button, ctxbox, dots, select_box, subbutton_with_icon, tsubtitle, FONT_MONO,
+};
 use crate::message_handler::ForgeKind;
 use crate::state::{ImageState, InstallPaperMessage, MenuEditModsModal};
 use crate::stylesheet::widgets::StyleButton;
@@ -633,13 +635,4 @@ impl MenuEditMods {
 
 fn install_ldr(loader: &str) -> widget::Button<'_, Message, LauncherTheme> {
     widget::button(widget::text(loader).size(14)).width(90)
-}
-
-fn ctx_button(e: &'_ str) -> widget::Button<'_, Message, LauncherTheme> {
-    widget::button(widget::text(e).size(13))
-        .width(Length::Fill)
-        .style(|t: &LauncherTheme, s| {
-            t.style_button(s, crate::stylesheet::widgets::StyleButton::FlatDark)
-        })
-        .padding(2)
 }

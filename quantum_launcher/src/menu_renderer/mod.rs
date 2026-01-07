@@ -40,6 +40,13 @@ const PADDING_NOT_BOTTOM: iced::Padding = iced::Padding {
     right: 10.0,
 };
 
+fn ctx_button(e: &'_ str) -> widget::Button<'_, Message, LauncherTheme> {
+    widget::button(widget::text(e).size(13))
+        .width(Length::Fill)
+        .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatDark))
+        .padding(2)
+}
+
 pub fn checkered_list<'a, Item: Into<Element<'a>>>(
     children: impl IntoIterator<Item = Item>,
 ) -> widget::Column<'a, Message, LauncherTheme> {
@@ -236,7 +243,7 @@ impl MenuLauncherUpdate {
                     .on_press(Message::UpdateDownloadStart))
             )
             .push(back_button().on_press(
-                Message::LaunchScreenOpen {
+                Message::MScreenOpen {
                     message: None,
                     clear_selection: false,
                     is_server: None
@@ -296,7 +303,7 @@ pub fn get_mode_selector(config: &LauncherConfig) -> Element<'static> {
 }
 
 fn back_to_launch_screen(is_server: Option<bool>, message: Option<String>) -> Message {
-    Message::LaunchScreenOpen {
+    Message::MScreenOpen {
         message,
         clear_selection: false,
         is_server,
