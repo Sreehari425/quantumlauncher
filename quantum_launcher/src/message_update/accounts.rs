@@ -305,6 +305,11 @@ impl Launcher {
         }
         self.accounts_dropdown.insert(0, username.clone());
 
+        // Initialize accounts map if it doesn't exist
+        if self.config.accounts.is_none() {
+            self.config.accounts = Some(std::collections::HashMap::new());
+        }
+
         if let Some(accounts) = &mut self.config.accounts {
             accounts.insert(
                 username.clone(),
