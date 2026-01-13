@@ -97,7 +97,7 @@ impl Launcher {
                 // User skipped unlock at startup - continue in offline mode without unlocking
                 // Keep encrypted file setting, just don't unlock for this session
                 // (tokens won't be accessible, but user can still play offline)
-                
+
                 let mut launch = MenuLaunch::default();
                 launch.resize_sidebar(crate::config::SIDEBAR_WIDTH);
                 self.state = State::Launch(launch);

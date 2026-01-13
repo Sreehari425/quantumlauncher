@@ -3,7 +3,10 @@ use iced::{widget, Alignment, Length};
 use crate::{
     icons,
     menu_renderer::tsubtitle,
-    state::{AccountMessage, MenuLoginAlternate, MenuLoginMS, MenuTokenPassword, Message, TokenPasswordMessage, NEW_ACCOUNT_NAME},
+    state::{
+        AccountMessage, MenuLoginAlternate, MenuLoginMS, MenuTokenPassword, Message,
+        TokenPasswordMessage, NEW_ACCOUNT_NAME,
+    },
 };
 
 use super::{back_button, button_with_icon, center_x, Element};
@@ -233,9 +236,13 @@ impl MenuTokenPassword {
             let dots = ".".repeat((tick_timer % 3) + 1);
             widget::text!("Loading{dots}").into()
         } else {
-            button_with_icon(icons::checkmark(), if self.is_existing { "Unlock" } else { "Create" }, 16)
-                .on_press(Message::TokenPassword(TokenPasswordMessage::Submit))
-                .into()
+            button_with_icon(
+                icons::checkmark(),
+                if self.is_existing { "Unlock" } else { "Create" },
+                16,
+            )
+            .on_press(Message::TokenPassword(TokenPasswordMessage::Submit))
+            .into()
         };
 
         let mut col = widget::column![
@@ -267,52 +274,38 @@ impl MenuTokenPassword {
                 .push(center_x(confirm_input));
         }
 
-        col = col.push(
-            widget::row![
-                widget::checkbox("Show password", self.show_password)
-                    .size(14)
-                    .text_size(12)
-                    .on_toggle(|t| Message::TokenPassword(TokenPasswordMessage::ShowPassword(t))),
-            ]
-        );
+        col = col.push(widget::row![widget::checkbox(
+            "Show password",
+            self.show_password
+        )
+        .size(14)
+        .text_size(12)
+        .on_toggle(|t| Message::TokenPassword(
+            TokenPasswordMessage::ShowPassword(t)
+        )),]);
 
         // Add error message if present
         if let Some(error) = &self.error {
-            col = col.push(
-                widget::text(error)
-                    .style(tsubtitle)
-                    .size(12),
-            );
+            col = col.push(widget::text(error).style(tsubtitle).size(12));
         }
 
-        col = col
-            .push(widget::vertical_space().height(10))
-            .push(status);
+        col = col.push(widget::vertical_space().height(10)).push(status);
 
         // Add skip button for existing store or cancel button for new store creation
         if self.is_existing {
-            col = col
-                .push(widget::vertical_space().height(10))
-                .push(
-                    widget::button(widget::text("Skip (use offline mode)").size(12))
-                        .on_press(Message::TokenPassword(TokenPasswordMessage::Skip)),
-                );
+            col = col.push(widget::vertical_space().height(10)).push(
+                widget::button(widget::text("Skip (use offline mode)").size(12))
+                    .on_press(Message::TokenPassword(TokenPasswordMessage::Skip)),
+            );
         } else {
-            col = col
-                .push(widget::vertical_space().height(10))
-                .push(
-                    widget::button(widget::text("Cancel").size(12))
-                        .on_press(Message::TokenPassword(TokenPasswordMessage::Cancel)),
-                );
+            col = col.push(widget::vertical_space().height(10)).push(
+                widget::button(widget::text("Cancel").size(12))
+                    .on_press(Message::TokenPassword(TokenPasswordMessage::Cancel)),
+            );
         }
 
         widget::column![
-            widget::row!(
-                widget::horizontal_space(),
-                col,
-                widget::horizontal_space()
-            )
-            .padding(20)
+            widget::row!(widget::horizontal_space(), col, widget::horizontal_space()).padding(20)
         ]
         .padding(10)
         .into()

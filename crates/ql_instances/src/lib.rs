@@ -72,9 +72,11 @@ pub fn set_token_storage_method(method: TokenStorageMethod) {
 }
 
 /// Initialize the encrypted token store with a new password.
-/// 
+///
 /// This should be called when user sets up encrypted storage for the first time.
-pub fn initialize_encrypted_store(password: &str) -> Result<(), auth::token_store::TokenStoreError> {
+pub fn initialize_encrypted_store(
+    password: &str,
+) -> Result<(), auth::token_store::TokenStoreError> {
     auth::encrypted_store::initialize_new(password)?;
     TokenStorageMethod::EncryptedFile.set_global();
     Ok(())

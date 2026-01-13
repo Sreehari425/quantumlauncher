@@ -8,9 +8,9 @@ use std::{
 use iced::Task;
 use notify::Watcher;
 use ql_core::{
-    err, file_utils, read_log::LogLine, GenericProgress, InstanceSelection,
-    IntoIoError, IntoStringError, IoError, JsonFileError, LaunchedProcess, ModId, Progress,
-    LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
+    err, file_utils, read_log::LogLine, GenericProgress, InstanceSelection, IntoIoError,
+    IntoStringError, IoError, JsonFileError, LaunchedProcess, ModId, Progress, LAUNCHER_DIR,
+    LAUNCHER_VERSION_NAME,
 };
 use ql_instances::auth::{
     encrypted_store, ms::CLIENT_ID, token_store::TokenStorageMethod, AccountData, AccountType,
@@ -151,8 +151,9 @@ impl Launcher {
 
         // Check if we need to prompt for password (encrypted storage)
         let token_storage = config.c_token_storage();
-        let needs_password_prompt = matches!(token_storage, ConfigTokenStorageMethod::EncryptedFile)
-            && !encrypted_store::is_unlocked();
+        let needs_password_prompt =
+            matches!(token_storage, ConfigTokenStorageMethod::EncryptedFile)
+                && !encrypted_store::is_unlocked();
 
         // Set the global storage method
         match token_storage {
@@ -394,7 +395,7 @@ fn load_account(
                 AccountType::Microsoft => username,
             }
         };
-        
+
         // If account has a specific storage method, use that
         // Otherwise default to keyring for backward compatibility with old accounts
         let method = token_storage.unwrap_or(TokenStorageMethod::Keyring);
@@ -402,7 +403,8 @@ fn load_account(
             TokenStorageMethod::Keyring => InstanceTokenStorageMethod::Keyring,
             TokenStorageMethod::EncryptedFile => InstanceTokenStorageMethod::EncryptedFile,
         };
-        ql_instances::auth::read_refresh_token_from(keyring_username, account_type, instance_method).strerr()
+        ql_instances::auth::read_refresh_token_from(keyring_username, account_type, instance_method)
+            .strerr()
     }
 
     let token_storage = account.token_storage;
