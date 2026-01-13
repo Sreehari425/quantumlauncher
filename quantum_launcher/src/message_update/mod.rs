@@ -614,6 +614,9 @@ impl Launcher {
                 let old_method = self.config.c_token_storage();
                 if old_method != method {
                     self.config.token_storage = Some(method);
+                    // Mark config for saving
+                    self.autosave
+                        .remove(&crate::state::AutoSaveKind::LauncherConfig);
 
                     if method == TokenStorageMethod::EncryptedFile {
                         // Check if encrypted file already exists
@@ -628,14 +631,24 @@ impl Launcher {
                             password_confirm: String::new(),
                         });
                     } else {
-                        // Switching back to keyring - existing keyring tokens will be used
-                        // Update the global storage method
+                        // Switching to keyring - update global method and reload accounts immediately
                         ql_instances::set_token_storage_method(TokenStorageMethod::Keyring);
-                        self.state = State::GenericMessage(
-                            "Token storage changed to system keyring.\n\n\
-                            Your existing keyring tokens will be used on next login."
-                                .to_owned(),
-                        );
+
+                        // Lock encrypted store if it was unlocked
+                        ql_instances::auth::encrypted_store::lock();
+
+                        // Reload accounts from keyring
+                        let (accounts, accounts_dropdown, selected_account) =
+                            crate::state::load_accounts(&mut self.config);
+                        self.accounts = accounts;
+                        self.accounts_dropdown = accounts_dropdown;
+                        self.accounts_selected = Some(selected_account);
+
+                        // Go back to settings
+                        self.go_to_launcher_settings();
+                        if let State::LauncherSettings(menu) = &mut self.state {
+                            menu.selected_tab = crate::state::LauncherSettingsTab::Security;
+                        }
                     }
                 }
             }
@@ -650,6 +663,31 @@ impl Launcher {
                     show_password: false,
                     password_confirm: String::new(),
                 });
+            }
+            LauncherSettingsMessage::DeleteEncryptedStore => {
+                // Show confirmation dialog
+                self.state = State::ConfirmAction {
+                    msg1: "delete your encrypted token store".to_owned(),
+                    msg2: "This will permanently delete the encrypted tokens file.\nYou will need to log in again if you switch back to encrypted storage.".to_owned(),
+                    yes: Message::LauncherSettings(LauncherSettingsMessage::DeleteEncryptedStoreConfirm),
+                    no: Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(
+                        state::LauncherSettingsTab::Security,
+                    )),
+                };
+            }
+            LauncherSettingsMessage::DeleteEncryptedStoreConfirm => {
+                // Delete the encrypted store file
+                if let Err(e) = ql_instances::auth::encrypted_store::delete_store() {
+                    err!("Failed to delete encrypted store: {e}");
+                } else {
+                    // Lock the store (clear cache) if it was unlocked
+                    ql_instances::auth::encrypted_store::lock();
+                }
+                // Go back to security settings
+                self.go_to_launcher_settings();
+                if let State::LauncherSettings(menu) = &mut self.state {
+                    menu.selected_tab = state::LauncherSettingsTab::Security;
+                }
             }
             LauncherSettingsMessage::LoadedSystemTheme(res) => match res {
                 Ok(mode) => {

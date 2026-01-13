@@ -310,6 +310,10 @@ pub enum LauncherSettingsMessage {
     TokenStorageChanged(crate::config::TokenStorageMethod),
     /// User wants to unlock the encrypted store from settings
     UnlockEncryptedStore,
+    /// User wants to delete the encrypted store file
+    DeleteEncryptedStore,
+    /// Confirm deletion of encrypted store
+    DeleteEncryptedStoreConfirm,
 }
 
 #[derive(Debug, Clone)]

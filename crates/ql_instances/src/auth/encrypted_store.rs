@@ -276,6 +276,19 @@ pub fn lock() {
     }
 }
 
+/// Delete the encrypted store file.
+///
+/// This permanently removes the encrypted tokens file from disk.
+/// The in-memory cache should be cleared separately by calling `lock()`.
+pub fn delete_store() -> Result<(), EncryptedStoreError> {
+    let path = get_tokens_path();
+    if path.exists() {
+        std::fs::remove_file(&path)?;
+        info!("Encrypted token store deleted");
+    }
+    Ok(())
+}
+
 /// Store a token for the given username.
 ///
 /// The store must be unlocked first.
