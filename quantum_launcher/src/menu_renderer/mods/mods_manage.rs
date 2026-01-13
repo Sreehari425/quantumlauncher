@@ -2,7 +2,9 @@ use iced::widget::tooltip::Position;
 use iced::{widget, Alignment, Length};
 use ql_core::{InstanceSelection, Loader, SelectedMod};
 
-use crate::menu_renderer::{ctxbox, dots, select_box, subbutton_with_icon, tsubtitle, FONT_MONO};
+use crate::menu_renderer::{
+    ctx_button, ctxbox, dots, select_box, subbutton_with_icon, tsubtitle, FONT_MONO,
+};
 use crate::message_handler::ForgeKind;
 use crate::state::{ImageState, InstallPaperMessage, MenuEditModsModal};
 use crate::stylesheet::widgets::StyleButton;
@@ -453,6 +455,10 @@ impl MenuEditMods {
             vertical: widget::scrollable::Scrollbar::new(),
             horizontal: widget::scrollable::Scrollbar::new(),
         })
+        .id(widget::scrollable::Id::new("MenuEditMods:mods"))
+        .on_scroll(|viewport| {
+            Message::ManageMods(ManageModsMessage::ListScrolled(viewport.absolute_offset()))
+        })
         .style(LauncherTheme::style_scrollable_flat_extra_dark)
         .width(Length::Fill)
         .height(Length::Fill)
@@ -542,7 +548,7 @@ impl MenuEditMods {
                         .padding(PADDING)
                         .spacing(SPACING),
                         is_selected,
-                        Message::ManageMods(ManageModsMessage::ToggleCheckbox(
+                        Message::ManageMods(ManageModsMessage::SelectMod(
                             config.name.clone(),
                             Some(id.clone()),
                         )),
@@ -562,7 +568,7 @@ impl MenuEditMods {
                             rightclick
                         } else {
                             Message::Multiple(vec![
-                                Message::ManageMods(ManageModsMessage::ToggleCheckbox(
+                                Message::ManageMods(ManageModsMessage::SelectEnsure(
                                     config.name.clone(),
                                     Some(id.clone()),
                                 )),
@@ -612,7 +618,7 @@ impl MenuEditMods {
                     ]
                     .spacing(SPACING),
                     is_selected,
-                    Message::ManageMods(ManageModsMessage::ToggleCheckbox(file_name.clone(), None)),
+                    Message::ManageMods(ManageModsMessage::SelectMod(file_name.clone(), None)),
                 )
                 .padding(PADDING)
                 .width(size.width);
@@ -629,13 +635,4 @@ impl MenuEditMods {
 
 fn install_ldr(loader: &str) -> widget::Button<'_, Message, LauncherTheme> {
     widget::button(widget::text(loader).size(14)).width(90)
-}
-
-fn ctx_button(e: &'_ str) -> widget::Button<'_, Message, LauncherTheme> {
-    widget::button(widget::text(e).size(13))
-        .width(Length::Fill)
-        .style(|t: &LauncherTheme, s| {
-            t.style_button(s, crate::stylesheet::widgets::StyleButton::FlatDark)
-        })
-        .padding(2)
 }

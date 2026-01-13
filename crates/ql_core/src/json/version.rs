@@ -204,19 +204,6 @@ impl VersionDetails {
     }
 
     #[must_use]
-    pub fn needs_launchwrapper_fix(&self) -> bool {
-        self.libraries
-            .iter()
-            .filter_map(|n| n.downloads.as_ref())
-            .filter_map(|n| n.artifact.as_ref())
-            .any(|n| {
-                n.path
-                    .as_ref()
-                    .is_some_and(|n| n.contains("mcphackers/launchwrapper/1.1.2"))
-            })
-    }
-
-    #[must_use]
     pub fn get_id(&self) -> &str {
         self.id.strip_suffix("-lwjgl3").unwrap_or(&self.id)
     }

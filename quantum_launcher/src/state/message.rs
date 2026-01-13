@@ -2,10 +2,10 @@ use std::{collections::HashSet, path::PathBuf, process::ExitStatus};
 
 use crate::{
     message_handler::ForgeKind,
-    state::MenuEditModsModal,
+    state::{LaunchModal, MenuEditModsModal},
     stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
 };
-use iced::widget;
+use iced::widget::{self, scrollable::AbsoluteOffset};
 use ql_core::{
     file_utils::DirItem,
     jarmod::JarMods,
@@ -25,7 +25,7 @@ use ql_mod_manager::{
     store::{CurseforgeNotAllowed, ImageResult, ModIndex, QueryType, RecommendedMod, SearchResult},
 };
 
-use super::{LaunchTabId, LauncherSettingsTab, LicenseTab, Res};
+use super::{LaunchTab, LauncherSettingsTab, LicenseTab, Res};
 
 #[derive(Debug, Clone)]
 pub enum InstallFabricMessage {
@@ -51,6 +51,7 @@ pub enum CreateInstanceMessage {
     ScreenOpen {
         is_server: bool,
     },
+    SidebarResize(f32),
 
     VersionsLoaded(Res<(Vec<ListEntry>, String)>),
     VersionSelected(ListEntry),
@@ -120,7 +121,11 @@ pub enum ManageModsMessage {
     ScreenOpen,
     ScreenOpenWithoutUpdate,
 
-    ToggleCheckbox(String, Option<ModId>),
+    ListScrolled(AbsoluteOffset),
+    /// Simple, dumb selection
+    SelectEnsure(String, Option<ModId>),
+    /// More nuanced selection with ctrl/shift multi-select
+    SelectMod(String, Option<ModId>),
 
     DeleteSelected,
     DeleteOptiforge(String),
@@ -186,6 +191,8 @@ pub enum InstallModsMessage {
     IndexUpdated(Res<ModIndex>),
     Scrolled(widget::scrollable::Viewport),
     InstallModpack(ModId),
+    Uninstall(usize),
+    UninstallComplete(Res<Vec<ModId>>),
 
     ChangeBackend(StoreBackendType),
     ChangeQueryType(QueryType),
@@ -350,6 +357,15 @@ pub enum NotesMessage {
 }
 
 #[derive(Debug, Clone)]
+pub enum GameLogMessage {
+    Scroll(isize),
+    ScrollAbsolute(isize),
+    Copy,
+    Upload,
+    Uploaded(Res<String>),
+}
+
+#[derive(Debug, Clone)]
 pub enum Message {
     Nothing,
     Error(String),
@@ -363,35 +379,37 @@ pub enum Message {
     CreateInstance(CreateInstanceMessage),
     EditInstance(EditInstanceMessage),
     EditLwjgl(EditLwjglMessage),
+    LauncherSettings(LauncherSettingsMessage),
+    Notes(NotesMessage),
+    GameLog(GameLogMessage),
+    Window(WindowMessage),
+
     ManageMods(ManageModsMessage),
-    ExportMods(ExportModsMessage),
     ManageJarMods(ManageJarModsMessage),
     InstallMods(InstallModsMessage),
     InstallOptifine(InstallOptifineMessage),
     InstallFabric(InstallFabricMessage),
     EditPresets(EditPresetsMessage),
-    LauncherSettings(LauncherSettingsMessage),
+    ExportMods(ExportModsMessage),
     RecommendedMods(RecommendedModMessage),
-    Notes(NotesMessage),
 
-    LaunchInstanceSelected {
-        name: String,
-        is_server: bool,
-    },
+    LaunchInstanceSelected(InstanceSelection),
     LaunchUsernameSet(String),
     LaunchStart,
     LaunchEnd(Res<LaunchedProcess>),
     LaunchKill,
+    LaunchGameExited(Res<(ExitStatus, InstanceSelection, Option<Diagnostic>)>),
 
-    LaunchScreenOpen {
+    MScreenOpen {
         message: Option<String>,
         clear_selection: bool,
         is_server: Option<bool>,
     },
-    LaunchChangeTab(LaunchTabId),
+    MChangeTab(LaunchTab),
+    MModal(Option<LaunchModal>),
 
-    LaunchSidebarResize(f32),
-    LaunchSidebarScroll(f32),
+    MSidebarResize(f32),
+    MSidebarScroll(f32),
 
     DeleteInstanceMenu,
     DeleteInstance,
@@ -426,19 +444,11 @@ pub enum Message {
     CoreFocusNext,
     CoreTryQuit,
 
-    Window(WindowMessage),
     CoreImageDownloaded(Res<ImageResult>),
 
     CoreLogToggle,
     CoreLogScroll(isize),
     CoreLogScrollAbsolute(isize),
-
-    LaunchLogScroll(isize),
-    LaunchLogScrollAbsolute(isize),
-    LaunchGameExited(Res<(ExitStatus, InstanceSelection, Option<Diagnostic>)>),
-    LaunchCopyLog,
-    LaunchUploadLog,
-    LaunchUploadLogResult(Res<String>),
 
     #[allow(unused)]
     UpdateCheckResult(Res<UpdateCheckInfo>),

@@ -1,6 +1,6 @@
 use owo_colors::{OwoColorize, Style};
 use ql_core::{
-    err, info,
+    eeprintln, err, info,
     json::{InstanceConfigJson, VersionDetails},
     InstanceSelection, IntoStringError, ListEntry, Loader, OptifineUniqueVersion, LAUNCHER_DIR,
 };
@@ -19,7 +19,7 @@ use super::PrintCmd;
 pub fn list_available_versions() {
     use std::io::Write;
 
-    eprintln!("Listing downloadable versions...");
+    eeprintln!("Listing downloadable versions...");
     let (versions, _) = match tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(ql_instances::list_versions())

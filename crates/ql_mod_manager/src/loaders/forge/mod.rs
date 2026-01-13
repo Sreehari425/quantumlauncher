@@ -1,4 +1,5 @@
 use error::Is404NotFound;
+use owo_colors::OwoColorize;
 use ql_core::{
     do_jobs, err, file_utils, info,
     json::{
@@ -83,7 +84,7 @@ impl ForgeInstaller {
             get_forge_version(minecraft_version).await?
         };
 
-        info!("Forge version {version} is being installed");
+        pt!("{}: {version}", "Version".underline());
 
         let norm_version = {
             let number_of_full_stops = minecraft_version.chars().filter(|c| *c == '.').count();
@@ -121,7 +122,7 @@ impl ForgeInstaller {
             ("installer", "universal")
         };
 
-        pt!("Downloading Installer");
+        info!("Downloading Installer");
         self.send_progress(ForgeInstallProgress::P3DownloadingInstaller);
 
         let installer_file = self.try_downloading_from_urls(&[
@@ -158,7 +159,7 @@ impl ForgeInstaller {
 
             return match result {
                 Ok(file) => {
-                    pt!("({url})");
+                    pt!("{}: {}", "Url".underline(), url.bright_black());
                     Ok(file)
                 }
                 Err(err) => {
@@ -222,10 +223,26 @@ impl ForgeInstaller {
 
         self.run_installer_create_garbage_files().await?;
 
-        let java_path = get_java_binary(JavaVersion::Java8, JAVA, j_progress).await?;
-        pt!("Running Installer");
+        let java_version = if cfg!(target_os = "windows") {
+            // WTF: No clue why this is needed but it won't work without this.
+            // Hey, that's what you get for not using PrismLauncher!
+            self.version_json
+                .javaVersion
+                .clone()
+                .map(JavaVersion::from)
+                .unwrap_or(JavaVersion::Java21)
+        } else {
+            JavaVersion::Java8
+        };
+        let java_path = get_java_binary(java_version, JAVA, j_progress).await?;
+        info!("Running Installer...");
         self.send_progress(ForgeInstallProgress::P4RunningInstaller);
         let mut command = Command::new(&java_path);
+        pt!(
+            "{}: {:?}",
+            "Install Path".underline(),
+            self.forge_dir.bright_black()
+        );
         command
             .args([
                 "-cp",
@@ -317,7 +334,7 @@ impl ForgeInstaller {
         let (file, path) = Self::get_filename_and_path(lib, ver, &library, class)?;
 
         if class == "net.minecraftforge" && lib == "forge" && self.major_version < 49 {
-            pt!("Built in forge library, skipping...");
+            pt!("(_/{num_libraries}): built-in forge library, skipping...");
             return Ok(());
         }
 
@@ -350,11 +367,7 @@ impl ForgeInstaller {
         {
             let mut i = library_i.lock().unwrap();
             *i += 1;
-            pt!(
-                "Downloaded library ({}/{num_libraries}): {}",
-                *i,
-                library.name
-            );
+            pt!("({}/{num_libraries}): {}", *i, library.name.bright_black());
 
             self.send_progress(ForgeInstallProgress::P5DownloadingLibrary {
                 num: *i,
@@ -528,6 +541,7 @@ pub async fn install_client(
 
     let (forge_json, forge_json_str) = installer.get_forge_json(&installer_file)?;
 
+    info!("Downloading libraries...");
     let libs: Vec<JsonDetailsLibrary> = forge_json
         .libraries
         .into_iter()

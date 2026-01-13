@@ -122,7 +122,7 @@ impl Launcher {
             State::LauncherSettings(menu) => menu.view(&self.config),
             State::InstallPaper(menu) => menu.view(self.tick_timer),
             State::ChangeLog => {
-                let back_msg = Message::LaunchScreenOpen {
+                let back_msg = Message::MScreenOpen {
                     message: None,
                     clear_selection: true,
                     is_server: None,
@@ -130,7 +130,7 @@ impl Launcher {
                 widget::scrollable(
                     widget::column!(
                         button_with_icon(icons::back(), "Skip", 16).on_press(back_msg.clone()),
-                        changelog(),
+                        changelog(&self.config),
                         button_with_icon(icons::back(), "Continue", 16).on_press(back_msg),
                     )
                     .padding(10)

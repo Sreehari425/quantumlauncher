@@ -1,16 +1,20 @@
 use crate::message_update::MSG_RESIZE;
 use crate::state::{
-    AutoSaveKind, CreateInstanceMessage, LaunchTabId, Launcher, LauncherSettingsMessage,
-    LauncherSettingsTab, MenuCreateInstance, MenuEditMods, MenuEditPresets, MenuExportInstance,
-    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLauncherSettings,
-    MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, Message, State,
+    AutoSaveKind, CreateInstanceMessage, LaunchTab, Launcher, LauncherSettingsMessage,
+    LauncherSettingsTab, MenuCreateInstance, MenuCreateInstanceChoosing, MenuEditMods,
+    MenuEditPresets, MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper,
+    MenuLauncherSettings, MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods,
+    Message, State,
 };
 use iced::{
     keyboard::{self, key::Named, Key},
     Task,
 };
-use ql_core::jarmod::JarMods;
-use ql_core::{err, jarmod::JarMod, pt_no_log, InstanceSelection};
+use ql_core::{
+    err,
+    jarmod::{JarMod, JarMods},
+    pt, InstanceSelection,
+};
 use std::ffi::OsStr;
 use std::path::Path;
 
@@ -19,7 +23,7 @@ impl Launcher {
         match event {
             iced::Event::Window(event) => match event {
                 iced::window::Event::CloseRequested => {
-                    pt_no_log!("Closing...");
+                    pt!(no_log, "Closing...");
                     std::process::exit(0);
                 }
                 iced::window::Event::Resized(size) => {
@@ -162,13 +166,13 @@ impl Launcher {
                     })
                 }
                 ("1", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
-                    Message::LaunchChangeTab(LaunchTabId::Buttons)
+                    Message::MChangeTab(LaunchTab::Buttons)
                 }
                 ("2", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
-                    Message::LaunchChangeTab(LaunchTabId::Edit)
+                    Message::MChangeTab(LaunchTab::Edit)
                 }
                 ("3", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
-                    Message::LaunchChangeTab(LaunchTabId::Log)
+                    Message::MChangeTab(LaunchTab::Log)
                 }
                 (",", true, _, _, State::Launch(_)) => {
                     Message::LauncherSettings(LauncherSettingsMessage::Open)
@@ -206,8 +210,10 @@ impl Launcher {
                     return Task::done(Message::LaunchKill);
                 }
             }
-        } else if let State::Create(MenuCreateInstance::Choosing { list: Some(_), .. }) =
-            &self.state
+        } else if let State::Create(MenuCreateInstance::Choosing(MenuCreateInstanceChoosing {
+            list: Some(_),
+            ..
+        })) = &self.state
         {
             if let Key::Named(Named::Enter) = key {
                 if modifiers.command() {
@@ -331,6 +337,7 @@ impl Launcher {
                 }
             }
             State::InstallOptifine(MenuInstallOptifine::Choosing { .. })
+            | State::InstallFabric(MenuInstallFabric::Loading { .. })
             | State::InstallFabric(MenuInstallFabric::Loaded { progress: None, .. })
             | State::EditJarMods(_)
             | State::ExportMods(_)
@@ -415,13 +422,18 @@ impl Launcher {
                 menu.search = None;
                 return true;
             }
-        } else if let State::Create(MenuCreateInstance::Choosing {
+        } else if let State::Create(MenuCreateInstance::Choosing(MenuCreateInstanceChoosing {
             show_category_dropdown,
             ..
-        }) = &mut self.state
+        })) = &mut self.state
         {
             if *show_category_dropdown {
                 *show_category_dropdown = false;
+                return true;
+            }
+        } else if let State::Launch(menu) = &mut self.state {
+            if menu.modal.is_some() {
+                menu.modal = None;
                 return true;
             }
         }

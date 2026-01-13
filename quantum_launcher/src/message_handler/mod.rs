@@ -1,5 +1,7 @@
 use crate::config::SIDEBAR_WIDTH;
-use crate::state::{AutoSaveKind, GameProcess, MenuCreateInstance, MenuInstallOptifine};
+use crate::state::{
+    AutoSaveKind, GameProcess, MenuCreateInstance, MenuCreateInstanceChoosing, MenuInstallOptifine,
+};
 use crate::tick::sort_dependencies;
 use crate::{
     get_entries,
@@ -10,6 +12,7 @@ use crate::{
     Launcher, Message,
 };
 use iced::futures::executor::block_on;
+use iced::widget::scrollable::AbsoluteOffset;
 use iced::Task;
 use ql_core::json::instance_config::ModTypeInfo;
 use ql_core::json::VersionDetails;
@@ -30,7 +33,7 @@ use std::{
 };
 use tokio::io::AsyncWriteExt;
 
-pub const SIDEBAR_LIMIT_RIGHT: f32 = 120.0;
+pub const SIDEBAR_LIMIT_RIGHT: f32 = 140.0;
 pub const SIDEBAR_LIMIT_LEFT: f32 = 135.0;
 
 mod iced_event;
@@ -52,6 +55,7 @@ impl Launcher {
             }
         }
         if let State::Launch(menu) = &mut self.state {
+            menu.modal = None;
             menu.reload_notes(instance)
         } else {
             Task::none()
@@ -264,6 +268,7 @@ impl Launcher {
                 search: None,
                 width_name: 220.0,
                 list_shift_index: None,
+                list_scroll: AbsoluteOffset::default(),
             });
 
             Ok(Task::batch([update_local_mods_task, update_cmd]))
@@ -425,8 +430,9 @@ impl Launcher {
             .is_some_and(|n| n.is_server())
             || if let State::Launch(menu) = &self.state {
                 menu.is_viewing_server
-            } else if let State::Create(MenuCreateInstance::Choosing { is_server, .. }) =
-                &self.state
+            } else if let State::Create(MenuCreateInstance::Choosing(
+                MenuCreateInstanceChoosing { is_server, .. },
+            )) = &self.state
             {
                 *is_server
             } else {
@@ -590,7 +596,7 @@ impl Launcher {
             ),
             msg2: "All your data, including worlds, will be lost".to_owned(),
             yes: Message::DeleteInstance,
-            no: Message::LaunchScreenOpen {
+            no: Message::MScreenOpen {
                 message: None,
                 clear_selection: false,
                 is_server: None,

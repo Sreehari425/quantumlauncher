@@ -1,13 +1,18 @@
 use frostmark::MarkWidget;
-use iced::{widget, Length};
+use iced::{
+    widget::{self, column, row},
+    Length,
+};
 use ql_core::{Loader, ModId, StoreBackendType};
 use ql_mod_manager::store::{QueryType, SearchMod};
 
 use crate::{
     icons,
-    menu_renderer::{back_button, button_with_icon, Element, FONT_DEFAULT, FONT_MONO},
-    state::{ImageState, InstallModsMessage, ManageModsMessage, MenuModsDownload, Message},
-    stylesheet::{color::Color, styles::LauncherTheme},
+    menu_renderer::{back_button, button_with_icon, tooltip, Element, FONT_DEFAULT, FONT_MONO},
+    state::{
+        ImageState, InstallModsMessage, ManageModsMessage, MenuModsDownload, Message, ModOperation,
+    },
+    stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
 
 impl MenuModsDownload {
@@ -16,9 +21,9 @@ impl MenuModsDownload {
     fn view_main<'a>(&'a self, images: &'a ImageState, tick_timer: usize) -> Element<'a> {
         let mods_list = self.get_mods_list(images, tick_timer);
 
-        widget::row!(
+        row!(
             widget::scrollable(
-                widget::column!(
+                column!(
                     widget::text_input("Search...", &self.query)
                         .on_input(|n| Message::InstallMods(InstallModsMessage::SearchInput(n))),
                     self.get_side_panel(),
@@ -37,7 +42,7 @@ impl MenuModsDownload {
                         && !self.mod_index.mods.contains_key("YL57xq9U") // Modrinth ID
                         && !self.mod_index.mods.contains_key("CF:455508")) // CurseForge ID
                     .then_some(
-                        widget::column![
+                        column![
                             widget::text(
                                 "You haven't installed any shader mod! Either install:\n- Fabric + Sodium + Iris (recommended), or\n- OptiFine"
                             ).size(12)
@@ -82,7 +87,7 @@ impl MenuModsDownload {
     }
 
     fn get_side_panel(&'_ self) -> Element<'_> {
-        let normal_controls = widget::column!(
+        let normal_controls = column!(
             back_button().on_press(Message::ManageMods(
                 ManageModsMessage::ScreenOpenWithoutUpdate
             )),
@@ -106,7 +111,7 @@ impl MenuModsDownload {
             .size(14),
             widget::Space::with_height(5),
             widget::text("Select Type:").size(18),
-            widget::column(QueryType::ALL.iter().map(|n| {
+            widget::column(QueryType::STORE_QUERIES.iter().map(|n| {
                 widget::radio(n.to_string(), *n, Some(self.query_type), |v| {
                     Message::InstallMods(InstallModsMessage::ChangeQueryType(v))
                 })
@@ -121,15 +126,31 @@ impl MenuModsDownload {
         if self.mods_download_in_progress.is_empty() || self.results.is_none() {
             normal_controls.into()
         } else {
-            // Mods are being installed. Can't back out.
-            // Show list of mods being installed.
-            widget::column!("Installing:", {
+            // Mod operations (installing/uninstalling) are in progress.
+            // Can't back out. Show list of operations in progress.
+            column!("In progress:", {
                 widget::column(
                     self.mods_download_in_progress
                         .values()
-                        .map(|title| widget::text!("- {title}").into()),
+                        .map(|(title, operation)| {
+                            const SIZE: u16 = 12;
+                            widget::container(
+                                widget::row![
+                                    match operation {
+                                        ModOperation::Downloading => icons::download_s(SIZE),
+                                        ModOperation::Deleting => icons::bin_s(SIZE),
+                                    },
+                                    widget::text(title).size(SIZE)
+                                ]
+                                .spacing(4),
+                            )
+                            .padding(8)
+                            .into()
+                        }),
                 )
+                .spacing(5)
             })
+            .spacing(5)
             .into()
         }
     }
@@ -141,7 +162,7 @@ impl MenuModsDownload {
     ) -> widget::Column<'a, Message, LauncherTheme> {
         if let Some(results) = self.results.as_ref() {
             if results.mods.is_empty() {
-                widget::column!["No results found."]
+                column!["No results found."]
             } else {
                 widget::column(
                     results
@@ -154,7 +175,7 @@ impl MenuModsDownload {
             .push(widget::horizontal_space())
         } else {
             let dots = ".".repeat((tick_timer % 3) + 1);
-            widget::column!(widget::text!("Loading{dots}"))
+            column!(widget::text!("Loading{dots}"))
         }
     }
 
@@ -166,26 +187,50 @@ impl MenuModsDownload {
         images: &'a ImageState,
         backend: StoreBackendType,
     ) -> Element<'a> {
-        widget::row!(
-            widget::button(widget::row![icons::download()].spacing(10).padding(5))
-                .height(70)
+        let is_installed = self
+            .mod_index
+            .mods
+            .contains_key(&hit.get_id(backend).get_index_str())
+            || self.mod_index.mods.values().any(|n| n.name == hit.title);
+        let is_downloading = self
+            .mods_download_in_progress
+            .contains_key(&ModId::from_pair(&hit.id, backend));
+
+        let side_button = |icon| widget::button(row![icon].padding(5)).height(70);
+
+        let action_button: Element = if is_installed && !is_downloading {
+            // Uninstall button - darker to respect theme
+            tooltip(
+                side_button(icons::bin())
+                    .style(|t: &LauncherTheme, s| {
+                        t.style_button(s, StyleButton::SemiDarkBorder([true; 4]))
+                    })
+                    .on_press(Message::InstallMods(InstallModsMessage::Uninstall(i))),
+                "Uninstall",
+                widget::tooltip::Position::FollowCursor,
+            )
+            .into()
+        } else {
+            // Download button
+            side_button(icons::download())
                 .on_press_maybe(
-                    (!self
-                        .mods_download_in_progress
-                        .contains_key(&ModId::from_pair(&hit.id, backend))
-                        && !self.mod_index.mods.contains_key(&hit.id)
-                        && !self.mod_index.mods.values().any(|n| n.name == hit.title))
-                    .then_some(Message::InstallMods(InstallModsMessage::Download(i)))
-                ),
+                    (!is_downloading)
+                        .then_some(Message::InstallMods(InstallModsMessage::Download(i))),
+                )
+                .into()
+        };
+
+        row!(
+            action_button,
             widget::button(
-                widget::row!(
+                row!(
                     images.view(
                         &hit.icon_url,
                         Some(32.0),
                         Some(32.0),
-                        widget::column!(widget::text("...")).into()
+                        column!(widget::text("...")).into()
                     ),
-                    widget::column!(
+                    column!(
                         icons::download_s(20),
                         widget::text(Self::format_downloads(hit.downloads)).size(12),
                     )
@@ -193,7 +238,7 @@ impl MenuModsDownload {
                     .width(40)
                     .height(60)
                     .spacing(5),
-                    widget::column!(
+                    column!(
                         widget::text(&hit.title)
                             .wrapping(widget::text::Wrapping::None)
                             .shaping(widget::text::Shaping::Advanced)
@@ -242,7 +287,7 @@ impl MenuModsDownload {
     ) -> Element<'a> {
         // Parses the markdown description of the mod.
         let markdown_description = if let Some(desc) = &self.description {
-            widget::column!(MarkWidget::new(desc)
+            column!(MarkWidget::new(desc)
                 .on_clicking_link(Message::CoreOpenLink)
                 .on_drawing_image(|img| { images.view(img.url, img.width, img.height, "".into()) })
                 .on_updating_state(|n| Message::InstallMods(InstallModsMessage::TickDesc(n)))
@@ -250,7 +295,7 @@ impl MenuModsDownload {
                 .font_mono(FONT_MONO))
         } else {
             let dots = ".".repeat((tick_timer % 3) + 1);
-            widget::column!(widget::text!("Loading...{dots}"))
+            column!(widget::text!("Loading...{dots}"))
         };
 
         let url = format!(
@@ -264,8 +309,8 @@ impl MenuModsDownload {
         );
 
         widget::scrollable(
-            widget::column!(
-                widget::row!(
+            column!(
+                row!(
                     back_button()
                         .on_press(Message::InstallMods(InstallModsMessage::BackToMainScreen)),
                     widget::tooltip(
@@ -279,7 +324,7 @@ impl MenuModsDownload {
                         .on_press(Message::CoreCopyText(hit.id.clone())),
                 )
                 .spacing(5),
-                widget::row!(
+                row!(
                     images.view(&hit.icon_url, Some(32.0), Some(32.0), "".into()),
                     widget::text(&hit.title)
                         .shaping(widget::text::Shaping::Advanced)

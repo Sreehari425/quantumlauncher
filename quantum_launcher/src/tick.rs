@@ -12,7 +12,7 @@ use ql_core::{
 use ql_mod_manager::store::{ModConfig, ModIndex};
 
 use crate::state::{
-    AutoSaveKind, EditInstanceMessage, GameProcess, InstallModsMessage, InstanceLog, LaunchTabId,
+    AutoSaveKind, EditInstanceMessage, GameProcess, InstallModsMessage, InstanceLog, LaunchTab,
     Launcher, ManageJarModsMessage, MenuCreateInstance, MenuEditMods, MenuExportInstance,
     MenuInstallFabric, MenuInstallOptifine, MenuLoginMS, MenuModsDownload, MenuRecommendedMods,
     Message, ModListEntry, State,
@@ -38,7 +38,7 @@ impl Launcher {
 
                 let mut commands = Vec::new();
 
-                if let (Some(edit), LaunchTabId::Edit) = (&menu.edit_instance, &menu.tab) {
+                if let (Some(edit), LaunchTab::Edit) = (&menu.edit_instance, &menu.tab) {
                     let config = edit.config.clone();
                     self.tick_edit_instance(config, &mut commands);
                 }

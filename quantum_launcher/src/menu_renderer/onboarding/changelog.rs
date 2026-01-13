@@ -1,12 +1,15 @@
 use iced::widget;
 
 use crate::{
-    menu_renderer::{onboarding::IMG_MANAGE_MODS, Element},
+    config::LauncherConfig,
+    menu_renderer::{
+        get_mode_selector, onboarding::IMG_MANAGE_MODS, settings::get_theme_selector, Element,
+    },
     state::Message,
 };
 
 #[allow(unused)]
-pub fn changelog<'a>() -> Element<'a> {
+pub fn changelog<'a>(config: &LauncherConfig) -> Element<'a> {
     const FS: u16 = 14;
     let cmd = if cfg!(target_os = "macos") {
         "Cmd"
@@ -16,6 +19,9 @@ pub fn changelog<'a>() -> Element<'a> {
 
     widget::column![
         widget::text("Welcome to QuantumLauncher v0.5.0!").size(40),
+        "Happy new year by the way!",
+
+        get_mode_selector(config),
 
         widget::container(widget::column![
             "TLDR;",
@@ -54,6 +60,8 @@ pub fn changelog<'a>() -> Element<'a> {
             widget::text("    - \"Halloween\" orange/amber theme (thanks @Sreehari425)").size(14),
         ].spacing(5),
 
+        get_theme_selector(),
+
         widget::text("Create Instance").size(32),
         widget::column![
             "Overhauled the Create Instance screen, now with:",
@@ -79,13 +87,14 @@ pub fn changelog<'a>() -> Element<'a> {
         widget::text("Keyboard Navigation").size(32),
 
         widget::column![
-            widget::text!("- {cmd}/Alt + 1/2/3 to switch tabs in main screen"),
-            widget::text!("- {cmd} + , to open settings"),
+            widget::text!("- {cmd}/Alt + 1/2/3 to switch tabs in main screen").size(14),
+            widget::text!("- {cmd} + , to open settings").size(14),
 
+            widget::Space::with_height(5),
             "Creating instance:",
-            widget::text!("- {cmd} + N to open screen"),
-            widget::text!("- {cmd} + F to search versions (and `Enter` to select)"),
-            widget::text!("- {cmd} + Enter to confirm"),
+            widget::text!("- {cmd} + N to open screen").size(14),
+            widget::text!("- {cmd} + F to search versions (and `Enter` to select)").size(14),
+            widget::text!("- {cmd} + Enter to confirm").size(14),
         ].spacing(5),
 
         widget::horizontal_rule(1),

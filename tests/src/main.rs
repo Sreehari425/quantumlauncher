@@ -1,7 +1,7 @@
 use std::{fmt::Display, path::PathBuf, process::exit};
 
 use clap::Parser;
-use ql_core::{do_jobs, print::LogConfig, ListEntry, LAUNCHER_DIR};
+use ql_core::{do_jobs, eeprintln, print::LogConfig, ListEntry, LAUNCHER_DIR};
 use ql_instances::DownloadError;
 
 use crate::version::{Version, VERSIONS_LWJGL2, VERSIONS_LWJGL3};
@@ -47,7 +47,7 @@ fn attempt<T, E: Display>(r: Result<T, E>) -> T {
     match r {
         Ok(n) => n,
         Err(err) => {
-            eprintln!("\nERROR: {err}");
+            eeprintln!("\nERROR: {err}");
             exit(1);
         }
     }
@@ -98,7 +98,7 @@ async fn main() {
             )
             .await
             {
-                eprintln!("{err}");
+                eeprintln!("{err}");
                 fails.push((*name, Some(*loader)));
                 continue;
             }
@@ -131,6 +131,8 @@ fn setup_dir() {
         .parent()
         .unwrap()
         .join("QuantumLauncher");
+    let logs_dir = new_dir.join("logs");
+    _ = std::fs::remove_dir_all(&logs_dir);
     unsafe {
         std::env::set_var("QL_DIR", new_dir);
     }

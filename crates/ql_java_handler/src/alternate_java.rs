@@ -127,8 +127,8 @@ impl JavaVersion {
                 JavaVersion::Java16 |
                 JavaVersion::Java17 => "https://corretto.aws/downloads/latest/amazon-corretto-17-aarch64-linux-jdk.tar.gz",
                 JavaVersion::Java21 => "https://corretto.aws/downloads/latest/amazon-corretto-21-aarch64-linux-jdk.tar.gz",
-                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-aarch64-linux-jdk.tar.gz"
-                JavaVersion::Java8 => "https://corretto.aws/downloads/latest/amazon-corretto-8-aarch64-linux-jdk.tar.gz"
+                JavaVersion::Java25 => "https://corretto.aws/downloads/latest/amazon-corretto-25-aarch64-linux-jdk.tar.gz",
+                JavaVersion::Java8 => "https://corretto.aws/downloads/latest/amazon-corretto-8-aarch64-linux-jdk.tar.gz",
             });
         } else if #[cfg(target_arch = "arm")] {
             return matches!(self, JavaVersion::Java8).then_some(
