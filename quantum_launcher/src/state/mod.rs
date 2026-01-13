@@ -373,10 +373,14 @@ fn load_account(
     username: &str,
     account: &mut crate::config::ConfigAccount,
 ) {
+    use crate::config::TokenStorageMethod;
+    use ql_instances::auth::token_store::TokenStorageMethod as InstanceTokenStorageMethod;
+
     fn get_refresh_token_for_account_type(
         account_type: AccountType,
         username: &str,
         keyring_identifier: Option<&str>,
+        token_storage: Option<TokenStorageMethod>,
     ) -> Result<String, String> {
         let keyring_username = if let Some(keyring_id) = keyring_identifier {
             keyring_id
@@ -390,7 +394,31 @@ fn load_account(
                 AccountType::Microsoft => username,
             }
         };
-        ql_instances::auth::read_refresh_token(keyring_username, account_type).strerr()
+        
+        // If account has a specific storage method, use that
+        // Otherwise default to keyring for backward compatibility with old accounts
+        let method = token_storage.unwrap_or(TokenStorageMethod::Keyring);
+        let instance_method = match method {
+            TokenStorageMethod::Keyring => InstanceTokenStorageMethod::Keyring,
+            TokenStorageMethod::EncryptedFile => InstanceTokenStorageMethod::EncryptedFile,
+        };
+        ql_instances::auth::read_refresh_token_from(keyring_username, account_type, instance_method).strerr()
+    }
+
+    let token_storage = account.token_storage;
+
+    // Get current global storage method
+    let global_method = match InstanceTokenStorageMethod::get_global() {
+        InstanceTokenStorageMethod::Keyring => TokenStorageMethod::Keyring,
+        InstanceTokenStorageMethod::EncryptedFile => TokenStorageMethod::EncryptedFile,
+    };
+
+    // Only load accounts whose storage method matches the current global method
+    // Old accounts without token_storage field default to keyring
+    let account_method = token_storage.unwrap_or(TokenStorageMethod::Keyring);
+    if account_method != global_method {
+        // Skip this account - it's stored in a different storage method
+        return;
     }
 
     let (account_type, refresh_token) =
@@ -401,6 +429,7 @@ fn load_account(
                     AccountType::ElyBy,
                     username,
                     account.keyring_identifier.as_deref(),
+                    token_storage,
                 ),
             )
         } else if account.account_type.as_deref() == Some("LittleSkin")
@@ -412,6 +441,7 @@ fn load_account(
                     AccountType::LittleSkin,
                     username,
                     account.keyring_identifier.as_deref(),
+                    token_storage,
                 ),
             )
         } else {
@@ -421,6 +451,7 @@ fn load_account(
                     AccountType::Microsoft,
                     username,
                     account.keyring_identifier.as_deref(),
+                    token_storage,
                 ),
             )
         };

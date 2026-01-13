@@ -84,9 +84,20 @@ pub fn store_token(
 
 /// Read a token using the current storage method.
 pub fn read_token(username: &str, account_type: AccountType) -> Result<String, TokenStoreError> {
+    read_token_from(username, account_type, TokenStorageMethod::get_global())
+}
+
+/// Read a token from a specific storage method.
+///
+/// Use this when you know which storage method the token was stored with.
+pub fn read_token_from(
+    username: &str,
+    account_type: AccountType,
+    method: TokenStorageMethod,
+) -> Result<String, TokenStoreError> {
     let storage_key = make_storage_key(username, account_type);
 
-    match TokenStorageMethod::get_global() {
+    match method {
         TokenStorageMethod::Keyring => {
             let entry = keyring::Entry::new("QuantumLauncher", &storage_key)?;
             let token = entry.get_password()?;

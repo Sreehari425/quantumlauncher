@@ -296,6 +296,9 @@ impl Launcher {
     }
 
     fn account_response_3(&mut self, data: AccountData) -> Task<Message> {
+        use crate::config::TokenStorageMethod;
+        use ql_instances::auth::token_store::TokenStorageMethod as InstanceTokenStorageMethod;
+
         self.autosave.remove(&AutoSaveKind::LauncherConfig);
         if data.username == OFFLINE_ACCOUNT_NAME || data.username == NEW_ACCOUNT_NAME {
             return self.go_to_launch_screen::<String>(None);
@@ -308,6 +311,12 @@ impl Launcher {
         }
         self.accounts_dropdown.insert(0, username.clone());
 
+        // Record which storage method was used for this token
+        let token_storage = match InstanceTokenStorageMethod::get_global() {
+            InstanceTokenStorageMethod::Keyring => TokenStorageMethod::Keyring,
+            InstanceTokenStorageMethod::EncryptedFile => TokenStorageMethod::EncryptedFile,
+        };
+
         let config_accounts = self.config.accounts.get_or_insert_with(HashMap::new);
         config_accounts.insert(
             username.clone(),
@@ -317,6 +326,7 @@ impl Launcher {
                 account_type: Some(data.account_type.to_string()),
                 keyring_identifier: Some(data.username.clone()),
                 username_nice: Some(data.nice_username.clone()),
+                token_storage: Some(token_storage),
             },
         );
 

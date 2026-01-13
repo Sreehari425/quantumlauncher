@@ -189,6 +189,17 @@ pub fn read_refresh_token(
     token_store::read_token(username, account_type)
 }
 
+/// Read a refresh token from a specific storage method.
+///
+/// Use this when you know which storage method the token was stored with.
+pub fn read_refresh_token_from(
+    username: &str,
+    account_type: AccountType,
+    method: token_store::TokenStorageMethod,
+) -> Result<String, TokenStoreError> {
+    token_store::read_token_from(username, account_type, method)
+}
+
 /// Legacy function for reading from keyring directly.
 /// Use `read_refresh_token` instead for automatic storage method selection.
 pub fn read_refresh_token_keyring(

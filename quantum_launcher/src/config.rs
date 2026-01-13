@@ -300,6 +300,14 @@ pub struct ConfigAccount {
     /// username while the regular "username"
     /// would be an email.
     pub username_nice: Option<String>,
+
+    /// Which storage method was used for this account's token.
+    /// This allows proper token retrieval when user switches between
+    /// keyring and encrypted file storage.
+    ///
+    /// - `"keyring"` - Token stored in system keyring
+    /// - `"encrypted_file"` - Token stored in encrypted file
+    pub token_storage: Option<TokenStorageMethod>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
