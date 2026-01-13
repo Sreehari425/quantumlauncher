@@ -150,6 +150,7 @@ impl Launcher {
             | State::Welcome(_)
             | State::License(_)
             | State::LoginMS(MenuLoginMS { .. })
+            | State::TokenPasswordPrompt(_)
             | State::GenericMessage(_)
             | State::CurseforgeManualDownload(_)
             | State::LogUploadResult { .. }

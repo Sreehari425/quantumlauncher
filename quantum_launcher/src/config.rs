@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::{collections::HashMap, path::Path};
 
+pub use ql_instances::TokenStorageMethod;
+
 pub const SIDEBAR_WIDTH: f32 = 0.33;
 const OPACITY: f32 = 0.9;
 
@@ -94,6 +96,11 @@ pub struct LauncherConfig {
     pub ui: Option<UiSettings>,
     // Since: v0.5.0
     pub persistent: Option<PersistentSettings>,
+
+    /// Method for storing authentication tokens.
+    /// Can be either system keyring or encrypted file.
+    // Since: v0.6.0
+    pub token_storage: Option<TokenStorageMethod>,
 }
 
 impl Default for LauncherConfig {
@@ -114,6 +121,7 @@ impl Default for LauncherConfig {
             extra_java_args: None,
             ui: None,
             persistent: None,
+            token_storage: None,
         }
     }
 }
@@ -244,6 +252,12 @@ impl LauncherConfig {
     pub fn c_persistent(&mut self) -> &mut PersistentSettings {
         self.persistent
             .get_or_insert_with(PersistentSettings::default)
+    }
+
+    /// Get the token storage method (defaults to Keyring).
+    #[must_use]
+    pub fn c_token_storage(&self) -> TokenStorageMethod {
+        self.token_storage.unwrap_or_default()
     }
 }
 

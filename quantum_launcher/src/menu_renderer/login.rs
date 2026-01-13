@@ -3,7 +3,7 @@ use iced::{widget, Alignment, Length};
 use crate::{
     icons,
     menu_renderer::tsubtitle,
-    state::{AccountMessage, MenuLoginAlternate, MenuLoginMS, Message, NEW_ACCOUNT_NAME},
+    state::{AccountMessage, MenuLoginAlternate, MenuLoginMS, MenuTokenPassword, Message, TokenPasswordMessage, NEW_ACCOUNT_NAME},
 };
 
 use super::{back_button, button_with_icon, center_x, Element};
@@ -192,6 +192,127 @@ impl MenuLoginMS {
                 .align_x(Alignment::Center),
                 widget::horizontal_space()
             )
+        ]
+        .padding(10)
+        .into()
+    }
+}
+
+impl MenuTokenPassword {
+    pub fn view(&self, tick_timer: usize) -> Element<'_> {
+        let title = if self.is_existing {
+            "Unlock Encrypted Tokens"
+        } else {
+            "Create Encrypted Token Store"
+        };
+
+        let description = if self.is_existing {
+            "Enter your password to unlock your saved account tokens."
+        } else {
+            "Create a password to encrypt your account tokens.\nYou'll need to enter this password each time you start the launcher."
+        };
+
+        let padding = iced::Padding {
+            top: 5.0,
+            bottom: 5.0,
+            right: 10.0,
+            left: 10.0,
+        };
+
+        let password_input = widget::text_input("Enter Password...", &self.password)
+            .padding(padding)
+            .on_input(|n| Message::TokenPassword(TokenPasswordMessage::PasswordInput(n)))
+            .on_submit(Message::TokenPassword(TokenPasswordMessage::Submit));
+        let password_input = if self.password.is_empty() || self.show_password {
+            password_input
+        } else {
+            password_input.font(iced::Font::with_name("Password Asterisks"))
+        };
+
+        let status: Element = if self.is_loading {
+            let dots = ".".repeat((tick_timer % 3) + 1);
+            widget::text!("Loading{dots}").into()
+        } else {
+            button_with_icon(icons::checkmark(), if self.is_existing { "Unlock" } else { "Create" }, 16)
+                .on_press(Message::TokenPassword(TokenPasswordMessage::Submit))
+                .into()
+        };
+
+        let mut col = widget::column![
+            widget::text(title).size(20),
+            widget::vertical_space().height(10),
+            widget::text(description).size(14),
+            widget::vertical_space().height(20),
+            widget::text("Password:").size(12),
+            center_x(password_input),
+        ]
+        .spacing(5)
+        .width(Length::Fill)
+        .align_x(Alignment::Center);
+
+        // Add confirm password field for new store creation
+        if !self.is_existing {
+            let confirm_input = widget::text_input("Confirm Password...", &self.password_confirm)
+                .padding(padding)
+                .on_input(|n| Message::TokenPassword(TokenPasswordMessage::PasswordConfirmInput(n)))
+                .on_submit(Message::TokenPassword(TokenPasswordMessage::Submit));
+            let confirm_input = if self.password_confirm.is_empty() || self.show_password {
+                confirm_input
+            } else {
+                confirm_input.font(iced::Font::with_name("Password Asterisks"))
+            };
+
+            col = col
+                .push(widget::text("Confirm Password:").size(12))
+                .push(center_x(confirm_input));
+        }
+
+        col = col.push(
+            widget::row![
+                widget::checkbox("Show password", self.show_password)
+                    .size(14)
+                    .text_size(12)
+                    .on_toggle(|t| Message::TokenPassword(TokenPasswordMessage::ShowPassword(t))),
+            ]
+        );
+
+        // Add error message if present
+        if let Some(error) = &self.error {
+            col = col.push(
+                widget::text(error)
+                    .style(tsubtitle)
+                    .size(12),
+            );
+        }
+
+        col = col
+            .push(widget::vertical_space().height(10))
+            .push(status);
+
+        // Add skip button for existing store or cancel button for new store creation
+        if self.is_existing {
+            col = col
+                .push(widget::vertical_space().height(10))
+                .push(
+                    widget::button(widget::text("Skip (use offline mode)").size(12))
+                        .on_press(Message::TokenPassword(TokenPasswordMessage::Skip)),
+                );
+        } else {
+            col = col
+                .push(widget::vertical_space().height(10))
+                .push(
+                    widget::button(widget::text("Cancel").size(12))
+                        .on_press(Message::TokenPassword(TokenPasswordMessage::Cancel)),
+                );
+        }
+
+        widget::column![
+            widget::row!(
+                widget::horizontal_space(),
+                col,
+                widget::horizontal_space()
+            )
+            .padding(20)
         ]
         .padding(10)
         .into()

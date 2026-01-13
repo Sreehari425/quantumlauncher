@@ -64,6 +64,40 @@ pub use launcher_update_detector::{
 pub use ql_core::jarmod;
 pub use ql_java_handler::delete_java_installs;
 
+pub use auth::token_store::TokenStorageMethod;
+
+/// Set the global token storage method.
+pub fn set_token_storage_method(method: TokenStorageMethod) {
+    method.set_global();
+}
+
+/// Initialize the encrypted token store with a new password.
+/// 
+/// This should be called when user sets up encrypted storage for the first time.
+pub fn initialize_encrypted_store(password: &str) -> Result<(), auth::token_store::TokenStoreError> {
+    auth::encrypted_store::initialize_new(password)?;
+    TokenStorageMethod::EncryptedFile.set_global();
+    Ok(())
+}
+
+/// Unlock the encrypted token store with the given password.
+pub fn unlock_encrypted_store(password: &str) -> Result<(), auth::token_store::TokenStoreError> {
+    auth::encrypted_store::unlock(password)?;
+    Ok(())
+}
+
+/// Check if encrypted store needs to be unlocked.
+#[must_use]
+pub fn encrypted_store_needs_unlock() -> bool {
+    auth::token_store::needs_unlock()
+}
+
+/// Check if encrypted store file exists.
+#[must_use]
+pub fn encrypted_store_file_exists() -> bool {
+    auth::token_store::encrypted_file_exists()
+}
+
 use semver::{BuildMetadata, Prerelease};
 
 const LAUNCHER_VERSION: semver::Version = semver::Version {

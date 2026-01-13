@@ -12,11 +12,13 @@ use ql_core::{
     IntoIoError, IntoStringError, IoError, JsonFileError, LaunchedProcess, ModId, Progress,
     LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
 };
-use ql_instances::auth::{ms::CLIENT_ID, AccountData, AccountType};
+use ql_instances::auth::{
+    encrypted_store, ms::CLIENT_ID, token_store::TokenStorageMethod, AccountData, AccountType,
+};
 use tokio::process::ChildStdin;
 
 use crate::{
-    config::{LauncherConfig, SIDEBAR_WIDTH},
+    config::{LauncherConfig, TokenStorageMethod as ConfigTokenStorageMethod, SIDEBAR_WIDTH},
     stylesheet::styles::LauncherTheme,
 };
 
@@ -134,7 +136,7 @@ impl Launcher {
         let theme = config.c_theme();
         let (window_width, window_height) = config.c_window_size();
 
-        let mut launch = if let Some(message) = message {
+        let mut launch = if let Some(message) = message.clone() {
             MenuLaunch::with_message(message)
         } else {
             MenuLaunch::default()
@@ -142,15 +144,34 @@ impl Launcher {
 
         launch.resize_sidebar(SIDEBAR_WIDTH);
 
-        let launch = State::Launch(launch);
+        let launch_state = State::Launch(launch);
 
         // The version field was added in 0.3
         let version = config.version.as_deref().unwrap_or("0.3.0");
 
-        let state = if is_new_user {
+        // Check if we need to prompt for password (encrypted storage)
+        let token_storage = config.c_token_storage();
+        let needs_password_prompt = matches!(token_storage, ConfigTokenStorageMethod::EncryptedFile)
+            && !encrypted_store::is_unlocked();
+
+        // Set the global storage method
+        match token_storage {
+            ConfigTokenStorageMethod::Keyring => {
+                TokenStorageMethod::set_global(TokenStorageMethod::Keyring);
+            }
+            ConfigTokenStorageMethod::EncryptedFile => {
+                TokenStorageMethod::set_global(TokenStorageMethod::EncryptedFile);
+            }
+        }
+
+        // Determine initial state
+        let state = if needs_password_prompt {
+            let encrypted_file_exists = encrypted_store::encrypted_file_exists();
+            State::TokenPasswordPrompt(MenuTokenPassword::new(encrypted_file_exists))
+        } else if is_new_user {
             State::Welcome(MenuWelcome::P1InitialScreen)
         } else if version == LAUNCHER_VERSION_NAME {
-            launch
+            launch_state
         } else {
             if let Err(err) = migration(version) {
                 err!(no_log, "{err}")
@@ -159,7 +180,17 @@ impl Launcher {
             State::ChangeLog
         };
 
-        let (accounts, accounts_dropdown, selected_account) = load_accounts(&mut config);
+        // Load accounts only if not using encrypted storage or if already unlocked
+        let (accounts, accounts_dropdown, selected_account) = if needs_password_prompt {
+            // Will be loaded after password is entered
+            (
+                HashMap::new(),
+                vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()],
+                OFFLINE_ACCOUNT_NAME.to_owned(),
+            )
+        } else {
+            load_accounts(&mut config)
+        };
 
         let persistent = config.c_persistent();
 
@@ -301,7 +332,7 @@ impl Launcher {
     }
 }
 
-fn load_accounts(
+pub fn load_accounts(
     config: &mut LauncherConfig,
 ) -> (HashMap<String, AccountData>, Vec<String>, String) {
     let mut accounts = HashMap::new();

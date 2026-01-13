@@ -1,5 +1,5 @@
 use crate::auth::alt::OauthError;
-use keyring;
+use crate::auth::token_store;
 use ql_core::file_utils::check_for_success;
 use ql_core::{IntoJsonError, CLIENT};
 use serde::{Deserialize, Serialize};
@@ -96,12 +96,12 @@ pub async fn poll_device_token(
         }
     }
 
-    // Store Minecraft token in keyring (same convention as password flow)
-    keyring::Entry::new(
-        "QuantumLauncher",
-        &format!("{}#littleskin", user_info.username),
-    )
-    .and_then(|e| e.set_password(&mc_token_resp.access_token))?;
+    // Store Minecraft token using the configured storage method
+    token_store::store_token(
+        &user_info.username,
+        &mc_token_resp.access_token,
+        crate::auth::AccountType::LittleSkin,
+    )?;
 
     // Build account data compatible with existing flows
     Ok(super::Account::Account(super::AccountData {

@@ -467,6 +467,7 @@ pub struct MenuLauncherSettings {
 pub enum LauncherSettingsTab {
     UserInterface,
     Internal,
+    Security,
     About,
 }
 
@@ -478,6 +479,7 @@ impl std::fmt::Display for LauncherSettingsTab {
             match self {
                 LauncherSettingsTab::UserInterface => "Appearance",
                 LauncherSettingsTab::Internal => "Game",
+                LauncherSettingsTab::Security => "Security",
                 LauncherSettingsTab::About => "About",
             }
         )
@@ -485,19 +487,21 @@ impl std::fmt::Display for LauncherSettingsTab {
 }
 
 impl LauncherSettingsTab {
-    pub const ALL: &'static [Self] = &[Self::UserInterface, Self::Internal, Self::About];
+    pub const ALL: &'static [Self] = &[Self::UserInterface, Self::Internal, Self::Security, Self::About];
 
     pub const fn next(self) -> Self {
         match self {
             Self::UserInterface => Self::Internal,
-            Self::Internal | Self::About => Self::About,
+            Self::Internal => Self::Security,
+            Self::Security | Self::About => Self::About,
         }
     }
 
     pub const fn prev(self) -> Self {
         match self {
             Self::UserInterface | Self::Internal => Self::UserInterface,
-            Self::About => Self::Internal,
+            Self::Security => Self::Internal,
+            Self::About => Self::Security,
         }
     }
 }
@@ -543,6 +547,44 @@ pub struct MenuExportInstance {
     pub progress: Option<ProgressBar<GenericProgress>>,
 }
 
+/// Menu for entering the password to unlock encrypted token storage.
+pub struct MenuTokenPassword {
+    /// The password entered by the user
+    pub password: String,
+    /// Whether the encrypted file exists (true = unlock, false = create new)
+    pub is_existing: bool,
+    /// Whether we're currently trying to unlock
+    pub is_loading: bool,
+    /// Error message if unlock failed
+    pub error: Option<String>,
+    /// Whether to show the password or hide it
+    pub show_password: bool,
+    /// Password confirmation (for creating new)
+    pub password_confirm: String,
+}
+
+impl Default for MenuTokenPassword {
+    fn default() -> Self {
+        Self {
+            password: String::new(),
+            is_existing: false,
+            is_loading: false,
+            error: None,
+            show_password: false,
+            password_confirm: String::new(),
+        }
+    }
+}
+
+impl MenuTokenPassword {
+    pub fn new(is_existing: bool) -> Self {
+        Self {
+            is_existing,
+            ..Default::default()
+        }
+    }
+}
+
 pub struct MenuLoginAlternate {
     pub username: String,
     pub password: String,
@@ -583,6 +625,9 @@ pub enum State {
     Welcome(MenuWelcome),
     ChangeLog,
     UpdateFound(MenuLauncherUpdate),
+
+    /// Password prompt for encrypted token storage
+    TokenPasswordPrompt(MenuTokenPassword),
 
     EditMods(MenuEditMods),
     ExportMods(MenuExportMods),

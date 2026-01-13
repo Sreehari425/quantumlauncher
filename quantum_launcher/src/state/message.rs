@@ -225,6 +225,25 @@ pub enum WindowMessage {
     // IsMaximized(bool),
 }
 
+/// Messages for encrypted token storage password prompt
+#[derive(Debug, Clone)]
+pub enum TokenPasswordMessage {
+    /// User entered password
+    PasswordInput(String),
+    /// User entered password confirmation (for new store)
+    PasswordConfirmInput(String),
+    /// User submitted password to unlock
+    Submit,
+    /// Password verification result
+    UnlockResult(Res),
+    /// User skipped unlock at startup - continue in offline mode
+    Skip,
+    /// User cancelled new store creation - revert to keyring and go back to settings
+    Cancel,
+    /// Show/hide password toggle
+    ShowPassword(bool),
+}
+
 #[allow(unused)]
 #[derive(Debug, Clone)]
 pub enum AccountMessage {
@@ -286,6 +305,11 @@ pub enum LauncherSettingsMessage {
 
     GlobalJavaArgs(ListMessage),
     GlobalPreLaunchPrefix(ListMessage),
+
+    /// User changed the token storage method (keyring vs encrypted file)
+    TokenStorageChanged(crate::config::TokenStorageMethod),
+    /// User wants to unlock the encrypted store from settings
+    UnlockEncryptedStore,
 }
 
 #[derive(Debug, Clone)]
@@ -363,6 +387,7 @@ pub enum Message {
     WelcomeContinueToAuth,
 
     Account(AccountMessage),
+    TokenPassword(TokenPasswordMessage),
     CreateInstance(CreateInstanceMessage),
     EditInstance(EditInstanceMessage),
     LauncherSettings(LauncherSettingsMessage),

@@ -1,6 +1,6 @@
 use crate::auth::alt::AccountResponse;
 
-use super::{AccountData, AccountType};
+use super::{token_store, AccountData, AccountType};
 use ql_core::{info, pt, IntoJsonError, CLIENT};
 
 pub use super::alt::{Account, AccountResponseError, Error};
@@ -59,8 +59,12 @@ pub async fn login_new(
         }
     };
 
-    let entry = account_type.get_keyring_entry(&email_or_username)?;
-    entry.set_password(&account_response.accessToken)?;
+    // Store the token using the configured storage method
+    token_store::store_token(
+        &email_or_username,
+        &account_response.accessToken,
+        account_type,
+    )?;
 
     Ok(Account::Account(AccountData {
         access_token: Some(account_response.accessToken.clone()),
@@ -89,7 +93,6 @@ pub async fn login_refresh(
     account_type: AccountType,
 ) -> Result<AccountData, Error> {
     pt!("Refreshing {account_type} account...");
-    let entry = account_type.get_keyring_entry(&email_or_username)?;
 
     let mut value = serde_json::json!({
         "accessToken": refresh_token,
@@ -105,7 +108,13 @@ pub async fn login_refresh(
     let text = response.text().await?;
 
     let account_response = serde_json::from_str::<AccountResponse>(&text).json(text.clone())?;
-    entry.set_password(&account_response.accessToken)?;
+
+    // Store the new token using the configured storage method
+    token_store::store_token(
+        &email_or_username,
+        &account_response.accessToken,
+        account_type,
+    )?;
 
     Ok(AccountData {
         access_token: Some(account_response.accessToken.clone()),

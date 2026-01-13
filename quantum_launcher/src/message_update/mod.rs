@@ -16,6 +16,7 @@ mod edit_instance;
 mod manage_mods;
 mod presets;
 mod recommended;
+mod token_password;
 
 use crate::config::UiWindowDecorations;
 use crate::state::{GameLogMessage, InstanceNotes, MenuLaunch, ModOperation, NotesMessage};
@@ -605,6 +606,50 @@ impl Launcher {
                     .ui
                     .get_or_insert_with(UiSettings::default)
                     .window_decorations = decor;
+            }
+            LauncherSettingsMessage::TokenStorageChanged(method) => {
+                use crate::config::TokenStorageMethod;
+                use crate::state::MenuTokenPassword;
+
+                let old_method = self.config.c_token_storage();
+                if old_method != method {
+                    self.config.token_storage = Some(method);
+
+                    if method == TokenStorageMethod::EncryptedFile {
+                        // Check if encrypted file already exists
+                        let file_exists = ql_instances::encrypted_store_file_exists();
+                        // Show password prompt (unlock if exists, create if not)
+                        self.state = State::TokenPasswordPrompt(MenuTokenPassword {
+                            password: String::new(),
+                            is_existing: file_exists,
+                            is_loading: false,
+                            error: None,
+                            show_password: false,
+                            password_confirm: String::new(),
+                        });
+                    } else {
+                        // Switching back to keyring - existing keyring tokens will be used
+                        // Update the global storage method
+                        ql_instances::set_token_storage_method(TokenStorageMethod::Keyring);
+                        self.state = State::GenericMessage(
+                            "Token storage changed to system keyring.\n\n\
+                            Your existing keyring tokens will be used on next login."
+                                .to_owned(),
+                        );
+                    }
+                }
+            }
+            LauncherSettingsMessage::UnlockEncryptedStore => {
+                use crate::state::MenuTokenPassword;
+                // Show unlock prompt for existing encrypted store
+                self.state = State::TokenPasswordPrompt(MenuTokenPassword {
+                    password: String::new(),
+                    is_existing: true, // Unlocking existing store
+                    is_loading: false,
+                    error: None,
+                    show_password: false,
+                    password_confirm: String::new(),
+                });
             }
             LauncherSettingsMessage::LoadedSystemTheme(res) => match res {
                 Ok(mode) => {

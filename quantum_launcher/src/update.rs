@@ -62,6 +62,7 @@ impl Launcher {
             }
 
             Message::Account(msg) => return self.update_account(msg),
+            Message::TokenPassword(msg) => return self.update_token_password(msg),
             Message::ManageMods(msg) => return self.update_manage_mods(msg),
             Message::ExportMods(msg) => return self.update_export_mods(msg),
             Message::ManageJarMods(msg) => return self.update_manage_jar_mods(msg),

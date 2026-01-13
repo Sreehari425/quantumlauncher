@@ -262,9 +262,100 @@ impl LauncherSettingsTab {
             .spacing(SETTINGS_SPACING)
             .padding(16)
             .into(),
+            LauncherSettingsTab::Security => view_security_tab(config),
             LauncherSettingsTab::About => view_about_tab(),
         }
     }
+}
+
+fn view_security_tab(config: &LauncherConfig) -> Element<'_> {
+    use crate::config::TokenStorageMethod;
+    use crate::state::LauncherSettingsMessage;
+    use ql_instances::auth::encrypted_store;
+
+    let current_method = config.c_token_storage();
+    let is_encrypted = current_method == TokenStorageMethod::EncryptedFile;
+    let is_unlocked = encrypted_store::is_unlocked();
+    let file_exists = encrypted_store::encrypted_file_exists();
+
+    let mut col = widget::column![
+        widget::text("Security").size(20),
+        widget::vertical_space().height(10),
+        widget::text("Token Storage").size(16),
+        widget::text(
+            "Choose how your account login tokens are stored.\n\
+             Keyring uses your system's secure credential storage.\n\
+             Encrypted file stores tokens in a password-protected file."
+        )
+        .size(12)
+        .style(tsubtitle),
+        widget::vertical_space().height(10),
+        widget::column![
+            widget::radio(
+                "System Keyring (Default)",
+                TokenStorageMethod::Keyring,
+                Some(current_method),
+                |method| Message::LauncherSettings(LauncherSettingsMessage::TokenStorageChanged(method))
+            )
+            .size(16)
+            .text_size(14),
+            widget::text("Uses gnome-keyring, KWallet, Windows Credential Manager, etc.")
+                .size(11)
+                .style(tsubtitle),
+        ]
+        .spacing(2),
+        widget::vertical_space().height(5),
+        widget::column![
+            widget::radio(
+                "Encrypted File (Password Protected)",
+                TokenStorageMethod::EncryptedFile,
+                Some(current_method),
+                |method| Message::LauncherSettings(LauncherSettingsMessage::TokenStorageChanged(method))
+            )
+            .size(16)
+            .text_size(14),
+            widget::text("Asks for a password each time you start the launcher.")
+                .size(11)
+                .style(tsubtitle),
+        ]
+        .spacing(2),
+    ]
+    .spacing(SETTINGS_SPACING);
+
+    // Show unlock button if using encrypted file but not unlocked
+    if is_encrypted && file_exists && !is_unlocked {
+        col = col
+            .push(widget::vertical_space().height(10))
+            .push(
+                widget::row![
+                    widget::text("Status: Locked (offline mode)")
+                        .size(12)
+                        .style(tsubtitle),
+                    widget::horizontal_space().width(10),
+                    widget::button(widget::text("Unlock Now").size(12))
+                        .on_press(Message::LauncherSettings(LauncherSettingsMessage::UnlockEncryptedStore)),
+                ]
+                .align_y(iced::Alignment::Center)
+            );
+    } else if is_encrypted && file_exists && is_unlocked {
+        col = col
+            .push(widget::vertical_space().height(10))
+            .push(
+                widget::text("Status: Unlocked ✓")
+                    .size(12)
+                    .style(tsubtitle),
+            );
+    }
+
+    col = col
+        .push(widget::vertical_space().height(15))
+        .push(
+            widget::text("Note: Changing this setting will require you to re-login to your accounts.")
+                .size(12)
+                .style(tsubtitle),
+        );
+
+    col.padding(16).into()
 }
 
 fn view_about_tab() -> Element<'static> {
