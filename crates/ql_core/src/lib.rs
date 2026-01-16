@@ -171,7 +171,7 @@ pub async fn do_jobs_with_limit<T, E>(
 
     for result in results {
         tasks.push(result);
-        if tasks.len() > limit {
+        if tasks.len() >= limit {
             if let Some(task) = tasks.next().await {
                 outputs.push(task?);
             }
