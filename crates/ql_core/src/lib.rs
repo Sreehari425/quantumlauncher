@@ -27,9 +27,8 @@ use std::{
     fmt::{Debug, Display},
     future::Future,
     path::{Path, PathBuf},
-    pin::Pin,
     process::ExitStatus,
-    sync::{mpsc::Sender, Arc, LazyLock, Mutex},
+    sync::{mpsc::Sender, Arc, LazyLock},
 };
 use tokio::process::Child;
 
@@ -68,7 +67,8 @@ pub const CLASSPATH_SEPARATOR: char = if cfg!(unix) { ':' } else { ';' };
 /// Redact sensitive info like username, UUID, session ID, etc.
 ///
 /// Default: `true`. Use `--no-redact-info` in CLI to set `false`.
-pub static REDACT_SENSITIVE_INFO: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(true));
+pub static REDACT_SENSITIVE_INFO: LazyLock<std::sync::Mutex<bool>> =
+    LazyLock::new(|| std::sync::Mutex::new(true));
 
 pub const WEBSITE: &str = "https://mrmayman.github.io/quantumlauncher";
 
@@ -681,7 +681,7 @@ pub async fn find_forge_shim_file(dir: &Path) -> Option<PathBuf> {
 
 #[derive(Debug, Clone)]
 pub struct LaunchedProcess {
-    pub child: Arc<Mutex<Child>>,
+    pub child: Arc<tokio::sync::Mutex<Child>>,
     pub instance: InstanceSelection,
     pub is_classic_server: bool,
 }
@@ -690,23 +690,29 @@ type ReadLogOut = Result<(ExitStatus, InstanceSelection, Option<Diagnostic>), Re
 
 impl LaunchedProcess {
     #[must_use]
-    pub fn read_logs(
+    pub async fn read_logs(
         &self,
         censors: Vec<String>,
         sender: Option<Sender<LogLine>>,
-    ) -> Option<Pin<Box<dyn Future<Output = ReadLogOut> + Send>>> {
-        let mut c = self.child.lock().unwrap();
-        let (Some(stdout), Some(stderr)) = (c.stdout.take(), c.stderr.take()) else {
+    ) -> Option<ReadLogOut> {
+        let r = {
+            let mut c = self.child.lock().await;
+            (c.stdout.take(), c.stderr.take())
+        };
+        let (Some(stdout), Some(stderr)) = r else {
             return None;
         };
 
-        Some(Box::pin(read_logs(
-            stdout,
-            stderr,
-            self.child.clone(),
-            sender,
-            self.instance.clone(),
-            censors,
-        )))
+        Some(
+            read_logs(
+                stdout,
+                stderr,
+                self.child.clone(),
+                sender,
+                self.instance.clone(),
+                censors,
+            )
+            .await,
+        )
     }
 }

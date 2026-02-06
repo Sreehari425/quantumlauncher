@@ -39,7 +39,10 @@ impl Launcher {
                     let config = edit.config.clone();
                     self.tick_edit_instance(config, &mut commands);
                 }
-                self.tick_processes_and_logs();
+
+                for (name, process) in &mut self.processes {
+                    Self::read_game_logs(process, name, &mut self.logs);
+                }
 
                 commands.push(self.autosave_config());
                 return Task::batch(commands);
@@ -180,20 +183,6 @@ impl Launcher {
             Message::EditInstance(EditInstanceMessage::ConfigSaved(n.strerr()))
         });
         commands.push(cmd);
-    }
-
-    fn tick_processes_and_logs(&mut self) {
-        let mut killed_processes = Vec::new();
-        for (name, process) in &mut self.processes {
-            Self::read_game_logs(process, name, &mut self.logs);
-            if let Ok(Some(_)) = process.child.child.lock().unwrap().try_wait() {
-                // Game process has exited.
-                killed_processes.push(name.to_owned());
-            }
-        }
-        for name in killed_processes {
-            self.processes.remove(&name);
-        }
     }
 
     fn read_game_logs(

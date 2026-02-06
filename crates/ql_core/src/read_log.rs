@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     fmt::{Display, Write},
     process::ExitStatus,
-    sync::{mpsc::Sender, Arc, Mutex},
+    sync::{mpsc::Sender, Arc},
 };
 
 use owo_colors::OwoColorize;
@@ -11,6 +11,7 @@ use thiserror::Error;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::{Child, ChildStderr, ChildStdout},
+    sync::Mutex,
 };
 
 use crate::{
@@ -65,13 +66,15 @@ pub(crate) async fn read_logs(
     let mut stderr_reader = BufReader::new(stderr).lines();
 
     let mut xml_cache = String::new();
+    // A clean formatting-free list of lines.
+    // For generating diagnostics from error messages.
     let mut log_raw = Vec::new();
 
     let mut has_errored = false;
 
     loop {
         {
-            let mut child = child.lock().unwrap();
+            let mut child = child.lock().await;
             if let Ok(Some(status)) = child.try_wait() {
                 // Game has exited.
                 let diag = Diagnostic::generate_from_log(&log_raw);
@@ -81,7 +84,7 @@ pub(crate) async fn read_logs(
 
         tokio::select! {
             line = stdout_reader.next_line() => {
-                if let Some(mut line) = line? {
+                if let Ok(Some(mut line)) = line {
                     line = censor(&line, &censors);
                     if uses_xml {
                         xml_parse(sender.as_ref(), &mut xml_cache, &line, &mut has_errored, &mut log_raw);
@@ -95,11 +98,12 @@ pub(crate) async fn read_logs(
                 } // else EOF
             },
             line = stderr_reader.next_line() => {
-                if let Some(mut line) = line? {
+                if let Ok(Some(mut line)) = line {
                     line = censor(&line, &censors);
                     if !line.ends_with('\n') {
                         line.push('\n');
                     }
+                    log_raw.push(line.clone());
                     send(sender.as_ref(), LogLine::Error(line));
                 }
             }
@@ -260,6 +264,8 @@ pub enum Diagnostic {
     XrandrNotInstalled,
     #[error("Not enough stack size allocated! Add this to Java arguments:\n-Dorg.lwjgl.system.stackSize=256")]
     OutOfStackSpace,
+    #[error("Your mac's graphics drivers aren't working!\nThis is normal in virtual machines")]
+    MacOSPixelFormat,
 }
 
 impl Diagnostic {
@@ -280,6 +286,17 @@ impl Diagnostic {
             )
         {
             Some(Diagnostic::XrandrNotInstalled)
+        } else if cfg!(target_os = "macos")
+            && (c(
+                log,
+                "org.lwjgl.LWJGLException: Could not create pixel format",
+            ) || c(log, "GL pipe is running in software mode")
+                || c(
+                    log,
+                    "org.lwjgl.LWJGLException: Display could not be created",
+                ))
+        {
+            Some(Diagnostic::MacOSPixelFormat)
         } else {
             None
         }

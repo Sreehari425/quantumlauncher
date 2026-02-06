@@ -102,7 +102,10 @@ impl Launcher {
             Ok(child) => {
                 let selected_instance = child.instance.clone();
 
-                let server_input = child.child.lock().unwrap().stdin.take().map(|n| (n, false));
+                let server_input = block_on(child.child.lock())
+                    .stdin
+                    .take()
+                    .map(|n| (n, false));
 
                 let (sender, receiver) = std::sync::mpsc::channel();
                 self.processes.insert(
@@ -121,25 +124,25 @@ impl Launcher {
                     }
                 }
 
-                if let Some(f) = child.read_logs(censors, Some(sender)) {
-                    return Task::perform(
-                        async move {
-                            let result = f.await;
+                return Task::perform(
+                    async move {
+                        let result = child.read_logs(censors, Some(sender)).await;
+                        let default_output = Ok((ExitStatus::default(), selected_instance, None));
 
-                            match result {
-                                Err(ReadError::Io(io))
-                                    if io.kind() == std::io::ErrorKind::InvalidData =>
-                                {
-                                    err!("Minecraft log contains invalid unicode! Stopping logs");
-                                    pt!("The game will continue to run");
-                                    Ok((ExitStatus::default(), selected_instance, None))
-                                }
-                                _ => result.strerr(),
+                        match result {
+                            Some(Err(ReadError::Io(io)))
+                                if io.kind() == std::io::ErrorKind::InvalidData =>
+                            {
+                                err!("Minecraft log contains invalid unicode! Stopping logs");
+                                pt!("The game will continue to run");
+                                default_output
                             }
-                        },
-                        Message::LaunchGameExited,
-                    );
-                }
+                            Some(result) => result.strerr(),
+                            None => default_output,
+                        }
+                    },
+                    Message::LaunchGameExited,
+                );
             }
             Err(err) => self.set_error(err),
         }
@@ -284,7 +287,8 @@ impl Launcher {
         } else {
             "Game"
         };
-        info!("Game exited with status: {status}");
+        info!("Game exited ({status})");
+        self.processes.remove(&instance);
 
         if let State::Launch(MenuLaunch { message, .. }) = &mut self.state {
             let has_crashed = !status.success();
@@ -549,7 +553,7 @@ impl Launcher {
         match instance {
             InstanceSelection::Instance(_) => {
                 if let Some(process) = self.processes.remove(instance) {
-                    let mut child = process.child.child.lock().unwrap();
+                    let mut child = block_on(process.child.child.lock());
                     _ = child.start_kill();
                 }
             }
@@ -562,7 +566,7 @@ impl Launcher {
                 {
                     *has_issued_stop_command = true;
                     if child.is_classic_server {
-                        _ = child.child.lock().unwrap().start_kill();
+                        _ = block_on(child.child.lock()).start_kill();
                     } else {
                         let future = stdin.write_all("stop\n".as_bytes());
                         _ = block_on(future);
