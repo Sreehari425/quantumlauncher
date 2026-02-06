@@ -11,7 +11,10 @@
 
 # Fixes
 
-- Fixed game crash reports not showing in logs
-  - Added warning when running in macOS VM
 - Fixed many concurrent downloading bugs with CurseForge
 - Fixed account login being broken for new users
+
+## Logging
+- Overhauled log viewer code, now with text selection and better scrolling
+- Fixed game crash reports not showing in logs
+- Added warning when running in macOS VM

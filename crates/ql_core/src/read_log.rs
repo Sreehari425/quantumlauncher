@@ -62,8 +62,13 @@ pub(crate) async fn read_logs(
         false,
     ));
 
-    let mut child = child.lock().await;
-    let status = child.wait().await?;
+    let status = loop {
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        let mut child = child.lock().await;
+        if let Some(status) = child.try_wait()? {
+            break status;
+        }
+    };
     let mut log_raw = stdout_read.await??;
     log_raw.extend(stderr_read.await??);
 

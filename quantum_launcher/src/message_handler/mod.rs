@@ -1,6 +1,7 @@
 use crate::config::SIDEBAR_WIDTH;
 use crate::state::{
-    AutoSaveKind, GameProcess, MenuCreateInstance, MenuCreateInstanceChoosing, MenuInstallOptifine,
+    AutoSaveKind, GameProcess, LaunchTab, LogState, MenuCreateInstance, MenuCreateInstanceChoosing,
+    MenuInstallOptifine,
 };
 use crate::tick::sort_dependencies;
 use crate::{
@@ -54,11 +55,28 @@ impl Launcher {
                 self.autosave.remove(&AutoSaveKind::LauncherConfig);
             }
         }
+        self.load_logs(instance.clone());
         if let State::Launch(menu) = &mut self.state {
             menu.modal = None;
             menu.reload_notes(instance)
         } else {
             Task::none()
+        }
+    }
+
+    pub fn load_logs(&mut self, instance: InstanceSelection) {
+        let State::Launch(menu) = &mut self.state else {
+            return;
+        };
+        if let (Some(logs), LaunchTab::Log) = (self.logs.get(&instance), menu.tab) {
+            if menu.log_state.is_some() && Some(instance) == self.selected_instance {
+                return;
+            }
+            menu.log_state = Some(LogState {
+                content: iced::widget::text_editor::Content::with_text(&logs.log.join("\n")),
+            });
+        } else {
+            menu.log_state = None;
         }
     }
 
@@ -288,11 +306,11 @@ impl Launcher {
             "Game"
         };
         info!("Game exited ({status})");
-        if let Some(process) = self.processes.remove(&instance) {
-            Self::read_game_logs(&process, instance, &mut self.logs);
-        }
 
-        if let State::Launch(MenuLaunch { message, .. }) = &mut self.state {
+        let log_state = if let State::Launch(MenuLaunch {
+            message, log_state, ..
+        }) = &mut self.state
+        {
             let has_crashed = !status.success();
             if has_crashed {
                 *message = format!("{kind} crashed! ({status})\nCheck \"Logs\" for more info");
@@ -304,6 +322,13 @@ impl Launcher {
             if let Some(log) = self.logs.get_mut(instance) {
                 log.has_crashed = has_crashed;
             }
+            log_state
+        } else {
+            &mut None
+        };
+
+        if let Some(process) = self.processes.remove(instance) {
+            Self::read_game_logs(&process, instance, &mut self.logs, log_state);
         }
     }
 

@@ -1,10 +1,11 @@
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
+    sync::Arc,
 };
 
 use chrono::Datelike;
-use iced::Task;
+use iced::{widget::text_editor, Task};
 use ql_core::{
     constants::OS_NAME, json::InstanceConfigJson, InstanceSelection, IntoIoError, IntoJsonError,
     IntoStringError, JsonFileError, ModId,
@@ -13,7 +14,7 @@ use ql_mod_manager::store::{ModConfig, ModIndex};
 
 use crate::state::{
     AutoSaveKind, EditInstanceMessage, GameProcess, InstallModsMessage, InstanceLog, LaunchTab,
-    Launcher, ManageJarModsMessage, MenuCreateInstance, MenuEditMods, MenuExportInstance,
+    Launcher, LogState, ManageJarModsMessage, MenuCreateInstance, MenuEditMods, MenuExportInstance,
     MenuInstallFabric, MenuInstallOptifine, MenuLaunch, MenuLoginMS, MenuModsDownload,
     MenuRecommendedMods, Message, ModListEntry, State,
 };
@@ -41,7 +42,12 @@ impl Launcher {
                 }
 
                 for (name, process) in &mut self.processes {
-                    Self::read_game_logs(process, name, &mut self.logs);
+                    let log_state = if let State::Launch(menu) = &mut self.state {
+                        &mut menu.log_state
+                    } else {
+                        &mut None
+                    };
+                    Self::read_game_logs(process, name, &mut self.logs, log_state);
                 }
 
                 commands.push(self.autosave_config());
@@ -189,6 +195,7 @@ impl Launcher {
         process: &GameProcess,
         instance: &InstanceSelection,
         logs: &mut HashMap<InstanceSelection, InstanceLog>,
+        log_state: &mut Option<LogState>,
     ) {
         while let Some(message) = process.receiver.as_ref().and_then(|n| n.try_recv().ok()) {
             let message = message.to_string().replace('\t', &" ".repeat(8));
@@ -209,13 +216,20 @@ impl Launcher {
             };
 
             logs.entry(instance.clone())
-                .or_insert_with(|| InstanceLog {
-                    log: log_start(),
-                    has_crashed: false,
-                    command: String::new(),
+                .or_insert_with(|| {
+                    *log_state = Some(LogState {
+                        content: text_editor::Content::with_text(&log_start().join("\n")),
+                    });
+                    InstanceLog {
+                        log: log_start(),
+                        has_crashed: false,
+                        command: String::new(),
+                    }
                 })
                 .log
-                .push(message);
+                .push(message.clone());
+
+            update_log_render_state(log_state.as_mut(), message);
         }
     }
 
@@ -335,5 +349,15 @@ impl MenuCreateInstance {
                 progress.tick();
             }
         }
+    }
+}
+
+fn update_log_render_state(log_state: Option<&mut LogState>, message: String) {
+    if let Some(state) = log_state {
+        use iced::widget::text_editor::{Action, Edit, Motion};
+        // TODO: preserve selection
+        let content = &mut state.content;
+        content.perform(Action::Move(Motion::DocumentEnd));
+        content.perform(Action::Edit(Edit::Paste(Arc::new(message))));
     }
 }
