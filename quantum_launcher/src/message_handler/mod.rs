@@ -288,7 +288,9 @@ impl Launcher {
             "Game"
         };
         info!("Game exited ({status})");
-        self.processes.remove(&instance);
+        if let Some(process) = self.processes.remove(&instance) {
+            Self::read_game_logs(&process, instance, &mut self.logs);
+        }
 
         if let State::Launch(MenuLaunch { message, .. }) = &mut self.state {
             let has_crashed = !status.success();

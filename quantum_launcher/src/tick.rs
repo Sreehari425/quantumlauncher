@@ -185,44 +185,37 @@ impl Launcher {
         commands.push(cmd);
     }
 
-    fn read_game_logs(
+    pub fn read_game_logs(
         process: &GameProcess,
-        name: &InstanceSelection,
+        instance: &InstanceSelection,
         logs: &mut HashMap<InstanceSelection, InstanceLog>,
     ) {
         while let Some(message) = process.receiver.as_ref().and_then(|n| n.try_recv().ok()) {
             let message = message.to_string().replace('\t', &" ".repeat(8));
 
-            let mut log_start = vec![
-                format!(
-                    "{} ({})\n",
-                    if name.is_server() {
-                        "Starting Minecraft server"
-                    } else {
-                        "Launching Minecraft"
-                    },
-                    Self::get_current_date_formatted()
-                ),
-                format!("OS: {OS_NAME}\n"),
-            ];
+            let log_start = || {
+                vec![
+                    format!(
+                        "{} ({})\n",
+                        if instance.is_server() {
+                            "Starting Minecraft server"
+                        } else {
+                            "Launching Minecraft"
+                        },
+                        Self::get_current_date_formatted()
+                    ),
+                    format!("OS: {OS_NAME}\n"),
+                ]
+            };
 
-            if !logs.contains_key(name) {
-                log_start.push(message);
-
-                logs.insert(
-                    name.to_owned(),
-                    InstanceLog {
-                        log: log_start,
-                        has_crashed: false,
-                        command: String::new(),
-                    },
-                );
-            } else if let Some(log) = logs.get_mut(name) {
-                if log.log.is_empty() {
-                    log.log = log_start;
-                }
-                log.log.push(message);
-            }
+            logs.entry(instance.clone())
+                .or_insert_with(|| InstanceLog {
+                    log: log_start(),
+                    has_crashed: false,
+                    command: String::new(),
+                })
+                .log
+                .push(message);
         }
     }
 

@@ -58,7 +58,7 @@ pub(crate) async fn read_logs(
         stderr,
         sender.clone(),
         censors.clone(),
-        uses_xml,
+        false,
         false,
     ));
 
@@ -109,6 +109,19 @@ async fn read_log_from_stream<R: AsyncBufRead + Unpin>(
                 },
             );
         }
+    }
+
+    let remaining = xml_cache.trim();
+    if !remaining.is_empty() {
+        log_raw.push(remaining.to_owned());
+        send(
+            sender.as_ref(),
+            if remaining.contains("Minecraft Crash Report") {
+                LogLine::Error
+            } else {
+                LogLine::Message
+            }(remaining.replace('\t', "\n    ")),
+        );
     }
 
     Ok(log_raw)
@@ -299,7 +312,8 @@ impl Diagnostic {
                 || c(
                     log,
                     "org.lwjgl.LWJGLException: Display could not be created",
-                ))
+                )
+                || c(log, "Failed to find a suitable pixel format"))
         {
             Some(Diagnostic::MacOSPixelFormat)
         } else {
