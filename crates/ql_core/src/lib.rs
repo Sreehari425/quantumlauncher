@@ -683,36 +683,40 @@ pub async fn find_forge_shim_file(dir: &Path) -> Option<PathBuf> {
 pub struct LaunchedProcess {
     pub child: Arc<tokio::sync::Mutex<Child>>,
     pub instance: InstanceSelection,
+    /// Present because Minecraft classic servers
+    /// have some special properties
+    ///
+    /// - Launched differently
+    /// - Downloaded and extracted from zip
+    /// - Don't have a stop command (?), need to be killed
     pub is_classic_server: bool,
 }
 
 type ReadLogOut = Result<(ExitStatus, InstanceSelection, Option<Diagnostic>), ReadError>;
 
 impl LaunchedProcess {
+    /// Reads log output from the game process.
+    ///
+    /// Runs until the process exits, then returns exit status
+    /// and returns an optional [`Diagnostic`] (for troubleshooting common issues)
+    ///
+    /// # Arguments
+    /// - `censors`: Any strings to censor (like session id, password, etc.).
+    ///   Leave blank if not needed
+    /// - `sender`: Sender to send [`LogLine`]s to
+    ///   (pretty printed in terminal if not present)
+    ///
+    /// # Errors
+    /// - `details.json` couldn't be read or parsed into JSON
+    ///   (for checking if XML logs are used)
+    /// - Tokio *somehow* fails to read the `stdout`/`stderr`
+    /// - And many more
     #[must_use]
     pub async fn read_logs(
         &self,
         censors: Vec<String>,
         sender: Option<Sender<LogLine>>,
     ) -> Option<ReadLogOut> {
-        let r = {
-            let mut c = self.child.lock().await;
-            (c.stdout.take(), c.stderr.take())
-        };
-        let (Some(stdout), Some(stderr)) = r else {
-            return None;
-        };
-
-        Some(
-            read_logs(
-                stdout,
-                stderr,
-                self.child.clone(),
-                sender,
-                self.instance.clone(),
-                censors,
-            )
-            .await,
-        )
+        Some(read_logs(self.child.clone(), sender, self.instance.clone(), censors).await)
     }
 }
