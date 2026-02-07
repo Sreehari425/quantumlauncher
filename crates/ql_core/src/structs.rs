@@ -124,6 +124,17 @@ impl JavaVersion {
         Self::Java21,
         Self::Java25,
     ];
+
+    #[must_use]
+    pub const fn next(self) -> Option<Self> {
+        match self {
+            Self::Java8 => Some(Self::Java16),
+            Self::Java16 => Some(Self::Java17),
+            Self::Java17 => Some(Self::Java21),
+            Self::Java21 => Some(Self::Java25),
+            Self::Java25 => None,
+        }
+    }
 }
 
 impl Display for JavaVersion {

@@ -8,8 +8,13 @@
   - eg: `C:\Users\YOUR_NAME` or `/home/YOUR_NAME` ->
     `C:\Users\[REDACTED]` or `/home/[REDACTED]`
   - Use `--no-redact-info` CLI flag to temporarily disable this
+
+## Java
+
 - In addition to custom Java paths, you can now choose
   different launcher-provided Java versions as well
+- The java installer has been improved with better platform support
+  - For example, you can now run Minecraft 1.20.5 to 1.21.11 on many 32-bit systems
 
 # Fixes
 

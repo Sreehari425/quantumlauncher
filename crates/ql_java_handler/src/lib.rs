@@ -8,32 +8,33 @@
 //!
 //! # Platform Support
 //!
-//! - ¹: Only Java 8 supported (Minecraft 1.16.5 and below)
-//! - ✅: Obtained [from Mojang](https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json)
-//! - 🟢: Supported through [Amazon Corretto Java](https://aws.amazon.com/corretto/)
-//!   which we provide an alternate installer for.
-//! - 🟢²: Uses Java 17+ (with backwards compatibility),
-//!   may not be stable
-//! - 🟢³: Installed from
-//!   <https://github.com/Mrmayman/get-jdk>
+//! - ✅: [From Mojang](https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json)
+//! - 🟢: Supported through [Azul Zulu](https://www.azul.com/downloads/#zulu)
+//!       ([API](https://docs.azul.com/core/install/metadata-api))
+//! - 🟢¹: Uses newer Java (with backwards compatibility)
+//! - 🟢²: Installed from:
+//!   - FreeBSD: <https://github.com/Mrmayman/get-jdk>
+//!   - Others: <https://bell-sw.com/pages/downloads>
 //!
 //! | Platforms   | 8  | 16 | 17 | 21 | 25 |
 //! |:------------|:--:|:--:|:--:|:--:|:--:|
 //! | **Windows** `x86_64`  | ✅ | ✅ | ✅ | ✅ | ✅ |
-//! | **Windows** `i686`    | 🟢 | ✅ | ✅ | 🟢 | 🟢 |
-//! | **Windows** `aarch64`²| 🟢²| 🟢²| ✅ | ✅ | ✅ |
+//! |  *Windows*  `i686`    | ✅ | ✅ | ✅ | 🟢²|    |
+//! | **Windows** `aarch64`²| 🟢¹| 🟢 | ✅ | ✅ | ✅ |
 //! | | | | | |
 //! | **macOS**   `x86_64`  | ✅ | ✅ | ✅ | ✅ | ✅ |
 //! | **macOS**   `aarch64` | 🟢 | 🟢 | ✅ | ✅ | ✅ |
 //! | | | | | |
-//! | **Linux**   `x86_64`  | ✅ | ✅ | ✅ | ✅ | ✅ |
-//! | **Linux**   `i686`¹   | ✅ |    |    |    |    |
-//! | **Linux**   `aarch64` | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 |
-//! | **Linux**   `arm32`¹  | 🟢³|    |    |    |    |
+//! | **Linux**      `x86_64`  | ✅ | ✅ | ✅ | ✅ | ✅ |
+//! |  *Linux*       `i686`    | ✅ | 🟢 | 🟢 | 🟢²|    |
+//! | **Linux**      `aarch64` | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 |
+//! |  *Linux*       `arm32`   | 🟢 | 🟢¹| 🟢 | 🟢²|    |
+//! | **Linux** MUSL `x86_64`  | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 |
+//! | **Linux** MUSL `aarch64` | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 |
 //! | | | | | |
-//! | **FreeBSD** `x86_64`¹ | 🟢³|    |    |    |    |
-//! | **Solaris** `x86_64`¹ | 🟢³|    |    |    |    |
-//! | **Solaris** `sparc64`¹| 🟢³|    |    |    |    |
+//! | **FreeBSD** `x86_64`  | 🟢²|    |    |    |    |
+//! | **Solaris** `x86_64`  | 🟢 |    |    |    |    |
+//! | **Solaris** `sparc64` | 🟢 |    |    |    |    |
 //!
 //! # TODO
 //!
@@ -56,6 +57,7 @@ use json::{
 };
 use owo_colors::OwoColorize;
 use std::{
+    env::consts::ARCH,
     path::{Path, PathBuf},
     sync::{mpsc::Sender, Mutex},
 };
@@ -64,7 +66,7 @@ use thiserror::Error;
 use ql_core::{
     constants::OS_NAME,
     do_jobs_with_limit, err,
-    file_utils::{self, DirItem},
+    file_utils::{self, exists, DirItem},
     info, pt, GenericProgress, IntoIoError, IoError, JsonDownloadError, JsonError, RequestError,
     LAUNCHER_DIR,
 };
@@ -137,9 +139,8 @@ pub const JAVA: &str = which_java();
 /// # }
 /// ```
 ///
-/// # Side notes
-/// - On aarch64 linux, this function installs Amazon Corretto Java.
-/// - On all other platforms, this function installs Java from Mojang.
+/// Java may be fetched either from Mojang or other sources
+/// depending on platform (see crate-level docs for more info)
 pub async fn get_java_binary(
     mut version: JavaVersion,
     name: &str,
@@ -172,21 +173,29 @@ async fn find_java_bin(name: &str, java_dir: &Path) -> Result<PathBuf, JavaInsta
         format!("jre.bundle/Contents/Home/bin/{name}"),
         format!("jdk1.8.0_231/{name}"),
         format!("jdk1.8.0_231/bin/{name}"),
+        format!("jdk-21.0.10/bin/{name}"),
     ];
 
     for name in names {
         let path = java_dir.join(&name);
-        if path.exists() {
+        if exists(&path).await {
             return Ok(path);
         }
-
         let path2 = java_dir.join(format!("{name}.exe"));
-        if path2.exists() {
+        if exists(&path2).await {
             return Ok(path2);
         }
     }
 
     let entries = file_utils::read_filenames_from_dir(java_dir).await;
+    if let Ok(entries) = entries.as_deref() {
+        if let Some(entry) = entries
+            .iter()
+            .find(|n| n.name.contains("zulu") || n.name.contains("bellsoft"))
+        {
+            return Box::pin(find_java_bin(name, &java_dir.join(&entry.name))).await;
+        }
+    }
 
     Err(JavaInstallError::NoJavaBinFound(entries))
 }
@@ -364,32 +373,35 @@ async fn download_file(downloads: &JavaFileDownload) -> Result<Vec<u8>, JavaInst
 }
 
 const ERR_PREF1: &str = "while installing Java (OS: ";
+const UNSUPPORTED_MESSAGE: &str = r"Automatic Java installation isn’t supported on your platform for this Minecraft version.
+You can:
+- Install Java manually and set the executable path in the Instance → Edit tab
+- Try an older Minecraft version
+- Download the 64-bit launcher if you’re using the 32-bit version";
 
 #[derive(Debug, Error)]
 pub enum JavaInstallError {
-    #[error("{ERR_PREF1}{OS_NAME}):\n{0}")]
+    #[error("{ERR_PREF1}{OS_NAME} {ARCH}):\n{0}")]
     JsonDownload(#[from] JsonDownloadError),
-    #[error("{ERR_PREF1}{OS_NAME}):\n{0}")]
+    #[error("{ERR_PREF1}{OS_NAME} {ARCH}):\n{0}")]
     Request(#[from] RequestError),
-    #[error("{ERR_PREF1}{OS_NAME}):\n{0}")]
+    #[error("{ERR_PREF1}{OS_NAME} {ARCH}):\n{0}")]
     Json(#[from] JsonError),
-    #[error("{ERR_PREF1}{OS_NAME}):\n{0}")]
+    #[error("{ERR_PREF1}{OS_NAME} {ARCH}):\n{0}")]
     Io(#[from] IoError),
     #[error(
-        "{ERR_PREF1}{OS_NAME}):\ncouldn't find java binary (this is a bug! please report on discord!)\n{0:?}"
+        "{ERR_PREF1}{OS_NAME} {ARCH}):\ncouldn't find java binary (this is a bug! please report on discord!)\n{0:?}"
     )]
     NoJavaBinFound(Result<Vec<DirItem>, IoError>),
 
-    #[error("on your platform, only Java 8 (Minecraft 1.16.5 and below) is supported!\n")]
-    UnsupportedOnlyJava8,
-    #[error("Java auto-installation is not supported on your platform!\nPlease manually install Java,\nand add the executable path in instance Edit tab")]
+    #[error("({OS_NAME} {ARCH})\n{UNSUPPORTED_MESSAGE}")]
     UnsupportedPlatform,
 
-    #[error("{ERR_PREF1}{OS_NAME}):\nzip extract error:\n{0}")]
+    #[error("{ERR_PREF1}{OS_NAME} {ARCH}):\nzip extract error:\n{0}")]
     ZipExtract(#[from] zip::result::ZipError),
-    #[error("{ERR_PREF1}{OS_NAME}):\ncouldn't extract java tar.gz:\n{0}")]
+    #[error("{ERR_PREF1}{OS_NAME} {ARCH}):\ncouldn't extract java tar.gz:\n{0}")]
     TarGzExtract(std::io::Error),
-    #[error("{ERR_PREF1}{OS_NAME}):\nunknown extension for java: {0}\n\nThis is a bug, please report on discord!")]
+    #[error("{ERR_PREF1}{OS_NAME} {ARCH}):\nunknown extension for java: {0}\n\nThis is a bug, please report on discord!")]
     UnknownExtension(String),
 }
 
