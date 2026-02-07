@@ -9,7 +9,7 @@ use crate::{
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
 use iced::{
-    widget::{self, horizontal_space},
+    widget::{self, column, horizontal_space, row},
     Alignment, Length,
 };
 use ql_core::json::{
@@ -32,9 +32,7 @@ impl MenuEditInstance {
                 self.item_mem_alloc(),
 
                 if selected_instance.is_server() {
-                    widget::column![
-                        widget::button("Edit server.properties")
-                    ]
+                    column![widget::button("Edit server.properties")]
                 } else {
                     resolution_dialog(
                             self.config.global_settings.as_ref(),
@@ -44,12 +42,12 @@ impl MenuEditInstance {
                 },
 
                 widget::Column::new()
-                .push_maybe((!selected_instance.is_server()).then_some(widget::column![
+                .push_maybe((!selected_instance.is_server()).then_some(column![
                     widget::checkbox("Close launcher after game opens", self.config.close_on_start.unwrap_or(false))
                         .on_toggle(|t| Message::EditInstance(EditInstanceMessage::CloseLauncherToggle(t))),
                 ].spacing(5)))
                 .push(
-                    widget::column![
+                    column![
                         widget::Space::with_height(5),
                         widget::checkbox("DEBUG: Enable log system (recommended)", self.config.enable_logger.unwrap_or(true))
                             .on_toggle(|t| Message::EditInstance(EditInstanceMessage::LoggingToggle(t))),
@@ -72,10 +70,10 @@ impl MenuEditInstance {
         &self,
         selected_instance: &InstanceSelection,
     ) -> widget::Column<'_, Message, LauncherTheme> {
-        widget::column![
-            widget::row![widget::text(selected_instance.get_name().to_owned())
+        column![
+            row![widget::text(selected_instance.get_name().to_owned())
                 .size(20)
-                .font(FONT_MONO),]
+                .font(FONT_MONO)]
             .push_maybe(
                 (!self.is_editing_name).then_some(
                     widget::button(
@@ -102,11 +100,11 @@ impl MenuEditInstance {
         .spacing(5)
         .push_maybe(
             self.is_editing_name.then_some(
-                widget::column![
+                column![
                     widget::Space::with_height(1),
                     widget::text_input("Rename Instance", &self.instance_name)
                         .on_input(|n| Message::EditInstance(EditInstanceMessage::RenameEdit(n))),
-                    widget::row![
+                    row![
                         widget::button(widget::text("Rename").size(12))
                             .on_press(Message::EditInstance(EditInstanceMessage::RenameApply)),
                         widget::button(widget::text("Cancel").size(12))
@@ -125,8 +123,8 @@ impl MenuEditInstance {
 
         let sp = || widget::Space::with_height(5);
 
-        widget::column!(
-            widget::row![
+        column![
+            row![
                 "Java arguments:",
                 widget::horizontal_space(),
                 widget::checkbox("Use global arguments", current_mode)
@@ -150,7 +148,7 @@ impl MenuEditInstance {
             self.item_args_prefix(prefix_mode),
             sp(),
             args_split_by_space(self.arg_split_by_space),
-        )
+        ]
         .spacing(7)
         .width(Length::Fill)
     }
@@ -171,10 +169,9 @@ impl MenuEditInstance {
             .size(12)
             .text_size(12);
 
-        widget::column![
-            widget::row!["Pre-launch prefix:", horizontal_space(), checkbox]
-                .align_y(Alignment::Center),
-            widget::row![get_args_list(
+        column![
+            row!["Pre-launch prefix:", horizontal_space(), checkbox].align_y(Alignment::Center),
+            row![get_args_list(
                 self.config
                     .global_settings
                     .as_ref()
@@ -217,7 +214,7 @@ impl MenuEditInstance {
         // 2 ^ 13 = 8192 MB
         const MEM_8192_MB_IN_TWOS_EXPONENT: f32 = 13.0;
 
-        widget::column![
+        column![
             "Allocated memory",
             widget::text(
                 r"Normal Minecraft: 2-3 GB
@@ -227,7 +224,7 @@ Heavy modpacks / High settings: 4-8 GB"
             .size(12)
             .style(tsubtitle),
             widget::Space::with_height(5),
-            widget::row![
+            row![
                 widget::text(&self.slider_text),
                 widget::slider(
                     MEM_256_MB_IN_TWOS_EXPONENT..=MEM_8192_MB_IN_TWOS_EXPONENT,
@@ -286,8 +283,8 @@ Heavy modpacks / High settings: 4-8 GB"
             "Loading...".into()
         };
 
-        widget::column![
-            widget::row!["Custom JAR file", horizontal_space(), picker].align_y(Alignment::Center),
+        column![
+            row!["Custom JAR file", horizontal_space(), picker].align_y(Alignment::Center),
             widget::text(
                 "For *replacing* the Minecraft JAR, not adding to it.\nTo patch your existing JAR file, use \"Mods->Jarmod Patches\""
             )
@@ -308,7 +305,7 @@ Heavy modpacks / High settings: 4-8 GB"
             )
             .size(14)
             .text_size(13),
-            widget::row![widget::radio(
+            row![widget::radio(
                 "Custom",
                 Some(MainClassMode::Custom),
                 Some(self.main_class_mode),
@@ -345,8 +342,8 @@ fn item_footer(
     selected_instance: &InstanceSelection,
 ) -> widget::Column<'static, Message, LauncherTheme> {
     match selected_instance {
-        InstanceSelection::Instance(_) => widget::column![
-            widget::row![
+        InstanceSelection::Instance(_) => column![
+            row![
                 button_with_icon(icons::version_download_s(14), "Reinstall Libraries", 13)
                     .padding([4, 8])
                     .on_press(Message::EditInstance(
@@ -364,7 +361,7 @@ fn item_footer(
         ]
         .spacing(10),
         InstanceSelection::Server(_) => {
-            widget::column![button_with_icon(icons::bin(), "Delete Server", 16)
+            column![button_with_icon(icons::bin(), "Delete Server", 16)
                 .on_press(Message::DeleteInstanceMenu)]
         }
     }
@@ -375,10 +372,10 @@ pub fn resolution_dialog<'a>(
     width: impl Fn(String) -> Message + 'a,
     height: impl Fn(String) -> Message + 'a,
 ) -> widget::Column<'a, Message, LauncherTheme> {
-    widget::column![
+    column![
         "Custom Game Window Size (px):",
         widget::text("(Leave empty for default)\nCommon resolutions: 854x480, 1366x768, 1920x1080, 2560x1440, 3840x2160").size(12).style(tsubtitle),
-        widget::row![
+        row![
             widget::text("Width:").size(14),
             widget::text_input(
                 "854",
@@ -422,7 +419,7 @@ pub fn get_args_list(
         .push_maybe(
             (!args.is_empty()).then_some(widget::column(args.iter().enumerate().map(
                 |(i, arg)| {
-                    widget::row![
+                    row![
                         opt(icons::bin_s(ITEM_SIZE)).on_press(msg(ListMessage::Delete(i))),
                         opt(icons::arrow_up_s(ITEM_SIZE)).on_press(msg(ListMessage::ShiftUp(i))),
                         opt(icons::arrow_down_s(ITEM_SIZE))
@@ -440,7 +437,7 @@ pub fn get_args_list(
                 },
             ))),
         )
-        .push(widget::row![get_args_list_add_button(msg)].spacing(10))
+        .push(row![get_args_list_add_button(msg)].spacing(10))
         .spacing(5)
         .width(Length::Fill)
         .into()
@@ -458,7 +455,7 @@ fn get_args_list_add_button(
     msg: impl Fn(ListMessage) -> Message + Clone + 'static,
 ) -> widget::Button<'static, Message, LauncherTheme> {
     widget::button(
-        widget::row![icons::new_s(13), widget::text("Add").size(13)]
+        row![icons::new_s(13), widget::text("Add").size(13)]
             .align_y(Alignment::Center)
             .spacing(8)
             .padding([1, 2]),
