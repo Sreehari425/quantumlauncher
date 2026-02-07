@@ -75,26 +75,24 @@ impl Launcher {
                 }
             }
             EditInstanceMessage::JavaOverride(n) => {
-                if let State::Launch(MenuLaunch {
-                    edit_instance: Some(menu),
-                    ..
-                }) = &mut self.state
-                {
-                    menu.config.java_override = Some(n);
-                }
+                iflet_config!(&mut self.state, config <- {
+                    config.java_override = Some(n);
+                    config.java_override_version = None;
+                });
+            }
+            EditInstanceMessage::JavaOverrideVersion(n) => {
+                iflet_config!(&mut self.state, config <- {
+                    config.java_override_version = Some(n);
+                })
             }
             EditInstanceMessage::BrowseJavaOverride => {
                 if let Some(file) = rfd::FileDialog::new()
                     .set_title("Select Java Executable (./bin/java)")
                     .pick_file()
                 {
-                    if let State::Launch(MenuLaunch {
-                        edit_instance: Some(menu),
-                        ..
-                    }) = &mut self.state
-                    {
-                        menu.config.java_override = Some(file.to_string_lossy().to_string());
-                    }
+                    iflet_config!(&mut self.state, config <- {
+                        config.java_override = Some(file.to_string_lossy().to_string());
+                    });
                 }
             }
             EditInstanceMessage::MemoryChanged(new_slider_value) => {
@@ -108,15 +106,9 @@ impl Launcher {
                     menu.slider_text = format_memory(menu.config.ram_in_mb);
                 }
             }
-            EditInstanceMessage::LoggingToggle(t) => {
-                if let State::Launch(MenuLaunch {
-                    edit_instance: Some(menu),
-                    ..
-                }) = &mut self.state
-                {
-                    menu.config.enable_logger = Some(t);
-                }
-            }
+            EditInstanceMessage::LoggingToggle(t) => iflet_config!(&mut self.state, config <- {
+                config.enable_logger = Some(t);
+            }),
             EditInstanceMessage::CloseLauncherToggle(t) => {
                 if let State::Launch(MenuLaunch {
                     edit_instance: Some(menu),

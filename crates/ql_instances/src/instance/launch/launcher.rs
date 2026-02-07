@@ -746,7 +746,9 @@ impl GameLauncher {
             info!("Java (override): {java_override:?}\n");
             return Ok((Command::new(&java_override), java_override));
         }
-        let version = if let Some(version) = self.version_json.javaVersion.clone() {
+        let version = if let Some(version) = self.config.java_override_version {
+            version.into()
+        } else if let Some(version) = self.version_json.javaVersion.clone() {
             version.into()
         } else {
             JavaVersion::Java8

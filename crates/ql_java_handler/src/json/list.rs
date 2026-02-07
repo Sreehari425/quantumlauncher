@@ -1,47 +1,8 @@
-use std::fmt::Display;
-
 use crate::file_utils;
-use ql_core::json::version::JavaVersionJson;
+use ql_core::JavaVersion;
 use serde::Deserialize;
 
 use crate::JsonDownloadError;
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum JavaVersion {
-    Java8,
-    Java16,
-    Java17,
-    Java21,
-    Java25,
-}
-
-impl Display for JavaVersion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Java8 => "java_8",
-                Self::Java16 => "java_16",
-                Self::Java17 => "java_17",
-                Self::Java21 => "java_21",
-                Self::Java25 => "java_25",
-            }
-        )
-    }
-}
-
-impl From<JavaVersionJson> for JavaVersion {
-    fn from(version: JavaVersionJson) -> Self {
-        match version.majorVersion {
-            8 => JavaVersion::Java8,
-            16 => JavaVersion::Java16,
-            17 => JavaVersion::Java17,
-            25 => JavaVersion::Java25,
-            _ => JavaVersion::Java21,
-        }
-    }
-}
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "kebab-case")]

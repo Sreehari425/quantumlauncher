@@ -4,9 +4,9 @@
 use std::{io::Cursor, path::Path, sync::mpsc::Sender};
 
 use cfg_if::cfg_if;
-use ql_core::{file_utils, GenericProgress};
+use ql_core::{file_utils, GenericProgress, JavaVersion};
 
-use crate::{extract_tar_gz, send_progress, JavaInstallError, JavaVersion};
+use crate::{extract_tar_gz, send_progress, JavaInstallError};
 
 pub(crate) async fn install(
     version: JavaVersion,
@@ -60,9 +60,19 @@ fn error_unsupported(version: JavaVersion) -> JavaInstallError {
     }
 }
 
-impl JavaVersion {
+type OptStr = Option<&'static str>;
+pub(crate) trait E {
     #[must_use]
-    pub(crate) fn get_alternate_url(self) -> Option<&'static str> {
+    fn get_alternate_url(self) -> OptStr;
+    #[cfg(target_os = "linux")]
+    fn get_url_linux(self) -> OptStr;
+    #[cfg(target_os = "macos")]
+    fn get_url_macos(self) -> OptStr;
+    #[cfg(target_os = "windows")]
+    fn get_url_windows(self) -> OptStr;
+}
+impl E for JavaVersion {
+    fn get_alternate_url(self) -> OptStr {
         // Sources:
         // https://aws.amazon.com/corretto/
         // https://github.com/Mrmayman/get-jdk/
@@ -97,7 +107,7 @@ impl JavaVersion {
     }
 
     #[cfg(target_os = "linux")]
-    fn get_url_linux(self) -> Option<&'static str> {
+    fn get_url_linux(self) -> OptStr {
         cfg_if!(if #[cfg(all(target_env = "musl", target_arch = "x86_64"))] {
             return Some(match self {
                 JavaVersion::Java16 |
@@ -144,7 +154,7 @@ impl JavaVersion {
     }
 
     #[cfg(target_os = "macos")]
-    fn get_url_macos(self) -> Option<&'static str> {
+    fn get_url_macos(self) -> OptStr {
         cfg_if!(if #[cfg(target_arch = "x86_64")] {
             return Some(match self {
                 JavaVersion::Java16 |
@@ -167,7 +177,7 @@ impl JavaVersion {
     }
 
     #[cfg(target_os = "windows")]
-    fn get_url_windows(self) -> Option<&'static str> {
+    fn get_url_windows(self) -> OptStr {
         cfg_if!(if #[cfg(target_arch = "x86_64")] {
             return Some(match self {
                 JavaVersion::Java16 |

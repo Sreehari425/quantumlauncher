@@ -71,11 +71,10 @@ use ql_core::{
 
 mod compression;
 pub use compression::extract_tar_gz;
+pub use ql_core::JavaVersion;
 
 mod alternate_java;
 mod json;
-
-pub use json::list::JavaVersion;
 
 #[allow(dead_code)]
 const fn which_java() -> &'static str {

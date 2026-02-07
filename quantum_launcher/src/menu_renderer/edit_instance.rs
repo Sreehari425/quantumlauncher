@@ -12,11 +12,14 @@ use iced::{
     widget::{self, column, horizontal_space, row},
     Alignment, Length,
 };
-use ql_core::json::{
-    instance_config::{MainClassMode, PreLaunchPrefixMode},
-    GlobalSettings,
-};
 use ql_core::InstanceSelection;
+use ql_core::{
+    json::{
+        instance_config::{MainClassMode, PreLaunchPrefixMode},
+        GlobalSettings,
+    },
+    JavaVersion,
+};
 
 use super::Element;
 
@@ -240,26 +243,83 @@ Heavy modpacks / High settings: 4-8 GB"
     }
 
     fn item_java_override(&self) -> widget::Column<'_, Message, LauncherTheme> {
-        // TODO: Allow the user to select launcher-provided Java-s too (java_8, java_17, ...)
-        let java_override = self.config.java_override.as_deref().unwrap_or_default();
-        widget::column![
-            "Custom Java executable (full path)",
-            widget::text("Note: The launcher already sets up Java automatically,\nYou won't need this in most cases").size(12).style(tsubtitle),
-            widget::row![widget::text_input("Leave blank if none", java_override)
+        fn radio(
+            l: &str,
+            a: bool,
+            b: Option<bool>,
+            f: impl Fn() -> Message,
+        ) -> widget::Radio<'_, Message, LauncherTheme> {
+            widget::radio(l, a, b, |n| if n { f() } else { Message::Nothing })
+                .text_size(14)
                 .size(14)
-                .font(FONT_MONO)
-                .on_input(|t| Message::EditInstance(EditInstanceMessage::JavaOverride(t)))]
-            .push_maybe((!java_override.trim().is_empty()).then_some(
-                button_with_icon(icons::close_s(9), "", 13)
-                    .padding([8.0, 11.0])
-                    .on_press(Message::EditInstance(EditInstanceMessage::JavaOverride(String::new()))),
-            ))
-            .push(button_with_icon(icons::folder_s(14), "", 13)
-                .padding([5, 10])
-                .on_press(Message::EditInstance(EditInstanceMessage::BrowseJavaOverride)))
+        }
+
+        let java_override = self.config.java_override.as_deref().unwrap_or_default();
+        let java_override_ver = self.config.java_override_version;
+        column![
+            "Java",
+            radio(
+                "Auto-managed by launcher",
+                true,
+                Some(java_override.trim().is_empty() && java_override_ver.is_none()),
+                || Message::EditInstance(EditInstanceMessage::JavaOverride(String::new()))
+            ),
+            row![radio(
+                "Specific Java version",
+                true,
+                Some(java_override_ver.is_some()),
+                || Message::EditInstance(EditInstanceMessage::JavaOverrideVersion(25))
+            )]
+            .push_maybe(java_override_ver.map(|n| {
+                widget::row(JavaVersion::ALL.iter().map(|v| {
+                    let v = *v as usize;
+                    widget::radio(format!("{v}"), v, Some(n), |v| {
+                        Message::EditInstance(EditInstanceMessage::JavaOverrideVersion(v))
+                    })
+                    .text_size(13)
+                    .size(11)
+                    .spacing(4)
+                    .into()
+                }))
+                .spacing(5)
+                .wrap()
+            }))
+            .spacing(16)
+            .align_y(Alignment::Center),
+            radio(
+                "Custom path",
+                true,
+                Some(!java_override.trim().is_empty()),
+                || Message::EditInstance(EditInstanceMessage::JavaOverride(
+                    "path/to/java".to_owned()
+                )) // ugly hack
+            ),
+            row![
+                widget::Space::with_width(16),
+                widget::text_input("Leave blank if none", java_override)
+                    .size(14)
+                    .font(FONT_MONO)
+                    .on_input(|t| Message::EditInstance(EditInstanceMessage::JavaOverride(t)))
+            ]
+            .push_maybe(
+                (!java_override.trim().is_empty()).then_some(
+                    button_with_icon(icons::close_s(9), "", 13)
+                        .padding([8.0, 11.0])
+                        .on_press(Message::EditInstance(EditInstanceMessage::JavaOverride(
+                            String::new()
+                        ))),
+                )
+            )
+            .push(
+                button_with_icon(icons::folder_s(14), "", 13)
+                    .padding([5, 10])
+                    .on_press(Message::EditInstance(
+                        EditInstanceMessage::BrowseJavaOverride
+                    ))
+            )
             .spacing(5)
         ]
-        .spacing(10)
+        .spacing(5)
     }
 
     fn item_custom_jar<'a>(

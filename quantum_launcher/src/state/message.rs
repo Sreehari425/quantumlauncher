@@ -79,6 +79,7 @@ pub enum EditInstanceMessage {
     BrowseJavaOverride,
 
     JavaOverride(String),
+    JavaOverrideVersion(usize),
     MemoryChanged(f32),
     LoggingToggle(bool),
     CloseLauncherToggle(bool),
