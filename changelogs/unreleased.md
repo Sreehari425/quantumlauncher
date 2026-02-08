@@ -14,7 +14,10 @@
 - In addition to custom Java paths, you can now choose
   different launcher-provided Java versions as well
 - The java installer has been improved with better platform support
-  - For example, you can now run Minecraft 1.20.5 to 1.21.11 on many 32-bit systems
+  - For example, you can now run Minecraft 1.20.5 to 1.21.11
+    on many 32-bit systems
+- For platforms without Mojang-provided Java,
+  we now use Azul Zulu instead of Amazon Corretto
 
 # Fixes
 
