@@ -23,8 +23,11 @@
 
 - Fixed many concurrent downloading bugs with CurseForge
 - Fixed account login being broken for new users
+- Fixed versions after 1.21.11 (eg: snapshots) not launching on Linux ARM
+- Fixed Java being frequently redownloaded on some ARM systems
 
 ## Logging
-- Overhauled log viewer code, now with text selection and better scrolling
+- Overhauled log viewer code, now with text selection,
+  better scrolling, and fewer bugs
 - Fixed game crash reports not showing in logs
 - Added warning when running in macOS VM
