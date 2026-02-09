@@ -214,15 +214,15 @@ impl MenuEditInstance {
     fn item_mem_alloc(&self) -> widget::Column<'_, Message, LauncherTheme> {
         // 2 ^ 8 = 256 MB
         const MEM_256_MB_IN_TWOS_EXPONENT: f32 = 8.0;
-        // 2 ^ 13 = 8192 MB
-        const MEM_8192_MB_IN_TWOS_EXPONENT: f32 = 13.0;
+        // 2 ^ 15 = 32768 MB (32 GB)
+        const MEM_32768_MB_IN_TWOS_EXPONENT: f32 = 15.0;
 
         column![
             "Allocated memory",
             widget::text(
                 r"Normal Minecraft: 2-3 GB
 Old versions: 512 MB - 1 GB
-Heavy modpacks / High settings: 4-8 GB"
+Heavy modpacks / High settings: 4-8 GB+"
             )
             .size(12)
             .style(tsubtitle),
@@ -230,11 +230,19 @@ Heavy modpacks / High settings: 4-8 GB"
             row![
                 widget::text(&self.slider_text),
                 widget::slider(
-                    MEM_256_MB_IN_TWOS_EXPONENT..=MEM_8192_MB_IN_TWOS_EXPONENT,
+                    MEM_256_MB_IN_TWOS_EXPONENT..=MEM_32768_MB_IN_TWOS_EXPONENT,
                     self.slider_value,
                     |n| Message::EditInstance(EditInstanceMessage::MemoryChanged(n))
                 )
                 .step(0.1),
+            ]
+            .align_y(Alignment::Center)
+            .spacing(10),
+            row![
+                widget::text("Or enter directly (MB):").size(12),
+                widget::text_input("2048", &self.memory_input)
+                    .on_input(|n| Message::EditInstance(EditInstanceMessage::MemoryInputChanged(n)))
+                    .width(100),
             ]
             .align_y(Alignment::Center)
             .spacing(10)
