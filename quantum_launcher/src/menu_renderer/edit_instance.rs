@@ -217,6 +217,8 @@ impl MenuEditInstance {
         // 2 ^ 15 = 32768 MB (32 GB)
         const MEM_32768_MB_IN_TWOS_EXPONENT: f32 = 15.0;
 
+        const RAM_16_GB_TO_MB: usize = 16384;
+
         column![
             "Allocated memory",
             widget::text(
@@ -239,14 +241,24 @@ Heavy modpacks / High settings: 4-8 GB+"
             .align_y(Alignment::Center)
             .spacing(10),
             row![
-                widget::text("Or enter directly (MB):").size(12),
+                widget::text("Or enter directly:").size(12).style(tsubtitle),
                 widget::text_input("2048", &self.memory_input)
                     .on_input(|n| Message::EditInstance(EditInstanceMessage::MemoryInputChanged(n)))
-                    .width(100),
+                    .width(64)
+                    .size(12),
+                widget::text("MB").size(12).style(tsubtitle),
             ]
             .align_y(Alignment::Center)
-            .spacing(10)
+            .spacing(5)
         ]
+        .push_maybe(
+            (self.config.ram_in_mb > RAM_16_GB_TO_MB).then_some(
+                widget::text(
+                    "Warning: Very high RAM allocated! (16+ GB)\nYour system may struggle",
+                )
+                .size(14),
+            ),
+        )
         .spacing(5)
     }
 
