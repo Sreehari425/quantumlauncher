@@ -299,6 +299,7 @@ pub struct MenuEditMods {
 pub enum MenuEditModsModal {
     Submenu,
     RightClick(ModId, (f32, f32)),
+    FolderMenu,
 }
 
 impl MenuEditMods {

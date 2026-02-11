@@ -108,6 +108,35 @@ impl MenuEditMods {
                 ]
             )
             .into()
+        } else if let Some(MenuEditModsModal::FolderMenu) = &self.modal {
+            let folder_menu = widget::column![
+                ctx_button("Open Mods Folder")
+                    .on_press_with(|| Message::CoreOpenPath(
+                        selected_instance.get_dot_minecraft_path().join("mods")
+                    )),
+                ctx_button("Open Resource Packs Folder")
+                    .on_press_with(|| Message::CoreOpenPath(
+                        selected_instance.get_dot_minecraft_path().join("resourcepacks")
+                    )),
+                ctx_button("Open Shader Packs Folder")
+                    .on_press_with(|| Message::CoreOpenPath(
+                        selected_instance.get_dot_minecraft_path().join("shaderpacks")
+                    )),
+                ctx_button("Open Data Packs Folder")
+                    .on_press_with(|| Message::CoreOpenPath(
+                        selected_instance.get_dot_minecraft_path().join("datapacks")
+                    )),
+            ]
+            .spacing(4);
+
+            widget::stack!(
+                menu_main,
+                widget::row![
+                    widget::Space::with_width(30),
+                    widget::column![widget::Space::with_height(40), ctxbox(folder_menu).width(220)]
+                ]
+            )
+            .into()
         } else {
             menu_main.into()
         }
@@ -126,12 +155,12 @@ impl MenuEditMods {
                         None
                     )),
                     tooltip(
-                        button_with_icon(icons::folder_s(14), "Open", 14).on_press_with(|| {
-                            Message::CoreOpenPath(
-                                selected_instance.get_dot_minecraft_path().join("mods"),
-                            )
-                        }),
-                        widget::text("Open Mods Folder").size(12),
+                        button_with_icon(icons::folder_s(14), "Open", 14).on_press(
+                            Message::ManageMods(ManageModsMessage::SetModal(Some(
+                                MenuEditModsModal::FolderMenu,
+                            ))),
+                        ),
+                        widget::text("Open Folders").size(12),
                         Position::Bottom
                     )
                 ]
