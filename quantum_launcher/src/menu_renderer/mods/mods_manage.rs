@@ -110,22 +110,22 @@ impl MenuEditMods {
             .into()
         } else if let Some(MenuEditModsModal::FolderMenu) = &self.modal {
             let folder_menu = widget::column![
-                ctx_button("Open Mods Folder")
-                    .on_press_with(|| Message::CoreOpenPath(
-                        selected_instance.get_dot_minecraft_path().join("mods")
-                    )),
-                ctx_button("Open Resource Packs Folder")
-                    .on_press_with(|| Message::CoreOpenPath(
-                        selected_instance.get_dot_minecraft_path().join("resourcepacks")
-                    )),
-                ctx_button("Open Shader Packs Folder")
-                    .on_press_with(|| Message::CoreOpenPath(
-                        selected_instance.get_dot_minecraft_path().join("shaderpacks")
-                    )),
-                ctx_button("Open Data Packs Folder")
-                    .on_press_with(|| Message::CoreOpenPath(
-                        selected_instance.get_dot_minecraft_path().join("datapacks")
-                    )),
+                ctx_button("Open Mods Folder").on_press_with(|| Message::CoreOpenPath(
+                    selected_instance.get_dot_minecraft_path().join("mods")
+                )),
+                ctx_button("Open Resource Packs Folder").on_press_with(|| Message::CoreOpenPath(
+                    selected_instance
+                        .get_dot_minecraft_path()
+                        .join("resourcepacks")
+                )),
+                ctx_button("Open Shader Packs Folder").on_press_with(|| Message::CoreOpenPath(
+                    selected_instance
+                        .get_dot_minecraft_path()
+                        .join("shaderpacks")
+                )),
+                ctx_button("Open Data Packs Folder").on_press_with(|| Message::CoreOpenPath(
+                    selected_instance.get_dot_minecraft_path().join("datapacks")
+                )),
             ]
             .spacing(4);
 
@@ -133,7 +133,10 @@ impl MenuEditMods {
                 menu_main,
                 widget::row![
                     widget::Space::with_width(30),
-                    widget::column![widget::Space::with_height(40), ctxbox(folder_menu).width(220)]
+                    widget::column![
+                        widget::Space::with_height(40),
+                        ctxbox(folder_menu).width(220)
+                    ]
                 ]
             )
             .into()
