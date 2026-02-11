@@ -43,6 +43,16 @@ macro_rules! impl_3_errs_jri {
                 match value {
                     $crate::JsonDownloadError::RequestError(err) => Self::$request_variant(err),
                     $crate::JsonDownloadError::SerdeError(err) => Self::$json_variant(err),
+                    $crate::JsonDownloadError::EmptyResponse(url) => {
+                        // Treat empty response as a JSON error
+                        Self::$json_variant($crate::JsonError::From {
+                            error: serde_json::Error::io(std::io::Error::new(
+                                std::io::ErrorKind::UnexpectedEof,
+                                format!("Empty response from: {}", url)
+                            )),
+                            json: String::new(),
+                        })
+                    }
                 }
             }
         }
@@ -144,6 +154,8 @@ pub enum JsonDownloadError {
     RequestError(#[from] RequestError),
     #[error(transparent)]
     SerdeError(#[from] JsonError),
+    #[error("Empty response from URL: {0}")]
+    EmptyResponse(String),
 }
 
 impl From<reqwest::Error> for JsonDownloadError {
