@@ -4,6 +4,9 @@
 
 # Technical
 
+- Higher memory allocation values (upto 32 GB)
+  are now supported in Edit Instance screen
+  - You can also manually enter a number instead of using the slider
 - Usernames in paths are now censored in logs
   - eg: `C:\Users\YOUR_NAME` or `/home/YOUR_NAME` ->
     `C:\Users\[REDACTED]` or `/home/[REDACTED]`
