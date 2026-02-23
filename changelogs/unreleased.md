@@ -33,6 +33,7 @@
 # Fixes
 
 - Fixed many CurseForge concurrent downloading issues
+- Fixed QMP presets added via "Add File" in Mods menu, to not install all mods
 - Fixed account login persistence for new users
 - Fixed post-1.21.11 versions (eg: snapshots) not launching on Linux ARM
 - Fixed unnecessary Java redownloads on some ARM systems
