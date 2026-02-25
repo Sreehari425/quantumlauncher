@@ -65,10 +65,7 @@ impl MenuCreateInstanceChoosing {
             .into()
     }
 
-    fn get_sidebar_contents(
-        &self,
-        timer: usize,
-    ) -> widget::Container<'_, Message, LauncherTheme> {
+    fn get_sidebar_contents(&self, timer: usize) -> widget::Container<'_, Message, LauncherTheme> {
         let header = self.get_sidebar_header();
 
         let Some(versions) = &self.list else {
@@ -116,7 +113,7 @@ impl MenuCreateInstanceChoosing {
                         label,
                         Message::CreateInstance(CreateInstanceMessage::VersionSelected(n.clone())),
                     )
-                }),))
+                })))
                 .style(LauncherTheme::style_scrollable_flat_extra_dark)
                 .height(Length::Fill)
                 .id(widget::scrollable::Id::new(

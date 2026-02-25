@@ -220,6 +220,7 @@ impl Launcher {
             instance_name: instance_name.to_owned(),
             old_instance_name: instance_name.to_owned(),
             slider_text: format_memory(memory_mb),
+            memory_input: memory_mb.to_string(),
             is_editing_name: false,
             arg_split_by_space: true,
         });
@@ -449,7 +450,7 @@ impl Launcher {
     pub fn server_selected(&self) -> bool {
         self.selected_instance
             .as_ref()
-            .is_some_and(|n| n.is_server())
+            .is_some_and(InstanceSelection::is_server)
             || if let State::Launch(menu) = &self.state {
                 menu.is_viewing_server
             } else if let State::Create(MenuCreateInstance::Choosing(
@@ -597,7 +598,7 @@ impl Launcher {
                     } else {
                         let future = stdin.write_all("stop\n".as_bytes());
                         _ = block_on(future);
-                    };
+                    }
                 }
             }
         }
@@ -637,12 +638,10 @@ impl Launcher {
 
         match selected_instance {
             InstanceSelection::Instance(_) => {
-                if let Some(account) = &self.accounts_selected {
-                    if account == OFFLINE_ACCOUNT_NAME
-                        && (self.config.username.is_empty() || self.config.username.contains(' '))
-                    {
-                        return Task::none();
-                    }
+                if self.account_selected == OFFLINE_ACCOUNT_NAME
+                    && (self.config.username.is_empty() || self.config.username.contains(' '))
+                {
+                    return Task::none();
                 }
 
                 self.is_launching_game = true;

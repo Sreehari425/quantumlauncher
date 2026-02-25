@@ -295,9 +295,9 @@ async fn create_required_jsons(neoforge_dir: &Path) -> Result<(), ForgeInstallEr
 }
 
 const FORGE_INSTALLER_CLIENT: &[u8] =
-    include_bytes!("../../../../assets/installers/NeoForgeInstallerClient.class");
+    include_bytes!("../../../../assets/installers/neoforge/NeoForgeInstallerClient.class");
 const FORGE_INSTALLER_SERVER: &[u8] =
-    include_bytes!("../../../../assets/installers/NeoForgeInstallerServer.class");
+    include_bytes!("../../../../assets/installers/neoforge/NeoForgeInstallerServer.class");
 
 pub async fn run_installer(
     neoforge_dir: &Path,
@@ -332,7 +332,7 @@ pub async fn run_installer(
         .current_dir(if is_server {
             neoforge_dir
                 .parent()
-                .map_or(neoforge_dir.join(".."), |n| n.to_owned())
+                .map_or(neoforge_dir.join(".."), Path::to_owned)
         } else {
             neoforge_dir.to_owned()
         });

@@ -8,14 +8,15 @@ use crate::cli::EXPERIMENTAL_SERVERS;
 use crate::menu_renderer::onboarding::x86_warning;
 use crate::menu_renderer::{ctx_button, ctxbox, sidebar, tsubtitle, underline, FONT_MONO};
 use crate::state::{
-    GameLogMessage, InstanceNotes, LaunchModal, MainMenuMessage, NotesMessage, WindowMessage,
+    GameLogMessage, InstanceNotes, LaunchModal, MainMenuMessage, NotesMessage, ShortcutMessage,
+    WindowMessage,
 };
 use crate::{
     icons,
     menu_renderer::DISCORD,
     state::{
         AccountMessage, CreateInstanceMessage, InstanceLog, LaunchTab, Launcher,
-        LauncherSettingsMessage, ManageModsMessage, MenuLaunch, Message, State, NEW_ACCOUNT_NAME,
+        LauncherSettingsMessage, ManageModsMessage, MenuLaunch, Message, State,
         OFFLINE_ACCOUNT_NAME,
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
@@ -121,7 +122,8 @@ impl Launcher {
                     ctxbox(
                         column![
                             ctx_button("Export Instance").on_press(Message::ExportInstanceOpen),
-                            ctx_button("Create Shortcut"),
+                            ctx_button("Create Shortcut")
+                                .on_press(Message::Shortcut(ShortcutMessage::Open)),
                         ]
                         .spacing(4)
                     )
@@ -408,22 +410,22 @@ impl Launcher {
         let something_is_happening = self.java_recv.is_some() || menu.login_progress.is_some();
 
         let dropdown: Element = if something_is_happening {
-            widget::text_input("", self.accounts_selected.as_deref().unwrap_or_default())
+            widget::text_input("", &self.account_selected)
                 .width(Length::Fill)
                 .into()
         } else {
             widget::pick_list(
-                self.accounts_dropdown.clone(),
-                self.accounts_selected.clone(),
+                self.accounts_dropdown.as_slice(),
+                Some(&self.account_selected),
                 |n| Message::Account(AccountMessage::Selected(n)),
             )
             .width(Length::Fill)
             .into()
         };
 
-        column![
-            row![widget::text(" Accounts:").size(14), horizontal_space(),].push_maybe(
-                self.is_account_selected().then_some(
+        widget::column![
+            widget::row![widget::text(" Accounts:").size(14), horizontal_space()].push_maybe(
+                (self.account_selected != OFFLINE_ACCOUNT_NAME).then_some(
                     widget::button(widget::text("Logout").size(11))
                         .padding(3)
                         .on_press(Message::Account(AccountMessage::LogoutCheck))
@@ -434,7 +436,7 @@ impl Launcher {
             dropdown
         ]
         .push_maybe(
-            (self.accounts_selected.as_deref() == Some(OFFLINE_ACCOUNT_NAME)).then_some(
+            (self.account_selected == OFFLINE_ACCOUNT_NAME).then_some(
                 widget::text_input("Enter username...", &self.config.username)
                     .on_input(|t| MainMenuMessage::UsernameSet(t).into())
                     .width(Length::Fill),
@@ -445,20 +447,13 @@ impl Launcher {
         .into()
     }
 
-    pub fn is_account_selected(&self) -> bool {
-        !(self.accounts_selected.is_none()
-            || self.accounts_selected.as_deref() == Some(NEW_ACCOUNT_NAME)
-            || self.accounts_selected.as_deref() == Some(OFFLINE_ACCOUNT_NAME))
-    }
-
     fn get_client_play_button(&'_ self) -> Element<'_> {
         let play_button = button_with_icon(icons::play(), "Play", 16).width(98);
+        let is_offline = self.account_selected == OFFLINE_ACCOUNT_NAME;
 
-        let is_account_selected = self.is_account_selected();
-
-        if self.config.username.is_empty() && !is_account_selected {
+        if self.config.username.is_empty() && is_offline {
             tooltip(play_button, "Username is empty!", Position::Bottom).into()
-        } else if self.config.username.contains(' ') && !is_account_selected {
+        } else if self.config.username.contains(' ') && is_offline {
             tooltip(play_button, "Username contains spaces!", Position::Bottom).into()
         } else if self.processes.contains_key(self.instance()) {
             tooltip(

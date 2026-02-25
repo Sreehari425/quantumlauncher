@@ -4,6 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use owo_colors::OwoColorize;
 use ql_core::{
     err, info,
     json::{InstanceConfigJson, VersionDetails},
@@ -49,12 +50,13 @@ pub struct PresetOutput {
 ///   here, but rather their details should be entered in the `index.json`
 /// - All configuration files in a `config/` folder. This will be extracted
 ///   to the `.minecraft/config/` folder
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Preset {
     pub launcher_version: String,
     pub minecraft_version: String,
     pub instance_type: Loader,
-    pub entries_modrinth: HashMap<String, ModConfig>,
+    #[serde(rename = "entries_modrinth")]
+    pub entries_downloaded: HashMap<String, ModConfig>,
     pub entries_local: Vec<String>,
 }
 
@@ -91,13 +93,13 @@ impl Preset {
 
         let index = ModIndex::load(&instance).await?;
 
-        let mut entries_modrinth = HashMap::new();
+        let mut entries_downloaded = HashMap::new();
         let mut entries_local: Vec<(String, Vec<u8>)> = Vec::new();
 
         for entry in selected_mods {
             match entry {
                 SelectedMod::Downloaded { id, .. } => {
-                    add_downloaded_mod_to_entries(&mut entries_modrinth, &index, &id);
+                    add_downloaded_mod_to_entries(&mut entries_downloaded, &index, &id);
                 }
                 SelectedMod::Local { file_name } => {
                     if is_already_covered(&index, &file_name) {
@@ -115,7 +117,7 @@ impl Preset {
             instance_type,
             launcher_version: LAUNCHER_VERSION_NAME.to_owned(),
             minecraft_version,
-            entries_modrinth,
+            entries_downloaded,
             entries_local: entries_local.iter().map(|(n, _)| n).cloned().collect(),
         };
 
@@ -189,6 +191,8 @@ impl Preset {
 
         let index: Self = {
             let Ok(mut index) = zip.by_name("index.json") else {
+                // Else this ain't a QMP file!
+                // Install as regular modpack
                 return match install_modpack(file.clone(), instance.clone(), None)
                     .await
                     .map_err(Box::new)?
@@ -223,7 +227,9 @@ impl Preset {
                 if !apply {
                     continue;
                 }
-                pt!("Config file: {name}");
+                if !name.ends_with('/') && !name.ends_with('\\') {
+                    pt!("Config: {}", name.bright_black());
+                }
                 let path = main_dir.join(name.replace('\\', "/"));
 
                 if file.is_dir() {
@@ -258,7 +264,7 @@ impl Preset {
         }
 
         let to_install = index
-            .entries_modrinth
+            .entries_downloaded
             .into_iter()
             .filter_map(|(k, n)| n.manually_installed.then_some(ModId::from_index_str(&k)))
             .collect();

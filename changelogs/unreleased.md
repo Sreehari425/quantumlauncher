@@ -7,24 +7,50 @@
 
 # UX
 
-- Added quick uninstallation button to Mod Store
+- Added a quick-uninstall button to Mod Store
 - Improved new-user Welcome screen with keyboard navigation,
   better layout and more guidance
 
+# Shortcuts
+
+- Launch instances with a single click; no launcher required!
+- Create one-click shortcuts for:
+  - Desktop
+  - Start Menu / Applications Menu (Windows/Linux)
+  - Applications (macOS)
+  - Other custom locations
+
 # Technical
 
-- Usernames in paths are now censored in logs
-  - eg: `C:\Users\YOUR_NAME` or `/home/YOUR_NAME` ->
-    `C:\Users\[REDACTED]` or `/home/[REDACTED]`
-  - Use `--no-redact-info` CLI flag to temporarily disable this
+- Higher memory allocation values (upto 32 GB)
+  are now supported in Edit Instance screen
+  - Manual input now supported, alongside slider
+- Usernames are now redacted in log paths
+  - eg: `C:\Users\YOUR_NAME` -> `C:\Users\[REDACTED]`
+  - Disable temporarily with `--no-redact-info` flag
+- When launching headlessly (`quantum_launcher launch <INSTANCE> <USERNAME>`),
+  you can now use `--show-progress` to get desktop notifications on account login progress or errors
+  - Especially useful for shortcuts/scripts
+
+## Java
+
+- Select launcher-provided Java versions in addition to custom paths
+- Improved Java installer with expanded platform support
+  - Minecraft 1.20.5–1.21.11 now runs on many 32-bit systems
+- Platforms without Mojang Java now use **Azul Zulu** instead of Amazon Corretto
 
 # Fixes
 
 - Fixed context menus not closing after a click
-- Fixed many concurrent downloading bugs with CurseForge
-- Fixed account login being broken for new users
+
+- Fixed many CurseForge concurrent downloading issues
+- Fixed QMP presets added via "Add File" in Mods menu, to not install all mods
+- Fixed account login persistence for new users
+- Fixed post-1.21.11 versions (eg: snapshots) not launching on Linux ARM
+- Fixed unnecessary Java redownloads on some ARM systems
 
 ## Logging
-- Overhauled log viewer code, now with text selection and better scrolling
-- Fixed game crash reports not showing in logs
+
+- Overhauled log viewer: text selection, better scrolling, fewer bugs
+- Fixed missing crash reports in logs
 - Added warning when running in macOS VM

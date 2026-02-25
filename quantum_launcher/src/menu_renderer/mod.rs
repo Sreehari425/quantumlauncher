@@ -1,5 +1,7 @@
-use iced::widget::{column, row, tooltip::Position};
-use iced::{widget, Alignment, Length};
+use iced::{
+    widget::{self, column, row, tooltip::Position},
+    Alignment, Length,
+};
 use ql_core::{Progress, WEBSITE};
 use ql_instances::auth::AccountType;
 
@@ -23,6 +25,7 @@ mod mods;
 mod onboarding;
 mod settings;
 mod sidebar;
+mod shortcuts;
 
 pub use onboarding::changelog;
 
@@ -172,7 +175,7 @@ pub fn button_with_icon<'a>(
         row![icon.into()]
             .push_maybe((!text.is_empty()).then_some(widget::text(text).size(size)))
             .align_y(Alignment::Center)
-            .spacing(size as f32 / 1.6),
+            .spacing(f32::from(size) / 1.6),
     )
     .padding([7, 13])
 }
@@ -326,15 +329,9 @@ fn back_to_launch_screen(is_server: Option<bool>, message: Option<String>) -> Me
 impl<T: Progress> ProgressBar<T> {
     pub fn view(&'_ self) -> widget::Column<'_, Message, LauncherTheme> {
         let total = T::total();
-        if let Some(message) = &self.message {
-            column![
-                widget::progress_bar(0.0..=total, self.num),
-                widget::text(message)
-            ]
-        } else {
-            column![widget::progress_bar(0.0..=total, self.num)]
-        }
-        .spacing(10)
+        column![widget::progress_bar(0.0..=total, self.num)]
+            .push_maybe(self.message.as_deref().map(widget::text))
+            .spacing(10)
     }
 }
 

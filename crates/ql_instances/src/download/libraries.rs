@@ -227,26 +227,44 @@ impl GameDownloader {
         let natives_dir = libraries_dir.join("natives");
 
         for (os, download) in classifiers {
+            if os == "sources" {
+                continue;
+            }
             #[allow(unused)]
+            #[allow(clippy::let_and_return)]
             if !(OS_NAMES.iter().any(|os_name| {
+                let os_name = format!("natives-{os_name}");
                 cfg_if!(if #[cfg(feature = "simulate_linux_arm64")] {
-                    let matches = os == "natives-linux-arm64";
+                    // Simulating Linux ARM 64
+                    let matches = os == "natives-linux-arm64"
+                        || (*os == os_name && download.url.contains("arm64"));
                 } else if #[cfg(feature = "simulate_macos_arm64")] {
+                    // Simulating macOS ARM 64
                     let matches = os == "natives-osx-arm64";
                 } else if #[cfg(feature = "simulate_linux_arm32")] {
-                    let matches = os == "natives-linux-arm32";
+                    // Simulating Linux ARM 32
+                    let matches = os == "natives-linux-arm32"
+                        || (*os == os_name && download.url.contains("arm32"));
                 } else if #[cfg(all(target_os = "macos", target_arch = "aarch64"))] {
+                    // macOS ARM 64
                     let matches = os == "natives-osx-arm64";
                 } else if #[cfg(all(target_os = "linux", target_arch = "aarch64"))] {
-                    let matches = os == "natives-linux-arm64";
+                    // Linux ARM 64
+                    let matches = os == "natives-linux-arm64"
+                        || (*os == os_name && download.url.contains("arm64"));
                 } else if #[cfg(all(target_os = "windows", target_arch = "x86"))] {
+                    // Windows x86 32-bit
                     let matches = os == "natives-windows-32";
                 } else if #[cfg(all(target_os = "windows", target_arch = "x86_64"))] {
+                    // Windows x86_64
                     let matches = (os == "natives-windows-64") || (os == "natives-windows");
                 } else if #[cfg(all(target_os = "linux", target_arch = "arm"))] {
-                    let matches = os == "natives-linux-arm32";
+                    // Linux ARM 32
+                    let matches = os == "natives-linux-arm32"
+                        || (*os == os_name && download.url.contains("arm32"));
                 } else {
-                    let matches = *os == format!("natives-{os_name}");
+                    // Others
+                    let matches = *os == os_name;
                 });
 
                 matches
@@ -286,10 +304,10 @@ impl GameDownloader {
 
     async fn extract_file(&self, mut url: String) -> Result<(), DownloadError> {
         if url == "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-natives-linux.jar" {
-            url = "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-patched-natives-linux-arm64.jar".to_owned();
+            "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-patched-natives-linux-arm64.jar".clone_into(&mut url);
         }
         if (cfg!(target_arch = "aarch64") && url == MACOS_ARM_LWJGL_294_1) || url == "https://github.com/MinecraftMachina/lwjgl/releases/download/2.9.4-20150209-mmachina.2/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.jar" {
-            url = MACOS_ARM_LWJGL_294_2.to_owned();
+            MACOS_ARM_LWJGL_294_2.clone_into(&mut url);
         }
 
         #[cfg(any(

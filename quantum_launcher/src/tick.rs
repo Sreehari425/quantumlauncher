@@ -163,12 +163,14 @@ impl Launcher {
             | State::CurseforgeManualDownload(_)
             | State::LogUploadResult { .. }
             | State::InstallPaper(_)
+            | State::CreateShortcut(_)
             | State::ExportMods(_) => {}
         }
 
         Task::none()
     }
 
+    #[allow(clippy::manual_is_multiple_of)] // Maintain Rust MSRV
     pub fn autosave_config(&mut self) -> Task<Message> {
         if self.tick_timer % 5 == 0 && self.autosave.insert(AutoSaveKind::LauncherConfig) {
             let launcher_config = self.config.clone();
@@ -217,8 +219,10 @@ impl Launcher {
 
             logs.entry(instance.clone())
                 .or_insert_with(|| {
+                    let mut text = log_start().join("\n");
+                    text.push('\n');
                     *log_state = Some(LogState {
-                        content: text_editor::Content::with_text(&log_start().join("\n")),
+                        content: text_editor::Content::with_text(&text),
                     });
                     InstanceLog {
                         log: log_start(),

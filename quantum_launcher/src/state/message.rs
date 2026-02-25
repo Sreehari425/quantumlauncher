@@ -80,7 +80,9 @@ pub enum EditInstanceMessage {
     BrowseJavaOverride,
 
     JavaOverride(String),
+    JavaOverrideVersion(usize),
     MemoryChanged(f32),
+    MemoryInputChanged(String),
     LoggingToggle(bool),
     CloseLauncherToggle(bool),
     SetMainClass(Option<MainClassMode>, Option<String>),
@@ -374,6 +376,24 @@ pub enum MainMenuMessage {
 }
 
 #[derive(Debug, Clone)]
+pub enum ShortcutMessage {
+    Open,
+    OpenFolder,
+    ToggleAddToMenu(bool),
+    ToggleAddToDesktop(bool),
+    EditName(String),
+    EditDescription(String),
+
+    AccountSelected(String),
+    AccountOffline(String),
+
+    SaveCustom,
+    SaveCustomPicked(PathBuf),
+    SaveMenu,
+    Done(Res),
+}
+
+#[derive(Debug, Clone)]
 pub enum Message {
     Nothing,
     Error(String),
@@ -390,6 +410,7 @@ pub enum Message {
     Notes(NotesMessage),
     GameLog(GameLogMessage),
     Window(WindowMessage),
+    Shortcut(ShortcutMessage),
 
     ManageMods(ManageModsMessage),
     ManageJarMods(ManageJarModsMessage),

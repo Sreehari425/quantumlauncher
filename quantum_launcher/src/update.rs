@@ -69,6 +69,10 @@ impl Launcher {
             Message::Window(msg) => return self.update_window_msg(msg),
             Message::Notes(msg) => return self.update_notes(msg),
             Message::GameLog(msg) => return self.update_game_log(msg),
+            Message::Shortcut(msg) => match self.update_shortcut(msg) {
+                Ok(n) => return n,
+                Err(e) => self.set_error(e),
+            },
 
             Message::LauncherSettings(msg) => return self.update_launcher_settings(msg),
             Message::InstallOptifine(msg) => return self.update_install_optifine(msg),
@@ -225,7 +229,7 @@ impl Launcher {
                 }
             }
             Message::CoreListLoaded(Ok((list, is_server))) => {
-                self.core_list_loaded(list, is_server)
+                self.core_list_loaded(list, is_server);
             }
             Message::CoreCopyText(txt) => {
                 return iced::clipboard::write(txt);
@@ -424,6 +428,7 @@ impl Launcher {
             .config
             .ui_mode
             .is_none_or(|n| n == LauncherThemeLightness::Auto);
+        #[allow(clippy::manual_is_multiple_of)] // Maintain Rust MSRV
         let interval = self.tick_timer % INTERVAL == 0;
 
         if is_auto_theme && interval {
