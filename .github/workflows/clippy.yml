@@ -5,9 +5,9 @@ permissions:
   pull-requests: write
 
 on:
-  pull_request:
-    branches:
-      - main
+  # pull_request:
+  # branches:
+  # - main
   workflow_dispatch:
     inputs:
       deny_warnings:
@@ -35,7 +35,7 @@ on:
           - none
           - fix
           - make a PR
-          - make a patch 
+          - make a patch
         default: "none"
 
 env:
