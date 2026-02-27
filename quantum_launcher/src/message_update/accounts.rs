@@ -305,16 +305,7 @@ impl Launcher {
         self.accounts_dropdown.insert(0, username.clone());
 
         let config_accounts = self.config.accounts.get_or_insert_with(HashMap::new);
-        config_accounts.insert(
-            username.clone(),
-            ConfigAccount {
-                uuid: data.uuid.clone(),
-                skin: None,
-                account_type: Some(data.account_type.to_string()),
-                keyring_identifier: Some(data.username.clone()),
-                username_nice: Some(data.nice_username.clone()),
-            },
-        );
+        config_accounts.insert(username.clone(), ConfigAccount::from_account(&data));
 
         self.account_selected.clone_from(&username);
         self.accounts.insert(username.clone(), data);

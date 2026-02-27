@@ -6,6 +6,7 @@ use ql_core::ListEntryKind;
 use ql_core::{
     err, IntoIoError, IntoJsonError, JsonFileError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
 };
+use ql_instances::auth::AccountData;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::{collections::HashMap, path::Path};
@@ -99,6 +100,10 @@ pub struct LauncherConfig {
     pub persistent: Option<PersistentSettings>,
     // Since: v0.5.1
     pub sidebar: Option<SidebarConfig>,
+
+    /// Preserve fields when downgrading
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
 }
 
 impl Default for LauncherConfig {
@@ -120,6 +125,7 @@ impl Default for LauncherConfig {
             ui: None,
             persistent: None,
             sidebar: None,
+            _extra: HashMap::new(),
         }
     }
 }
@@ -279,6 +285,15 @@ impl LauncherConfig {
     pub fn c_sidebar(&mut self) -> &mut SidebarConfig {
         self.sidebar.get_or_insert_with(SidebarConfig::default)
     }
+
+    pub fn c_idle_fps(&self) -> u64 {
+        const IDLE_FPS: u64 = 6;
+
+        self.ui
+            .as_ref()
+            .and_then(|n| n.idle_fps)
+            .unwrap_or(IDLE_FPS)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -320,6 +335,22 @@ pub struct ConfigAccount {
     /// username while the regular "username"
     /// would be an email.
     pub username_nice: Option<String>,
+
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
+}
+
+impl ConfigAccount {
+    pub fn from_account(data: &AccountData) -> Self {
+        Self {
+            uuid: data.uuid.clone(),
+            skin: None,
+            account_type: Some(data.account_type.to_string()),
+            keyring_identifier: Some(data.username.clone()),
+            username_nice: Some(data.nice_username.clone()),
+            _extra: HashMap::new(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -336,6 +367,9 @@ pub struct WindowProperties {
     /// Used to restore the window size between launches.
     // Since: v0.4.2
     pub height: Option<f32>,
+
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
 }
 
 impl Default for WindowProperties {
@@ -344,11 +378,12 @@ impl Default for WindowProperties {
             save_window_size: true,
             width: None,
             height: None,
+            _extra: HashMap::new(),
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UiSettings {
     // Since: v0.5.0
     pub window_decorations: UiWindowDecorations,
@@ -356,6 +391,8 @@ pub struct UiSettings {
     pub window_opacity: f32,
     // Since: v0.5.0
     pub idle_fps: Option<u64>,
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
 }
 
 impl Default for UiSettings {
@@ -364,13 +401,8 @@ impl Default for UiSettings {
             window_decorations: UiWindowDecorations::default(),
             window_opacity: OPACITY,
             idle_fps: None,
+            _extra: HashMap::new(),
         }
-    }
-}
-
-impl UiSettings {
-    pub fn get_idle_fps(&self) -> u64 {
-        self.idle_fps.unwrap_or(6)
     }
 }
 
@@ -402,6 +434,9 @@ pub struct PersistentSettings {
 
     /// Remembers version filters (eg: snapshot, release, etc) in Create Instance
     pub create_instance_filters: Option<HashSet<ListEntryKind>>,
+
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
 }
 
 impl Default for PersistentSettings {
@@ -411,6 +446,7 @@ impl Default for PersistentSettings {
             selected_server: None,
             selected_remembered: true,
             create_instance_filters: None,
+            _extra: HashMap::new(),
         }
     }
 }

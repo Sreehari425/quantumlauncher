@@ -87,7 +87,7 @@ impl MenuLauncherSettings {
                 ))
         ];
 
-        let idle_fps = config.ui.unwrap_or_default().get_idle_fps();
+        let idle_fps = config.c_idle_fps();
 
         checkered_list::<Element>([
             widget::column![widget::text("User Interface").size(20)].into(),

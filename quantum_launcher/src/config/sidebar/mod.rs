@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
@@ -7,9 +7,12 @@ mod types;
 
 pub use types::*;
 
+// Since: v0.5.1
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct SidebarConfig {
     pub list: Vec<SidebarNode>,
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
 }
 
 impl SidebarConfig {

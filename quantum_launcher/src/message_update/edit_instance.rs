@@ -358,10 +358,8 @@ impl Launcher {
             *menu
                 .config
                 .custom_jar
-                .get_or_insert_with(CustomJarConfig::default) = CustomJarConfig {
-                name: file_name.clone(),
-                autoset_main_class: false,
-            };
+                .get_or_insert_with(CustomJarConfig::default) =
+                CustomJarConfig::new(file_name.clone());
 
             Task::perform(
                 tokio::fs::copy(path, LAUNCHER_DIR.join("custom_jars").join(file_name)),

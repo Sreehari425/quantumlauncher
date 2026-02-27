@@ -586,11 +586,7 @@ pub async fn install_client(
     change_instance_type(
         &installer.instance_dir,
         Loader::Forge,
-        Some(ModTypeInfo {
-            version: Some(installer.version.clone()),
-            backend_implementation: None,
-            optifine_jar: None,
-        }),
+        Some(ModTypeInfo::new_regular(installer.version)),
     )
     .await?;
 

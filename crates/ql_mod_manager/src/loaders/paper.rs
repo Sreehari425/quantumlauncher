@@ -74,11 +74,7 @@ pub async fn install(instance_name: String, version: PaperVer) -> Result<(), Pap
     change_instance_type(
         &server_dir,
         Loader::Paper,
-        Some(ModTypeInfo {
-            version: Some(version.id.to_string()),
-            backend_implementation: None,
-            optifine_jar: None,
-        }),
+        Some(ModTypeInfo::new_regular(version.id.to_string())),
     )
     .await?;
 

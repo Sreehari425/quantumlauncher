@@ -1,8 +1,14 @@
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{InstanceSelection, IntoIoError, IntoJsonError, JsonFileError, Loader};
+use crate::{
+    InstanceSelection, IntoIoError, IntoJsonError, JsonFileError, Loader,
+    DEFAULT_RAM_MB_FOR_INSTANCE,
+};
 
 /// Configuration for a specific instance.
 /// Not to be confused with [`crate::json::VersionDetails`]. That one
@@ -90,9 +96,40 @@ pub struct InstanceConfigJson {
     /// An override for the main class when launching the game.
     /// Mainly only used for debugging purposes.
     pub main_class_override: Option<String>,
+
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
 }
 
 impl InstanceConfigJson {
+    pub fn new(is_server: bool, is_classic_server: bool, version_info: VersionInfo) -> Self {
+        #[allow(deprecated)]
+        Self {
+            mod_type: Loader::Vanilla,
+            java_override_version: None,
+            java_override: None,
+            ram_in_mb: DEFAULT_RAM_MB_FOR_INSTANCE,
+            enable_logger: Some(true),
+            java_args: None,
+            game_args: None,
+
+            is_server: Some(is_server),
+            is_classic_server: Some(is_classic_server),
+
+            omniarchive: None,
+            close_on_start: None,
+            global_settings: None,
+            global_java_args_enable: None,
+            custom_jar: None,
+            pre_launch_prefix_mode: None,
+            mod_type_info: None,
+
+            version_info: Some(version_info),
+            main_class_override: None,
+            _extra: HashMap::new(),
+        }
+    }
+
     /// Returns a String containing the Java argument to
     /// allocate the configured amount of RAM.
     #[must_use]
@@ -269,6 +306,29 @@ pub struct ModTypeInfo {
     /// was used, which one (eg: Legacy Fabric).
     pub backend_implementation: Option<String>,
     pub optifine_jar: Option<String>,
+
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
+}
+
+impl ModTypeInfo {
+    pub fn new_regular(version: String) -> Self {
+        Self {
+            version: Some(version),
+            backend_implementation: None,
+            optifine_jar: None,
+            _extra: HashMap::new(),
+        }
+    }
+
+    pub fn new_with_backend(version: String, backend: String) -> Self {
+        Self {
+            version: Some(version),
+            backend_implementation: Some(backend),
+            optifine_jar: None,
+            _extra: HashMap::new(),
+        }
+    }
 }
 
 /// Settings that can both be set on a per-instance basis
@@ -287,11 +347,25 @@ pub struct GlobalSettings {
     /// to the launch command (e.g., "prime-run" for NVIDIA GPU usage on Linux).
     // Since: v0.5.0
     pub pre_launch_prefix: Option<Vec<String>>,
+
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VersionInfo {
     pub is_special_lwjgl3: bool,
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
+}
+
+impl VersionInfo {
+    pub fn new(version: &str) -> Self {
+        Self {
+            is_special_lwjgl3: version.ends_with("-lwjgl3"),
+            _extra: HashMap::new(),
+        }
+    }
 }
 
 /// Defines how instance pre-launch prefix commands should interact with global pre-launch prefix commands
@@ -347,6 +421,18 @@ impl std::fmt::Display for PreLaunchPrefixMode {
 pub struct CustomJarConfig {
     pub name: String,
     pub autoset_main_class: bool,
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
+}
+
+impl CustomJarConfig {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            autoset_main_class: false,
+            _extra: HashMap::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
