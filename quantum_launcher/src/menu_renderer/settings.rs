@@ -27,7 +27,8 @@ pub static IMG_ICED: LazyLock<widget::image::Handle> = LazyLock::new(|| {
 const SETTINGS_SPACING: f32 = 10.0;
 const SETTING_WIDTH: u16 = 180;
 
-pub const PREFIX_EXPLANATION: &str = "Commands to add before the game launch command\nEg: 'prime-run' to force NVIDIA GPU on Linux with Optimus";
+pub const PREFIX_EXPLANATION: &str =
+    "Commands to add before the game launch command\nEg: prime-run/gamemoderun/mangohud";
 
 impl MenuLauncherSettings {
     pub fn view<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {

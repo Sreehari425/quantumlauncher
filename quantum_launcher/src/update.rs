@@ -61,6 +61,7 @@ impl Launcher {
             }
 
             Message::MainMenu(msg) => return self.update_main_menu(msg),
+            Message::SidebarMessage(msg) => return self.update_sidebar(msg),
             Message::Account(msg) => return self.update_account(msg),
             Message::ManageMods(msg) => return self.update_manage_mods(msg),
             Message::ExportMods(msg) => return self.update_export_mods(msg),

@@ -30,10 +30,14 @@ impl SidebarConfig {
         self.list.retain_mut(|node| node.retain_instances(f));
     }
 
-    pub fn new_folder_at(&mut self, selection: Option<SidebarSelection>, name: &str) {
-        fn walk(node: &mut SidebarNode, selection: &SidebarSelection, name: &str) -> bool {
+    pub fn new_folder_at(&mut self, selection: Option<SidebarSelection>, name: &str) -> FolderId {
+        fn walk(
+            node: &mut SidebarNode,
+            selection: &SidebarSelection,
+            name: &str,
+        ) -> Option<FolderId> {
             let SidebarNodeKind::Folder(f) = &mut node.kind else {
-                return false;
+                return None;
             };
             let mut index = None;
             for (i, child) in f.children.iter_mut().enumerate() {
@@ -41,30 +45,42 @@ impl SidebarConfig {
                     index = Some(i + 1);
                     break;
                 }
-                if walk(child, selection, name) {
-                    return true;
+                if let Some(f) = walk(child, selection, name) {
+                    return Some(f);
                 }
             }
-            let Some(index) = index else { return false };
+            let Some(index) = index else { return None };
 
-            f.children
-                .insert(index, SidebarNode::new_folder(name.to_owned()));
-            true
+            let folder = SidebarNode::new_folder(name.to_owned());
+            let id = folder
+                .get_folder_id()
+                .expect("should be folder, not instance");
+            f.children.insert(index, folder);
+            Some(id)
         }
 
         if let Some(selection) = selection {
             for (i, child) in self.list.iter_mut().enumerate() {
                 if *child == selection {
-                    self.list
-                        .insert(i + 1, SidebarNode::new_folder(name.to_owned()));
-                    return;
+                    let folder = SidebarNode::new_folder(name.to_owned());
+                    let id = folder
+                        .get_folder_id()
+                        .expect("should be folder, not instance");
+                    self.list.insert(i + 1, folder);
+                    return id;
                 }
-                if walk(child, &selection, name) {
-                    return;
+                if let Some(f) = walk(child, &selection, name) {
+                    return f;
                 }
             }
         }
-        self.list.push(SidebarNode::new_folder(name.to_owned()));
+
+        let folder = SidebarNode::new_folder(name.to_owned());
+        let id = folder
+            .get_folder_id()
+            .expect("should be folder, not instance");
+        self.list.push(folder);
+        id
     }
 
     pub fn delete_folder(&mut self, folder_id: FolderId) {
@@ -84,6 +100,33 @@ impl SidebarConfig {
         let mut temp = Vec::new();
         self.list.retain_mut(|n| walk(n, folder_id, &mut temp));
         self.list.extend(temp);
+    }
+
+    pub fn rename_folder(&mut self, id: FolderId, new_name: &str) {
+        fn walk(node: &mut SidebarNode, id: FolderId, new_name: &str) -> bool {
+            let SidebarNodeKind::Folder(f) = &mut node.kind else {
+                return false;
+            };
+
+            if f.id == id {
+                // Finally rename the thing
+                node.name = new_name.to_owned();
+                return true;
+            }
+
+            for child in &mut f.children {
+                if walk(child, id, new_name) {
+                    return true;
+                }
+            }
+            false
+        }
+
+        for child in &mut self.list {
+            if walk(child, id, new_name) {
+                break;
+            }
+        }
     }
 
     pub fn toggle_visibility(&mut self, id: FolderId) {
@@ -197,6 +240,14 @@ impl SidebarNode {
                 children: Vec::new(),
                 is_expanded: true,
             }),
+        }
+    }
+
+    pub fn get_folder_id(&self) -> Option<FolderId> {
+        if let SidebarNodeKind::Folder(f) = &self.kind {
+            Some(f.id)
+        } else {
+            None
         }
     }
 }

@@ -5,12 +5,16 @@ use iced::{
 use ql_core::InstanceSelection;
 
 use crate::{
-    config::sidebar::{SidebarFolder, SidebarNode, SidebarNodeKind, SidebarSelection},
+    config::sidebar::{FolderId, SidebarFolder, SidebarNode, SidebarNodeKind, SidebarSelection},
+    icons,
     menu_renderer::{
         ctx_button, ctxbox, offset, sidebar::drop_recv::drag_drop_receiver, underline,
-        underline_maybe, Element, FONT_MONO,
+        underline_maybe, Element, CTXI_SIZE, FONT_MONO,
     },
-    state::{LaunchModal, Launcher, MainMenuMessage, MenuLaunch, Message, State},
+    state::{
+        EditInstanceMessage, LaunchModal, LaunchTab, Launcher, MainMenuMessage, MenuLaunch,
+        Message, SidebarMessage, State,
+    },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
 
@@ -43,7 +47,11 @@ impl Launcher {
         // Tbh should be careful about careless heap allocations
         let selection = SidebarSelection::from_node(node);
         let is_selected = self.node_is_instance_selected(node);
-        let is_drag_happening = matches!(menu.modal, Some(LaunchModal::Dragging { .. }));
+
+        let show_drag_handle = !matches!(
+            menu.modal,
+            Some(LaunchModal::SDragging { .. }) | Some(LaunchModal::SRenamingFolder(_, _, _))
+        );
 
         let button: Element = match &node.kind {
             SidebarNodeKind::Instance(_) => {
@@ -53,11 +61,11 @@ impl Launcher {
         };
 
         widget::stack!(
-            self.node_wrap_in_context_menu(selection.clone(), button),
+            self.node_wrap_in_context_menu(selection.clone(), button, node.name.clone()),
             indent_guide_lines(mode, is_selected),
         )
         .push_maybe(
-            (!is_drag_happening)
+            show_drag_handle
                 .then(|| widget::row![widget::horizontal_space(), drag_handle(&selection)]),
         )
         .into()
@@ -73,7 +81,7 @@ impl Launcher {
         let State::Launch(menu) = &self.state else {
             return widget::Column::new().into();
         };
-        let is_drag_happening = matches!(&menu.modal, Some(LaunchModal::Dragging { .. }));
+        let is_drag_happening = matches!(&menu.modal, Some(LaunchModal::SDragging { .. }));
 
         let drop_receiver = drag_drop_receiver(menu, selection, node);
 
@@ -104,11 +112,23 @@ impl Launcher {
 
         match mode {
             NodeMode::InTree(nesting) => {
-                column![node_button(
-                    row![space, view.push_maybe(drop_receiver)],
-                    is_drag_happening
-                )
-                .on_press(MainMenuMessage::ToggleFolderVisibility(folder.id).into())]
+                let regular = || {
+                    column![node_button(
+                        row![space, view.push_maybe(drop_receiver)],
+                        is_drag_happening
+                    )
+                    .on_press(SidebarMessage::ToggleFolderVisibility(folder.id).into())]
+                };
+
+                if let Some(LaunchModal::SRenamingFolder(id, name, is_creating)) = &menu.modal {
+                    if folder.id == *id {
+                        column![renaming_folder(*id, name, *is_creating)]
+                    } else {
+                        regular()
+                    }
+                } else {
+                    regular()
+                }
                 .push_maybe(folder.is_expanded.then(|| {
                     widget::column(folder.children.iter().map(|node| {
                         self.get_node_rendered(menu, node, NodeMode::InTree(nesting + 1))
@@ -130,7 +150,7 @@ impl Launcher {
         let State::Launch(menu) = &self.state else {
             return widget::Column::new().into();
         };
-        let is_drag = matches!(&menu.modal, Some(LaunchModal::Dragging { .. }));
+        let is_drag = matches!(&menu.modal, Some(LaunchModal::SDragging { .. }));
 
         let text = widget::text(&node.name)
             .size(15)
@@ -174,10 +194,11 @@ impl Launcher {
         &self,
         selection: SidebarSelection,
         elem: impl Into<Element<'a>>,
+        name: String,
     ) -> widget::MouseArea<'a, Message, LauncherTheme> {
         widget::mouse_area(elem).on_right_press(
-            MainMenuMessage::Modal(Some(LaunchModal::SidebarCtxMenu(
-                Some(selection),
+            MainMenuMessage::Modal(Some(LaunchModal::SCtxMenu(
+                Some((selection, name)),
                 self.window_state.mouse_pos,
             )))
             .into(),
@@ -185,7 +206,7 @@ impl Launcher {
     }
 
     pub(super) fn sidebar_drag_tooltip<'a>(&'a self, menu: &'a MenuLaunch) -> Option<Element<'a>> {
-        if let Some(LaunchModal::Dragging { being_dragged, .. }) = &menu.modal {
+        if let Some(LaunchModal::SDragging { being_dragged, .. }) = &menu.modal {
             if let Some(node) = self
                 .config
                 .sidebar
@@ -207,6 +228,99 @@ impl Launcher {
             None
         }
     }
+
+    pub(super) fn sidebar_context_menu<'a>(&'a self, menu: &'a MenuLaunch) -> Option<Element<'a>> {
+        let Some(LaunchModal::SCtxMenu(instance, (x, y))) = &menu.modal else {
+            return None;
+        };
+
+        let instance = instance.as_ref();
+
+        let new_folder_b = ctx_button(icons::new_s(CTXI_SIZE), "New Folder")
+            .on_press_with(move || SidebarMessage::NewFolder(instance.map(|n| n.0.clone())).into());
+
+        let Some((inst, name)) = instance else {
+            // Right clicked in empty space
+            return Some(offset(ctxbox(new_folder_b).width(120), *x, *y));
+        };
+
+        Some(offset(
+            ctxbox(
+                column![
+                    new_folder_b,
+                    widget::Space::with_height(5),
+                    widget::horizontal_rule(2),
+                    widget::Space::with_height(5),
+                    ctx_button(icons::file_s(CTXI_SIZE), "Change Icon"),
+                    ctx_button(icons::edit_s(CTXI_SIZE), "Rename").on_press_with(
+                        move || match inst {
+                            SidebarSelection::Instance(name, kind) => {
+                                Message::Multiple(vec![
+                                    MainMenuMessage::InstanceSelected(InstanceSelection::new(
+                                        name,
+                                        kind.is_server(),
+                                    ))
+                                    .into(),
+                                    MainMenuMessage::ChangeTab(LaunchTab::Edit).into(),
+                                    EditInstanceMessage::RenameToggle.into(),
+                                ])
+                            }
+                            SidebarSelection::Folder(folder_id) => {
+                                MainMenuMessage::Modal(Some(LaunchModal::SRenamingFolder(
+                                    folder_id.clone(),
+                                    name.clone(),
+                                    false,
+                                )))
+                                .into()
+                            }
+                        }
+                    ),
+                ]
+                .push_maybe(if let SidebarSelection::Folder(id) = inst {
+                    Some(
+                        ctx_button(icons::bin_s(CTXI_SIZE), "Delete Folder")
+                            .on_press_with(|| SidebarMessage::DeleteFolder(*id).into()),
+                    )
+                } else {
+                    None
+                }),
+            )
+            .width(150),
+            *x,
+            *y,
+        ))
+    }
+}
+
+fn renaming_folder(
+    id: FolderId,
+    name: &str,
+    is_creating: bool,
+) -> widget::Row<'_, Message, LauncherTheme> {
+    let text_input = widget::text_input("Enter name...", name)
+        .id("MenuLaunch:rename_folder")
+        .on_input(move |s| {
+            MainMenuMessage::Modal(Some(LaunchModal::SRenamingFolder(id, s, is_creating))).into()
+        })
+        .on_submit(SidebarMessage::FolderRenameConfirm.into())
+        .size(13)
+        .padding([3, 5]);
+
+    let done_button = widget::button(icons::checkmark_s(12))
+        .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
+        .padding([4, 8])
+        .on_press(SidebarMessage::FolderRenameConfirm.into());
+
+    row![text_input, done_button,]
+        .push_maybe((!is_creating).then(|| {
+            widget::button(icons::close_s(12))
+                .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
+                .padding([4, 8])
+                .on_press(MainMenuMessage::Modal(None).into())
+        }))
+        .align_y(Alignment::Center)
+        .padding(5)
+        .spacing(2)
 }
 
 /// The `| | |` lines in indentation. Eg:
@@ -241,36 +355,6 @@ fn indent_guide_lines(
     }
 }
 
-pub fn context_menu(menu: &MenuLaunch) -> Option<Element<'_>> {
-    if let Some(LaunchModal::SidebarCtxMenu(instance, (x, y))) = &menu.modal {
-        let instance = instance.as_ref();
-        Some(offset(
-            // Could do something with instance-specific actions in the future
-            ctxbox(
-                column![ctx_button("New Folder")
-                    .on_press(MainMenuMessage::NewFolder(instance.cloned()).into())]
-                .push_maybe(instance.map(|_| widget::horizontal_rule(2)))
-                .push_maybe(instance.and_then(|inst| {
-                    if let SidebarSelection::Folder(id) = inst {
-                        Some(
-                            ctx_button("Delete Folder")
-                                .on_press_with(|| MainMenuMessage::DeleteFolder(*id).into()),
-                        )
-                    } else {
-                        None
-                    }
-                }))
-                .spacing(4),
-            )
-            .width(150),
-            *x,
-            *y,
-        ))
-    } else {
-        None
-    }
-}
-
 fn drag_tooltip<'a>(
     node_view: impl Into<Element<'a>>,
 ) -> widget::Container<'a, Message, LauncherTheme> {
@@ -290,7 +374,7 @@ fn drag_handle(selection: &SidebarSelection) -> widget::MouseArea<'static, Messa
         .align_y(Alignment::Center),
     )
     .on_press(
-        MainMenuMessage::Modal(Some(LaunchModal::Dragging {
+        MainMenuMessage::Modal(Some(LaunchModal::SDragging {
             being_dragged: selection.clone(),
             dragged_to: None,
         }))

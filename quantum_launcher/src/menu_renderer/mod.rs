@@ -44,11 +44,20 @@ const PADDING_NOT_BOTTOM: iced::Padding = iced::Padding {
     right: 10.0,
 };
 
-fn ctx_button(e: &'_ str) -> widget::Button<'_, Message, LauncherTheme> {
-    widget::button(widget::text(e).size(13))
-        .width(Length::Fill)
-        .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatDark))
-        .padding(2)
+const CTXI_SIZE: u16 = 10;
+
+fn ctx_button<'a>(
+    icon: widget::Text<'a, LauncherTheme>,
+    e: &'a str,
+) -> widget::Button<'a, Message, LauncherTheme> {
+    widget::button(
+        row![icon, widget::text(e).size(13)]
+            .align_y(Alignment::Center)
+            .spacing(10),
+    )
+    .width(Length::Fill)
+    .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatDark))
+    .padding(2)
 }
 
 pub fn checkered_list<'a, Item: Into<Element<'a>>>(

@@ -6,7 +6,7 @@ use iced::{
 use crate::{
     config::sidebar::{SDragLocation, SDragTo, SidebarNode, SidebarNodeKind, SidebarSelection},
     menu_renderer::sidebar::LEVEL_WIDTH,
-    state::{MainMenuMessage, MenuLaunch, Message},
+    state::{MenuLaunch, Message, SidebarMessage},
     stylesheet::{color::Color, styles::LauncherTheme},
 };
 
@@ -56,7 +56,7 @@ fn drop_box<'a>(
     selection: &SidebarSelection,
 ) -> widget::MouseArea<'a, Message, LauncherTheme> {
     let hover = |entered| {
-        MainMenuMessage::DragHover {
+        SidebarMessage::DragHover {
             entered,
             location: SDragLocation {
                 offset,
@@ -75,7 +75,7 @@ fn drop_box<'a>(
         ),
     })
     .on_press(
-        MainMenuMessage::DragDrop(Some(SDragLocation {
+        SidebarMessage::DragDrop(Some(SDragLocation {
             offset,
             sel: selection.clone(),
         }))

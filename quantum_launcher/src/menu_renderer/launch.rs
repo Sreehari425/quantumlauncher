@@ -6,10 +6,12 @@ use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
 
 use crate::cli::EXPERIMENTAL_SERVERS;
 use crate::menu_renderer::onboarding::x86_warning;
-use crate::menu_renderer::{ctx_button, ctxbox, sidebar, tsubtitle, underline, FONT_MONO};
+use crate::menu_renderer::{
+    ctx_button, ctxbox, sidebar, tsubtitle, underline, CTXI_SIZE, FONT_MONO,
+};
 use crate::state::{
     GameLogMessage, InstanceNotes, LaunchModal, MainMenuMessage, NotesMessage, ShortcutMessage,
-    WindowMessage,
+    SidebarMessage, WindowMessage,
 };
 use crate::{
     icons,
@@ -57,9 +59,9 @@ impl Launcher {
                 .on_press(Message::CoreHideModal)
                 .into()
             })
-            .on_resize(10, |t| MainMenuMessage::SidebarResize(t.ratio).into())
+            .on_resize(10, |t| SidebarMessage::Resize(t.ratio).into())
         )
-        .push_maybe(sidebar::context_menu(menu))
+        .push_maybe(self.sidebar_context_menu(menu))
         .push_maybe(self.sidebar_drag_tooltip(menu))
         .into()
     }
@@ -350,17 +352,17 @@ impl Launcher {
                     .id(widget::scrollable::Id::new("MenuLaunch:sidebar"))
                     .on_scroll(|n| {
                         let total = n.content_bounds().height - n.bounds().height;
-                        MainMenuMessage::SidebarScroll(total).into()
+                        SidebarMessage::Scroll(total).into()
                     })
             )
             .on_right_press(
-                MainMenuMessage::Modal(Some(LaunchModal::SidebarCtxMenu(
+                MainMenuMessage::Modal(Some(LaunchModal::SCtxMenu(
                     None,
                     self.window_state.mouse_pos
                 )))
                 .into()
             )
-            .on_press(MainMenuMessage::DragDrop(None).into()),
+            .on_press(SidebarMessage::DragDrop(None).into()),
             widget::horizontal_rule(1).style(|t: &LauncherTheme| t.style_rule(Color::Dark, 1)),
             self.get_accounts_bar(menu),
         ]

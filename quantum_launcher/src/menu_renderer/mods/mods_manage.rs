@@ -3,7 +3,8 @@ use iced::{widget, Alignment, Length};
 use ql_core::{InstanceSelection, Loader, SelectedMod};
 
 use crate::menu_renderer::{
-    ctx_button, ctxbox, dots, offset, select_box, subbutton_with_icon, tsubtitle, FONT_MONO,
+    ctx_button, ctxbox, dots, offset, select_box, subbutton_with_icon, tsubtitle, CTXI_SIZE,
+    FONT_MONO,
 };
 use crate::message_handler::ForgeKind;
 use crate::state::{ImageState, InstallPaperMessage, MenuEditModsModal};
@@ -52,14 +53,15 @@ impl MenuEditMods {
             .into()
         } else if let Some(MenuEditModsModal::Submenu) = &self.modal {
             let submenu = widget::column![
-                ctx_button("Export list as text")
+                ctx_button(icons::file_info_s(CTXI_SIZE), "Export list as text")
                     .on_press(ManageModsMessage::ExportMenuOpen.into()),
-                ctx_button("Export QMP Preset").on_press(EditPresetsMessage::Open.into()),
+                ctx_button(icons::file_zip_s(CTXI_SIZE), "Export QMP Preset")
+                    .on_press(EditPresetsMessage::Open.into()),
                 widget::horizontal_rule(1)
                     .style(|t: &LauncherTheme| t.style_rule(Color::SecondDark, 1)),
-                ctx_button("See recommended mods").on_press(Message::RecommendedMods(
-                    crate::state::RecommendedModMessage::Open
-                )),
+                ctx_button(icons::download_s(CTXI_SIZE), "See recommended mods").on_press(
+                    Message::RecommendedMods(crate::state::RecommendedModMessage::Open)
+                ),
             ]
             .spacing(4);
 
@@ -74,17 +76,22 @@ impl MenuEditMods {
                 offset(
                     ctxbox(
                         widget::column![
-                            ctx_button("Toggle").on_press(ManageModsMessage::ToggleSelected.into()),
-                            ctx_button("Delete").on_press(ManageModsMessage::DeleteSelected.into()),
-                            ctx_button("Mod Details").on_press_maybe(
-                                self.mods.mods.get(&id.get_index_str()).map(|info| {
-                                    Message::Multiple(vec![
-                                        InstallModsMessage::Open.into(),
-                                        InstallModsMessage::ChangeBackend(id.get_backend()).into(),
-                                        InstallModsMessage::SearchInput(info.name.clone()).into(),
-                                    ])
-                                })
-                            ),
+                            ctx_button(icons::toggleon_s(CTXI_SIZE), "Toggle")
+                                .on_press(ManageModsMessage::ToggleSelected.into()),
+                            ctx_button(icons::bin_s(CTXI_SIZE), "Delete")
+                                .on_press(ManageModsMessage::DeleteSelected.into()),
+                            ctx_button(icons::file_info_s(CTXI_SIZE), "Mod Details")
+                                .on_press_maybe(self.mods.mods.get(&id.get_index_str()).map(
+                                    |info| {
+                                        Message::Multiple(vec![
+                                            InstallModsMessage::Open.into(),
+                                            InstallModsMessage::ChangeBackend(id.get_backend())
+                                                .into(),
+                                            InstallModsMessage::SearchInput(info.name.clone())
+                                                .into(),
+                                        ])
+                                    }
+                                )),
                         ]
                         .spacing(4)
                     )

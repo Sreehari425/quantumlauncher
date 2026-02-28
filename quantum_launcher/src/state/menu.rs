@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     config::{
-        sidebar::{SDragLocation, SidebarSelection},
+        sidebar::{FolderId, SDragLocation, SidebarSelection},
         SIDEBAR_WIDTH,
     },
     message_handler::get_locally_installed_mods,
@@ -59,11 +59,14 @@ impl std::fmt::Display for LaunchTab {
 #[derive(Debug, Clone)]
 pub enum LaunchModal {
     InstanceOptions,
-    SidebarCtxMenu(Option<SidebarSelection>, (f32, f32)),
-    Dragging {
+
+    // Sidebar
+    SCtxMenu(Option<(SidebarSelection, String)>, (f32, f32)),
+    SDragging {
         being_dragged: SidebarSelection,
         dragged_to: Option<SDragLocation>,
     },
+    SRenamingFolder(FolderId, String, bool),
 }
 
 pub enum InstanceNotes {
@@ -155,7 +158,7 @@ impl MenuLaunch {
     }
 
     pub fn get_modal_drag(&self) -> Option<(&SidebarSelection, Option<&SDragLocation>)> {
-        if let Some(LaunchModal::Dragging {
+        if let Some(LaunchModal::SDragging {
             being_dragged,
             dragged_to,
         }) = &self.modal

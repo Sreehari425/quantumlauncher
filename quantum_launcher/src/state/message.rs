@@ -355,12 +355,10 @@ pub enum GameLogMessage {
 }
 
 #[derive(Debug, Clone)]
-pub enum MainMenuMessage {
-    ChangeTab(LaunchTab),
-    Modal(Option<LaunchModal>),
-
-    SidebarResize(f32),
-    SidebarScroll(f32),
+pub enum SidebarMessage {
+    Resize(f32),
+    Scroll(f32),
+    FolderRenameConfirm,
 
     NewFolder(Option<SidebarSelection>),
     DeleteFolder(FolderId),
@@ -370,7 +368,12 @@ pub enum MainMenuMessage {
         location: SDragLocation,
         entered: bool,
     },
+}
 
+#[derive(Debug, Clone)]
+pub enum MainMenuMessage {
+    ChangeTab(LaunchTab),
+    Modal(Option<LaunchModal>),
     InstanceSelected(InstanceSelection),
     UsernameSet(String),
 }
@@ -421,6 +424,7 @@ pub enum Message {
     ExportMods(ExportModsMessage),
     RecommendedMods(RecommendedModMessage),
     MainMenu(MainMenuMessage),
+    SidebarMessage(SidebarMessage),
 
     MScreenOpen {
         message: Option<String>,
