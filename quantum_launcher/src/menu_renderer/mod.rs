@@ -24,8 +24,8 @@ mod login;
 mod mods;
 mod onboarding;
 mod settings;
-mod sidebar;
 mod shortcuts;
+mod sidebar;
 
 pub use onboarding::changelog;
 

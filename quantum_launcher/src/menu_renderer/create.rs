@@ -114,9 +114,7 @@ impl MenuCreateInstanceChoosing {
                 })))
                 .style(LauncherTheme::style_scrollable_flat_extra_dark)
                 .height(Length::Fill)
-                .id(widget::scrollable::Id::new(
-                    "MenuCreateInstance:sidebar"
-                ))
+                .id(widget::scrollable::Id::new("MenuCreateInstance:sidebar"))
             ]
             .spacing(10),
         )

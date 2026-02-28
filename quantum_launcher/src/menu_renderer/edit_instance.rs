@@ -457,6 +457,7 @@ pub fn resolution_dialog<'a>(
                     .and_then(|n| n.window_width)
                     .map_or(String::new(), |w| w.to_string())
             )
+            .size(14)
             .on_input(width)
             .width(100),
             widget::text("Height:").size(14),
@@ -466,6 +467,7 @@ pub fn resolution_dialog<'a>(
                     .and_then(|n| n.window_height)
                     .map_or(String::new(), |h| h.to_string())
             )
+            .size(14)
             .on_input(height)
             .width(100),
         ]

@@ -88,7 +88,7 @@ impl MenuEditMods {
                         ]
                         .spacing(4)
                     )
-                    .width(200),
+                    .width(150),
                     *x,
                     y.clamp(0.0, window_height - 130.0)
                 ),

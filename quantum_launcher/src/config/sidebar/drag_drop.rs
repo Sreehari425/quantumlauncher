@@ -10,16 +10,16 @@ impl SidebarConfig {
         let Some(yoinked) = self.remove(selection) else {
             return;
         };
-
-        self.insert_at(yoinked, location);
-    }
-
-    fn insert_at(&mut self, yoinked: SidebarNode, location: Option<SDragLocation>) {
         let Some(location) = location else {
             // Dragged to empty space, push at end
             self.list.push(yoinked);
             return;
         };
+
+        self.insert_at(yoinked, location);
+    }
+
+    fn insert_at(&mut self, yoinked: SidebarNode, location: SDragLocation) {
         if let Some((index, folder)) = self
             .list
             .iter_mut()
@@ -29,6 +29,7 @@ impl SidebarConfig {
             if let SidebarNodeKind::Folder(f) = &mut folder.kind {
                 if location.offset == SDragTo::Inside {
                     f.children.push(yoinked);
+                    f.is_expanded = true;
                     return;
                 }
             }

@@ -29,17 +29,17 @@ pub fn drag_drop_receiver(
             selection
         ),]
         .push_maybe(bottom_drop_box(
-            selection,
             node,
             is_hovered && matches!(offset, SDragTo::After | SDragTo::Inside),
+            selection,
         )),
     )
 }
 
 fn bottom_drop_box(
-    selection: &SidebarSelection,
     node: &SidebarNode,
     show: bool,
+    selection: &SidebarSelection,
 ) -> Option<widget::MouseArea<'static, Message, LauncherTheme>> {
     if let SidebarNodeKind::Folder(f) = &node.kind {
         return f

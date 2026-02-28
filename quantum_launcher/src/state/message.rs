@@ -497,6 +497,7 @@ macro_rules! from_m {
 }
 
 from_m!(MainMenu, MainMenuMessage);
+from_m!(SidebarMessage, SidebarMessage);
 from_m!(ManageMods, ManageModsMessage);
 from_m!(ManageJarMods, ManageJarModsMessage);
 from_m!(InstallMods, InstallModsMessage);
@@ -505,3 +506,12 @@ from_m!(InstallFabric, InstallFabricMessage);
 from_m!(EditPresets, EditPresetsMessage);
 from_m!(ExportMods, ExportModsMessage);
 from_m!(RecommendedMods, RecommendedModMessage);
+
+from_m!(Account, AccountMessage);
+from_m!(CreateInstance, CreateInstanceMessage);
+from_m!(EditInstance, EditInstanceMessage);
+from_m!(LauncherSettings, LauncherSettingsMessage);
+from_m!(Notes, NotesMessage);
+from_m!(GameLog, GameLogMessage);
+from_m!(Window, WindowMessage);
+from_m!(Shortcut, ShortcutMessage);

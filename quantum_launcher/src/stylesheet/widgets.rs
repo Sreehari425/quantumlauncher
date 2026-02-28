@@ -284,23 +284,23 @@ impl widget::text_input::Catalog for LauncherTheme {
                 icon: self.get(Color::Light),
                 placeholder: self.get(Color::Mid),
                 value: self.get(Color::White),
-                selection: self.get(Color::Light),
+                selection: self.get(Color::Mid),
             },
             widget::text_input::Status::Hovered => widget::text_input::Style {
+                background: self.get_bg(Color::ExtraDark),
+                border: self.get_border(Color::Mid),
+                icon: self.get(Color::Light),
+                placeholder: self.get(Color::Mid),
+                value: self.get(Color::White),
+                selection: self.get(Color::Mid),
+            },
+            widget::text_input::Status::Focused => widget::text_input::Style {
                 background: self.get_bg(Color::Dark),
                 border: self.get_border(Color::Mid),
                 icon: self.get(Color::Light),
                 placeholder: self.get(Color::Mid),
                 value: self.get(Color::White),
-                selection: self.get(Color::Light),
-            },
-            widget::text_input::Status::Focused => widget::text_input::Style {
-                background: self.get_bg(Color::Dark),
-                border: self.get_border(Color::SecondLight),
-                icon: self.get(Color::Light),
-                placeholder: self.get(Color::Mid),
-                value: self.get(Color::White),
-                selection: self.get(Color::Light),
+                selection: self.get(Color::Mid),
             },
             widget::text_input::Status::Disabled => widget::text_input::Style {
                 background: self.get_bg(Color::ExtraDark),
@@ -308,7 +308,7 @@ impl widget::text_input::Catalog for LauncherTheme {
                 icon: self.get(Color::Light),
                 placeholder: self.get(Color::Mid),
                 value: self.get(Color::White),
-                selection: self.get(Color::Light),
+                selection: self.get(Color::Mid),
             },
         }
     }

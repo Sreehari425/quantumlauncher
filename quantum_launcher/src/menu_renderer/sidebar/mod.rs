@@ -77,9 +77,13 @@ impl Launcher {
 
         let drop_receiver = drag_drop_receiver(menu, selection, node);
 
-        let text = widget::text(&node.name)
-            .size(15)
-            .style(move |t: &LauncherTheme| t.style_text(Color::Mid));
+        let text = if folder.is_expanded {
+            widget::text(&node.name)
+        } else {
+            widget::text!("{}...", node.name)
+        }
+        .size(15)
+        .style(move |t: &LauncherTheme| t.style_text(Color::Mid));
 
         let view = widget::stack!(underline(
             widget::row![
