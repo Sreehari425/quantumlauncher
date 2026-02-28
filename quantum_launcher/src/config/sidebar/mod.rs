@@ -49,13 +49,12 @@ impl SidebarConfig {
                     return Some(f);
                 }
             }
-            let Some(index) = index else { return None };
 
             let folder = SidebarNode::new_folder(name.to_owned());
             let id = folder
                 .get_folder_id()
                 .expect("should be folder, not instance");
-            f.children.insert(index, folder);
+            f.children.insert(index?, folder);
             Some(id)
         }
 
@@ -193,7 +192,7 @@ impl SidebarConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct SidebarNode {
     pub name: String,
     // icon: Option<String>

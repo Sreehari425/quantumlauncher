@@ -45,7 +45,7 @@ impl PartialEq<InstanceSelection> for SidebarSelection {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, Hash)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq)]
 pub struct SidebarFolder {
     pub id: FolderId,
     pub children: Vec<SidebarNode>,
@@ -58,7 +58,7 @@ impl PartialEq for SidebarFolder {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, Hash)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq)]
 pub enum SidebarNodeKind {
     Instance(InstanceKind),
     Folder(SidebarFolder),

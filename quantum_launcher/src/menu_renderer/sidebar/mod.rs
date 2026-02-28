@@ -267,7 +267,7 @@ impl Launcher {
                             }
                             SidebarSelection::Folder(folder_id) => {
                                 MainMenuMessage::Modal(Some(LaunchModal::SRenamingFolder(
-                                    folder_id.clone(),
+                                    *folder_id,
                                     name.clone(),
                                     false,
                                 )))
