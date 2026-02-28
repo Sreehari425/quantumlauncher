@@ -188,7 +188,7 @@ impl Launcher {
             return;
         };
         let cmd = Task::perform(Launcher::save_config(instance, config), |n| {
-            Message::EditInstance(EditInstanceMessage::ConfigSaved(n.strerr()))
+            EditInstanceMessage::ConfigSaved(n.strerr()).into()
         });
         commands.push(cmd);
     }

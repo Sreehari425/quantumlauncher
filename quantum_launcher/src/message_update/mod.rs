@@ -110,7 +110,7 @@ impl Launcher {
                             )
                             .await
                         },
-                        |m| Message::InstallFabric(InstallFabricMessage::End(m.strerr())),
+                        |m| InstallFabricMessage::End(m.strerr()).into(),
                     );
                 }
             }
@@ -118,7 +118,7 @@ impl Launcher {
                 let instance_name = self.selected_instance.clone().unwrap();
                 let (task, handle) = Task::perform(
                     loaders::fabric::get_list_of_versions(instance_name, is_quilt),
-                    |m| Message::InstallFabric(InstallFabricMessage::VersionsLoaded(m.strerr())),
+                    |m| InstallFabricMessage::VersionsLoaded(m.strerr()).into(),
                 )
                 .abortable();
 
@@ -408,7 +408,7 @@ impl Launcher {
                     let url = version.get_url().0;
                     return Task::perform(
                         loaders::optifine::install_b173(selected_instance, url),
-                        |n| Message::InstallOptifine(InstallOptifineMessage::End(n.strerr())),
+                        |n| InstallOptifineMessage::End(n.strerr()).into(),
                     );
                 }
 
@@ -494,7 +494,7 @@ impl Launcher {
                 Some(j_sender),
                 optifine_unique_version,
             ),
-            |n| Message::InstallOptifine(InstallOptifineMessage::End(n.strerr())),
+            |n| InstallOptifineMessage::End(n.strerr()).into(),
         )
         .chain(Task::perform(
             async move {
@@ -642,10 +642,8 @@ impl Launcher {
         self.state = State::ConfirmAction {
             msg1: "delete auto-installed Java files".to_owned(),
             msg2: "They will get reinstalled automatically as needed".to_owned(),
-            yes: Message::LauncherSettings(LauncherSettingsMessage::ClearJavaInstallsConfirm),
-            no: Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(
-                state::LauncherSettingsTab::Internal,
-            )),
+            yes: LauncherSettingsMessage::ClearJavaInstallsConfirm.into(),
+            no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Internal).into(),
         }
     }
 
@@ -850,7 +848,7 @@ impl Launcher {
                     if !log_content.trim().is_empty() {
                         return Task::perform(
                             crate::mclog_upload::upload_log(log_content),
-                            |res| Message::GameLog(GameLogMessage::Uploaded(res.strerr())),
+                            |res| GameLogMessage::Uploaded(res.strerr()).into(),
                         );
                     }
                 }

@@ -367,7 +367,7 @@ Heavy modpacks / High settings: 4-8 GB+"
             widget::Space::with_height(10),
             widget::text("Main Class:"),
             widget::radio("Default", None, Some(self.main_class_mode), |t| {
-                Message::EditInstance(EditInstanceMessage::SetMainClass(t, None))
+                EditInstanceMessage::SetMainClass(t, None).into()
             })
             .size(14)
             .text_size(13),
@@ -375,7 +375,7 @@ Heavy modpacks / High settings: 4-8 GB+"
                 "Safe Mode (might fix crashes?)",
                 Some(MainClassMode::SafeFallback),
                 Some(self.main_class_mode),
-                |t| Message::EditInstance(EditInstanceMessage::SetMainClass(t, None))
+                |t| EditInstanceMessage::SetMainClass(t, None).into()
             )
             .size(14)
             .text_size(13),
@@ -383,10 +383,10 @@ Heavy modpacks / High settings: 4-8 GB+"
                 "Custom",
                 Some(MainClassMode::Custom),
                 Some(self.main_class_mode),
-                |t| Message::EditInstance(EditInstanceMessage::SetMainClass(
+                |t| EditInstanceMessage::SetMainClass(
                     t,
                     Some(String::new())
-                ))
+                ).into()
             )
             .size(14)
             .text_size(13)]
@@ -425,7 +425,7 @@ fn item_footer(
                     )),
                 button_with_icon(icons::version_download_s(14), "Update Assets", 13)
                     .padding([4, 8])
-                    .on_press(Message::EditInstance(EditInstanceMessage::UpdateAssets)),
+                    .on_press(EditInstanceMessage::UpdateAssets.into()),
             ]
             .spacing(5)
             .wrap(),
@@ -522,7 +522,7 @@ pub fn args_split_by_space(split: bool) -> widget::Checkbox<'static, Message, La
         .style(|t: &LauncherTheme, s| t.style_checkbox(s, Some(Color::SecondLight)))
         .size(12)
         .text_size(12)
-        .on_toggle(|t| Message::EditInstance(EditInstanceMessage::ToggleSplitArg(t)))
+        .on_toggle(|t| EditInstanceMessage::ToggleSplitArg(t).into())
 }
 
 fn get_args_list_add_button(

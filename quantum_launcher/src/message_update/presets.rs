@@ -62,7 +62,7 @@ impl Launcher {
                             selected_mods,
                             include_config,
                         ),
-                        |n| Message::EditPresets(EditPresetsMessage::BuildYourOwnEnd(n.strerr())),
+                        |n| EditPresetsMessage::BuildYourOwnEnd(n.strerr()).into(),
                     );
                 });
             }

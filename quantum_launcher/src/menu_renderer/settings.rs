@@ -48,7 +48,7 @@ impl MenuLauncherSettings {
                         tab,
                         &self.selected_tab,
                         text,
-                        Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(*tab)),
+                        LauncherSettingsMessage::ChangeTab(*tab).into(),
                     )
                 })
             )
@@ -122,7 +122,7 @@ impl MenuLauncherSettings {
             widget::column![
                 // TODO: This requires launcher restart
                 // widget::checkbox("Custom Window Decorations", !config.c_window_decorations()).on_toggle(|n| {
-                //     Message::LauncherSettings(LauncherSettingsMessage::ToggleWindowDecorations(n))
+                //     LauncherSettingsMessage::ToggleWindowDecorations(n).into()
                 // }),
                 // widget::text("Use custom window borders and close/minimize/maximize buttons").size(12),
                 // widget::Space::with_height(5),
@@ -135,10 +135,10 @@ impl MenuLauncherSettings {
                 widget::Space::with_height(5),
 
                 widget::checkbox("Remember window size", config.window.as_ref().is_none_or(|n| n.save_window_size))
-                    .on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::ToggleWindowSize(n))),
+                    .on_toggle(|n| LauncherSettingsMessage::ToggleWindowSize(n).into()),
                 widget::Space::with_height(5),
                 widget::checkbox("Remember last selected instance", config.persistent.clone().unwrap_or_default().selected_remembered)
-                    .on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::ToggleInstanceRemembering(n))),
+                    .on_toggle(|n| LauncherSettingsMessage::ToggleInstanceRemembering(n).into()),
             ]
             .spacing(5)
             .into(),
@@ -230,7 +230,7 @@ impl LauncherSettingsTab {
                 widget::horizontal_rule(1),
                 "Global Java Arguments:",
                 get_args_list(config.extra_java_args.as_deref(), |msg| {
-                    Message::LauncherSettings(LauncherSettingsMessage::GlobalJavaArgs(msg))
+                    LauncherSettingsMessage::GlobalJavaArgs(msg).into()
                 }),
                 widget::Space::with_height(5),
                 "Global Pre-Launch Prefix:",
@@ -240,16 +240,13 @@ impl LauncherSettingsTab {
                         .global_settings
                         .as_ref()
                         .and_then(|n| n.pre_launch_prefix.as_deref()),
-                    |n| Message::LauncherSettings(LauncherSettingsMessage::GlobalPreLaunchPrefix(
-                        n
-                    )),
+                    |n| LauncherSettingsMessage::GlobalPreLaunchPrefix(n).into(),
                 ),
                 args_split_by_space(menu.arg_split_by_space),
                 widget::horizontal_rule(1),
                 widget::row![
-                    button_with_icon(icons::bin(), "Clear Java installs", 16).on_press(
-                        Message::LauncherSettings(LauncherSettingsMessage::ClearJavaInstalls)
-                    ),
+                    button_with_icon(icons::bin(), "Clear Java installs", 16)
+                        .on_press(LauncherSettingsMessage::ClearJavaInstalls.into()),
                     widget::text(
                         "Might fix some Java problems.\nPerfectly safe, will be redownloaded."
                     )

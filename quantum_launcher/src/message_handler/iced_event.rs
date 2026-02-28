@@ -159,11 +159,10 @@ impl Launcher {
                 // ========
                 // MAIN MENU
                 // ========
-                ("n", true, _, _, State::Launch(n)) => {
-                    Message::CreateInstance(CreateInstanceMessage::ScreenOpen {
-                        is_server: n.is_viewing_server,
-                    })
+                ("n", true, _, _, State::Launch(n)) => CreateInstanceMessage::ScreenOpen {
+                    is_server: n.is_viewing_server,
                 }
+                .into(),
                 ("1", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
                     MainMenuMessage::ChangeTab(LaunchTab::Buttons).into()
                 }
@@ -173,9 +172,8 @@ impl Launcher {
                 ("3", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
                     MainMenuMessage::ChangeTab(LaunchTab::Log).into()
                 }
-                (",", true, _, _, State::Launch(_)) => {
-                    Message::LauncherSettings(LauncherSettingsMessage::Open)
-                }
+                (",", true, _, _, State::Launch(_)) => LauncherSettingsMessage::Open.into(),
+
                 _ => Message::Nothing,
             };
             return Task::done(msg);
@@ -216,7 +214,7 @@ impl Launcher {
         {
             if let Key::Named(Named::Enter) = key {
                 if modifiers.command() {
-                    return Task::done(Message::CreateInstance(CreateInstanceMessage::Start));
+                    return Task::done(CreateInstanceMessage::Start.into());
                 }
             }
         } else if let State::Welcome(menu) = &mut self.state {

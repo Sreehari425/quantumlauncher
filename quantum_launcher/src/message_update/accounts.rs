@@ -50,7 +50,7 @@ impl Launcher {
                 self.state = State::ConfirmAction {
                     msg1: format!("log out of your account: {}", self.account_selected),
                     msg2: "You can always log in later".to_owned(),
-                    yes: Message::Account(AccountMessage::LogoutConfirm),
+                    yes: AccountMessage::LogoutConfirm.into(),
                     no: Message::MScreenOpen {
                         message: None,
                         clear_selection: false,
@@ -84,12 +84,8 @@ impl Launcher {
                         expires_in,
                     ),
                     |resp| match resp {
-                        Ok(account) => {
-                            Message::Account(AccountMessage::AltLoginResponse(Ok(account)))
-                        }
-                        Err(e) => Message::Account(AccountMessage::LittleSkinDeviceCodeError(
-                            e.to_string(),
-                        )),
+                        Ok(account) => AccountMessage::AltLoginResponse(Ok(account)).into(),
+                        Err(e) => AccountMessage::LittleSkinDeviceCodeError(e.to_string()).into(),
                     },
                 );
             }
@@ -149,10 +145,11 @@ impl Launcher {
                 AccountType::Microsoft => {
                     self.state = State::GenericMessage("Loading Login...".to_owned());
                     return Task::perform(auth::ms::login_1_link(), move |n| {
-                        Message::Account(AccountMessage::Response1 {
+                        AccountMessage::Response1 {
                             r: n.strerr(),
                             is_from_welcome_screen,
-                        })
+                        }
+                        .into()
                     });
                 }
                 AccountType::ElyBy | AccountType::LittleSkin => {
@@ -213,7 +210,7 @@ impl Launcher {
                                 AccountType::ElyBy
                             },
                         ),
-                        |n| Message::Account(AccountMessage::AltLoginResponse(n.strerr())),
+                        |n| AccountMessage::AltLoginResponse(n.strerr()).into(),
                     );
                 }
             }
@@ -277,7 +274,7 @@ impl Launcher {
                         account.refresh_token.clone(),
                         Some(sender),
                     ),
-                    |n| Message::Account(AccountMessage::RefreshComplete(n.strerr())),
+                    |n| AccountMessage::RefreshComplete(n.strerr()).into(),
                 )
             }
             AccountType::ElyBy | AccountType::LittleSkin => Task::perform(
@@ -286,7 +283,7 @@ impl Launcher {
                     account.refresh_token.clone(),
                     account.account_type,
                 ),
-                |n| Message::Account(AccountMessage::RefreshComplete(n.strerr())),
+                |n| AccountMessage::RefreshComplete(n.strerr()).into(),
             ),
         }
     }
@@ -317,7 +314,7 @@ impl Launcher {
         let (sender, receiver) = std::sync::mpsc::channel();
         self.state = State::AccountLoginProgress(ProgressBar::with_recv(receiver));
         Task::perform(auth::ms::login_3_xbox(token, Some(sender), true), |n| {
-            Message::Account(AccountMessage::Response3(n.strerr()))
+            AccountMessage::Response3(n.strerr()).into()
         })
     }
 
@@ -327,7 +324,7 @@ impl Launcher {
         is_from_welcome_screen: bool,
     ) -> Task<Message> {
         let (task, handle) = Task::perform(auth::ms::login_2_wait(code.clone()), |n| {
-            Message::Account(AccountMessage::Response2(n.strerr()))
+            AccountMessage::Response2(n.strerr()).into()
         })
         .abortable();
 

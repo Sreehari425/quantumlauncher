@@ -150,7 +150,7 @@ impl MenuLaunch {
     pub fn reload_notes(&mut self, instance: InstanceSelection) -> Task<Message> {
         self.notes = None;
         Task::perform(ql_instances::notes::read(instance), |n| {
-            Message::Notes(NotesMessage::Loaded(n.strerr()))
+            NotesMessage::Loaded(n.strerr()).into()
         })
     }
 

@@ -365,7 +365,7 @@ impl MenuCurseforgeManualDownload {
 
             "Warning: Ignoring this may lead to crashes!",
             row![
-                widget::button(widget::text("+ Select above downloaded files").size(14)).on_press(Message::ManageMods(ManageModsMessage::AddFile(self.delete_mods))),
+                widget::button(widget::text("+ Select above downloaded files").size(14)).on_press(ManageModsMessage::AddFile(self.delete_mods).into()),
                 widget::button(widget::text("Continue").size(14)).on_press(if self.is_store {
                     InstallModsMessage::Open.into()
                 } else {

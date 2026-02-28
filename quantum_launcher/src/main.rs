@@ -72,7 +72,7 @@ mod message_handler;
 /// Handlers for "child messages".
 ///
 /// The [`Message`] enum is split into
-/// categories (like `Message::Account(AccountMessage)`).
+/// categories (like `Message::Account(AccountMessage::*)`).
 ///
 /// This module has functions for handling each of
 /// these "child messages".

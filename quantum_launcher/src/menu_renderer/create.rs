@@ -52,9 +52,7 @@ impl MenuCreateInstanceChoosing {
                 self.get_main_page(existing_instances).into()
             }
         })
-        .on_resize(10, |t| {
-            Message::CreateInstance(CreateInstanceMessage::SidebarResize(t.ratio))
-        });
+        .on_resize(10, |t| CreateInstanceMessage::SidebarResize(t.ratio).into());
 
         widget::stack!(view)
             .push_maybe(self.show_category_dropdown.then_some(offset(
@@ -111,7 +109,7 @@ impl MenuCreateInstanceChoosing {
                         n,
                         &self.selected_version,
                         label,
-                        Message::CreateInstance(CreateInstanceMessage::VersionSelected(n.clone())),
+                        CreateInstanceMessage::VersionSelected(n.clone()).into(),
                     )
                 })))
                 .style(LauncherTheme::style_scrollable_flat_extra_dark)
@@ -177,8 +175,8 @@ impl MenuCreateInstanceChoosing {
         .push(
             widget::text_input("Search...", &self.search_box)
                 .size(14)
-                .on_input(|t| Message::CreateInstance(CreateInstanceMessage::SearchInput(t)))
-                .on_submit(Message::CreateInstance(CreateInstanceMessage::SearchSubmit)),
+                .on_input(|t| CreateInstanceMessage::SearchInput(t).into())
+                .on_submit(CreateInstanceMessage::SearchSubmit.into()),
         )
         .push_maybe(
             (!self.search_box.trim().is_empty())
@@ -201,7 +199,7 @@ impl MenuCreateInstanceChoosing {
                 {
                     let placeholder = self.selected_version.name.as_str();
                     widget::text_input(placeholder, &self.instance_name)
-                        .on_input(|n| Message::CreateInstance(CreateInstanceMessage::NameInput(n)))
+                        .on_input(|n| CreateInstanceMessage::NameInput(n).into())
                 }
             ].spacing(10).align_y(Alignment::Center),
 
@@ -234,7 +232,7 @@ impl MenuCreateInstanceChoosing {
                 .push_maybe(
                     EXPERIMENTAL_MMC_IMPORT.read().unwrap().then_some(tooltip(
                         button_with_icon(icons::upload(), "Import from MultiMC...", 16)
-                            .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
+                            .on_press(CreateInstanceMessage::Import.into()),
                         widget::text("Import Instance... (VERY EXPERIMENTAL right now)").size(14),
                         Position::Top
                     ))
@@ -264,9 +262,7 @@ impl MenuCreateInstanceChoosing {
                 widget::checkbox(kind.to_string(), is_checked)
                     .text_size(13)
                     .size(13)
-                    .on_toggle(move |_| {
-                        Message::CreateInstance(CreateInstanceMessage::CategoryToggle(*kind))
-                    }),
+                    .on_toggle(move |_| CreateInstanceMessage::CategoryToggle(*kind).into()),
             );
         }
 
@@ -275,9 +271,8 @@ impl MenuCreateInstanceChoosing {
 }
 
 fn get_create_button(already_exists: bool) -> widget::Tooltip<'static, Message, LauncherTheme> {
-    let create_button = button_with_icon(icons::new(), "Create", 16).on_press_maybe(
-        (!already_exists).then_some(Message::CreateInstance(CreateInstanceMessage::Start)),
-    );
+    let create_button = button_with_icon(icons::new(), "Create", 16)
+        .on_press_maybe((!already_exists).then_some(CreateInstanceMessage::Start.into()));
 
     if already_exists {
         tooltip(

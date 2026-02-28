@@ -149,7 +149,7 @@ impl Launcher {
                 // tasks.push(
                 //     iced::window::get_latest()
                 //         .and_then(iced::window::get_maximized)
-                //         .map(|m| Message::Window(WindowMessage::IsMaximized(m))),
+                //         .map(|m| WindowMessage::IsMaximized(m).into()),
                 // );
 
                 let custom_jars_changed = self
@@ -433,9 +433,8 @@ impl Launcher {
 
         if is_auto_theme && interval {
             Task::perform(tokio::task::spawn_blocking(dark_light::detect), |n| {
-                Message::LauncherSettings(LauncherSettingsMessage::LoadedSystemTheme(
-                    n.strerr().and_then(|n| n.strerr()),
-                ))
+                LauncherSettingsMessage::LoadedSystemTheme(n.strerr().and_then(|n| n.strerr()))
+                    .into()
             })
         } else {
             Task::none()

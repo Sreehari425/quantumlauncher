@@ -121,9 +121,10 @@ impl Launcher {
                     vertical_space(),
                     ctxbox(
                         column![
-                            ctx_button("Export Instance").on_press(Message::ExportInstanceOpen),
-                            ctx_button("Create Shortcut")
-                                .on_press(Message::Shortcut(ShortcutMessage::Open)),
+                            ctx_button(icons::file_zip_s(CTXI_SIZE), "Export Instance")
+                                .on_press(Message::ExportInstanceOpen),
+                            ctx_button(icons::file_gear_s(CTXI_SIZE), "Create Shortcut")
+                                .on_press(ShortcutMessage::Open.into()),
                         ]
                         .spacing(4)
                     )
@@ -171,12 +172,12 @@ impl Launcher {
                     widget::text_editor(text_editor)
                         .size(14)
                         .height(Length::Fill)
-                        .on_action(|a| Message::Notes(NotesMessage::Edit(a))),
+                        .on_action(|a| NotesMessage::Edit(a).into()),
                     row![
                         button_with_icon(icons::floppydisk_s(14), "Save", 14)
-                            .on_press(Message::Notes(NotesMessage::SaveEdit)),
+                            .on_press(NotesMessage::SaveEdit.into()),
                         button_with_icon(icons::close_s(14), "Cancel", 14)
-                            .on_press(Message::Notes(NotesMessage::CancelEdit)),
+                            .on_press(NotesMessage::CancelEdit.into()),
                     ]
                     .spacing(5)
                 ]
@@ -219,7 +220,7 @@ impl Launcher {
                                 .spacing(8),
                             )
                             .padding([4, 8])
-                            .on_press(Message::Notes(NotesMessage::OpenEdit)),
+                            .on_press(NotesMessage::OpenEdit.into()),
                         ]
                         .spacing(5)
                     )
@@ -273,23 +274,22 @@ impl Launcher {
             .font(FONT_MONO)
             .size(TEXT_SIZE)
             .height(Length::Fill)
-            .on_action(|a| Message::GameLog(GameLogMessage::Action(a)));
+            .on_action(|a| GameLogMessage::Action(a).into());
 
         let small_button = |t| widget::button(widget::text(t).size(12)).padding([4, 8]);
 
         column![
             row![
-                small_button("Copy Log").on_press(Message::GameLog(GameLogMessage::Copy)),
+                small_button("Copy Log").on_press(GameLogMessage::Copy.into()),
                 small_button("Upload Log").on_press_maybe(
                     (!log_data.is_empty() && !menu.is_uploading_mclogs)
-                        .then_some(Message::GameLog(GameLogMessage::Upload))
+                        .then_some(GameLogMessage::Upload.into())
                 ),
                 small_button("Join Discord").on_press(Message::CoreOpenLink(DISCORD.to_owned())),
                 widget::horizontal_space(),
                 widget::mouse_area(widget::container(icons::arrow_up_s(12))).on_press(
-                    Message::GameLog(GameLogMessage::Action(text_editor::Action::Move(
-                        text_editor::Motion::PageUp
-                    )))
+                    GameLogMessage::Action(text_editor::Action::Move(text_editor::Motion::PageUp))
+                        .into()
                 ),
                 widget::mouse_area(widget::container(icons::arrow_down_s(12))).on_press(
                     Message::GameLog(GameLogMessage::Action(text_editor::Action::Move(
@@ -378,7 +378,7 @@ impl Launcher {
                         Some((Color::ExtraDark, t.alpha))
                     ))
             )
-            .on_press(Message::Window(WindowMessage::Dragged)),
+            .on_press(WindowMessage::Dragged.into()),
             widget::container(list)
                 .height(Length::Fill)
                 .style(|n| n.style_container_sharp_box(0.0, Color::ExtraDark))
@@ -417,7 +417,7 @@ impl Launcher {
             widget::pick_list(
                 self.accounts_dropdown.as_slice(),
                 Some(&self.account_selected),
-                |n| Message::Account(AccountMessage::Selected(n)),
+                |n| AccountMessage::Selected(n).into(),
             )
             .width(Length::Fill)
             .into()
@@ -428,7 +428,7 @@ impl Launcher {
                 (self.account_selected != OFFLINE_ACCOUNT_NAME).then_some(
                     widget::button(widget::text("Logout").size(11))
                         .padding(3)
-                        .on_press(Message::Account(AccountMessage::LogoutCheck))
+                        .on_press(AccountMessage::LogoutCheck.into())
                         .style(|n: &LauncherTheme, status| n
                             .style_button(status, StyleButton::FlatExtraDark))
                 )
@@ -546,7 +546,7 @@ impl MenuLaunch {
         )
         .padding(0)
         .style(|n, status| n.style_button(status, StyleButton::FlatExtraDark))
-        .on_press(Message::LauncherSettings(LauncherSettingsMessage::Open));
+        .on_press(LauncherSettingsMessage::Open.into());
 
         widget::mouse_area(
             widget::container(
@@ -563,7 +563,7 @@ impl MenuLaunch {
                 )
             }),
         )
-        .on_press(Message::Window(WindowMessage::Dragged))
+        .on_press(WindowMessage::Dragged.into())
         .into()
     }
 }
