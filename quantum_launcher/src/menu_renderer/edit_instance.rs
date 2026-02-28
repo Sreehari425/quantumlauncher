@@ -39,21 +39,21 @@ impl MenuEditInstance {
                 } else {
                     resolution_dialog(
                             self.config.global_settings.as_ref(),
-                            |n| Message::EditInstance(EditInstanceMessage::WindowWidthChanged(n)),
-                            |n| Message::EditInstance(EditInstanceMessage::WindowHeightChanged(n)),
+                            |n| EditInstanceMessage::WindowWidthChanged(n).into(),
+                            |n| EditInstanceMessage::WindowHeightChanged(n).into(),
                     )
                 },
 
                 widget::Column::new()
                 .push_maybe((!selected_instance.is_server()).then_some(column![
                     widget::checkbox("Close launcher after game opens", self.config.close_on_start.unwrap_or(false))
-                        .on_toggle(|t| Message::EditInstance(EditInstanceMessage::CloseLauncherToggle(t))),
+                        .on_toggle(|t| EditInstanceMessage::CloseLauncherToggle(t).into()),
                 ].spacing(5)))
                 .push(
                     column![
                         widget::Space::with_height(5),
                         widget::checkbox("DEBUG: Enable log system (recommended)", self.config.enable_logger.unwrap_or(true))
-                            .on_toggle(|t| Message::EditInstance(EditInstanceMessage::LoggingToggle(t))),
+                            .on_toggle(|t| EditInstanceMessage::LoggingToggle(t).into()),
                         widget::text("Once disabled, logs will be printed in launcher STDOUT.\nRun the launcher executable from the terminal/command prompt to see it").size(12).style(tsubtitle),
                         horizontal_space(),
                     ].spacing(5)
@@ -83,7 +83,7 @@ impl MenuEditInstance {
                         icons::edit_s(12).style(|t: &LauncherTheme| t.style_text(Color::Mid))
                     )
                     .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatDark))
-                    .on_press(Message::EditInstance(EditInstanceMessage::RenameToggle))
+                    .on_press(EditInstanceMessage::RenameToggle.into())
                 )
             )
             .spacing(5),
@@ -106,12 +106,12 @@ impl MenuEditInstance {
                 column![
                     widget::Space::with_height(1),
                     widget::text_input("Rename Instance", &self.instance_name)
-                        .on_input(|n| Message::EditInstance(EditInstanceMessage::RenameEdit(n))),
+                        .on_input(|n| EditInstanceMessage::RenameEdit(n).into()),
                     row![
                         widget::button(widget::text("Rename").size(12))
-                            .on_press(Message::EditInstance(EditInstanceMessage::RenameApply)),
+                            .on_press(EditInstanceMessage::RenameApply.into()),
                         widget::button(widget::text("Cancel").size(12))
-                            .on_press(Message::EditInstance(EditInstanceMessage::RenameToggle))
+                            .on_press(EditInstanceMessage::RenameToggle.into())
                     ]
                     .spacing(5)
                 ]
@@ -131,9 +131,7 @@ impl MenuEditInstance {
                 "Java arguments:",
                 widget::horizontal_space(),
                 widget::checkbox("Use global arguments", current_mode)
-                    .on_toggle(|t| {
-                        Message::EditInstance(EditInstanceMessage::JavaArgsModeChanged(t))
-                    })
+                    .on_toggle(|t| EditInstanceMessage::JavaArgsModeChanged(t).into())
                     .style(|t: &LauncherTheme, s| t.style_checkbox(s, Some(Color::SecondLight)))
                     .size(12)
                     .text_size(12)
@@ -162,11 +160,12 @@ impl MenuEditInstance {
     ) -> widget::Column<'_, Message, LauncherTheme> {
         let checkbox = widget::checkbox("Use global prefix", !prefix_mode.is_disabled())
             .on_toggle(|t| {
-                Message::EditInstance(EditInstanceMessage::PreLaunchPrefixModeChanged(if t {
+                EditInstanceMessage::PreLaunchPrefixModeChanged(if t {
                     PreLaunchPrefixMode::default()
                 } else {
                     PreLaunchPrefixMode::Disable
-                }))
+                })
+                .into()
             })
             .style(|t: &LauncherTheme, s| t.style_checkbox(s, Some(Color::SecondLight)))
             .size(12)
@@ -179,7 +178,7 @@ impl MenuEditInstance {
                     .global_settings
                     .as_ref()
                     .and_then(|n| n.pre_launch_prefix.as_deref()),
-                |n| Message::EditInstance(EditInstanceMessage::PreLaunchPrefix(n)),
+                |n| EditInstanceMessage::PreLaunchPrefix(n).into(),
             )]
             .push_maybe(
                 (!prefix_mode.is_disabled()).then_some(
@@ -234,7 +233,7 @@ Heavy modpacks / High settings: 4-8 GB+"
                 widget::slider(
                     MEM_256_MB_IN_TWOS_EXPONENT..=MEM_32768_MB_IN_TWOS_EXPONENT,
                     self.slider_value,
-                    |n| Message::EditInstance(EditInstanceMessage::MemoryChanged(n))
+                    |n| EditInstanceMessage::MemoryChanged(n).into()
                 )
                 .step(0.1),
             ]
@@ -243,7 +242,7 @@ Heavy modpacks / High settings: 4-8 GB+"
             row![
                 widget::text("Or enter directly:").size(12).style(tsubtitle),
                 widget::text_input("2048", &self.memory_input)
-                    .on_input(|n| Message::EditInstance(EditInstanceMessage::MemoryInputChanged(n)))
+                    .on_input(|n| EditInstanceMessage::MemoryInputChanged(n).into())
                     .width(64)
                     .size(12),
                 widget::text("MB").size(12).style(tsubtitle),
@@ -282,19 +281,19 @@ Heavy modpacks / High settings: 4-8 GB+"
                 "Auto-managed by launcher",
                 true,
                 Some(java_override.trim().is_empty() && java_override_ver.is_none()),
-                || Message::EditInstance(EditInstanceMessage::JavaOverride(String::new()))
+                || EditInstanceMessage::JavaOverride(String::new()).into()
             ),
             row![radio(
                 "Specific Java version",
                 true,
                 Some(java_override_ver.is_some()),
-                || Message::EditInstance(EditInstanceMessage::JavaOverrideVersion(25))
+                || EditInstanceMessage::JavaOverrideVersion(25).into()
             )]
             .push_maybe(java_override_ver.map(|n| {
                 widget::row(JavaVersion::ALL.iter().map(|v| {
                     let v = *v as usize;
                     widget::radio(format!("{v}"), v, Some(n), |v| {
-                        Message::EditInstance(EditInstanceMessage::JavaOverrideVersion(v))
+                        EditInstanceMessage::JavaOverrideVersion(v).into()
                     })
                     .text_size(13)
                     .size(11)
@@ -310,24 +309,20 @@ Heavy modpacks / High settings: 4-8 GB+"
                 "Custom path",
                 true,
                 Some(!java_override.trim().is_empty()),
-                || Message::EditInstance(EditInstanceMessage::JavaOverride(
-                    "path/to/java".to_owned()
-                )) // ugly hack
+                || EditInstanceMessage::JavaOverride("path/to/java".to_owned()).into() // ugly hack
             ),
             row![
                 widget::Space::with_width(16),
                 widget::text_input("Leave blank if none", java_override)
                     .size(14)
                     .font(FONT_MONO)
-                    .on_input(|t| Message::EditInstance(EditInstanceMessage::JavaOverride(t)))
+                    .on_input(|t| EditInstanceMessage::JavaOverride(t).into())
             ]
             .push_maybe(
                 (!java_override.trim().is_empty()).then_some(
                     button_with_icon(icons::close_s(9), "", 13)
                         .padding([8.0, 11.0])
-                        .on_press(Message::EditInstance(EditInstanceMessage::JavaOverride(
-                            String::new()
-                        ))),
+                        .on_press(EditInstanceMessage::JavaOverride(String::new()).into()),
                 )
             )
             .push(
@@ -355,7 +350,7 @@ Heavy modpacks / High settings: 4-8 GB+"
                         .as_ref()
                         .map_or_else(|| NONE_JAR_NAME.to_owned(), |n| n.name.clone()),
                 ),
-                |t| Message::EditInstance(EditInstanceMessage::CustomJarPathChanged(t)),
+                |t| EditInstanceMessage::CustomJarPathChanged(t).into(),
             )
             .into()
         } else {

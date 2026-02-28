@@ -250,7 +250,7 @@ impl Launcher {
                         Message::ShowScreen("Uninstalling...".to_owned()),
                         (*msg).clone(),
                     ]),
-                    no: Message::ManageMods(ManageModsMessage::ScreenOpenWithoutUpdate),
+                    no: ManageModsMessage::ScreenOpenWithoutUpdate.into(),
                 }
             }
             Message::ShowScreen(msg) => {

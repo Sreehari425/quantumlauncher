@@ -288,7 +288,7 @@ impl MenuEditMods {
         }
         Task::perform(
             get_locally_installed_mods(selected_instance.get_dot_minecraft_path(), blacklist),
-            |n| Message::ManageMods(ManageModsMessage::LocalIndexLoaded(n)),
+            |n| ManageModsMessage::LocalIndexLoaded(n).into(),
         )
     }
 

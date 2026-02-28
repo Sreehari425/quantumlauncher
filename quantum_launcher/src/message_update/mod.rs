@@ -221,7 +221,7 @@ impl Launcher {
                             let id = ModId::from_pair(&hit.id, backend);
 
                             return Task::perform(get_description(id), |n| {
-                                Message::InstallMods(InstallModsMessage::LoadData(n.strerr()))
+                                InstallModsMessage::LoadData(n.strerr()).into()
                             });
                         }
                     }
@@ -304,7 +304,7 @@ impl Launcher {
                             .await
                             .map(|not_allowed| (id, not_allowed))
                     },
-                    |n| Message::InstallMods(InstallModsMessage::DownloadComplete(n.strerr())),
+                    |n| InstallModsMessage::DownloadComplete(n.strerr()).into(),
                 );
             }
             InstallModsMessage::Uninstall(index) => {
@@ -328,7 +328,7 @@ impl Launcher {
 
                 return Task::perform(
                     ql_mod_manager::store::delete_mods(vec![mod_id], selected_instance),
-                    |n| Message::InstallMods(InstallModsMessage::UninstallComplete(n.strerr())),
+                    |n| InstallModsMessage::UninstallComplete(n.strerr()).into(),
                 );
             }
             InstallModsMessage::UninstallComplete(Ok(ids)) => {
@@ -371,8 +371,8 @@ impl Launcher {
                 msg1: format!("install the modpack: {}", hit.title),
                 msg2: "This might take a while, install many files, and use a lot of network..."
                     .to_owned(),
-                yes: Message::InstallMods(InstallModsMessage::InstallModpack(id)),
-                no: Message::InstallMods(InstallModsMessage::Open),
+                yes: InstallModsMessage::InstallModpack(id).into(),
+                no: InstallModsMessage::Open.into(),
             };
             Task::none()
         } else {
@@ -382,7 +382,7 @@ impl Launcher {
                         .await
                         .map(|not_allowed| (id, not_allowed))
                 },
-                |n| Message::InstallMods(InstallModsMessage::DownloadComplete(n.strerr())),
+                |n| InstallModsMessage::DownloadComplete(n.strerr()).into(),
             )
         }
     }

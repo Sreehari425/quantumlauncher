@@ -110,7 +110,7 @@ impl Launcher {
                     let selected_instance = self.selected_instance.clone().unwrap();
                     return Task::perform(
                         async move { (jarmods.save(&selected_instance).await.strerr(), jarmods) },
-                        |n| Message::ManageJarMods(ManageJarModsMessage::AutosaveFinished(n)),
+                        |n| ManageJarModsMessage::AutosaveFinished(n).into(),
                     );
                 }
             }
@@ -272,7 +272,7 @@ impl MenuModsDownload {
     pub fn tick(selected_instance: InstanceSelection) -> Task<Message> {
         Task::perform(
             async move { ModIndex::load(&selected_instance).await },
-            |n| Message::InstallMods(InstallModsMessage::IndexUpdated(n.strerr())),
+            |n| InstallModsMessage::IndexUpdated(n.strerr()).into(),
         )
     }
 }
