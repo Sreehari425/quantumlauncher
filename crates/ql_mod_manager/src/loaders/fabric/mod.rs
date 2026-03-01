@@ -113,14 +113,10 @@ pub async fn install_server(
         } else {
             Loader::Fabric
         },
-        Some(ModTypeInfo {
-            version: Some(loader_version),
-            backend_implementation: if let BackendType::Fabric | BackendType::Quilt = backend {
-                None
-            } else {
-                Some(backend.to_string())
-            },
-            optifine_jar: None,
+        Some(if let BackendType::Fabric | BackendType::Quilt = backend {
+            ModTypeInfo::new_regular(loader_version)
+        } else {
+            ModTypeInfo::new_with_backend(loader_version, backend.to_string())
         }),
     )
     .await?;
@@ -217,14 +213,10 @@ pub async fn install_client(
         } else {
             Loader::Fabric
         },
-        Some(ModTypeInfo {
-            version: Some(loader_version),
-            backend_implementation: if let BackendType::Fabric | BackendType::Quilt = backend {
-                None
-            } else {
-                Some(backend.to_string())
-            },
-            optifine_jar: None,
+        Some(if let BackendType::Fabric | BackendType::Quilt = backend {
+            ModTypeInfo::new_regular(loader_version)
+        } else {
+            ModTypeInfo::new_with_backend(loader_version, backend.to_string())
         }),
     )
     .await?;

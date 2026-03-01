@@ -42,7 +42,7 @@ impl ModDownloader {
             .get_loader()
             .await?
             .not_vanilla()
-            .map(|n| n.to_modrinth_str());
+            .map(ql_core::Loader::to_modrinth_str);
         let currently_installing_mods = HashSet::new();
         Ok(ModDownloader {
             version: version_json.get_id().to_owned(),

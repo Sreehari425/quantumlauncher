@@ -1,8 +1,7 @@
 use iced::{futures::executor::block_on, keyboard::Modifiers};
 use iced::{widget, Task};
 use ql_core::{
-    err, jarmod::JarMods, InstanceSelection, IntoIoError, IntoStringError, ModId,
-    SelectedMod,
+    err, jarmod::JarMods, InstanceSelection, IntoIoError, IntoStringError, ModId, SelectedMod,
 };
 use ql_mod_manager::store::ModIndex;
 use std::{collections::HashSet, path::PathBuf};
@@ -98,7 +97,7 @@ impl Launcher {
                             .map(delete_file_wrapper)
                             .map(|n| {
                                 Task::perform(n, |n| {
-                                    Message::ManageMods(ManageModsMessage::LocalDeleteFinished(n))
+                                    ManageModsMessage::LocalDeleteFinished(n).into()
                                 })
                             }),
                     );
@@ -122,7 +121,7 @@ impl Launcher {
                     }
                 }
                 return Task::perform(delete_file_wrapper(mods_dir.join(&name)), |n| {
-                    Message::ManageMods(ManageModsMessage::LocalDeleteFinished(n))
+                    ManageModsMessage::LocalDeleteFinished(n).into()
                 });
             }
             ManageModsMessage::DeleteFinished(Ok(_)) => {
@@ -302,11 +301,11 @@ impl Launcher {
 
         let toggle_downloaded = Task::perform(
             ql_mod_manager::store::toggle_mods(ids_downloaded.clone(), instance_name.clone()),
-            |n| Message::ManageMods(ManageModsMessage::ToggleFinished(n.strerr())),
+            |n| ManageModsMessage::ToggleFinished(n.strerr()).into(),
         );
         let toggle_local = Task::perform(
             ql_mod_manager::store::toggle_mods_local(ids_local, instance_name.clone()),
-            |n| Message::ManageMods(ManageModsMessage::ToggleFinished(n.strerr())),
+            |n| ManageModsMessage::ToggleFinished(n.strerr()).into(),
         )
         .chain(MenuEditMods::update_locally_installed_mods(
             &menu.mods,
@@ -346,7 +345,7 @@ impl Launcher {
                 paths.clone(),
                 Some(sender),
             ),
-            move |n| Message::ManageMods(ManageModsMessage::AddFileDone(n.strerr())),
+            move |n| ManageModsMessage::AddFileDone(n.strerr()).into(),
         );
         if delete_file {
             files_task.chain(Task::perform(
@@ -380,7 +379,7 @@ impl Launcher {
 
         Task::perform(
             ql_mod_manager::store::delete_mods(ids, selected_instance),
-            |n| Message::ManageMods(ManageModsMessage::DeleteFinished(n.strerr())),
+            |n| ManageModsMessage::DeleteFinished(n.strerr()).into(),
         )
     }
 
@@ -506,7 +505,7 @@ impl Launcher {
 
     fn manage_jarmods_toggle_selected(&mut self) {
         if let State::EditJarMods(menu) = &mut self.state {
-            for selected in menu.selected_mods.iter() {
+            for selected in &menu.selected_mods {
                 if let Some(jarmod) = menu
                     .jarmods
                     .mods
@@ -528,7 +527,7 @@ impl Launcher {
                 .get_instance_path()
                 .join("jarmods");
 
-            for selected in menu.selected_mods.iter() {
+            for selected in &menu.selected_mods {
                 if let Some(n) = menu
                     .jarmods
                     .mods

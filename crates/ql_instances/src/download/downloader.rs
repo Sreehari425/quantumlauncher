@@ -6,7 +6,6 @@ use std::{
 
 use crate::json_profiles::ProfileJson;
 use ql_core::{
-    constants::DEFAULT_RAM_MB_FOR_INSTANCE,
     do_jobs,
     file_utils::{self, LAUNCHER_DIR},
     impl_3_errs_jri, info,
@@ -14,7 +13,7 @@ use ql_core::{
         instance_config::VersionInfo, AssetIndex, InstanceConfigJson, Manifest, VersionDetails,
     },
     pt, DownloadFileError, DownloadProgress, IntoIoError, IntoJsonError, IoError, JsonError,
-    ListEntry, Loader, RequestError,
+    ListEntry, RequestError,
 };
 use thiserror::Error;
 use tokio::{fs, sync::Mutex};
@@ -310,29 +309,8 @@ impl GameDownloader {
     }
 
     pub async fn create_config_json(&self) -> Result<(), DownloadError> {
-        #[allow(deprecated)]
-        let config_json = InstanceConfigJson {
-            java_override: None,
-            ram_in_mb: DEFAULT_RAM_MB_FOR_INSTANCE,
-            mod_type: Loader::Vanilla,
-            enable_logger: Some(true),
-            java_args: None,
-            game_args: None,
-            is_classic_server: None,
-            close_on_start: None,
-            is_server: Some(false),
-            omniarchive: None,
-            global_settings: None,
-            global_java_args_enable: None,
-            pre_launch_prefix_mode: None,
-            custom_jar: None,
-            mod_type_info: None,
-            version_info: Some(VersionInfo {
-                is_special_lwjgl3: self.version_json.id.ends_with("-lwjgl3"),
-            }),
-            main_class_override: None,
-            lwjgl_version: None,
-        };
+        let config_json =
+            InstanceConfigJson::new(false, false, VersionInfo::new(&self.version_json.id));
         let config_json = serde_json::to_string(&config_json).json_to()?;
 
         let config_json_path = self.instance_dir.join("config.json");

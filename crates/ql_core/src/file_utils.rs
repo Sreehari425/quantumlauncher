@@ -111,6 +111,9 @@ fn check_qlportable_file() -> Option<QlDirInfo> {
             .map(|s| s.trim().to_lowercase())
             .collect();
 
+        // Safety: At this specific moment, nothing else
+        // would read/write these env vars. This function
+        // is called at launcher startup on the main thread.
         unsafe {
             if flags.contains("i_vulkan") {
                 std::env::set_var("WGPU_BACKEND", "vulkan");
@@ -690,12 +693,10 @@ pub async fn extract_zip_archive<
             archive.extract_unwrapped_root_dir(extract_to, zip::read::root_dir_common_filter)
         })
         .await
-        .unwrap()?;
     } else {
-        tokio::task::spawn_blocking(move || archive.extract(extract_to))
-            .await
-            .unwrap()?;
+        tokio::task::spawn_blocking(move || archive.extract(extract_to)).await
     }
+    .map_err(|n| zip::result::ZipError::Io(n.into()))??;
 
     Ok(())
 }

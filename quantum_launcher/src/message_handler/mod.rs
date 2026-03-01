@@ -92,11 +92,6 @@ impl Launcher {
         let (java_sender, java_receiver) = std::sync::mpsc::channel();
         self.java_recv = Some(ProgressBar::with_recv(java_receiver));
 
-        let (launch_sender, launch_receiver) = std::sync::mpsc::channel();
-        if let State::Launch(menu) = &mut self.state {
-            menu.launch_progress = Some(ProgressBar::with_recv(launch_receiver));
-        }
-
         let global_settings = self.config.global_settings.clone();
         let extra_java_args = self.config.extra_java_args.clone().unwrap_or_default();
 
@@ -107,7 +102,6 @@ impl Launcher {
                     instance_name,
                     username,
                     Some(java_sender),
-                    Some(launch_sender),
                     account_data,
                     global_settings,
                     extra_java_args,
@@ -122,9 +116,6 @@ impl Launcher {
     pub fn finish_launching(&mut self, result: Result<LaunchedProcess, String>) -> Task<Message> {
         self.java_recv = None;
         self.is_launching_game = false;
-        if let State::Launch(menu) = &mut self.state {
-            menu.launch_progress = None;
-        }
         match result {
             Ok(child) => {
                 let selected_instance = child.instance.clone();
@@ -229,6 +220,7 @@ impl Launcher {
             instance_name: instance_name.to_owned(),
             old_instance_name: instance_name.to_owned(),
             slider_text: format_memory(memory_mb),
+            memory_input: memory_mb.to_string(),
             is_editing_name: false,
             arg_split_by_space: true,
         });
@@ -260,7 +252,7 @@ impl Launcher {
             } else {
                 let (a, b) = Task::perform(
                     ql_mod_manager::store::check_for_updates(instance.clone()),
-                    |n| Message::ManageMods(ManageModsMessage::UpdateCheckResult(n.strerr())),
+                    |n| ManageModsMessage::UpdateCheckResult(n.strerr()).into(),
                 )
                 .abortable();
                 (a, Some(b.abort_on_drop()))
@@ -357,7 +349,7 @@ impl Launcher {
             let selected_instance = self.selected_instance.clone().unwrap();
             Task::perform(
                 ql_mod_manager::store::apply_updates(selected_instance, updates, Some(sender)),
-                |n| Message::ManageMods(ManageModsMessage::UpdateModsFinished(n.strerr())),
+                |n| ManageModsMessage::UpdateModsFinished(n.strerr()).into(),
             )
         } else {
             Task::none()
@@ -458,7 +450,7 @@ impl Launcher {
     pub fn server_selected(&self) -> bool {
         self.selected_instance
             .as_ref()
-            .is_some_and(|n| n.is_server())
+            .is_some_and(InstanceSelection::is_server)
             || if let State::Launch(menu) = &self.state {
                 menu.is_viewing_server
             } else if let State::Create(MenuCreateInstance::Choosing(
@@ -486,7 +478,7 @@ impl Launcher {
                 vec![path],
                 Some(sender),
             ),
-            |n| Message::ManageMods(ManageModsMessage::AddFileDone(n.strerr())),
+            |n| ManageModsMessage::AddFileDone(n.strerr()).into(),
         )
     }
 
@@ -531,7 +523,7 @@ impl Launcher {
                         instance_name,
                         Some(sender),
                     ),
-                    |n| Message::EditPresets(EditPresetsMessage::LoadComplete(n.strerr())),
+                    |n| EditPresetsMessage::LoadComplete(n.strerr()).into(),
                 )
             }
             Err(err) => {
@@ -606,7 +598,7 @@ impl Launcher {
                     } else {
                         let future = stdin.write_all("stop\n".as_bytes());
                         _ = block_on(future);
-                    };
+                    }
                 }
             }
         }
@@ -646,12 +638,10 @@ impl Launcher {
 
         match selected_instance {
             InstanceSelection::Instance(_) => {
-                if let Some(account) = &self.accounts_selected {
-                    if account == OFFLINE_ACCOUNT_NAME
-                        && (self.config.username.is_empty() || self.config.username.contains(' '))
-                    {
-                        return Task::none();
-                    }
+                if self.account_selected == OFFLINE_ACCOUNT_NAME
+                    && (self.config.username.is_empty() || self.config.username.contains(' '))
+                {
+                    return Task::none();
                 }
 
                 self.is_launching_game = true;

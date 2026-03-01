@@ -16,7 +16,6 @@ pub async fn launch(name: String, timeout: f32, cli: &Cli) -> bool {
             None,
             None,
             None,
-            None,
             Vec::new(),
         )
         .await,

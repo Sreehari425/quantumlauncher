@@ -72,7 +72,7 @@ mod message_handler;
 /// Handlers for "child messages".
 ///
 /// The [`Message`] enum is split into
-/// categories (like `Message::Account(AccountMessage)`).
+/// categories (like `Message::Account(AccountMessage::*)`).
 ///
 /// This module has functions for handling each of
 /// these "child messages".
@@ -130,10 +130,8 @@ impl Launcher {
 
     #[allow(clippy::unused_self)]
     fn subscription(&self) -> iced::Subscription<Message> {
-        let tick = iced::time::every(Duration::from_millis(
-            1000 / self.config.ui.unwrap_or_default().get_idle_fps(),
-        ))
-        .map(|_| Message::CoreTick);
+        let tick = iced::time::every(Duration::from_millis(1000 / self.config.c_idle_fps()))
+            .map(|_| Message::CoreTick);
         let events = iced::event::listen_with(|a, b, _| Some(Message::CoreEvent(a, b)));
 
         iced::Subscription::batch(vec![tick, events])
@@ -164,8 +162,8 @@ fn main() {
     let is_new_user = file_utils::is_new_user();
     // let is_new_user = true; // Uncomment to test the intro screen.
 
-    let (launcher_dir, is_dir_err) = load_launcher_dir();
-    cli::start_cli(is_dir_err);
+    let (mut launcher_dir, is_dir_err) = load_launcher_dir();
+    cli::start_cli(is_dir_err, &mut launcher_dir);
 
     info!(no_log, "Starting up the launcher... (OS: {OS_NAME})");
     if let Some(dir) = &launcher_dir {
@@ -264,15 +262,14 @@ fn load_fonts() -> Vec<Cow<'static, [u8]>> {
     ]
 }
 
-/// This is the only `unsafe` Rust code in the entire launcher.
-/// It tweaks Windows terminal behaviour so that:
+/// Tweaks Windows terminal behaviour so that:
 ///
 /// - If launcher is opened from terminal,
 ///   it shows output in terminal
 /// - If it's opened normally from GUI,
 ///   no terminal window pops up
 ///
-/// Basically Linux-default behaviour.
+/// Basically Linux-default behavior.
 #[cfg(windows)]
 fn attach_to_console() {
     use windows::Win32::System::Console::AttachConsole;
@@ -327,7 +324,7 @@ fn do_migration() {
         } else if let Err(e) = file_utils::create_symlink(&new_dir, &legacy_dir) {
             eprintln!("Migration successful but couldn't create symlink to the legacy dir: {e}");
         } else {
-            ql_core::info!("Migration successful!\nYour launcher files are now in ~./local/share/QuantumLauncher");
+            println!("Migration successful!\nYour launcher files are now in ~./local/share/QuantumLauncher");
         }
     }
 }

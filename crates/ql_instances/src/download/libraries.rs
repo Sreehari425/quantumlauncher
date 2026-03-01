@@ -22,8 +22,8 @@ use tokio::fs;
 
 use super::{DownloadError, GameDownloader};
 
-const MACOS_ARM_LWJGL_294_1: &str = "https://libraries.minecraft.net/org/lwjgl/lwjgl/lwjgl-platform/2.9.4-nightly-20150209/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.jar";
-const MACOS_ARM_LWJGL_294_2: &str = "https://github.com/Dungeons-Guide/lwjgl/releases/download/2.9.4-20150209-mmachina.2-syeyoung.1/lwjgl-platform-2.9.4-nightly-20150209-natives-osx-arm64.jar";
+const MACOS_X64_LWJGL_294: &str = "https://libraries.minecraft.net/org/lwjgl/lwjgl/lwjgl-platform/2.9.4-nightly-20150209/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.jar";
+const MACOS_ARM_LWJGL_294: &str = "https://github.com/Dungeons-Guide/lwjgl/releases/download/2.9.4-20150209-mmachina.2-syeyoung.1/lwjgl-platform-2.9.4-nightly-20150209-natives-osx-arm64.jar";
 
 /// Check if natives need to be re-extracted for the given LWJGL version
 /// Returns true if the natives directory doesn't exist or if the version has changed
@@ -86,21 +86,32 @@ impl GameDownloader {
             .iter()
             .map(|lib| self.download_library_fn(lib, &num_library, total_libraries));
 
-        // Uncomment for synchronous downloads. WAY slower,
-        // but easier to debug/inspect logs of,
+        // (a) Synchronous downloader. WAY slower,
+        // but easier to debug/inspect,
         // if you're working on the library downloader
 
         // for job in results {
         //     job.await?;
         // }
 
-        // The one below is the concurrent downloader, downloading multiple
-        // libraries at the same time. If you uncomment the above one, make sure
-        // to comment this below one out.
-        // This is WAY faster but harder to debug/inspect
+        // (b) Concurrent downloader, downloads multiple libs at the same time
+        // WAY faster but harder to debug/inspect
         _ = do_jobs(results).await?;
 
+        self.cleanup_junk().await;
+
         Ok(())
+    }
+
+    async fn cleanup_junk(&self) {
+        let natives_dir = self.instance_dir.join("libraries/natives");
+        _ = fs::remove_dir_all(natives_dir.join("META-INF")).await;
+        _ = fs::remove_file(natives_dir.join("INDEX.LIST")).await;
+        _ = fs::remove_file(natives_dir.join("MANIFEST.MF")).await;
+
+        if let Err(err) = cleanup_directory(&natives_dir).await {
+            err!("While cleaning up libraries/natives/: {err}");
+        }
     }
 
     async fn download_library_fn(
@@ -316,26 +327,44 @@ impl GameDownloader {
             .path(&natives_dir)?;
 
         for (os, download) in classifiers {
+            if os == "sources" {
+                continue;
+            }
             #[allow(unused)]
+            #[allow(clippy::let_and_return)]
             if !(OS_NAMES.iter().any(|os_name| {
+                let os_name = format!("natives-{os_name}");
                 cfg_if!(if #[cfg(feature = "simulate_linux_arm64")] {
-                    let matches = os == "natives-linux-arm64";
+                    // Simulating Linux ARM 64
+                    let matches = os == "natives-linux-arm64"
+                        || (*os == os_name && download.url.contains("arm64"));
                 } else if #[cfg(feature = "simulate_macos_arm64")] {
+                    // Simulating macOS ARM 64
                     let matches = os == "natives-osx-arm64";
                 } else if #[cfg(feature = "simulate_linux_arm32")] {
-                    let matches = os == "natives-linux-arm32";
+                    // Simulating Linux ARM 32
+                    let matches = os == "natives-linux-arm32"
+                        || (*os == os_name && download.url.contains("arm32"));
                 } else if #[cfg(all(target_os = "macos", target_arch = "aarch64"))] {
+                    // macOS ARM 64
                     let matches = os == "natives-osx-arm64";
                 } else if #[cfg(all(target_os = "linux", target_arch = "aarch64"))] {
-                    let matches = os == "natives-linux-arm64";
+                    // Linux ARM 64
+                    let matches = os == "natives-linux-arm64"
+                        || (*os == os_name && download.url.contains("arm64"));
                 } else if #[cfg(all(target_os = "windows", target_arch = "x86"))] {
+                    // Windows x86 32-bit
                     let matches = os == "natives-windows-32";
                 } else if #[cfg(all(target_os = "windows", target_arch = "x86_64"))] {
+                    // Windows x86_64
                     let matches = (os == "natives-windows-64") || (os == "natives-windows");
                 } else if #[cfg(all(target_os = "linux", target_arch = "arm"))] {
-                    let matches = os == "natives-linux-arm32";
+                    // Linux ARM 32
+                    let matches = os == "natives-linux-arm32"
+                        || (*os == os_name && download.url.contains("arm32"));
                 } else {
-                    let matches = *os == format!("natives-{os_name}");
+                    // Others
+                    let matches = *os == os_name;
                 });
 
                 matches
@@ -378,10 +407,10 @@ impl GameDownloader {
 
     async fn extract_file(&self, mut url: String) -> Result<(), DownloadError> {
         if url == "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-natives-linux.jar" {
-            url = "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-patched-natives-linux-arm64.jar".to_owned();
+            "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-patched-natives-linux-arm64.jar".clone_into(&mut url);
         }
-        if (cfg!(target_arch = "aarch64") && url == MACOS_ARM_LWJGL_294_1) || url == "https://github.com/MinecraftMachina/lwjgl/releases/download/2.9.4-20150209-mmachina.2/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.jar" {
-            url = MACOS_ARM_LWJGL_294_2.to_owned();
+        if (cfg!(target_arch = "aarch64") && url == MACOS_X64_LWJGL_294) || url == "https://github.com/MinecraftMachina/lwjgl/releases/download/2.9.4-20150209-mmachina.2/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.jar" {
+            MACOS_ARM_LWJGL_294.clone_into(&mut url);
         }
 
         #[cfg(any(
@@ -541,4 +570,32 @@ impl GameDownloader {
 
         Ok(())
     }
+}
+
+async fn cleanup_directory(dir: &Path) -> Result<(), IoError> {
+    async fn is_dir_empty(dir: &Path) -> Result<bool, IoError> {
+        let mut entries = fs::read_dir(dir).await.path(dir)?;
+        Ok(entries.next_entry().await.path(dir)?.is_none())
+    }
+
+    let mut entries = fs::read_dir(dir).await.path(dir)?;
+
+    while let Some(entry) = entries.next_entry().await.path(dir)? {
+        let path = entry.path();
+        let file_type = entry.file_type().await.path(&path)?;
+
+        if file_type.is_dir() {
+            Box::pin(cleanup_directory(&path)).await?;
+
+            // After recursing, try to remove if empty
+            if is_dir_empty(&path).await? {
+                fs::remove_dir(&path).await.path(path)?;
+            }
+        } else if file_type.is_file() && path.extension().and_then(|e| e.to_str()) == Some("class")
+        {
+            fs::remove_file(&path).await.path(path)?;
+        }
+    }
+
+    Ok(())
 }

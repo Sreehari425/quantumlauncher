@@ -61,7 +61,7 @@ impl Launcher {
                         .or(iter().next())) {
                         *selected_version = sel.clone();
                     }
-                })
+                });
             }
             CreateInstanceMessage::SidebarResize(ratio) => {
                 let window_width = self.window_state.size.0;
@@ -120,9 +120,7 @@ impl Launcher {
 
                     return Task::perform(
                         ql_packager::import_instance(file.clone(), true, Some(send)),
-                        |n| {
-                            Message::CreateInstance(CreateInstanceMessage::ImportResult(n.strerr()))
-                        },
+                        |n| CreateInstanceMessage::ImportResult(n.strerr()).into(),
                     );
                 }
             }
@@ -158,18 +156,17 @@ then go to "Mods->Add File""#,
                 .enumerate()
                 .filter(|n| n.1.kind != ListEntryKind::Snapshot)
                 .find(|n| n.1.name == latest)
-                .map(|n| {
+                .map_or_else(|| ListEntry::new(latest), |n| {
                     offset = n.0 as f32 / len as f32;
                     n.1.clone()
-                })
-                .unwrap_or_else(|| ListEntry::new(latest));
+                });
             *list = Some(versions);
-        })
+        });
     }
 
     pub fn go_to_create_screen(&mut self, is_server: bool) -> Task<Message> {
         let (task, handle) = Task::perform(ql_instances::list_versions(), |n| {
-            Message::CreateInstance(CreateInstanceMessage::VersionsLoaded(n.strerr()))
+            CreateInstanceMessage::VersionsLoaded(n.strerr()).into()
         })
         .abortable();
 
@@ -251,7 +248,7 @@ then go to "Mods->Add File""#,
                             .strerr()
                             .map(InstanceSelection::Server)
                     },
-                    |n| Message::CreateInstance(CreateInstanceMessage::End(n)),
+                    |n| CreateInstanceMessage::End(n).into(),
                 )
             } else {
                 Task::perform(
@@ -261,11 +258,9 @@ then go to "Mods->Add File""#,
                         Some(sender),
                         download_assets,
                     ),
-                    |n| {
-                        Message::CreateInstance(CreateInstanceMessage::End(
-                            n.strerr().map(InstanceSelection::Instance),
-                        ))
-                    },
+                    |n| CreateInstanceMessage::End(
+                        n.strerr().map(InstanceSelection::Instance),
+                    ).into(),
                 )
             };
         });

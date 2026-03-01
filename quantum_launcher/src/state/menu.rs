@@ -4,8 +4,14 @@ use std::{
 };
 
 use crate::{
-    config::SIDEBAR_WIDTH, message_handler::get_locally_installed_mods, state::NotesMessage,
+    config::{
+        sidebar::{FolderId, SDragLocation, SidebarSelection},
+        SIDEBAR_WIDTH,
+    },
+    message_handler::get_locally_installed_mods,
+    state::NotesMessage,
 };
+use ezshortcut::Shortcut;
 use frostmark::MarkState;
 use iced::{
     widget::{self, scrollable::AbsoluteOffset},
@@ -50,10 +56,17 @@ impl std::fmt::Display for LaunchTab {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum LaunchModal {
     InstanceOptions,
-    // More in the future
+
+    // Sidebar
+    SCtxMenu(Option<(SidebarSelection, String)>, (f32, f32)),
+    SDragging {
+        being_dragged: SidebarSelection,
+        dragged_to: Option<SDragLocation>,
+    },
+    SRenamingFolder(FolderId, String, bool),
 }
 
 pub enum InstanceNotes {
@@ -83,8 +96,6 @@ pub struct LogState {
 /// The home screen of the launcher.
 pub struct MenuLaunch {
     pub message: String,
-    pub login_progress: Option<ProgressBar<GenericProgress>>,
-    pub launch_progress: Option<ProgressBar<GenericProgress>>,
     pub tab: LaunchTab,
     pub edit_instance: Option<MenuEditInstance>,
     pub notes: Option<InstanceNotes>,
@@ -120,8 +131,6 @@ impl MenuLaunch {
             message,
             tab: LaunchTab::default(),
             edit_instance: None,
-            login_progress: None,
-            launch_progress: None,
             sidebar_scrolled: 100.0,
             is_viewing_server: false,
             sidebar_grid_state,
@@ -142,8 +151,19 @@ impl MenuLaunch {
     pub fn reload_notes(&mut self, instance: InstanceSelection) -> Task<Message> {
         self.notes = None;
         Task::perform(ql_instances::notes::read(instance), |n| {
-            Message::Notes(NotesMessage::Loaded(n.strerr()))
+            NotesMessage::Loaded(n.strerr()).into()
         })
+    }
+
+    pub fn get_modal_drag(&self) -> Option<(&SidebarSelection, Option<&SDragLocation>)> {
+        if let Some(LaunchModal::SDragging {
+            being_dragged,
+            dragged_to,
+        }) = &self.modal
+        {
+            return Some((being_dragged, dragged_to.as_ref()));
+        }
+        None
     }
 }
 
@@ -158,6 +178,7 @@ pub struct MenuEditInstance {
     // Changing RAM:
     pub slider_value: f32,
     pub slider_text: String,
+    pub memory_input: String,
 
     pub main_class_mode: Option<MainClassMode>,
     pub arg_split_by_space: bool,
@@ -268,7 +289,7 @@ impl MenuEditMods {
         }
         Task::perform(
             get_locally_installed_mods(selected_instance.get_dot_minecraft_path(), blacklist),
-            |n| Message::ManageMods(ManageModsMessage::LocalIndexLoaded(n)),
+            |n| ManageModsMessage::LocalIndexLoaded(n).into(),
         )
     }
 
@@ -426,7 +447,7 @@ pub struct MenuLauncherUpdate {
     pub progress: Option<ProgressBar<GenericProgress>>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum ModOperation {
     Downloading,
     Deleting,
@@ -655,13 +676,22 @@ pub enum State {
     LogUploadResult {
         url: String,
     },
+    CreateShortcut(MenuShortcut),
 
     License(MenuLicense),
 }
 
+pub struct MenuShortcut {
+    pub shortcut: Shortcut,
+    pub add_to_menu: bool,
+    pub add_to_desktop: bool,
+    pub account: String,
+    pub account_offline: String,
+}
+
 pub struct MenuLicense {
     pub selected_tab: LicenseTab,
-    pub content: iced::widget::text_editor::Content,
+    pub content: widget::text_editor::Content,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

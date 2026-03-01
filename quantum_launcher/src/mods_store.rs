@@ -61,7 +61,7 @@ impl MenuModsDownload {
         let backend = self.backend;
         Task::perform(
             ql_mod_manager::store::search(query, offset, backend, self.query_type),
-            |n| Message::InstallMods(InstallModsMessage::SearchResult(n.strerr())),
+            |n| InstallModsMessage::SearchResult(n.strerr()).into(),
         )
     }
 }
