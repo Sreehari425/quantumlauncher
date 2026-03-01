@@ -39,7 +39,7 @@ impl GameDownloader {
             .iter()
             .map(|lib| self.download_library_fn(lib, &num_library, total_libraries));
 
-        // (a) Synchronous downloadser. WAY slower,
+        // (a) Synchronous downloader. WAY slower,
         // but easier to debug/inspect,
         // if you're working on the library downloader
 
