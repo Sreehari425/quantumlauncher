@@ -1,9 +1,13 @@
 # unreleased changelog
 
-# Sidebar
+# TLDR;
+- Added instance folders!
+- Added shortcuts; launch the game from your taskbar in one click!
+- Many UX improvements and fixes
 
-- Added instance folders
-- You can now drag and reorder instances/folders around
+---
+
+- Added instance folders, with drag & drop and renaming
 
 # UX
 
