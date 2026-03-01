@@ -75,16 +75,11 @@ impl PartialEq for SidebarNodeKind {
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct FolderId(usize);
+pub struct FolderId(u128);
 
 impl FolderId {
     pub fn new() -> Self {
-        Self(
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("Time went backwards")
-                .as_secs() as usize,
-        )
+        Self(rand::random())
     }
 }
 
