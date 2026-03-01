@@ -17,10 +17,9 @@ pub fn drag_drop_receiver(
 ) -> Option<widget::Column<'static, Message, LauncherTheme>> {
     let (_, dragged_to) = menu.get_modal_drag()?;
 
-    let (is_hovered, offset) = dragged_to
-        .as_ref()
-        .map(|n| (n.sel == *selection, n.offset))
-        .unwrap_or((false, SDragTo::Before));
+    let (is_hovered, offset) = dragged_to.as_ref().map_or((false, SDragTo::Before), |n| {
+        (n.sel == *selection, n.offset)
+    });
 
     Some(
         column![drop_box(

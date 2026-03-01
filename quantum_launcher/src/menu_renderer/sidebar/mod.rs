@@ -50,7 +50,7 @@ impl Launcher {
 
         let show_drag_handle = !matches!(
             menu.modal,
-            Some(LaunchModal::SDragging { .. }) | Some(LaunchModal::SRenamingFolder(_, _, _))
+            Some(LaunchModal::SDragging { .. } | LaunchModal::SRenamingFolder(_, _, _))
         );
 
         let button: Element = match &node.kind {
@@ -215,11 +215,11 @@ impl Launcher {
             {
                 let node = self.get_node_rendered(menu, node, NodeMode::Dragged);
                 let (x, y) = self.window_state.mouse_pos;
-                let (winw, winh) = self.window_state.size;
+                let (winwidth, winheight) = self.window_state.size;
                 Some(offset(
                     node,
-                    (x - 200.0).clamp(0.0, winw),
-                    (y - 16.0).clamp(0.0, winh),
+                    (x - 200.0).clamp(0.0, winwidth),
+                    (y - 16.0).clamp(0.0, winheight),
                 ))
             } else {
                 None
@@ -229,7 +229,7 @@ impl Launcher {
         }
     }
 
-    pub(super) fn sidebar_context_menu<'a>(&'a self, menu: &'a MenuLaunch) -> Option<Element<'a>> {
+    pub(super) fn sidebar_context_menu<'a>(menu: &'a MenuLaunch) -> Option<Element<'a>> {
         let Some(LaunchModal::SCtxMenu(instance, (x, y))) = &menu.modal else {
             return None;
         };

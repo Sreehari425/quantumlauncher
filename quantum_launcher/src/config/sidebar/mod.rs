@@ -110,7 +110,7 @@ impl SidebarConfig {
 
             if f.id == id {
                 // Finally rename the thing
-                node.name = new_name.to_owned();
+                new_name.clone_into(&mut node.name);
                 return true;
             }
 
@@ -205,9 +205,12 @@ pub struct SidebarNode {
     pub name: String,
     // icon: Option<String>
     pub kind: SidebarNodeKind,
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
 }
 
 impl SidebarNode {
+    #[must_use]
     fn contains_instance(&self, name: &str, instance_kind: InstanceKind) -> bool {
         match &self.kind {
             SidebarNodeKind::Instance(kind) => {
@@ -226,6 +229,7 @@ impl SidebarNode {
         false
     }
 
+    #[must_use]
     fn retain_instances<F: FnMut(&SidebarNode) -> bool>(&mut self, f: &mut F) -> bool {
         if let SidebarNodeKind::Folder(folder) = &mut self.kind {
             folder.children.retain_mut(|node| node.retain_instances(f));
@@ -235,17 +239,25 @@ impl SidebarNode {
         true
     }
 
+    #[must_use]
     pub fn new_folder(name: String) -> Self {
         SidebarNode {
-            name: name.to_owned(),
-            kind: SidebarNodeKind::Folder(SidebarFolder {
-                id: FolderId::new(),
-                children: Vec::new(),
-                is_expanded: true,
-            }),
+            name,
+            kind: SidebarNodeKind::Folder(SidebarFolder::default()),
+            _extra: HashMap::new(),
         }
     }
 
+    #[must_use]
+    pub fn new_instance(name: String, kind: InstanceKind) -> Self {
+        SidebarNode {
+            name,
+            kind: SidebarNodeKind::Instance(kind),
+            _extra: HashMap::new(),
+        }
+    }
+
+    #[must_use]
     pub fn get_folder_id(&self) -> Option<FolderId> {
         if let SidebarNodeKind::Folder(f) = &self.kind {
             Some(f.id)

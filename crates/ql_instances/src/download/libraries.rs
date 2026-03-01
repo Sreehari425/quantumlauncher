@@ -499,10 +499,9 @@ async fn cleanup_directory(dir: &Path) -> Result<(), IoError> {
             if is_dir_empty(&path).await? {
                 fs::remove_dir(&path).await.path(path)?;
             }
-        } else if file_type.is_file() {
-            if path.extension().and_then(|e| e.to_str()) == Some("class") {
-                fs::remove_file(&path).await.path(path)?;
-            }
+        } else if file_type.is_file() && path.extension().and_then(|e| e.to_str()) == Some("class")
+        {
+            fs::remove_file(&path).await.path(path)?;
         }
     }
 

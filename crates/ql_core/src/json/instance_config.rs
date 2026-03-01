@@ -102,6 +102,7 @@ pub struct InstanceConfigJson {
 }
 
 impl InstanceConfigJson {
+    #[must_use]
     pub fn new(is_server: bool, is_classic_server: bool, version_info: VersionInfo) -> Self {
         #[allow(deprecated)]
         Self {
@@ -249,6 +250,7 @@ impl InstanceConfigJson {
         }
     }
 
+    #[must_use]
     pub fn c_global_settings(&mut self) -> &mut GlobalSettings {
         self.global_settings
             .get_or_insert_with(GlobalSettings::default)
@@ -312,6 +314,7 @@ pub struct ModTypeInfo {
 }
 
 impl ModTypeInfo {
+    #[must_use]
     pub fn new_regular(version: String) -> Self {
         Self {
             version: Some(version),
@@ -321,6 +324,7 @@ impl ModTypeInfo {
         }
     }
 
+    #[must_use]
     pub fn new_with_backend(version: String, backend: String) -> Self {
         Self {
             version: Some(version),
@@ -360,6 +364,7 @@ pub struct VersionInfo {
 }
 
 impl VersionInfo {
+    #[must_use]
     pub fn new(version: &str) -> Self {
         Self {
             is_special_lwjgl3: version.ends_with("-lwjgl3"),
@@ -426,6 +431,7 @@ pub struct CustomJarConfig {
 }
 
 impl CustomJarConfig {
+    #[must_use]
     pub fn new(name: String) -> Self {
         Self {
             name,

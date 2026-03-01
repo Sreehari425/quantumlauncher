@@ -196,10 +196,9 @@ impl LauncherConfig {
         // Add new instances
         for instance in instances {
             if !sidebar.contains_instance(instance, kind) {
-                sidebar.list.push(SidebarNode {
-                    name: instance.clone(),
-                    kind: SidebarNodeKind::Instance(kind),
-                });
+                sidebar
+                    .list
+                    .push(SidebarNode::new_instance(instance.clone(), kind));
             }
         }
     }

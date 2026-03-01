@@ -117,9 +117,8 @@ impl SidebarNode {
                     f.children.push(node.clone());
                     f.is_expanded = true;
                     return true;
-                } else {
-                    debug_assert!(false, "can't drop item \"inside\" an instance");
                 }
+                debug_assert!(false, "can't drop item \"inside\" an instance");
             }
             f.children.insert(index + offset, node.clone());
             f.is_expanded = true;

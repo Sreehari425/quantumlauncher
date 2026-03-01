@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use ql_core::InstanceSelection;
 use serde::{Deserialize, Serialize};
 
@@ -29,7 +31,7 @@ impl PartialEq<InstanceSelection> for SidebarNode {
             SidebarNodeKind::Instance(kind) => {
                 kind.is_server() == other.is_server() && self.name == other.get_name()
             }
-            SidebarNodeKind::Folder { .. } => false,
+            SidebarNodeKind::Folder(_) => false,
         }
     }
 }
@@ -50,6 +52,19 @@ pub struct SidebarFolder {
     pub id: FolderId,
     pub children: Vec<SidebarNode>,
     pub is_expanded: bool,
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
+}
+
+impl Default for SidebarFolder {
+    fn default() -> Self {
+        Self {
+            id: FolderId::new(),
+            children: Vec::new(),
+            is_expanded: true,
+            _extra: HashMap::new(),
+        }
+    }
 }
 
 impl PartialEq for SidebarFolder {

@@ -61,7 +61,7 @@ impl Launcher {
             })
             .on_resize(10, |t| SidebarMessage::Resize(t.ratio).into())
         )
-        .push_maybe(self.sidebar_context_menu(menu))
+        .push_maybe(Self::sidebar_context_menu(menu))
         .push_maybe(self.sidebar_drag_tooltip(menu))
         .into()
     }

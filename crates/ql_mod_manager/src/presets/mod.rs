@@ -16,6 +16,7 @@ use zip::ZipWriter;
 
 use crate::store::{install_modpack, ModConfig, ModError, ModIndex};
 
+#[must_use]
 #[derive(Debug, Clone, Default)]
 pub struct PresetOutput {
     pub local_files: Vec<String>,
