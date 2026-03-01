@@ -1,6 +1,19 @@
 # unreleased changelog
 
-- Added a Quick Uninstall button to the Mod Store
+# TLDR;
+- Added instance folders!
+- Added shortcuts; launch the game from your taskbar in one click!
+- Many UX improvements and fixes
+
+---
+
+- Added instance folders, with drag & drop and renaming
+
+# UX
+
+- Added a quick-uninstall button to Mod Store
+- Improved new-user Welcome screen with keyboard navigation,
+  better layout and more guidance
 
 # Shortcuts
 
@@ -31,6 +44,8 @@
 - Platforms without Mojang Java now use **Azul Zulu** instead of Amazon Corretto
 
 # Fixes
+
+- Fixed context menus not closing after a click
 
 - Fixed many CurseForge concurrent downloading issues
 - Fixed QMP presets added via "Add File" in Mods menu, to not install all mods

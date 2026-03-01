@@ -3,8 +3,7 @@ use std::sync::mpsc::Sender;
 use ql_core::{
     file_utils, info,
     json::{instance_config::VersionInfo, InstanceConfigJson, Manifest, VersionDetails},
-    pt, DownloadProgress, IntoIoError, IntoJsonError, IntoStringError, ListEntry, Loader,
-    LAUNCHER_DIR,
+    pt, DownloadProgress, IntoIoError, IntoJsonError, IntoStringError, ListEntry, LAUNCHER_DIR,
 };
 
 use crate::ServerError;
@@ -97,32 +96,8 @@ async fn write_config(
     server_dir: &std::path::Path,
     version_json: &VersionDetails,
 ) -> Result<(), ServerError> {
-    #[allow(deprecated)]
-    let server_config = InstanceConfigJson {
-        mod_type: Loader::Vanilla,
-        java_override_version: None,
-        java_override: None,
-        ram_in_mb: 2048,
-        enable_logger: Some(true),
-        java_args: None,
-        game_args: None,
-
-        is_server: Some(true),
-        is_classic_server: is_classic_server.then_some(true),
-
-        omniarchive: None,
-        close_on_start: None,
-        global_settings: None,
-        global_java_args_enable: None,
-        custom_jar: None,
-        pre_launch_prefix_mode: None,
-        mod_type_info: None,
-
-        version_info: Some(VersionInfo {
-            is_special_lwjgl3: version_json.id.ends_with("-lwjgl3"),
-        }),
-        main_class_override: None,
-    };
+    let server_config =
+        InstanceConfigJson::new(true, is_classic_server, VersionInfo::new(&version_json.id));
     let server_config_path = server_dir.join("config.json");
     tokio::fs::write(
         &server_config_path,

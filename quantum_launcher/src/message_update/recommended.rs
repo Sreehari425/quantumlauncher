@@ -70,9 +70,7 @@ impl Launcher {
 
                     return Task::perform(
                         ql_mod_manager::store::download_mods_bulk(ids, instance, Some(sender)),
-                        |n| {
-                            Message::RecommendedMods(RecommendedModMessage::DownloadEnd(n.strerr()))
-                        },
+                        |n| RecommendedModMessage::DownloadEnd(n.strerr()).into(),
                     );
                 }
             }
@@ -125,7 +123,7 @@ impl Launcher {
                 loader,
                 sender,
             ),
-            |n| Message::RecommendedMods(RecommendedModMessage::ModCheckResult(n.strerr())),
+            |n| RecommendedModMessage::ModCheckResult(n.strerr()).into(),
         )
     }
 }

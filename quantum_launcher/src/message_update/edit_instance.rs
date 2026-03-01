@@ -12,8 +12,8 @@ use crate::{
     message_handler::format_memory,
     state::{
         dir_watch, get_entries, CustomJarState, EditInstanceMessage, LaunchTab, Launcher,
-        MenuCreateInstance, MenuEditInstance, MenuLaunch, Message, ProgressBar, State,
-        ADD_JAR_NAME, NONE_JAR_NAME, OPEN_FOLDER_JAR_NAME, REMOVE_JAR_NAME,
+        MainMenuMessage, MenuCreateInstance, MenuEditInstance, MenuLaunch, Message, ProgressBar,
+        State, ADD_JAR_NAME, NONE_JAR_NAME, OPEN_FOLDER_JAR_NAME, REMOVE_JAR_NAME,
     },
 };
 
@@ -292,7 +292,7 @@ impl Launcher {
                 if let Err(err) = t {
                     Message::Error(err)
                 } else {
-                    Message::MChangeTab(LaunchTab::Edit)
+                    MainMenuMessage::ChangeTab(LaunchTab::Edit).into()
                 }
             },
         )
@@ -358,10 +358,8 @@ impl Launcher {
             *menu
                 .config
                 .custom_jar
-                .get_or_insert_with(CustomJarConfig::default) = CustomJarConfig {
-                name: file_name.clone(),
-                autoset_main_class: false,
-            };
+                .get_or_insert_with(CustomJarConfig::default) =
+                CustomJarConfig::new(file_name.clone());
 
             Task::perform(
                 tokio::fs::copy(path, LAUNCHER_DIR.join("custom_jars").join(file_name)),

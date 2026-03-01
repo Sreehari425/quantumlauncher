@@ -61,9 +61,7 @@ impl Launcher {
                         .save_file(),
                     |f| {
                         if let Some(f) = f {
-                            Message::Shortcut(ShortcutMessage::SaveCustomPicked(
-                                f.path().to_owned(),
-                            ))
+                            ShortcutMessage::SaveCustomPicked(f.path().to_owned()).into()
                         } else {
                             Message::Nothing
                         }
@@ -74,7 +72,7 @@ impl Launcher {
                 let shortcut = self.shortcut_prepare()?;
                 return Ok(Task::perform(
                     async move { shortcut.generate(&path).await },
-                    |n| Message::Shortcut(ShortcutMessage::Done(n.strerr())),
+                    |n| ShortcutMessage::Done(n.strerr()).into(),
                 ));
             }
             ShortcutMessage::SaveMenu => {
@@ -170,7 +168,7 @@ impl Launcher {
 fn shortcut_menu(shortcut: Shortcut) -> Task<Message> {
     Task::perform(
         async move { shortcut.generate_to_applications().await },
-        |n| Message::Shortcut(ShortcutMessage::Done(n.strerr())),
+        |n| ShortcutMessage::Done(n.strerr()).into(),
     )
 }
 
@@ -180,6 +178,6 @@ fn shortcut_desktop(shortcut: &Shortcut) -> Result<Task<Message>, String> {
     let s = shortcut.clone();
     Ok(Task::perform(
         async move { s.generate(&desktop).await },
-        |n| Message::Shortcut(ShortcutMessage::Done(n.strerr())),
+        |n| ShortcutMessage::Done(n.strerr()).into(),
     ))
 }

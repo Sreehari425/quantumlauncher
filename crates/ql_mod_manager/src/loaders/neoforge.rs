@@ -75,11 +75,7 @@ pub async fn install(
     change_instance_type(
         &instance_dir,
         Loader::Neoforge,
-        Some(ModTypeInfo {
-            version: Some(neoforge_version),
-            backend_implementation: None,
-            optifine_jar: None,
-        }),
+        Some(ModTypeInfo::new_regular(neoforge_version)),
     )
     .await?;
 

@@ -224,7 +224,7 @@ impl ForgeInstaller {
         self.run_installer_create_garbage_files().await?;
 
         let java_version = if cfg!(target_os = "windows") {
-            // WTF: No clue why this is needed but it won't work without this.
+            // WTF: No clue why this is needed, but it won't work without this.
             // Hey, that's what you get for not using PrismLauncher!
             self.version_json
                 .javaVersion
@@ -586,11 +586,7 @@ pub async fn install_client(
     change_instance_type(
         &installer.instance_dir,
         Loader::Forge,
-        Some(ModTypeInfo {
-            version: Some(installer.version.clone()),
-            backend_implementation: None,
-            optifine_jar: None,
-        }),
+        Some(ModTypeInfo::new_regular(installer.version)),
     )
     .await?;
 
