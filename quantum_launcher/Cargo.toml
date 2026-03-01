@@ -56,7 +56,6 @@ frostmark = { git = "https://github.com/Mrmayman/frostmark.git", rev = "94a4e904
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
-chrono.workspace = true
 cfg-if.workspace = true
 semver.workspace = true
 
@@ -73,7 +72,6 @@ dirs.workspace = true
 
 paste = "1" # icon widget macro
 rfd.workspace = true # file picker
-urlencoding = "2" # URL encoding in log uploads
 constcat = "0.6"
 rand = "0.9"
 

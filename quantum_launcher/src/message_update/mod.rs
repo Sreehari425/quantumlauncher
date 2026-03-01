@@ -841,13 +841,13 @@ impl Launcher {
                     menu.is_uploading_mclogs = true;
                 }
 
-                let instance = self.instance();
+                let instance = self.selected_instance.clone().unwrap();
 
-                if let Some(log) = self.logs.get(instance) {
+                if let Some(log) = self.logs.get(&instance) {
                     let log_content = log.log.join("");
                     if !log_content.trim().is_empty() {
                         return Task::perform(
-                            crate::mclog_upload::upload_log(log_content),
+                            crate::mclog_upload::upload_log(log_content, instance),
                             |res| GameLogMessage::Uploaded(res.strerr()).into(),
                         );
                     }

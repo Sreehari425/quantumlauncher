@@ -4124,7 +4124,6 @@ name = "quantum_launcher"
 version = "0.5.0"
 dependencies = [
  "cfg-if",
- "chrono",
  "clap",
  "constcat",
  "dark-light",
@@ -4150,7 +4149,6 @@ dependencies = [
  "serde_json",
  "terminal_size",
  "tokio",
- "urlencoding",
  "windows 0.61.3",
 ]
 
