@@ -201,7 +201,7 @@ jobs:
     needs: [dist, build-appimages]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
 
       - name: Determine Release Metadata
         id: meta
