@@ -31,18 +31,22 @@ pub struct LwjglVersionList {
 pub struct LwjglVersion(pub Option<String>);
 
 impl LwjglVersion {
+    #[must_use]
     pub fn default_from_game() -> Self {
         Self(None)
     }
 
+    #[must_use]
     pub fn custom(version: String) -> Self {
         Self(Some(version))
     }
 
+    #[must_use]
     pub fn is_default(&self) -> bool {
         self.0.is_none()
     }
 
+    #[must_use]
     pub fn as_str(&self) -> Option<&str> {
         self.0.as_deref()
     }
@@ -64,12 +68,15 @@ impl Default for LwjglVersion {
 }
 
 /// Check if a version string represents LWJGL 3.x
+#[must_use]
 pub fn is_lwjgl3(version: &str) -> bool {
     version.starts_with('3')
 }
 
 /// Check if a version string represents LWJGL version before 3.3.2
-/// lwjgl-freetype module was first released in 3.3.2
+///
+/// `lwjgl-freetype` module was first released in 3.3.2
+#[must_use]
 pub fn is_before_332(version: &str) -> bool {
     if !is_lwjgl3(version) {
         // LWJGL 2.x is always before 3.3.2
@@ -112,8 +119,10 @@ pub fn is_before_332(version: &str) -> bool {
 }
 
 /// Get the Maven group ID for the given LWJGL version
+///
 /// LWJGL 3.x: "org.lwjgl"
 /// LWJGL 2.x: "org.lwjgl.lwjgl"
+#[must_use]
 pub fn get_group_id(version: &str) -> &'static str {
     if is_lwjgl3(version) {
         "org.lwjgl"
@@ -123,7 +132,9 @@ pub fn get_group_id(version: &str) -> &'static str {
 }
 
 /// Get the native classifier for the current platform
+///
 /// Returns the Maven classifier used for native libraries (e.g., "natives-linux-arm64")
+#[must_use]
 pub fn get_native_classifier() -> Option<&'static str> {
     #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
     return Some("natives-linux");
@@ -136,6 +147,9 @@ pub fn get_native_classifier() -> Option<&'static str> {
 
     #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
     return Some("natives-windows");
+
+    #[cfg(all(target_os = "windows", target_arch = "x86"))]
+    return Some("natives-windows-32");
 
     #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
     return Some("natives-windows-arm64");
@@ -154,6 +168,7 @@ pub fn get_native_classifier() -> Option<&'static str> {
         all(target_os = "linux", target_arch = "aarch64"),
         all(target_os = "linux", target_arch = "arm"),
         all(target_os = "windows", target_arch = "x86_64"),
+        all(target_os = "windows", target_arch = "x86"),
         all(target_os = "windows", target_arch = "aarch64"),
         all(target_os = "macos", target_arch = "x86_64"),
         all(target_os = "macos", target_arch = "aarch64"),
@@ -163,7 +178,9 @@ pub fn get_native_classifier() -> Option<&'static str> {
 }
 
 /// Get the native classifier for LWJGL 2.x
+///
 /// LWJGL 2.x uses slightly different naming (e.g., "natives-osx" instead of "natives-macos")
+#[must_use]
 pub fn get_native_classifier_lwjgl2() -> Option<&'static str> {
     #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
     return Some("natives-linux");
@@ -203,6 +220,7 @@ pub fn get_native_classifier_lwjgl2() -> Option<&'static str> {
 }
 
 /// Build Maven Central URL for fetching version metadata
+#[must_use]
 pub fn build_lwjgl_maven_metadata_url(version: &str) -> String {
     let group_id = get_group_id(version);
     let group_path = group_id.replace('.', "/");
@@ -217,10 +235,12 @@ pub fn build_lwjgl_maven_metadata_url(version: &str) -> String {
 }
 
 /// Build Maven Central URL for downloading a specific LWJGL artifact
+///
 /// Examples:
-/// - LWJGL 3.x: https://repo1.maven.org/maven2/org/lwjgl/lwjgl-opengl/3.3.1/lwjgl-opengl-3.3.1.jar
-/// - LWJGL 3.x natives: https://repo1.maven.org/maven2/org/lwjgl/lwjgl-opengl/3.3.1/lwjgl-opengl-3.3.1-natives-linux-arm64.jar
-/// - LWJGL 2.x: https://repo1.maven.org/maven2/org/lwjgl/lwjgl/lwjgl/2.9.4/lwjgl-2.9.4.jar
+/// - LWJGL 3.x: <https://repo1.maven.org/maven2/org/lwjgl/lwjgl-opengl/3.3.1/lwjgl-opengl-3.3.1.jar>
+/// - LWJGL 3.x natives: <https://repo1.maven.org/maven2/org/lwjgl/lwjgl-opengl/3.3.1/lwjgl-opengl-3.3.1-natives-linux-arm64.jar>
+/// - LWJGL 2.x: <https://repo1.maven.org/maven2/org/lwjgl/lwjgl/lwjgl/2.9.4/lwjgl-2.9.4.jar>
+#[must_use]
 pub fn build_lwjgl_maven_url(version: &str, module: &str, classifier: Option<&str>) -> String {
     let group_id = get_group_id(version);
     let group_path = group_id.replace('.', "/");
@@ -250,9 +270,11 @@ pub fn build_lwjgl_maven_url(version: &str, module: &str, classifier: Option<&st
 }
 
 /// Build local library path for a LWJGL artifact
+///
 /// Examples:
 /// - libraries/org/lwjgl/lwjgl/3.3.1/lwjgl-3.3.1.jar
 /// - libraries/org/lwjgl/lwjgl-opengl/3.3.1/lwjgl-opengl-3.3.1-natives-linux-arm64.jar
+#[must_use]
 pub fn build_lwjgl_library_path(version: &str, module: &str, classifier: Option<&str>) -> String {
     let group_id = get_group_id(version);
     let group_path = group_id.replace('.', "/");

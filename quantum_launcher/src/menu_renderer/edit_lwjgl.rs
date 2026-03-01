@@ -45,18 +45,14 @@ impl MenuEditLwjgl {
                             widget::Space::with_height(10),
                             widget::row![
                                 widget::button(widget::text("I know what I am doing").size(14))
-                                    .on_press_maybe(if !is_applying {
-                                        Some(Message::EditLwjgl(EditLwjglMessage::MismatchProceed))
-                                    } else {
-                                        None
-                                    }),
+                                    .on_press_maybe((!is_applying).then_some(Message::EditLwjgl(
+                                        EditLwjglMessage::MismatchProceed
+                                    ))),
                                 widget::Space::with_width(10),
                                 widget::button(widget::text("Revert").size(14)).on_press_maybe(
-                                    if !is_applying {
-                                        Some(Message::EditLwjgl(EditLwjglMessage::MismatchRevert))
-                                    } else {
-                                        None
-                                    }
+                                    (!is_applying).then_some(Message::EditLwjgl(
+                                        EditLwjglMessage::MismatchRevert
+                                    ))
                                 ),
                             ]
                             .align_y(Alignment::Center),

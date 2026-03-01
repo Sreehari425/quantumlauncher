@@ -696,23 +696,28 @@ fn get_sidebar_new_button(
 fn view_info_message(
     menu: &'_ MenuLaunch,
 ) -> Option<widget::Container<'_, Message, LauncherTheme>> {
-    (!menu.message.is_empty()).then_some(widget::container(
-        row![
-            widget::button(
-                icons::close()
-                    .style(|t: &LauncherTheme| t.style_text(Color::Mid))
-                    .size(12)
-            )
-            .padding(0)
-            .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatExtraDark))
-            .on_press(Message::MScreenOpen {
-                message: None,
-                clear_selection: false,
-                is_server: Some(menu.is_viewing_server)
-            }),
-            widget::text(&menu.message).size(12).style(tsubtitle),
-        ]
-        .spacing(16)
-        .align_y(Alignment::Center),
-    ))
+    (!menu.message.is_empty()).then_some(
+        widget::container(
+            row![
+                widget::button(
+                    icons::close()
+                        .style(|t: &LauncherTheme| t.style_text(Color::Mid))
+                        .size(12)
+                )
+                .padding(0)
+                .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatExtraDark))
+                .on_press(Message::MScreenOpen {
+                    message: None,
+                    clear_selection: false,
+                    is_server: Some(menu.is_viewing_server)
+                }),
+                widget::text(&menu.message).size(12).style(tsubtitle),
+            ]
+            .spacing(16)
+            .align_y(Alignment::Center),
+        )
+        .width(Length::Fill)
+        .padding(10)
+        .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark)),
+    )
 }
