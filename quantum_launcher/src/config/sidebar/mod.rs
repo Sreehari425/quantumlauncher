@@ -50,11 +50,12 @@ impl SidebarConfig {
                 }
             }
 
+            let index = index?;
             let folder = SidebarNode::new_folder(name.to_owned());
             let id = folder
                 .get_folder_id()
                 .expect("should be folder, not instance");
-            f.children.insert(index?, folder);
+            f.children.insert(index, folder);
             Some(id)
         }
 
@@ -172,22 +173,29 @@ impl SidebarConfig {
         None
     }
 
-    // Look, it's 11 PM as I type this. Instances are duplicating themselves.
-    // I don't know what causes it but this should sidestep the issue.
+    // I've tried fixing an entry duplication bug
+    // (most likely caused by an incorrect `contains_instance` implementation).
+    // But never can be too safe!
     pub fn fix(&mut self) {
         fn visit(n: &mut SidebarNode, visited: &mut HashSet<SidebarSelection>) {
             if let SidebarNodeKind::Folder(f) = &mut n.kind {
                 f.children.retain_mut(|n| {
+                    if !visited.insert(SidebarSelection::from_node(n)) {
+                        return false;
+                    }
                     visit(n, visited);
-                    visited.insert(SidebarSelection::from_node(n))
+                    true
                 });
             }
         }
 
         let mut visited = HashSet::new();
         self.list.retain_mut(|n| {
+            if !visited.insert(SidebarSelection::from_node(n)) {
+                return false;
+            }
             visit(n, &mut visited);
-            visited.insert(SidebarSelection::from_node(n))
+            true
         });
     }
 }
@@ -209,7 +217,7 @@ impl SidebarNode {
             }
             SidebarNodeKind::Folder(f) => {
                 for child in &f.children {
-                    if !child.is_folder() && child.contains_instance(name, instance_kind) {
+                    if child.contains_instance(name, instance_kind) {
                         return true;
                     }
                 }
@@ -225,10 +233,6 @@ impl SidebarNode {
             return false;
         }
         true
-    }
-
-    pub fn is_folder(&self) -> bool {
-        matches!(self.kind, SidebarNodeKind::Folder { .. })
     }
 
     pub fn new_folder(name: String) -> Self {

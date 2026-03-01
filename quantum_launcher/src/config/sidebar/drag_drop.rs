@@ -26,6 +26,7 @@ impl SidebarConfig {
             .enumerate()
             .find(|(_, n)| **n == location.sel)
         {
+            // Inserting directly in top level of list
             if let SidebarNodeKind::Folder(f) = &mut folder.kind {
                 if location.offset == SDragTo::Inside {
                     f.children.push(yoinked);
@@ -36,6 +37,8 @@ impl SidebarConfig {
             self.list.insert(index + location.offset as usize, yoinked);
             return;
         }
+
+        // Inserting inside folder
         for item in &mut self.list {
             if item.insert_at(&yoinked, &location) {
                 return;
@@ -109,10 +112,13 @@ impl SidebarNode {
             .enumerate()
             .find(|(_, n)| **n == location.sel)
         {
-            if let SidebarNodeKind::Folder(f) = &mut folder.kind {
-                if location.offset == SDragTo::Inside {
+            if location.offset == SDragTo::Inside {
+                if let SidebarNodeKind::Folder(f) = &mut folder.kind {
                     f.children.push(node.clone());
+                    f.is_expanded = true;
                     return true;
+                } else {
+                    debug_assert!(false, "can't drop item \"inside\" an instance");
                 }
             }
             f.children.insert(index + offset, node.clone());

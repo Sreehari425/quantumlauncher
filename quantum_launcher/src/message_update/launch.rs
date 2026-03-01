@@ -1,6 +1,8 @@
 use iced::Task;
+use ql_core::InstanceSelection;
 
 use crate::{
+    config::sidebar::SidebarSelection,
     message_handler::{SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT},
     state::{
         AutoSaveKind, LaunchModal, LaunchTab, Launcher, MainMenuMessage, MenuLaunch, Message,
@@ -12,9 +14,24 @@ impl Launcher {
     pub fn update_main_menu(&mut self, msg: MainMenuMessage) -> Task<Message> {
         match msg {
             MainMenuMessage::ChangeTab(tab) => {
+                // UX tweak: dragging instance to tab will open tab for that instance
+                if let State::Launch(MenuLaunch { modal, .. }) = &mut self.state {
+                    if let Some(LaunchModal::SDragging {
+                        being_dragged: SidebarSelection::Instance(name, kind),
+                        ..
+                    }) = modal
+                    {
+                        if self.selected_instance.is_none() {
+                            self.selected_instance =
+                                Some(InstanceSelection::new(name, kind.is_server()))
+                        }
+                    }
+                    *modal = None;
+                }
+
                 self.load_edit_instance(Some(tab));
-                if let LaunchTab::Log = tab {
-                    self.load_logs(self.instance().clone());
+                if let (LaunchTab::Log, Some(instance)) = (tab, self.selected_instance.clone()) {
+                    self.load_logs(instance);
                 }
             }
             MainMenuMessage::Modal(modal) => {
