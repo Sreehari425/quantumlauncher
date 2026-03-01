@@ -175,7 +175,7 @@ jobs:
 
       - name: Upload patch
         if: github.event.inputs.fix == 'make a patch' || github.event.inputs.fix == 'make a PR'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: clippy-patch-${{ matrix.build }}
           path: clippy-${{ matrix.build }}.patch
@@ -221,7 +221,7 @@ jobs:
 
       - name: Upload Unified Patch
         if: github.event.inputs.fix == 'make a patch' && env.has_changes == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: combined-clippy-patch
           path: combined-clippy.patch
