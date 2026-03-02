@@ -188,7 +188,7 @@ jobs:
             cp "target/${{ matrix.target }}/$PROFILE/${{ env.BIN_NAME }}" "dist/"
           fi
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: quantum-launcher-${{ matrix.final_name }}
           path: dist
@@ -253,7 +253,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload as artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: artifacts
           path: dist/*
