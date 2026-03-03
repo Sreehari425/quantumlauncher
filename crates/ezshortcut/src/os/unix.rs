@@ -76,7 +76,7 @@ Categories=Game;",
             write_file(&path.join(shortcut.get_filename()), content).await?;
         }
         _ => write_file(path, content).await?,
-    };
+    }
     Ok(())
 }
 

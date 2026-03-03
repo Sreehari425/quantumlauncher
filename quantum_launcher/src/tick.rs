@@ -4,7 +4,6 @@ use std::{
     sync::Arc,
 };
 
-use chrono::Datelike;
 use iced::{widget::text_editor, Task};
 use ql_core::{
     constants::OS_NAME, json::InstanceConfigJson, InstanceSelection, IntoIoError, IntoJsonError,
@@ -110,7 +109,7 @@ impl Launcher {
                     let selected_instance = self.selected_instance.clone().unwrap();
                     return Task::perform(
                         async move { (jarmods.save(&selected_instance).await.strerr(), jarmods) },
-                        |n| Message::ManageJarMods(ManageJarModsMessage::AutosaveFinished(n)),
+                        |n| ManageJarModsMessage::AutosaveFinished(n).into(),
                     );
                 }
             }
@@ -188,7 +187,7 @@ impl Launcher {
             return;
         };
         let cmd = Task::perform(Launcher::save_config(instance, config), |n| {
-            Message::EditInstance(EditInstanceMessage::ConfigSaved(n.strerr()))
+            EditInstanceMessage::ConfigSaved(n.strerr()).into()
         });
         commands.push(cmd);
     }
@@ -200,32 +199,24 @@ impl Launcher {
         log_state: &mut Option<LogState>,
     ) {
         while let Some(message) = process.receiver.as_ref().and_then(|n| n.try_recv().ok()) {
-            let message = message.to_string().replace('\t', &" ".repeat(8));
+            let message = message.to_string();
 
-            let log_start = || {
-                vec![
-                    format!(
-                        "{} ({})\n",
+            logs.entry(instance.clone())
+                .or_insert_with(|| {
+                    let log_start = format!(
+                        "[00:00:00] [launcher/INFO] {} (OS: {OS_NAME})\n",
                         if instance.is_server() {
                             "Starting Minecraft server"
                         } else {
                             "Launching Minecraft"
                         },
-                        Self::get_current_date_formatted()
-                    ),
-                    format!("OS: {OS_NAME}\n"),
-                ]
-            };
+                    );
 
-            logs.entry(instance.clone())
-                .or_insert_with(|| {
-                    let mut text = log_start().join("\n");
-                    text.push('\n');
                     *log_state = Some(LogState {
-                        content: text_editor::Content::with_text(&text),
+                        content: text_editor::Content::with_text(&log_start),
                     });
                     InstanceLog {
-                        log: log_start(),
+                        log: vec![log_start],
                         has_crashed: false,
                         command: String::new(),
                     }
@@ -235,19 +226,6 @@ impl Launcher {
 
             update_log_render_state(log_state.as_mut(), message);
         }
-    }
-
-    fn get_current_date_formatted() -> String {
-        // Get the current date and time in UTC
-        let now = chrono::Local::now();
-
-        // Extract the day, month, and year
-        let day = now.day();
-        let month = now.format("%B").to_string(); // Full month name (e.g., "September")
-        let year = now.year();
-
-        // Return the formatted string
-        format!("{day} {month} {year}")
     }
 
     async fn save_config(
@@ -272,7 +250,7 @@ impl MenuModsDownload {
     pub fn tick(selected_instance: InstanceSelection) -> Task<Message> {
         Task::perform(
             async move { ModIndex::load(&selected_instance).await },
-            |n| Message::InstallMods(InstallModsMessage::IndexUpdated(n.strerr())),
+            |n| InstallModsMessage::IndexUpdated(n.strerr()).into(),
         )
     }
 }
@@ -356,10 +334,11 @@ impl MenuCreateInstance {
     }
 }
 
-fn update_log_render_state(log_state: Option<&mut LogState>, message: String) {
+fn update_log_render_state(log_state: Option<&mut LogState>, mut message: String) {
     if let Some(state) = log_state {
         use iced::widget::text_editor::{Action, Edit, Motion};
         // TODO: preserve selection
+        message = message.replace('\t', "    ");
         let content = &mut state.content;
         content.perform(Action::Move(Motion::DocumentEnd));
         content.perform(Action::Edit(Edit::Paste(Arc::new(message))));

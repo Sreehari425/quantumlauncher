@@ -25,6 +25,7 @@ mod mods;
 mod onboarding;
 mod settings;
 mod shortcuts;
+mod sidebar;
 
 pub use onboarding::changelog;
 
@@ -43,11 +44,20 @@ const PADDING_NOT_BOTTOM: iced::Padding = iced::Padding {
     right: 10.0,
 };
 
-fn ctx_button(e: &'_ str) -> widget::Button<'_, Message, LauncherTheme> {
-    widget::button(widget::text(e).size(13))
-        .width(Length::Fill)
-        .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatDark))
-        .padding(2)
+const CTXI_SIZE: u16 = 10;
+
+fn ctx_button<'a>(
+    icon: widget::Text<'a, LauncherTheme>,
+    e: &'a str,
+) -> widget::Button<'a, Message, LauncherTheme> {
+    widget::button(
+        row![icon, widget::text(e).size(13)]
+            .align_y(Alignment::Center)
+            .spacing(10),
+    )
+    .width(Length::Fill)
+    .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatDark))
+    .padding(2)
 }
 
 pub fn checkered_list<'a, Item: Into<Element<'a>>>(
@@ -219,12 +229,24 @@ fn sidebar<'a>(
             widget::scrollable(widget::column(children))
                 .style(LauncherTheme::style_scrollable_flat_extra_dark)
                 .height(Length::Fill)
-                .id(iced::widget::scrollable::Id::new(id))
+                .id(widget::scrollable::Id::new(id))
         ]
         .spacing(10),
     )
     .width(190)
     .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark))
+}
+
+fn offset<'a>(
+    e: impl Into<Element<'a>>,
+    x: impl Into<Length>,
+    y: impl Into<Length>,
+) -> Element<'a> {
+    row![
+        widget::Space::with_width(x),
+        column![widget::Space::with_height(y), e.into()]
+    ]
+    .into()
 }
 
 fn dots(tick_timer: usize) -> String {
@@ -352,17 +374,15 @@ impl MenuCurseforgeManualDownload {
 
             "Warning: Ignoring this may lead to crashes!",
             row![
-                widget::button(widget::text("+ Select above downloaded files").size(14)).on_press(Message::ManageMods(ManageModsMessage::AddFile(self.delete_mods))),
+                widget::button(widget::text("+ Select above downloaded files").size(14)).on_press(ManageModsMessage::AddFile(self.delete_mods).into()),
                 widget::button(widget::text("Continue").size(14)).on_press(if self.is_store {
-                    Message::InstallMods(InstallModsMessage::Open)
+                    InstallModsMessage::Open.into()
                 } else {
-                    Message::ManageMods(ManageModsMessage::ScreenOpenWithoutUpdate)
+                    ManageModsMessage::ScreenOpenWithoutUpdate.into()
                 }),
                 widget::checkbox("Delete files when done", self.delete_mods)
                     .text_size(14)
-                    .on_toggle(|t|
-                        Message::ManageMods(ManageModsMessage::CurseforgeManualToggleDelete(t))
-                    )
+                    .on_toggle(|t| ManageModsMessage::CurseforgeManualToggleDelete(t).into())
             ].spacing(5).align_y(Alignment::Center).wrap()
         ]
             .padding(10)

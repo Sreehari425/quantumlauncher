@@ -82,11 +82,11 @@ impl MenuShortcut {
             widget::container(
                 column![
                     widget::checkbox(ACTION_BUTTON_MENU, self.add_to_menu)
-                        .on_toggle(|t| Message::Shortcut(ShortcutMessage::ToggleAddToMenu(t)))
+                        .on_toggle(|t| ShortcutMessage::ToggleAddToMenu(t).into())
                         .size(12)
                         .text_size(12),
                     widget::checkbox("Add to Desktop", self.add_to_desktop)
-                        .on_toggle(|t| Message::Shortcut(ShortcutMessage::ToggleAddToDesktop(t)))
+                        .on_toggle(|t| ShortcutMessage::ToggleAddToDesktop(t).into())
                         .size(12)
                         .text_size(12),
                     widget::Space::with_height(4),
@@ -96,7 +96,7 @@ impl MenuShortcut {
                             .on_press_maybe(
                                 disabled_tooltip
                                     .is_none()
-                                    .then_some(Message::Shortcut(ShortcutMessage::SaveMenu))
+                                    .then_some(ShortcutMessage::SaveMenu.into())
                             )
                     ),
                 ]
@@ -117,7 +117,7 @@ impl MenuShortcut {
                         .on_press_maybe(
                             disabled_tooltip
                                 .is_none()
-                                .then_some(Message::Shortcut(ShortcutMessage::SaveCustom))
+                                .then_some(ShortcutMessage::SaveCustom.into())
                         )
                 ),
             ])
@@ -159,20 +159,20 @@ impl MenuShortcut {
             "Name:",
             widget::text_input("(Required)", &self.shortcut.name)
                 .size(14)
-                .on_input(|n| Message::Shortcut(ShortcutMessage::EditName(n)))
+                .on_input(|n| ShortcutMessage::EditName(n).into())
         )]
         .push_maybe(SHOW_DESC.then(|| {
             ifield(
                 "Description:",
                 widget::text_input("Leave blank for none", &self.shortcut.description)
                     .size(14)
-                    .on_input(|n| Message::Shortcut(ShortcutMessage::EditDescription(n))),
+                    .on_input(|n| ShortcutMessage::EditDescription(n).into()),
             )
         }))
         .push(ifield(
             "Account:",
             row![widget::pick_list(accounts, Some(&self.account), |n| {
-                Message::Shortcut(ShortcutMessage::AccountSelected(n))
+                ShortcutMessage::AccountSelected(n).into()
             })
             .text_size(14)
             .width(Length::Fill)]
@@ -181,7 +181,7 @@ impl MenuShortcut {
                     widget::text_input("Enter username...", &self.account_offline)
                         .size(14)
                         .width(Length::Fill)
-                        .on_input(|n| Message::Shortcut(ShortcutMessage::AccountOffline(n))),
+                        .on_input(|n| ShortcutMessage::AccountOffline(n).into()),
                 ),
             )
             .spacing(5),
@@ -198,5 +198,5 @@ fn open_folder_button() -> widget::Button<'static, Message, LauncherTheme> {
             .spacing(10),
     )
     .width(FOLDER_BUTTON_WIDTH)
-    .on_press(Message::Shortcut(ShortcutMessage::OpenFolder))
+    .on_press(ShortcutMessage::OpenFolder.into())
 }

@@ -604,12 +604,10 @@ pub async fn extract_zip_archive<
             archive.extract_unwrapped_root_dir(extract_to, zip::read::root_dir_common_filter)
         })
         .await
-        .unwrap()?;
     } else {
-        tokio::task::spawn_blocking(move || archive.extract(extract_to))
-            .await
-            .unwrap()?;
+        tokio::task::spawn_blocking(move || archive.extract(extract_to)).await
     }
+    .map_err(|n| zip::result::ZipError::Io(n.into()))??;
 
     Ok(())
 }

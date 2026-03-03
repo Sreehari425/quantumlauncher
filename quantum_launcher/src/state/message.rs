@@ -1,6 +1,7 @@
 use std::{collections::HashSet, path::PathBuf, process::ExitStatus};
 
 use crate::{
+    config::sidebar::{FolderId, SDragLocation, SidebarSelection},
     message_handler::ForgeKind,
     state::{LaunchModal, MenuEditModsModal},
     stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
@@ -41,7 +42,7 @@ pub enum InstallFabricMessage {
 pub enum InstallPaperMessage {
     End(Res),
     VersionSelected(PaperVersion),
-    VersionsLoaded(Res<Vec<ql_mod_manager::loaders::paper::PaperVersion>>),
+    VersionsLoaded(Res<Vec<PaperVersion>>),
     ButtonClicked,
     ScreenOpen,
 }
@@ -355,6 +356,30 @@ pub enum GameLogMessage {
 }
 
 #[derive(Debug, Clone)]
+pub enum SidebarMessage {
+    Resize(f32),
+    Scroll(f32),
+    FolderRenameConfirm,
+
+    NewFolder(Option<SidebarSelection>),
+    DeleteFolder(FolderId),
+    ToggleFolderVisibility(FolderId),
+    DragDrop(Option<SDragLocation>),
+    DragHover {
+        location: SDragLocation,
+        entered: bool,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum MainMenuMessage {
+    ChangeTab(LaunchTab),
+    Modal(Option<LaunchModal>),
+    InstanceSelected(InstanceSelection),
+    UsernameSet(String),
+}
+
+#[derive(Debug, Clone)]
 pub enum ShortcutMessage {
     Open,
     OpenFolder,
@@ -399,24 +424,18 @@ pub enum Message {
     EditPresets(EditPresetsMessage),
     ExportMods(ExportModsMessage),
     RecommendedMods(RecommendedModMessage),
-
-    LaunchInstanceSelected(InstanceSelection),
-    LaunchUsernameSet(String),
-    LaunchStart,
-    LaunchEnd(Res<LaunchedProcess>),
-    LaunchKill,
-    LaunchGameExited(Res<(ExitStatus, InstanceSelection, Option<Diagnostic>)>),
+    MainMenu(MainMenuMessage),
+    SidebarMessage(SidebarMessage),
 
     MScreenOpen {
         message: Option<String>,
         clear_selection: bool,
         is_server: Option<bool>,
     },
-    MChangeTab(LaunchTab),
-    MModal(Option<LaunchModal>),
-
-    MSidebarResize(f32),
-    MSidebarScroll(f32),
+    LaunchStart,
+    LaunchEnd(Res<LaunchedProcess>),
+    LaunchKill,
+    LaunchGameExited(Res<(ExitStatus, InstanceSelection, Option<Diagnostic>)>),
 
     DeleteInstanceMenu,
     DeleteInstance,
@@ -450,6 +469,7 @@ pub enum Message {
     CoreCleanComplete(Res),
     CoreFocusNext,
     CoreTryQuit,
+    CoreHideModal,
 
     CoreImageDownloaded(Res<ImageResult>),
 
@@ -470,3 +490,33 @@ pub enum Message {
     LicenseChangeTab(LicenseTab),
     LicenseAction(widget::text_editor::Action),
 }
+
+macro_rules! from_m {
+    ($field:ident, $t:ty) => {
+        impl From<$t> for Message {
+            fn from(value: $t) -> Self {
+                Message::$field(value)
+            }
+        }
+    };
+}
+
+from_m!(MainMenu, MainMenuMessage);
+from_m!(SidebarMessage, SidebarMessage);
+from_m!(ManageMods, ManageModsMessage);
+from_m!(ManageJarMods, ManageJarModsMessage);
+from_m!(InstallMods, InstallModsMessage);
+from_m!(InstallOptifine, InstallOptifineMessage);
+from_m!(InstallFabric, InstallFabricMessage);
+from_m!(EditPresets, EditPresetsMessage);
+from_m!(ExportMods, ExportModsMessage);
+from_m!(RecommendedMods, RecommendedModMessage);
+
+from_m!(Account, AccountMessage);
+from_m!(CreateInstance, CreateInstanceMessage);
+from_m!(EditInstance, EditInstanceMessage);
+from_m!(LauncherSettings, LauncherSettingsMessage);
+from_m!(Notes, NotesMessage);
+from_m!(GameLog, GameLogMessage);
+from_m!(Window, WindowMessage);
+from_m!(Shortcut, ShortcutMessage);

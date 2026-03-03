@@ -125,7 +125,7 @@ async fn read_log_from_stream<R: AsyncBufRead + Unpin>(
                 LogLine::Error
             } else {
                 LogLine::Message
-            }(remaining.replace('\t', "\n    ")),
+            }(remaining.replace('\t', "\n\t")),
         );
     }
 
@@ -463,11 +463,10 @@ impl Display for LogEvent {
         let date = self.get_time().unwrap_or_else(|| self.timestamp.clone());
         writeln!(
             f,
-            // "[{level}] [{date}:{thread}:{class}] {msg}",
-            "[{level}] [{date}] {msg}",
+            "[{date}] [{class}/{level}]: {msg}",
             level = self.level,
             // thread = self.thread,
-            // class = self.logger,
+            class = self.logger,
             msg = if let Some(n) = &self.message { &n } else { "" }
         )?;
         if let Some(throwable) = self.throwable.as_deref() {

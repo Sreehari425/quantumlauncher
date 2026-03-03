@@ -5,9 +5,9 @@ permissions:
   pull-requests: write
 
 on:
-  pull_request:
-    branches:
-      - main
+  # pull_request:
+  # branches:
+  # - main
   workflow_dispatch:
     inputs:
       deny_warnings:
@@ -35,7 +35,7 @@ on:
           - none
           - fix
           - make a PR
-          - make a patch 
+          - make a patch
         default: "none"
 
 env:
@@ -175,7 +175,7 @@ jobs:
 
       - name: Upload patch
         if: github.event.inputs.fix == 'make a patch' || github.event.inputs.fix == 'make a PR'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: clippy-patch-${{ matrix.build }}
           path: clippy-${{ matrix.build }}.patch
@@ -193,7 +193,7 @@ jobs:
           submodules: true
 
       - name: Download all patches
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: clippy-patch-*
           path: patches
@@ -221,7 +221,7 @@ jobs:
 
       - name: Upload Unified Patch
         if: github.event.inputs.fix == 'make a patch' && env.has_changes == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: combined-clippy-patch
           path: combined-clippy.patch

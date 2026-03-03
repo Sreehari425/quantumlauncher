@@ -283,7 +283,7 @@ impl Launcher {
             } else {
                 let (a, b) = Task::perform(
                     ql_mod_manager::store::check_for_updates(instance.clone()),
-                    |n| Message::ManageMods(ManageModsMessage::UpdateCheckResult(n.strerr())),
+                    |n| ManageModsMessage::UpdateCheckResult(n.strerr()).into(),
                 )
                 .abortable();
                 (a, Some(b.abort_on_drop()))
@@ -429,7 +429,7 @@ impl Launcher {
             let selected_instance = self.selected_instance.clone().unwrap();
             Task::perform(
                 ql_mod_manager::store::apply_updates(selected_instance, updates, Some(sender)),
-                |n| Message::ManageMods(ManageModsMessage::UpdateModsFinished(n.strerr())),
+                |n| ManageModsMessage::UpdateModsFinished(n.strerr()).into(),
             )
         } else {
             Task::none()
@@ -558,7 +558,7 @@ impl Launcher {
                 vec![path],
                 Some(sender),
             ),
-            |n| Message::ManageMods(ManageModsMessage::AddFileDone(n.strerr())),
+            |n| ManageModsMessage::AddFileDone(n.strerr()).into(),
         )
     }
 
@@ -603,7 +603,7 @@ impl Launcher {
                         instance_name,
                         Some(sender),
                     ),
-                    |n| Message::EditPresets(EditPresetsMessage::LoadComplete(n.strerr())),
+                    |n| EditPresetsMessage::LoadComplete(n.strerr()).into(),
                 )
             }
             Err(err) => {

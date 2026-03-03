@@ -112,7 +112,7 @@ pub struct CustomJarState {
 impl CustomJarState {
     pub fn load() -> Task<Message> {
         Task::perform(load_custom_jars(), |n| {
-            Message::EditInstance(EditInstanceMessage::CustomJarLoaded(n.strerr()))
+            EditInstanceMessage::CustomJarLoaded(n.strerr()).into()
         })
     }
 }

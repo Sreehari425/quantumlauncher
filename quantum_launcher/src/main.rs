@@ -72,7 +72,7 @@ mod message_handler;
 /// Handlers for "child messages".
 ///
 /// The [`Message`] enum is split into
-/// categories (like `Message::Account(AccountMessage)`).
+/// categories (like `Message::Account(AccountMessage::*)`).
 ///
 /// This module has functions for handling each of
 /// these "child messages".
@@ -137,10 +137,8 @@ impl Launcher {
 
     #[allow(clippy::unused_self)]
     fn subscription(&self) -> iced::Subscription<Message> {
-        let tick = iced::time::every(Duration::from_millis(
-            1000 / self.config.ui.unwrap_or_default().get_idle_fps(),
-        ))
-        .map(|_| Message::CoreTick);
+        let tick = iced::time::every(Duration::from_millis(1000 / self.config.c_idle_fps()))
+            .map(|_| Message::CoreTick);
         let events = iced::event::listen_with(|a, b, _| Some(Message::CoreEvent(a, b)));
 
         iced::Subscription::batch(vec![tick, events])
@@ -278,7 +276,7 @@ fn load_fonts() -> Vec<Cow<'static, [u8]>> {
 /// - If it's opened normally from GUI,
 ///   no terminal window pops up
 ///
-/// Basically Linux-default behaviour.
+/// Basically Linux-default behavior.
 #[cfg(windows)]
 fn attach_to_console() {
     use windows::Win32::System::Console::AttachConsole;

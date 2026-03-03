@@ -20,6 +20,7 @@ pub enum StyleButton {
     Flat,
     FlatDark,
     FlatExtraDark,
+    FlatExtraDarkDead,
     /// top right, top left,
     /// bottom right, bottom left
     SemiDark([bool; 4]),
@@ -41,6 +42,7 @@ impl IsFlat for StyleButton {
             StyleButton::Flat
             | StyleButton::FlatDark
             | StyleButton::FlatExtraDark
+            | StyleButton::FlatExtraDarkDead
             | StyleButton::SemiDark(_)
             | StyleButton::SemiDarkBorder(_)
             | Self::SemiExtraDark(_) => true,
@@ -53,7 +55,8 @@ impl IsFlat for StyleButton {
             | StyleButton::RoundDark
             | StyleButton::Flat
             | StyleButton::FlatDark
-            | StyleButton::FlatExtraDark => [false; 4],
+            | StyleButton::FlatExtraDark
+            | StyleButton::FlatExtraDarkDead => [false; 4],
             StyleButton::SemiDark(n) | StyleButton::SemiDarkBorder(n) | Self::SemiExtraDark(n) => {
                 *n
             }
@@ -281,23 +284,23 @@ impl widget::text_input::Catalog for LauncherTheme {
                 icon: self.get(Color::Light),
                 placeholder: self.get(Color::Mid),
                 value: self.get(Color::White),
-                selection: self.get(Color::Light),
+                selection: self.get(Color::Mid),
             },
             widget::text_input::Status::Hovered => widget::text_input::Style {
+                background: self.get_bg(Color::ExtraDark),
+                border: self.get_border(Color::Mid),
+                icon: self.get(Color::Light),
+                placeholder: self.get(Color::Mid),
+                value: self.get(Color::White),
+                selection: self.get(Color::Mid),
+            },
+            widget::text_input::Status::Focused => widget::text_input::Style {
                 background: self.get_bg(Color::Dark),
                 border: self.get_border(Color::Mid),
                 icon: self.get(Color::Light),
                 placeholder: self.get(Color::Mid),
                 value: self.get(Color::White),
-                selection: self.get(Color::Light),
-            },
-            widget::text_input::Status::Focused => widget::text_input::Style {
-                background: self.get_bg(Color::Dark),
-                border: self.get_border(Color::SecondLight),
-                icon: self.get(Color::Light),
-                placeholder: self.get(Color::Mid),
-                value: self.get(Color::White),
-                selection: self.get(Color::Light),
+                selection: self.get(Color::Mid),
             },
             widget::text_input::Status::Disabled => widget::text_input::Style {
                 background: self.get_bg(Color::ExtraDark),
@@ -305,7 +308,7 @@ impl widget::text_input::Catalog for LauncherTheme {
                 icon: self.get(Color::Light),
                 placeholder: self.get(Color::Mid),
                 value: self.get(Color::White),
-                selection: self.get(Color::Light),
+                selection: self.get(Color::Mid),
             },
         }
     }
