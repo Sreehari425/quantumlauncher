@@ -166,8 +166,6 @@ pub enum JarModError {
     Io(#[from] IoError),
     #[error("{JARMOD_ERR_PREFIX}{0}")]
     Json(#[from] JsonError),
-    #[error("{JARMOD_ERR_PREFIX}while walking through dir:\n{0}")]
-    WalkDir(#[from] walkdir::Error),
     #[error("{JARMOD_ERR_PREFIX}while stripping prefix of jarmods/tmp:\n{0}")]
     StripPrefix(#[from] StripPrefixError),
 
