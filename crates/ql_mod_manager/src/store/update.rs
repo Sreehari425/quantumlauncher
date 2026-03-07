@@ -3,7 +3,7 @@ use std::sync::mpsc::Sender;
 use chrono::DateTime;
 use ql_core::{do_jobs, info, json::VersionDetails, GenericProgress, InstanceSelection, Loader};
 
-use crate::store::get_latest_version_date;
+use crate::store::{get_latest_version_date, toggle_mods};
 
 use super::{delete_mods, download_mods_bulk, ModError, ModId, ModIndex};
 
@@ -12,9 +12,23 @@ pub async fn apply_updates(
     updates: Vec<ModId>,
     progress: Option<Sender<GenericProgress>>,
 ) -> Result<(), ModError> {
+    let disabled_mods: Vec<_> = {
+        let mod_index = ModIndex::load(&selected_instance).await?;
+        updates
+            .iter()
+            .filter_map(|n| mod_index.mods.get_key_value(&n.get_index_str()))
+            .filter(|n| !n.1.enabled)
+            .map(|n| n.0.clone())
+            .collect()
+    };
+
     // It's as simple as that!
     delete_mods(updates.clone(), selected_instance.clone()).await?;
-    download_mods_bulk(updates, selected_instance, progress).await?;
+    download_mods_bulk(updates, selected_instance.clone(), progress).await?;
+
+    // Ensure disabled mods stay disabled
+    toggle_mods(disabled_mods, selected_instance).await?;
+
     Ok(())
 }
 

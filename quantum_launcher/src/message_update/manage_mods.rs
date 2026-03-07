@@ -164,7 +164,14 @@ impl Launcher {
                         Ok(updates) => {
                             menu.available_updates = updates
                                 .into_iter()
-                                .map(|(id, title)| (id, title, true))
+                                .map(|(id, title)| {
+                                    let enabled = menu
+                                        .mods
+                                        .mods
+                                        .get(&id.get_index_str())
+                                        .is_none_or(|n| n.enabled);
+                                    (id, title, enabled)
+                                })
                                 .collect();
                         }
                         Err(err) => {

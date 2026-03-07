@@ -16,6 +16,7 @@
   better layout and more guidance
 - Higher memory allocation values (upto 32 GB) now supported in Edit tab
   - Also added manual input, alongside slider
+- Disabled mods now stay disabled when updating
 
 # Shortcuts
 
