@@ -3,7 +3,8 @@ use ql_core::{json::InstanceConfigJson, InstanceSelection, IntoStringError, Json
 use ql_mod_manager::store::{RecommendedMod, RECOMMENDED_MODS};
 
 use crate::state::{
-    Launcher, MenuRecommendedMods, Message, ProgressBar, RecommendedModMessage, State,
+    Launcher, MenuCurseforgeManualDownload, MenuRecommendedMods, Message, ProgressBar,
+    RecommendedModMessage, State,
 };
 
 impl Launcher {
@@ -74,20 +75,18 @@ impl Launcher {
                     );
                 }
             }
-            RecommendedModMessage::DownloadEnd(result) => {
-                match result {
-                    Ok(mods) => {
-                        // If any restrictive mods ended up in our
-                        // official download list, that would be a major
-                        // skill issue from our end.
-                        // No need for manual download UI, such mods
-                        // don't deserve to be recommended anyway.
-                        debug_assert!(mods.is_empty());
+            RecommendedModMessage::DownloadEnd(result) => match result {
+                Ok(not_allowed) => {
+                    if not_allowed.is_empty() {
                         return self.go_to_edit_mods_menu();
                     }
-                    Err(err) => self.set_error(err),
+                    self.state = State::CurseforgeManualDownload(MenuCurseforgeManualDownload {
+                        not_allowed,
+                        delete_mods: true,
+                    });
                 }
-            }
+                Err(err) => self.set_error(err),
+            },
         }
         Task::none()
     }
