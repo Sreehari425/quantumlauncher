@@ -286,6 +286,19 @@ impl Launcher {
                     return menu.scroll_fix();
                 }
             }
+            ManageModsMessage::ToggleOne(id) => {
+                let instance_name = self.selected_instance.clone().unwrap();
+                let id = id.get_index_str();
+                if let State::EditMods(menu) = &mut self.state {
+                    if let Some(m) = menu.mods.mods.get_mut(&id) {
+                        m.enabled = !m.enabled;
+                    }
+                }
+                return Task::perform(
+                    ql_mod_manager::store::toggle_mods(vec![id], instance_name),
+                    |n| ManageModsMessage::ToggleFinished(n.strerr()).into(),
+                );
+            }
         }
         Task::none()
     }
@@ -296,6 +309,15 @@ impl Launcher {
         };
         let (ids_downloaded, ids_local) = menu.get_kinds_of_ids();
         let instance_name = self.selected_instance.clone().unwrap();
+
+        // Show change in UI beforehand, don't want for disk sync
+        for m in &ids_downloaded {
+            if let Some(m) = menu.mods.mods.get_mut(m) {
+                m.enabled = !m.enabled;
+            } else {
+                println!("not found {m}");
+            }
+        }
 
         // menu.selected_mods.clear();
         // menu.selected_state = SelectedState::None;

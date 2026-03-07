@@ -9,15 +9,6 @@
 
 - Added instance folders, with drag & drop and renaming
 
-# UX
-
-- Added a quick-uninstall button to Mod Store
-- Improved new-user Welcome screen with keyboard navigation,
-  better layout and more guidance
-- Higher memory allocation values (upto 32 GB) now supported in Edit tab
-  - Also added manual input, alongside slider
-- Disabled mods now stay disabled when updating
-
 # Shortcuts
 
 - Launch instances with a single click; no launcher required!
@@ -26,6 +17,19 @@
   - Start Menu / Applications Menu (Windows/Linux)
   - Applications (macOS)
   - Other custom locations
+
+# UX
+
+- Improved new-user Welcome screen with keyboard navigation,
+  better layout and more guidance
+- Higher memory allocation values (upto 32 GB) now supported in Edit tab
+  - Also added manual input, alongside slider
+
+## Mods
+
+- Added a quick-uninstall button to Mod Store
+- Added a more visible toggler to mods list for enabling/disabling mods
+- Disabled mods now stay disabled when updating
 
 # Technical
 

@@ -123,6 +123,7 @@ pub enum ManageModsMessage {
 
     ToggleSelected,
     ToggleFinished(Res),
+    ToggleOne(ModId),
 
     UpdateCheck,
     UpdateCheckResult(Res<Vec<(ModId, String)>>),
