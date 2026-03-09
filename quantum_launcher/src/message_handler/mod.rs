@@ -8,7 +8,7 @@ use crate::{
     get_entries,
     state::{
         EditPresetsMessage, ManageModsMessage, MenuEditInstance, MenuEditMods, MenuInstallForge,
-        MenuLaunch, ProgressBar, SelectedState, State, OFFLINE_ACCOUNT_NAME,
+        MenuLaunch, MenuTokenPassword, ProgressBar, SelectedState, State, OFFLINE_ACCOUNT_NAME,
     },
     Launcher, Message,
 };
@@ -619,6 +619,33 @@ impl Launcher {
                     && (self.config.username.is_empty() || self.config.username.contains(' '))
                 {
                     return Task::none();
+                }
+
+                // Block launch if the selected account's encrypted store is locked
+                if self.account_selected != OFFLINE_ACCOUNT_NAME {
+                    use ql_instances::auth::{encrypted_store, TokenStorageMethod};
+                    if let Some(acct) = self
+                        .config
+                        .accounts
+                        .as_ref()
+                        .and_then(|m| m.get(&self.account_selected))
+                    {
+                        if acct.c_token_storage() == TokenStorageMethod::EncryptedFile
+                            && !encrypted_store::is_unlocked()
+                        {
+                            self.state = State::TokenPasswordPrompt(MenuTokenPassword {
+                                password: String::new(),
+                                confirm_password: None,
+                                show_password: false,
+                                error: Some(
+                                    "Unlock the encrypted store to play as this account."
+                                        .to_owned(),
+                                ),
+                                is_loading: false,
+                            });
+                            return Task::none();
+                        }
+                    }
                 }
 
                 self.is_launching_game = true;

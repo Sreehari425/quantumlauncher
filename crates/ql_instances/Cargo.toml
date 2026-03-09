@@ -31,7 +31,6 @@ indicatif = "0.17"
 
 urlencoding = "2"
 
-# Encrypted file storage for tokens (alternative to keyring)
 aes-gcm = "0.10"
 argon2 = "0.5"
 rand = "0.8"

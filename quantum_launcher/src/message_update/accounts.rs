@@ -256,7 +256,8 @@ impl Launcher {
             self.state = State::AccountLogin;
         } else {
             if account != OFFLINE_ACCOUNT_NAME {
-                self.config.account_selected = Some(account.clone());
+                self.config.set_account_selected(&account);
+                self.autosave.remove(&AutoSaveKind::LauncherConfig);
             }
             self.account_selected = account;
         }
@@ -304,8 +305,10 @@ impl Launcher {
         let config_accounts = self.config.accounts.get_or_insert_with(HashMap::new);
         config_accounts.insert(username.clone(), ConfigAccount::from_account(&data));
 
+        self.config.set_account_selected(&username);
         self.account_selected.clone_from(&username);
         self.accounts.insert(username.clone(), data);
+        self.autosave.remove(&AutoSaveKind::LauncherConfig);
 
         self.go_to_launch_screen::<String>(None)
     }

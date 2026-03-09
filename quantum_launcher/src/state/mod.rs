@@ -160,8 +160,8 @@ impl Launcher {
 
         let (accounts, accounts_dropdown, account_selected) = load_accounts(&mut config);
 
-        // Detect encrypted store at startup
-        let state = if ql_instances::encrypted_store_file_exists()
+        let state = if config.c_token_storage() == TokenStorageMethod::EncryptedFile
+            && ql_instances::encrypted_store_file_exists()
             && !ql_instances::auth::encrypted_store::is_unlocked()
         {
             State::TokenPasswordPrompt(MenuTokenPassword {
@@ -375,12 +375,15 @@ pub fn load_accounts(
         }
     }
 
-    let selected_account = config.account_selected.clone().unwrap_or(
-        accounts_dropdown
-            .first()
-            .cloned()
-            .unwrap_or_else(|| OFFLINE_ACCOUNT_NAME.to_owned()),
-    );
+    let selected_account = config
+        .c_account_selected()
+        .map(str::to_owned)
+        .unwrap_or_else(|| {
+            accounts_dropdown
+                .first()
+                .cloned()
+                .unwrap_or_else(|| OFFLINE_ACCOUNT_NAME.to_owned())
+        });
     (accounts, accounts_dropdown, selected_account)
 }
 

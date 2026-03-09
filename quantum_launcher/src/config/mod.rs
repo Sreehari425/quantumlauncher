@@ -102,8 +102,13 @@ pub struct LauncherConfig {
     pub sidebar: Option<SidebarConfig>,
 
     /// Which token storage backend is currently active globally.
-    // Since: v0.6
+    // Since: TBD(probably 0.6?)
     pub token_storage: Option<TokenStorageMethod>,
+
+    /// Selected account when using the encrypted-file backend.
+    /// Kept separate from `account_selected` so each backend remembers
+    /// its own default independently.
+    pub account_selected_file: Option<String>,
 
     /// Preserve fields when downgrading
     #[serde(flatten)]
@@ -130,6 +135,7 @@ impl Default for LauncherConfig {
             persistent: None,
             sidebar: None,
             token_storage: None,
+            account_selected_file: None,
             _extra: HashMap::new(),
         }
     }
@@ -224,6 +230,11 @@ impl LauncherConfig {
                 self.account_selected = None;
             }
         }
+        if let (Some(accounts), Some(selected)) = (&self.accounts, &self.account_selected_file) {
+            if !accounts.contains_key(selected) {
+                self.account_selected_file = None;
+            }
+        }
 
         #[allow(deprecated)]
         {
@@ -300,8 +311,25 @@ impl LauncherConfig {
     }
 
     pub fn c_token_storage(&self) -> TokenStorageMethod {
-        self.token_storage
-            .unwrap_or(TokenStorageMethod::Keyring)
+        self.token_storage.unwrap_or(TokenStorageMethod::Keyring)
+    }
+
+    /// Returns the selected account for the currently active storage backend.
+    pub fn c_account_selected(&self) -> Option<&str> {
+        match self.c_token_storage() {
+            TokenStorageMethod::Keyring => self.account_selected.as_deref(),
+            TokenStorageMethod::EncryptedFile => self.account_selected_file.as_deref(),
+        }
+    }
+
+    /// Saves the selected account into the field for the currently active backend.
+    pub fn set_account_selected(&mut self, account: &str) {
+        match self.c_token_storage() {
+            TokenStorageMethod::Keyring => self.account_selected = Some(account.to_owned()),
+            TokenStorageMethod::EncryptedFile => {
+                self.account_selected_file = Some(account.to_owned())
+            }
+        }
     }
 }
 
