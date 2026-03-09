@@ -64,6 +64,17 @@ pub use launcher_update_detector::{
 pub use ql_core::jarmod;
 pub use ql_java_handler::delete_java_installs;
 
+/// Check if the encrypted token store file exists.
+#[must_use]
+pub fn encrypted_store_file_exists() -> bool {
+    auth::encrypted_store::encrypted_file_exists()
+}
+
+/// Set the global token storage method (keyring or encrypted file).
+pub fn set_token_storage_method(method: auth::TokenStorageMethod) {
+    auth::token_store::set_storage_method(method);
+}
+
 use semver::{BuildMetadata, Prerelease};
 
 const LAUNCHER_VERSION: semver::Version = semver::Version {

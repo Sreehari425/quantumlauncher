@@ -3,9 +3,12 @@ use std::fmt::Display;
 
 mod alt;
 pub mod authlib;
+pub mod encrypted_store;
 pub mod ms;
+pub mod token_store;
 pub mod yggdrasil;
 pub use authlib::get_authlib_injector;
+pub use token_store::TokenStorageMethod;
 
 #[derive(Debug, Clone)]
 pub struct AccountData {
@@ -176,7 +179,8 @@ Now after this, in the sidebar, right click it and click "Set as Default""#
     }
 }
 
-pub fn read_refresh_token(
+/// Read a refresh token from the keyring directly (bypass token_store routing).
+pub fn read_refresh_token_keyring(
     username: &str,
     account_type: AccountType,
 ) -> Result<String, KeyringError> {
@@ -185,10 +189,42 @@ pub fn read_refresh_token(
     Ok(refresh_token)
 }
 
-pub fn logout(username: &str, account_type: AccountType) -> Result<(), String> {
+/// Read a refresh token using the currently active backend.
+pub fn read_refresh_token(
+    username: &str,
+    account_type: AccountType,
+) -> Result<String, token_store::TokenStoreError> {
+    token_store::read_token(username, account_type)
+}
+
+/// Read a refresh token from a specific backend.
+pub fn read_refresh_token_from(
+    username: &str,
+    account_type: AccountType,
+    method: TokenStorageMethod,
+) -> Result<String, token_store::TokenStoreError> {
+    token_store::read_token_from(username, account_type, method)
+}
+
+/// Delete a credential from the keyring directly.
+pub fn logout_keyring(username: &str, account_type: AccountType) -> Result<(), String> {
     let entry = account_type.get_keyring_entry(username).strerr()?;
     if let Err(err) = entry.delete_credential() {
         err!("Couldn't remove {account_type} account credential (Username: {username}):\n{err}");
     }
     Ok(())
+}
+
+/// Delete a credential using the currently active backend.
+pub fn logout(username: &str, account_type: AccountType) -> Result<(), String> {
+    token_store::delete_token(username, account_type).map_err(|e| e.to_string())
+}
+
+/// Delete a credential from a specific backend.
+pub fn logout_from(
+    username: &str,
+    account_type: AccountType,
+    method: TokenStorageMethod,
+) -> Result<(), String> {
+    token_store::delete_token_from(username, account_type, method).map_err(|e| e.to_string())
 }

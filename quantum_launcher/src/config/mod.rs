@@ -6,7 +6,7 @@ use ql_core::ListEntryKind;
 use ql_core::{
     err, IntoIoError, IntoJsonError, JsonFileError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
 };
-use ql_instances::auth::AccountData;
+use ql_instances::auth::{AccountData, TokenStorageMethod};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::{collections::HashMap, path::Path};
@@ -101,6 +101,10 @@ pub struct LauncherConfig {
     // Since: v0.5.1
     pub sidebar: Option<SidebarConfig>,
 
+    /// Which token storage backend is currently active globally.
+    // Since: v0.6
+    pub token_storage: Option<TokenStorageMethod>,
+
     /// Preserve fields when downgrading
     #[serde(flatten)]
     _extra: HashMap<String, serde_json::Value>,
@@ -125,6 +129,7 @@ impl Default for LauncherConfig {
             ui: None,
             persistent: None,
             sidebar: None,
+            token_storage: None,
             _extra: HashMap::new(),
         }
     }
@@ -293,6 +298,11 @@ impl LauncherConfig {
             .and_then(|n| n.idle_fps)
             .unwrap_or(IDLE_FPS)
     }
+
+    pub fn c_token_storage(&self) -> TokenStorageMethod {
+        self.token_storage
+            .unwrap_or(TokenStorageMethod::Keyring)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -335,20 +345,30 @@ pub struct ConfigAccount {
     /// would be an email.
     pub username_nice: Option<String>,
 
+    /// Which backend stores the token for this account.
+    /// None means keyring (backwards compatible default).
+    pub token_storage: Option<TokenStorageMethod>,
+
     #[serde(flatten)]
     _extra: HashMap<String, serde_json::Value>,
 }
 
 impl ConfigAccount {
     pub fn from_account(data: &AccountData) -> Self {
+        let method = ql_instances::auth::token_store::get_storage_method();
         Self {
             uuid: data.uuid.clone(),
             skin: None,
             account_type: Some(data.account_type.to_string()),
             keyring_identifier: Some(data.username.clone()),
             username_nice: Some(data.nice_username.clone()),
+            token_storage: Some(method),
             _extra: HashMap::new(),
         }
+    }
+
+    pub fn c_token_storage(&self) -> TokenStorageMethod {
+        self.token_storage.unwrap_or(TokenStorageMethod::Keyring)
     }
 }
 

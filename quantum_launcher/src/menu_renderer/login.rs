@@ -3,10 +3,108 @@ use iced::{widget, Alignment, Length};
 use crate::{
     icons,
     menu_renderer::tsubtitle,
-    state::{AccountMessage, MenuLoginAlternate, MenuLoginMS, Message, NEW_ACCOUNT_NAME},
+    state::{
+        AccountMessage, MenuLoginAlternate, MenuLoginMS, MenuTokenPassword, Message,
+        TokenPasswordMessage, NEW_ACCOUNT_NAME,
+    },
 };
 
 use super::{back_button, button_with_icon, center_x, Element};
+
+impl MenuTokenPassword {
+    pub fn view(&self, tick_timer: usize) -> Element<'_> {
+        let padding = iced::Padding {
+            top: 5.0,
+            bottom: 5.0,
+            right: 10.0,
+            left: 10.0,
+        };
+
+        let is_create = self.confirm_password.is_some();
+
+        let title = if is_create {
+            "Create Encrypted Token Store"
+        } else {
+            "Unlock Encrypted Token Store"
+        };
+
+        let description = if is_create {
+            "Set a password to protect your account tokens.\nThis encrypted file can be copied to other machines."
+        } else {
+            "Enter your password to unlock the encrypted account store."
+        };
+
+        let password_input = widget::text_input("Password...", &self.password)
+            .padding(padding)
+            .on_input(|n| TokenPasswordMessage::PasswordChanged(n).into());
+        let password_input = if self.password.is_empty() || self.show_password {
+            password_input
+        } else {
+            password_input.font(iced::Font::with_name("Password Asterisks"))
+        };
+
+        let show_toggle = widget::checkbox("Show Password", self.show_password)
+            .size(12)
+            .text_size(12)
+            .on_toggle(|t| TokenPasswordMessage::ToggleShowPassword(t).into());
+
+        let submit_label = if is_create { "Create" } else { "Unlock" };
+        let submit_btn = if self.is_loading {
+            let dots = ".".repeat((tick_timer % 3) + 1);
+            widget::button(widget::text!("Loading{dots}"))
+        } else {
+            widget::button(submit_label).on_press(TokenPasswordMessage::Submit.into())
+        };
+
+        let skip_btn = widget::button("Skip")
+            .on_press(TokenPasswordMessage::Skip.into());
+
+        let mut content = widget::column![
+            widget::text(title).size(20),
+            widget::text(description).size(12),
+            widget::vertical_space(),
+            widget::row![
+                widget::text("Password:").size(12),
+                show_toggle,
+            ]
+            .spacing(16),
+            center_x(password_input),
+        ]
+        .spacing(8)
+        .padding(16);
+
+        if let Some(confirm) = &self.confirm_password {
+            let confirm_input = widget::text_input("Confirm Password...", confirm)
+                .padding(padding)
+                .on_input(|n| TokenPasswordMessage::ConfirmPasswordChanged(n).into());
+            let confirm_input = if confirm.is_empty() || self.show_password {
+                confirm_input
+            } else {
+                confirm_input.font(iced::Font::with_name("Password Asterisks"))
+            };
+            content = content.push(widget::text("Confirm Password:").size(12));
+            content = content.push(center_x(confirm_input));
+        }
+
+        if let Some(err) = &self.error {
+            content = content.push(widget::text(err.as_str()).size(12).style(|t: &_| {
+                tsubtitle(t)
+            }));
+        }
+
+        content = content.push(
+            widget::row![submit_btn, skip_btn]
+                .spacing(8)
+                .align_y(Alignment::Center),
+        );
+
+        widget::column![content]
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .align_x(Alignment::Center)
+            .into()
+    }
+}
 
 impl MenuLoginAlternate {
     pub fn view(&'_ self, tick_timer: usize) -> Element<'_> {

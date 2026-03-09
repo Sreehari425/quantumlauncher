@@ -12,7 +12,7 @@ use ql_core::{
     IntoStringError, IoError, JsonFileError, LaunchedProcess, Progress, LAUNCHER_DIR,
     LAUNCHER_VERSION_NAME,
 };
-use ql_instances::auth::{ms::CLIENT_ID, AccountData, AccountType};
+use ql_instances::auth::{ms::CLIENT_ID, AccountData, AccountType, TokenStorageMethod};
 use tokio::process::ChildStdin;
 
 use crate::{
@@ -160,6 +160,24 @@ impl Launcher {
 
         let (accounts, accounts_dropdown, account_selected) = load_accounts(&mut config);
 
+        // Detect encrypted store at startup
+        let state = if ql_instances::encrypted_store_file_exists()
+            && !ql_instances::auth::encrypted_store::is_unlocked()
+        {
+            State::TokenPasswordPrompt(MenuTokenPassword {
+                password: String::new(),
+                confirm_password: None,
+                show_password: false,
+                error: None,
+                is_loading: false,
+            })
+        } else {
+            state
+        };
+
+        // Set global storage method from config
+        ql_instances::set_token_storage_method(config.c_token_storage());
+
         let persistent = config.c_persistent();
 
         Ok(Self {
@@ -298,9 +316,43 @@ impl Launcher {
     }
 }
 
-fn load_accounts(
+/// Re-load only the encrypted-file accounts after the user unlocks the store.
+/// Returns `(accounts_map, dropdown_entries)` to merge into the launcher state.
+pub fn reload_encrypted_accounts(
+    config: &mut LauncherConfig,
+) -> (HashMap<String, AccountData>, Vec<String>) {
+    let mut accounts = HashMap::new();
+    let mut dropdown_entries = Vec::new();
+    let mut accounts_to_remove = Vec::new();
+
+    for (username, account) in config.accounts.iter_mut().flatten() {
+        if account.c_token_storage() != TokenStorageMethod::EncryptedFile {
+            continue;
+        }
+        load_account(
+            &mut accounts,
+            &mut dropdown_entries,
+            &mut accounts_to_remove,
+            username,
+            account,
+        );
+    }
+
+    if let Some(acc) = &mut config.accounts {
+        for rem in accounts_to_remove {
+            acc.remove(&rem);
+        }
+    }
+
+    (accounts, dropdown_entries)
+}
+
+pub fn load_accounts(
     config: &mut LauncherConfig,
 ) -> (HashMap<String, AccountData>, Vec<String>, String) {
+    // Set global storage method from config before loading accounts
+    ql_instances::set_token_storage_method(config.c_token_storage());
+
     let mut accounts = HashMap::new();
 
     let mut accounts_dropdown = vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()];
@@ -343,6 +395,7 @@ fn load_account(
         account_type: AccountType,
         username: &str,
         keyring_identifier: Option<&str>,
+        method: TokenStorageMethod,
     ) -> Result<String, String> {
         let keyring_username = if let Some(keyring_id) = keyring_identifier {
             keyring_id
@@ -356,7 +409,25 @@ fn load_account(
                 AccountType::Microsoft => username,
             }
         };
-        ql_instances::auth::read_refresh_token(keyring_username, account_type).strerr()
+        ql_instances::auth::read_refresh_token_from(keyring_username, account_type, method)
+            .map_err(|e| e.to_string())
+    }
+
+    let per_account_method = account.c_token_storage();
+    let current_method = ql_instances::auth::token_store::get_storage_method();
+
+    // Only show accounts that belong to the currently active storage backend.
+    // Keyring accounts are hidden in file mode and vice versa.
+    if per_account_method != current_method {
+        return;
+    }
+
+    // If this account uses the encrypted store and it's locked, skip it
+    // (don't remove from config — it'll be available after unlock)
+    if per_account_method == TokenStorageMethod::EncryptedFile
+        && !ql_instances::auth::encrypted_store::is_unlocked()
+    {
+        return;
     }
 
     let (account_type, refresh_token) =
@@ -367,6 +438,7 @@ fn load_account(
                     AccountType::ElyBy,
                     username,
                     account.keyring_identifier.as_deref(),
+                    per_account_method,
                 ),
             )
         } else if account.account_type.as_deref() == Some("LittleSkin")
@@ -378,6 +450,7 @@ fn load_account(
                     AccountType::LittleSkin,
                     username,
                     account.keyring_identifier.as_deref(),
+                    per_account_method,
                 ),
             )
         } else {
@@ -387,6 +460,7 @@ fn load_account(
                     AccountType::Microsoft,
                     username,
                     account.keyring_identifier.as_deref(),
+                    per_account_method,
                 ),
             )
         };

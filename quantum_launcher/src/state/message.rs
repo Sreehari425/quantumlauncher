@@ -17,7 +17,7 @@ use ql_core::{
 use ql_instances::{
     auth::{
         ms::{AuthCodeResponse, AuthTokenResponse},
-        AccountData, AccountType,
+        AccountData, AccountType, TokenStorageMethod,
     },
     UpdateCheckInfo,
 };
@@ -289,6 +289,13 @@ pub enum LauncherSettingsMessage {
 
     GlobalJavaArgs(ListMessage),
     GlobalPreLaunchPrefix(ListMessage),
+
+    // Security tab
+    TokenStorageChanged(TokenStorageMethod),
+    SetupEncryptedStore,
+    UnlockEncryptedStore,
+    DeleteEncryptedStore,
+    DeleteEncryptedStoreConfirm,
 }
 
 #[derive(Debug, Clone)]
@@ -335,6 +342,16 @@ impl ListMessage {
             }
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum TokenPasswordMessage {
+    PasswordChanged(String),
+    ConfirmPasswordChanged(String),
+    ToggleShowPassword(bool),
+    Submit,
+    SubmitDone(crate::state::Res),
+    Skip,
 }
 
 #[derive(Debug, Clone)]
@@ -488,6 +505,8 @@ pub enum Message {
     LicenseOpen,
     LicenseChangeTab(LicenseTab),
     LicenseAction(widget::text_editor::Action),
+
+    TokenPassword(TokenPasswordMessage),
 }
 
 macro_rules! from_m {
@@ -519,3 +538,4 @@ from_m!(Notes, NotesMessage);
 from_m!(GameLog, GameLogMessage);
 from_m!(Window, WindowMessage);
 from_m!(Shortcut, ShortcutMessage);
+from_m!(TokenPassword, TokenPasswordMessage);

@@ -73,7 +73,8 @@ use std::collections::HashMap;
 
 use crate::auth::AccountType;
 
-use super::{AccountData, KeyringError};
+use super::{token_store, AccountData, KeyringError};
+use super::token_store::TokenStoreError;
 
 /// The API key for logging into Minecraft.
 ///
@@ -181,6 +182,8 @@ pub enum Error {
     #[error("{AUTH_ERR_PREFIX}{0}")]
     KeyringError(#[from] KeyringError),
     #[error("{AUTH_ERR_PREFIX}{0}")]
+    TokenStore(#[from] TokenStoreError),
+    #[error("{AUTH_ERR_PREFIX}{0}")]
     Response(MsaResponseError),
 
     #[error("Your Microsoft account doesn't own Minecraft!\nJust enter the username in the text box instead of logging in.")]
@@ -235,8 +238,7 @@ pub async fn login_refresh(
 
     let data: RefreshResponse = serde_json::from_str(&response).json(response)?;
 
-    let entry = keyring::Entry::new("QuantumLauncher", &username)?;
-    entry.set_password(&data.refresh_token)?;
+    token_store::store_token(&username, AccountType::Microsoft, &data.refresh_token)?;
 
     let data = login_3_xbox(
         AuthTokenResponse {
@@ -300,8 +302,7 @@ pub async fn login_3_xbox(
         }
     }
 
-    let entry = keyring::Entry::new("QuantumLauncher", &final_details.name)?;
-    entry.set_password(&data.refresh_token)?;
+    token_store::store_token(&final_details.name, AccountType::Microsoft, &data.refresh_token)?;
 
     let data = AccountData {
         access_token: Some(minecraft.access_token),

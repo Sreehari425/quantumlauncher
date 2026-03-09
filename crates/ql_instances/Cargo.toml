@@ -31,6 +31,12 @@ indicatif = "0.17"
 
 urlencoding = "2"
 
+# Encrypted file storage for tokens (alternative to keyring)
+aes-gcm = "0.10"
+argon2 = "0.5"
+rand = "0.8"
+base64 = "0.22"
+
 [target.'cfg(target_os = "windows")'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }
 [target.'cfg(target_os = "macos")'.dependencies]

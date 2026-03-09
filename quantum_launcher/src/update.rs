@@ -396,6 +396,9 @@ impl Launcher {
             Message::CoreHideModal => {
                 self.hide_submenu();
             }
+            Message::TokenPassword(msg) => {
+                return self.update_token_password(msg);
+            }
         }
         Task::none()
     }
