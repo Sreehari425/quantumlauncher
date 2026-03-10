@@ -5,7 +5,6 @@ use iced::futures::executor::block_on;
 use iced::widget::text_editor;
 use iced::{widget::scrollable::AbsoluteOffset, Task};
 use ql_core::{err, InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion};
-use ql_instances;
 use ql_mod_manager::{
     loaders,
     store::{get_description, QueryType},
@@ -606,8 +605,7 @@ impl Launcher {
                 self.config.token_storage = Some(method);
                 ql_instances::set_token_storage_method(method);
                 // Reload the account list so the dropdown immediately reflects the new backend
-                let (accounts, dropdown, selected) =
-                    state::load_accounts(&mut self.config);
+                let (accounts, dropdown, selected) = state::load_accounts(&mut self.config);
                 self.accounts = accounts;
                 self.accounts_dropdown = dropdown;
                 self.account_selected = selected;
@@ -637,9 +635,7 @@ impl Launcher {
                         .to_owned(),
                     yes: LauncherSettingsMessage::DeleteEncryptedStoreConfirm.into(),
                     no: crate::state::Message::LauncherSettings(
-                        LauncherSettingsMessage::ChangeTab(
-                            state::LauncherSettingsTab::Security,
-                        ),
+                        LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Security),
                     ),
                 };
             }
@@ -652,17 +648,13 @@ impl Launcher {
                 encrypted_store::lock();
                 // Remove encrypted-file accounts from config
                 if let Some(accounts) = &mut self.config.accounts {
-                    accounts.retain(|_, v| {
-                        v.c_token_storage() != TokenStorageMethod::EncryptedFile
-                    });
+                    accounts
+                        .retain(|_, v| v.c_token_storage() != TokenStorageMethod::EncryptedFile);
                 }
                 // Remove them from the in-memory dropdown/map
                 let config_accounts = self.config.accounts.clone();
-                self.accounts.retain(|k, _| {
-                    config_accounts
-                        .as_ref()
-                        .is_some_and(|a| a.contains_key(k))
-                });
+                self.accounts
+                    .retain(|k, _| config_accounts.as_ref().is_some_and(|a| a.contains_key(k)));
                 self.accounts_dropdown.retain(|entry| {
                     self.accounts.contains_key(entry)
                         || entry == crate::state::OFFLINE_ACCOUNT_NAME

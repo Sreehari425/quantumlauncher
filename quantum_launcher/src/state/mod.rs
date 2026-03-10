@@ -424,9 +424,7 @@ fn load_account(
     if per_account_method != current_method {
         return;
     }
-
     // If this account uses the encrypted store and it's locked, skip it
-    // (don't remove from config — it'll be available after unlock)
     if per_account_method == TokenStorageMethod::EncryptedFile
         && !ql_instances::auth::encrypted_store::is_unlocked()
     {

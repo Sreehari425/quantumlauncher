@@ -351,10 +351,9 @@ fn view_security_tab(config: &LauncherConfig) -> Element<'_> {
     } else {
         "  System Keyring"
     })
-    .on_press_maybe(
-        (current_method != TokenStorageMethod::Keyring)
-            .then_some(LauncherSettingsMessage::TokenStorageChanged(TokenStorageMethod::Keyring).into()),
-    );
+    .on_press_maybe((current_method != TokenStorageMethod::Keyring).then_some(
+        LauncherSettingsMessage::TokenStorageChanged(TokenStorageMethod::Keyring).into(),
+    ));
 
     let encrypted_btn = widget::button(if current_method == TokenStorageMethod::EncryptedFile {
         "● Encrypted File"
@@ -362,8 +361,9 @@ fn view_security_tab(config: &LauncherConfig) -> Element<'_> {
         "  Encrypted File"
     })
     .on_press_maybe(
-        (current_method != TokenStorageMethod::EncryptedFile)
-            .then_some(LauncherSettingsMessage::TokenStorageChanged(TokenStorageMethod::EncryptedFile).into()),
+        (current_method != TokenStorageMethod::EncryptedFile).then_some(
+            LauncherSettingsMessage::TokenStorageChanged(TokenStorageMethod::EncryptedFile).into(),
+        ),
     );
 
     let mut col = widget::column![
@@ -380,7 +380,11 @@ fn view_security_tab(config: &LauncherConfig) -> Element<'_> {
 
     if current_method == TokenStorageMethod::EncryptedFile || file_exists {
         if file_exists {
-            let status_text = if is_unlocked { "Status: Unlocked" } else { "Status: Locked" };
+            let status_text = if is_unlocked {
+                "Status: Unlocked"
+            } else {
+                "Status: Locked"
+            };
             col = col.push(widget::text(status_text).size(12));
 
             if !is_unlocked {

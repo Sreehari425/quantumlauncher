@@ -296,7 +296,9 @@ pub fn store_token(storage_key: &str, token: &str) -> Result<(), EncryptedStoreE
         .as_mut()
         .ok_or(EncryptedStoreError::NotUnlocked)?;
 
-    cache.tokens.insert(storage_key.to_string(), token.to_string());
+    cache
+        .tokens
+        .insert(storage_key.to_string(), token.to_string());
     save_to_disk(&cache.key, &cache.salt, &cache.tokens)?;
     Ok(())
 }

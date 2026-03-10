@@ -73,7 +73,6 @@ impl Launcher {
                     menu.is_loading = false;
                     match result {
                         Ok(()) => {
-                            // Unlock succeeded — reload accounts that were skipped at startup
                             let new_accounts =
                                 crate::state::reload_encrypted_accounts(&mut self.config);
                             self.accounts.extend(new_accounts.0);
@@ -82,7 +81,6 @@ impl Launcher {
                                     self.accounts_dropdown.insert(0, entry);
                                 }
                             }
-                            // Restore the saved default account for this backend
                             if let Some(saved) = self.config.c_account_selected() {
                                 if self.accounts.contains_key(saved) {
                                     self.account_selected = saved.to_owned();

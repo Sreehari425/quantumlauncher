@@ -92,7 +92,7 @@ pub fn store_token(
     match get_storage_method() {
         TokenStorageMethod::Keyring => {
             let entry = account_type.get_keyring_entry(username)?;
-            entry.set_password(token).map_err(|e| KeyringError(e))?;
+            entry.set_password(token).map_err(KeyringError)?;
             Ok(())
         }
         TokenStorageMethod::EncryptedFile => {
@@ -113,7 +113,7 @@ pub fn store_token_with(
     match method {
         TokenStorageMethod::Keyring => {
             let entry = account_type.get_keyring_entry(username)?;
-            entry.set_password(token).map_err(|e| KeyringError(e))?;
+            entry.set_password(token).map_err(KeyringError)?;
             Ok(())
         }
         TokenStorageMethod::EncryptedFile => {
@@ -125,10 +125,7 @@ pub fn store_token_with(
 }
 
 /// Read a token using the *currently active* backend.
-pub fn read_token(
-    username: &str,
-    account_type: AccountType,
-) -> Result<String, TokenStoreError> {
+pub fn read_token(username: &str, account_type: AccountType) -> Result<String, TokenStoreError> {
     match get_storage_method() {
         TokenStorageMethod::Keyring => {
             let token = super::read_refresh_token_keyring(username, account_type)?;
@@ -162,10 +159,7 @@ pub fn read_token_from(
 }
 
 /// Delete a token using the *currently active* backend.
-pub fn delete_token(
-    username: &str,
-    account_type: AccountType,
-) -> Result<(), TokenStoreError> {
+pub fn delete_token(username: &str, account_type: AccountType) -> Result<(), TokenStoreError> {
     match get_storage_method() {
         TokenStorageMethod::Keyring => {
             super::logout_keyring(username, account_type)

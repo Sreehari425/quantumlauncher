@@ -73,8 +73,8 @@ use std::collections::HashMap;
 
 use crate::auth::AccountType;
 
-use super::{token_store, AccountData, KeyringError};
 use super::token_store::TokenStoreError;
+use super::{token_store, AccountData, KeyringError};
 
 /// The API key for logging into Minecraft.
 ///
@@ -302,7 +302,11 @@ pub async fn login_3_xbox(
         }
     }
 
-    token_store::store_token(&final_details.name, AccountType::Microsoft, &data.refresh_token)?;
+    token_store::store_token(
+        &final_details.name,
+        AccountType::Microsoft,
+        &data.refresh_token,
+    )?;
 
     let data = AccountData {
         access_token: Some(minecraft.access_token),
