@@ -20,11 +20,12 @@ use aes_gcm::{
 };
 use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use ql_core::{info, LAUNCHER_DIR};
+use ql_core::{info, IntoIoError, IntoJsonError, IoError, JsonError, LAUNCHER_DIR};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
+    io::ErrorKind,
     path::PathBuf,
     sync::{Arc, RwLock},
 };
@@ -78,28 +79,29 @@ struct EncryptedToken {
     ciphertext: String,
 }
 
+const ERR_PREFIX: &str = "while reading account data (from encrypted store):\n";
+
 /// Errors that can occur during encrypted storage operations.
 #[derive(Debug, thiserror::Error)]
 pub enum EncryptedStoreError {
-    #[error("Encrypted token store is locked. Please enter your password to unlock.")]
+    #[error("{ERR_PREFIX}{0}")]
+    Io(#[from] IoError),
+    #[error("{ERR_PREFIX}{0}")]
+    Json(#[from] JsonError),
+
+    #[error("Encrypted token store (containing account data) is locked.\nPlease enter your password to unlock.")]
     NotUnlocked,
-
-    #[error("Invalid password. Please try again.")]
+    #[error("{ERR_PREFIX}Encrypted tokens file not found. Please set up encrypted storage first.")]
+    FileNotFound,
+    #[error("{ERR_PREFIX}Invalid password. Please try again.")]
     InvalidPassword,
-
-    #[error("No token found for user: {0}")]
+    #[error("{ERR_PREFIX}No token found for user: {0}")]
     TokenNotFound(String),
 
-    #[error("Encryption/decryption failed: {0}")]
+    #[error("{ERR_PREFIX}Encryption/decryption failed: {0}")]
     Encryption(String),
 
-    #[error("File error: {0}")]
-    Io(#[from] std::io::Error),
-
-    #[error("JSON parsing error: {0}")]
-    Json(#[from] serde_json::Error),
-
-    #[error("Base64 decode error: {0}")]
+    #[error("{ERR_PREFIX}Base64 decode error: {0}")]
     Base64(#[from] base64::DecodeError),
 }
 
@@ -178,8 +180,9 @@ pub fn initialize_new(password: &str) -> Result<(), EncryptedStoreError> {
         tokens: HashMap::new(),
     };
 
-    let json = serde_json::to_string_pretty(&file)?;
-    std::fs::write(get_tokens_path(), json)?;
+    let json = serde_json::to_string_pretty(&file).json_to()?;
+    let path = get_tokens_path();
+    std::fs::write(&path, json).path(&path)?;
 
     let mut cache = TOKEN_CACHE.write().map_err(|e| {
         EncryptedStoreError::Encryption(format!("Failed to acquire cache lock: {e}"))
@@ -201,16 +204,7 @@ pub fn initialize_new(password: &str) -> Result<(), EncryptedStoreError> {
 pub fn unlock(password: &str) -> Result<(), EncryptedStoreError> {
     info!(no_log, "Unlocking encrypted token store...");
 
-    let path = get_tokens_path();
-    if !path.exists() {
-        return Err(EncryptedStoreError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "Encrypted tokens file not found. Please set up encrypted storage first.",
-        )));
-    }
-
-    let content = std::fs::read_to_string(&path)?;
-    let file: EncryptedTokensFile = serde_json::from_str(&content)?;
+    let file = read_json_file()?;
 
     let salt = SaltString::from_b64(&file.salt)
         .map_err(|e| EncryptedStoreError::Encryption(format!("Invalid salt: {e}")))?;
@@ -265,6 +259,25 @@ pub fn unlock(password: &str) -> Result<(), EncryptedStoreError> {
     Ok(())
 }
 
+fn read_json_file() -> Result<EncryptedTokensFile, EncryptedStoreError> {
+    let path = get_tokens_path();
+    let content = match std::fs::read_to_string(&path) {
+        Ok(n) => n,
+        Err(err) if err.kind() == ErrorKind::NotFound => {
+            return Err(EncryptedStoreError::FileNotFound);
+        }
+        Err(err) => {
+            return Err(IoError::Io {
+                error: err.to_string(),
+                path,
+            }
+            .into())
+        }
+    };
+    let file: EncryptedTokensFile = serde_json::from_str(&content).json(content)?;
+    Ok(file)
+}
+
 /// Lock the encrypted store (clear the in-memory cache).
 pub fn lock() {
     if let Ok(mut cache) = TOKEN_CACHE.write() {
@@ -278,7 +291,7 @@ pub fn lock() {
 pub fn delete_store() -> Result<(), EncryptedStoreError> {
     let path = get_tokens_path();
     if path.exists() {
-        std::fs::remove_file(&path)?;
+        std::fs::remove_file(&path).path(&path)?;
         info!("Encrypted token store deleted");
     }
     Ok(())
@@ -424,7 +437,8 @@ fn save_to_disk(
         tokens: encrypted_tokens,
     };
 
-    let json = serde_json::to_string_pretty(&file)?;
-    std::fs::write(get_tokens_path(), json)?;
+    let json = serde_json::to_string_pretty(&file).json_to()?;
+    let path = get_tokens_path();
+    std::fs::write(&path, json).path(&path)?;
     Ok(())
 }
