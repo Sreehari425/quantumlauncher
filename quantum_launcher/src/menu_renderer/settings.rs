@@ -10,6 +10,7 @@ use super::{
 };
 use crate::menu_renderer::edit_instance::{args_split_by_space, get_args_list, resolution_dialog};
 use crate::menu_renderer::{back_to_launch_screen, checkered_list, sidebar, tsubtitle};
+use crate::state::TokenStoreMessage;
 use crate::{
     config::LauncherConfig,
     icons,
@@ -341,7 +342,7 @@ Every new user motivates me to keep working on this :)"
 
 fn view_security_tab(config: &LauncherConfig) -> Element<'_> {
     let current_method = config.c_token_storage();
-    let file_exists = encrypted_store::encrypted_file_exists();
+    let file_exists = encrypted_store::file_exists();
     let is_unlocked = encrypted_store::is_unlocked();
 
     let method_label = widget::text("Account Token Storage:").size(14);
@@ -351,9 +352,10 @@ fn view_security_tab(config: &LauncherConfig) -> Element<'_> {
     } else {
         "  System Keyring"
     })
-    .on_press_maybe((current_method != TokenStorageMethod::Keyring).then_some(
-        LauncherSettingsMessage::TokenStorageChanged(TokenStorageMethod::Keyring).into(),
-    ));
+    .on_press_maybe(
+        (current_method != TokenStorageMethod::Keyring)
+            .then_some(TokenStoreMessage::TokenStorageChanged(TokenStorageMethod::Keyring).into()),
+    );
 
     let encrypted_btn = widget::button(if current_method == TokenStorageMethod::EncryptedFile {
         "● Encrypted File"
@@ -362,7 +364,7 @@ fn view_security_tab(config: &LauncherConfig) -> Element<'_> {
     })
     .on_press_maybe(
         (current_method != TokenStorageMethod::EncryptedFile).then_some(
-            LauncherSettingsMessage::TokenStorageChanged(TokenStorageMethod::EncryptedFile).into(),
+            TokenStoreMessage::TokenStorageChanged(TokenStorageMethod::EncryptedFile).into(),
         ),
     );
 
@@ -390,14 +392,14 @@ fn view_security_tab(config: &LauncherConfig) -> Element<'_> {
             if !is_unlocked {
                 col = col.push(
                     widget::button("Unlock Store")
-                        .on_press(LauncherSettingsMessage::UnlockEncryptedStore.into()),
+                        .on_press(TokenStoreMessage::UnlockEncryptedStore.into()),
                 );
             }
 
             col = col.push(
                 widget::row![
                     button_with_icon(icons::bin(), "Delete Store", 14)
-                        .on_press(LauncherSettingsMessage::DeleteEncryptedStore.into()),
+                        .on_press(TokenStoreMessage::DeleteEncryptedStore.into()),
                     widget::text("Deletes the encrypted file and removes all associated accounts.")
                         .size(12),
                 ]
@@ -409,7 +411,7 @@ fn view_security_tab(config: &LauncherConfig) -> Element<'_> {
                 widget::column![
                     widget::text("No encrypted store exists yet.").size(12),
                     widget::button("Create Encrypted Store")
-                        .on_press(LauncherSettingsMessage::SetupEncryptedStore.into()),
+                        .on_press(TokenStoreMessage::SetupEncryptedStore.into()),
                 ]
                 .spacing(6),
             );

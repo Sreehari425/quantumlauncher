@@ -97,15 +97,20 @@ impl AccountType {
     fn get_keyring_entry(self, username: &str) -> Result<keyring::Entry, KeyringError> {
         Ok(keyring::Entry::new(
             "QuantumLauncher",
-            &format!(
-                "{username}{}",
-                match self {
-                    AccountType::Microsoft => "",
-                    AccountType::ElyBy => "#elyby",
-                    AccountType::LittleSkin => "#littleskin",
-                }
-            ),
+            &self.create_storage_key(username),
         )?)
+    }
+
+    #[must_use]
+    pub fn create_storage_key(self, username: &str) -> String {
+        format!(
+            "{username}{}",
+            match self {
+                AccountType::Microsoft => "",
+                AccountType::ElyBy => "#elyby",
+                AccountType::LittleSkin => "#littleskin",
+            }
+        )
     }
 
     #[must_use]
@@ -220,11 +225,11 @@ pub fn logout(username: &str, account_type: AccountType) -> Result<(), String> {
     token_store::delete_token(username, account_type).map_err(|e| e.to_string())
 }
 
-/// Delete a credential from a specific backend.
-pub fn logout_from(
-    username: &str,
-    account_type: AccountType,
-    method: TokenStorageMethod,
-) -> Result<(), String> {
-    token_store::delete_token_from(username, account_type, method).map_err(|e| e.to_string())
-}
+// /// Delete a credential from a specific backend.
+// fn logout_from(
+//     username: &str,
+//     account_type: AccountType,
+//     method: TokenStorageMethod,
+// ) -> Result<(), String> {
+//     token_store::delete_token_from(username, account_type, method).map_err(|e| e.to_string())
+// }

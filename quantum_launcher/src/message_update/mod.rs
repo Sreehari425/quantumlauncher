@@ -5,18 +5,11 @@ use iced::futures::executor::block_on;
 use iced::widget::text_editor;
 use iced::{widget::scrollable::AbsoluteOffset, Task};
 use ql_core::{err, InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion};
+
 use ql_mod_manager::{
     loaders,
     store::{get_description, QueryType},
 };
-
-mod accounts;
-mod create_instance;
-mod edit_instance;
-mod launch;
-mod manage_mods;
-mod presets;
-mod recommended;
 
 use crate::config::UiWindowDecorations;
 use crate::state::{GameLogMessage, InstanceNotes, MenuLaunch, ModOperation, NotesMessage};
@@ -30,8 +23,15 @@ use crate::{
     },
 };
 
+mod accounts;
+mod create_instance;
+mod edit_instance;
+mod launch;
+mod manage_mods;
+mod presets;
+mod recommended;
 mod shortcuts;
-mod token_password;
+mod token;
 
 pub const MSG_RESIZE: &str = "Resize your window to apply the changes.";
 
@@ -600,71 +600,6 @@ impl Launcher {
                         .get_or_insert_with(Vec::new),
                     split,
                 );
-            }
-            LauncherSettingsMessage::TokenStorageChanged(method) => {
-                self.config.token_storage = Some(method);
-                ql_instances::set_token_storage_method(method);
-                // Reload the account list so the dropdown immediately reflects the new backend
-                let (accounts, dropdown, selected) = state::load_accounts(&mut self.config);
-                self.accounts = accounts;
-                self.accounts_dropdown = dropdown;
-                self.account_selected = selected;
-            }
-            LauncherSettingsMessage::SetupEncryptedStore => {
-                self.state = State::TokenPasswordPrompt(state::MenuTokenPassword {
-                    password: String::new(),
-                    confirm_password: Some(String::new()),
-                    show_password: false,
-                    error: None,
-                    is_loading: false,
-                });
-            }
-            LauncherSettingsMessage::UnlockEncryptedStore => {
-                self.state = State::TokenPasswordPrompt(state::MenuTokenPassword {
-                    password: String::new(),
-                    confirm_password: None,
-                    show_password: false,
-                    error: None,
-                    is_loading: false,
-                });
-            }
-            LauncherSettingsMessage::DeleteEncryptedStore => {
-                self.state = State::ConfirmAction {
-                    msg1: "delete the encrypted token store".to_owned(),
-                    msg2: "All accounts using encrypted storage will be removed from the launcher."
-                        .to_owned(),
-                    yes: LauncherSettingsMessage::DeleteEncryptedStoreConfirm.into(),
-                    no: crate::state::Message::LauncherSettings(
-                        LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Security),
-                    ),
-                };
-            }
-            LauncherSettingsMessage::DeleteEncryptedStoreConfirm => {
-                use ql_instances::auth::{encrypted_store, TokenStorageMethod};
-                if let Err(err) = encrypted_store::delete_store() {
-                    self.set_error(format!("Could not delete encrypted store: {err}"));
-                    return Task::none();
-                }
-                encrypted_store::lock();
-                // Remove encrypted-file accounts from config
-                if let Some(accounts) = &mut self.config.accounts {
-                    accounts
-                        .retain(|_, v| v.c_token_storage() != TokenStorageMethod::EncryptedFile);
-                }
-                // Remove them from the in-memory dropdown/map
-                let config_accounts = self.config.accounts.clone();
-                self.accounts
-                    .retain(|k, _| config_accounts.as_ref().is_some_and(|a| a.contains_key(k)));
-                self.accounts_dropdown.retain(|entry| {
-                    self.accounts.contains_key(entry)
-                        || entry == crate::state::OFFLINE_ACCOUNT_NAME
-                        || entry == crate::state::NEW_ACCOUNT_NAME
-                });
-                // Switch back to keyring backend
-                self.config.token_storage = Some(TokenStorageMethod::Keyring);
-                ql_instances::set_token_storage_method(TokenStorageMethod::Keyring);
-                self.go_to_launcher_settings();
-                return Task::none();
             }
             LauncherSettingsMessage::ToggleWindowDecorations(b) => {
                 let decor = if b {

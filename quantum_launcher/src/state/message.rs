@@ -289,13 +289,6 @@ pub enum LauncherSettingsMessage {
 
     GlobalJavaArgs(ListMessage),
     GlobalPreLaunchPrefix(ListMessage),
-
-    // Security tab
-    TokenStorageChanged(TokenStorageMethod),
-    SetupEncryptedStore,
-    UnlockEncryptedStore,
-    DeleteEncryptedStore,
-    DeleteEncryptedStoreConfirm,
 }
 
 #[derive(Debug, Clone)]
@@ -414,6 +407,16 @@ pub enum ShortcutMessage {
 }
 
 #[derive(Debug, Clone)]
+pub enum TokenStoreMessage {
+    TokenEnsureLoaded,
+    TokenStorageChanged(TokenStorageMethod),
+    SetupEncryptedStore,
+    UnlockEncryptedStore,
+    DeleteEncryptedStore,
+    DeleteEncryptedStoreConfirm,
+}
+
+#[derive(Debug, Clone)]
 pub enum Message {
     Nothing,
     Error(String),
@@ -442,6 +445,7 @@ pub enum Message {
     RecommendedMods(RecommendedModMessage),
     MainMenu(MainMenuMessage),
     SidebarMessage(SidebarMessage),
+    TokenStore(TokenStoreMessage),
 
     MScreenOpen {
         message: Option<String>,
@@ -539,3 +543,4 @@ from_m!(GameLog, GameLogMessage);
 from_m!(Window, WindowMessage);
 from_m!(Shortcut, ShortcutMessage);
 from_m!(TokenPassword, TokenPasswordMessage);
+from_m!(TokenStore, TokenStoreMessage);

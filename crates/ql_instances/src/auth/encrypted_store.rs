@@ -32,8 +32,8 @@ use std::{
 /// The encrypted tokens file stored in the launcher directory.
 const TOKENS_FILE: &str = "encrypted_tokens.json";
 
-/// Argon2 parameters for key derivation.
-/// Tuned for security while remaining reasonable on most hardware.
+// Argon2 parameters for key derivation.
+// Tuned for security while remaining reasonable on most hardware.
 const ARGON2_M_COST: u32 = 65536; // 64 MB memory
 const ARGON2_T_COST: u32 = 3; // 3 iterations
 const ARGON2_P_COST: u32 = 4; // 4 parallel threads
@@ -110,7 +110,7 @@ fn get_tokens_path() -> PathBuf {
 
 /// Check if the encrypted tokens file exists.
 #[must_use]
-pub fn encrypted_file_exists() -> bool {
+pub fn file_exists() -> bool {
     get_tokens_path().exists()
 }
 
@@ -199,7 +199,7 @@ pub fn initialize_new(password: &str) -> Result<(), EncryptedStoreError> {
 /// Decrypts all tokens and caches them in memory for the session.
 /// Must be called before any token operations when using encrypted storage.
 pub fn unlock(password: &str) -> Result<(), EncryptedStoreError> {
-    info!("Unlocking encrypted token store...");
+    info!(no_log, "Unlocking encrypted token store...");
 
     let path = get_tokens_path();
     if !path.exists() {
@@ -261,7 +261,7 @@ pub fn unlock(password: &str) -> Result<(), EncryptedStoreError> {
         salt: file.salt,
     });
 
-    info!("Encrypted token store unlocked successfully");
+    info!(no_log, "Encrypted token store unlocked successfully");
     Ok(())
 }
 
@@ -342,7 +342,7 @@ pub fn delete_token(storage_key: &str) -> Result<(), EncryptedStoreError> {
 /// Change the password for the encrypted store.
 ///
 /// Re-encrypts all tokens with a new key derived from the new password.
-pub fn change_password(old_password: &str, new_password: &str) -> Result<(), EncryptedStoreError> {
+fn change_password(old_password: &str, new_password: &str) -> Result<(), EncryptedStoreError> {
     if !is_unlocked() {
         unlock(old_password)?;
     }

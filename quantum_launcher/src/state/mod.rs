@@ -12,7 +12,9 @@ use ql_core::{
     IntoStringError, IoError, JsonFileError, LaunchedProcess, Progress, LAUNCHER_DIR,
     LAUNCHER_VERSION_NAME,
 };
-use ql_instances::auth::{ms::CLIENT_ID, AccountData, AccountType, TokenStorageMethod};
+use ql_instances::auth::{
+    encrypted_store, ms::CLIENT_ID, AccountData, AccountType, TokenStorageMethod,
+};
 use tokio::process::ChildStdin;
 
 use crate::{
@@ -143,26 +145,15 @@ impl Launcher {
 
         let launch = State::Launch(launch);
 
-        // The version field was added in 0.3
-        let version = config.version.as_deref().unwrap_or("0.3.0");
+        let (accounts, accounts_dropdown, account_selected) = load_accounts(&mut config);
+
+        let version = config.version.as_deref().unwrap_or("0.3.0"); // field added in 0.3
 
         let state = if is_new_user {
             State::Welcome(MenuWelcome::P1InitialScreen)
-        } else if version == LAUNCHER_VERSION_NAME {
-            launch
-        } else {
-            if let Err(err) = migration(version) {
-                err!(no_log, "{err}");
-            }
-            config.version = Some(LAUNCHER_VERSION_NAME.to_owned());
-            State::ChangeLog
-        };
-
-        let (accounts, accounts_dropdown, account_selected) = load_accounts(&mut config);
-
-        let state = if config.c_token_storage() == TokenStorageMethod::EncryptedFile
-            && ql_instances::encrypted_store_file_exists()
-            && !ql_instances::auth::encrypted_store::is_unlocked()
+        } else if config.c_token_storage() == TokenStorageMethod::EncryptedFile
+            && encrypted_store::file_exists()
+            && !encrypted_store::is_unlocked()
         {
             State::TokenPasswordPrompt(MenuTokenPassword {
                 password: String::new(),
@@ -171,8 +162,14 @@ impl Launcher {
                 error: None,
                 is_loading: false,
             })
+        } else if version == LAUNCHER_VERSION_NAME {
+            launch
         } else {
-            state
+            if let Err(err) = migration(version) {
+                err!(no_log, "{err}");
+            }
+            config.version = Some(LAUNCHER_VERSION_NAME.to_owned());
+            State::ChangeLog
         };
 
         // Set global storage method from config

@@ -60,29 +60,6 @@ pub enum TokenStoreError {
     EncryptedStore(#[from] EncryptedStoreError),
 }
 
-impl TokenStoreError {
-    #[must_use]
-    pub fn to_string_human(&self) -> String {
-        self.to_string()
-    }
-}
-
-/// Build the storage key for use with the encrypted store.
-///
-/// Mirrors the keyring service/username encoding so switching
-/// backends uses the same identifier.
-#[must_use]
-pub fn make_storage_key(username: &str, account_type: AccountType) -> String {
-    format!(
-        "{username}{}",
-        match account_type {
-            AccountType::Microsoft => "",
-            AccountType::ElyBy => "#elyby",
-            AccountType::LittleSkin => "#littleskin",
-        }
-    )
-}
-
 /// Store a token using the *currently active* backend.
 pub fn store_token(
     username: &str,
@@ -96,7 +73,7 @@ pub fn store_token(
             Ok(())
         }
         TokenStorageMethod::EncryptedFile => {
-            let key = make_storage_key(username, account_type);
+            let key = account_type.create_storage_key(username);
             encrypted_store::store_token(&key, token)?;
             Ok(())
         }
@@ -117,7 +94,7 @@ pub fn store_token_with(
             Ok(())
         }
         TokenStorageMethod::EncryptedFile => {
-            let key = make_storage_key(username, account_type);
+            let key = account_type.create_storage_key(username);
             encrypted_store::store_token(&key, token)?;
             Ok(())
         }
@@ -132,7 +109,7 @@ pub fn read_token(username: &str, account_type: AccountType) -> Result<String, T
             Ok(token)
         }
         TokenStorageMethod::EncryptedFile => {
-            let key = make_storage_key(username, account_type);
+            let key = account_type.create_storage_key(username);
             let token = encrypted_store::read_token(&key)?;
             Ok(token)
         }
@@ -151,7 +128,7 @@ pub fn read_token_from(
             Ok(token)
         }
         TokenStorageMethod::EncryptedFile => {
-            let key = make_storage_key(username, account_type);
+            let key = account_type.create_storage_key(username);
             let token = encrypted_store::read_token(&key)?;
             Ok(token)
         }
@@ -167,35 +144,29 @@ pub fn delete_token(username: &str, account_type: AccountType) -> Result<(), Tok
             Ok(())
         }
         TokenStorageMethod::EncryptedFile => {
-            let key = make_storage_key(username, account_type);
+            let key = account_type.create_storage_key(username);
             encrypted_store::delete_token(&key)?;
             Ok(())
         }
     }
 }
 
-/// Delete a token using a *specific* backend.
-pub fn delete_token_from(
-    username: &str,
-    account_type: AccountType,
-    method: TokenStorageMethod,
-) -> Result<(), TokenStoreError> {
-    match method {
-        TokenStorageMethod::Keyring => {
-            super::logout_keyring(username, account_type)
-                .map_err(|_| TokenStoreError::Keyring(KeyringError(keyring::Error::NoEntry)))?;
-            Ok(())
-        }
-        TokenStorageMethod::EncryptedFile => {
-            let key = make_storage_key(username, account_type);
-            encrypted_store::delete_token(&key)?;
-            Ok(())
-        }
-    }
-}
-
-/// Returns true if the encrypted file exists but is not yet unlocked.
-#[must_use]
-pub fn needs_unlock() -> bool {
-    encrypted_store::encrypted_file_exists() && !encrypted_store::is_unlocked()
-}
+// /// Delete a token using a *specific* backend.
+// fn delete_token_from(
+//     username: &str,
+//     account_type: AccountType,
+//     method: TokenStorageMethod,
+// ) -> Result<(), TokenStoreError> {
+//     match method {
+//         TokenStorageMethod::Keyring => {
+//             super::logout_keyring(username, account_type)
+//                 .map_err(|_| TokenStoreError::Keyring(KeyringError(keyring::Error::NoEntry)))?;
+//             Ok(())
+//         }
+//         TokenStorageMethod::EncryptedFile => {
+//             let key = account_type.create_storage_key(username);
+//             encrypted_store::delete_token(&key)?;
+//             Ok(())
+//         }
+//     }
+// }
