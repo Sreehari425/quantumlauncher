@@ -428,40 +428,23 @@ fn load_account(
         return;
     }
 
-    let (account_type, refresh_token) =
+    let account_type =
         if account.account_type.as_deref() == Some("ElyBy") || username.ends_with(" (elyby)") {
-            (
-                AccountType::ElyBy,
-                get_refresh_token_for_account_type(
-                    AccountType::ElyBy,
-                    username,
-                    account.keyring_identifier.as_deref(),
-                    per_account_method,
-                ),
-            )
+            AccountType::ElyBy
         } else if account.account_type.as_deref() == Some("LittleSkin")
             || username.ends_with(" (littleskin)")
         {
-            (
-                AccountType::LittleSkin,
-                get_refresh_token_for_account_type(
-                    AccountType::LittleSkin,
-                    username,
-                    account.keyring_identifier.as_deref(),
-                    per_account_method,
-                ),
-            )
+            AccountType::LittleSkin
         } else {
-            (
-                AccountType::Microsoft,
-                get_refresh_token_for_account_type(
-                    AccountType::Microsoft,
-                    username,
-                    account.keyring_identifier.as_deref(),
-                    per_account_method,
-                ),
-            )
+            AccountType::Microsoft
         };
+
+    let refresh_token = get_refresh_token_for_account_type(
+        account_type,
+        username,
+        account.keyring_identifier.as_deref(),
+        per_account_method,
+    );
 
     let keyring_username = if let Some(keyring_id) = &account.keyring_identifier {
         keyring_id.clone()
