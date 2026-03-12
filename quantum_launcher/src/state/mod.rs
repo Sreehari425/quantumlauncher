@@ -7,13 +7,11 @@ use std::{
 
 use iced::Task;
 use notify::Watcher;
+use ql_auth::{encrypted_store, ms::CLIENT_ID, AccountData, AccountType, TokenStorageMethod};
 use ql_core::{
     err, file_utils, read_log::LogLine, GenericProgress, InstanceSelection, IntoIoError,
     IntoStringError, IoError, JsonFileError, LaunchedProcess, Progress, LAUNCHER_DIR,
     LAUNCHER_VERSION_NAME,
-};
-use ql_instances::auth::{
-    encrypted_store, ms::CLIENT_ID, AccountData, AccountType, TokenStorageMethod,
 };
 use tokio::process::ChildStdin;
 
@@ -173,7 +171,7 @@ impl Launcher {
         };
 
         // Set global storage method from config
-        ql_instances::set_token_storage_method(config.c_token_storage());
+        ql_auth::token_store::set_storage_method(config.c_token_storage());
 
         let persistent = config.c_persistent();
 
@@ -348,7 +346,7 @@ pub fn load_accounts(
     config: &mut LauncherConfig,
 ) -> (HashMap<String, AccountData>, Vec<String>, String) {
     // Set global storage method from config before loading accounts
-    ql_instances::set_token_storage_method(config.c_token_storage());
+    ql_auth::token_store::set_storage_method(config.c_token_storage());
 
     let mut accounts = HashMap::new();
 
@@ -409,12 +407,12 @@ fn load_account(
                 AccountType::Microsoft => username,
             }
         };
-        ql_instances::auth::read_refresh_token_from(keyring_username, account_type, method)
+        ql_auth::read_refresh_token_from(keyring_username, account_type, method)
             .map_err(|e| e.to_string())
     }
 
     let per_account_method = account.c_token_storage();
-    let current_method = ql_instances::auth::token_store::get_storage_method();
+    let current_method = ql_auth::token_store::get_storage_method();
 
     // Only show accounts that belong to the currently active storage backend.
     // Keyring accounts are hidden in file mode and vice versa.
@@ -423,7 +421,7 @@ fn load_account(
     }
     // If this account uses the encrypted store and it's locked, skip it
     if per_account_method == TokenStorageMethod::EncryptedFile
-        && !ql_instances::auth::encrypted_store::is_unlocked()
+        && !ql_auth::encrypted_store::is_unlocked()
     {
         return;
     }

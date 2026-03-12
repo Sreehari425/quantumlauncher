@@ -50,7 +50,6 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
 
-pub mod auth;
 mod download;
 mod instance;
 mod json_profiles;
@@ -63,11 +62,6 @@ pub use launcher_update_detector::{
 };
 pub use ql_core::jarmod;
 pub use ql_java_handler::delete_java_installs;
-
-/// Set the global token storage method (keyring or encrypted file).
-pub fn set_token_storage_method(method: auth::TokenStorageMethod) {
-    auth::token_store::set_storage_method(method);
-}
 
 use semver::{BuildMetadata, Prerelease};
 

@@ -1,4 +1,4 @@
-use crate::auth::alt::AccountResponse;
+use crate::alt::AccountResponse;
 
 use super::{token_store, AccountData, AccountType};
 use ql_core::{info, pt, IntoJsonError, CLIENT};

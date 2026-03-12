@@ -1,7 +1,7 @@
 use ql_core::{JsonError, RequestError};
 use serde::Deserialize;
 
-use crate::auth::{token_store::TokenStoreError, KeyringError};
+use crate::{token_store::TokenStoreError, KeyringError};
 
 use super::AccountData;
 

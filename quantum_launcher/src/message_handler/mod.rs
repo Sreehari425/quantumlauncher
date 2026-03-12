@@ -15,15 +15,18 @@ use crate::{
 use iced::futures::executor::block_on;
 use iced::widget::scrollable::AbsoluteOffset;
 use iced::Task;
-use ql_core::json::instance_config::ModTypeInfo;
-use ql_core::json::VersionDetails;
-use ql_core::read_log::{Diagnostic, ReadError};
+use ql_auth::{encrypted_store, AccountData, TokenStorageMethod};
 use ql_core::{
-    err, json::instance_config::InstanceConfigJson, GenericProgress, InstanceSelection,
-    IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
+    err, info,
+    json::{
+        instance_config::{InstanceConfigJson, ModTypeInfo},
+        VersionDetails,
+    },
+    pt,
+    read_log::{Diagnostic, ReadError},
+    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
+    LaunchedProcess,
 };
-use ql_core::{info, pt, LaunchedProcess};
-use ql_instances::auth::AccountData;
 use ql_mod_manager::{loaders, store::ModIndex};
 use std::{
     collections::HashSet,
@@ -623,7 +626,6 @@ impl Launcher {
 
                 // Block launch if the selected account's encrypted store is locked
                 if self.account_selected != OFFLINE_ACCOUNT_NAME {
-                    use ql_instances::auth::{encrypted_store, TokenStorageMethod};
                     if let Some(acct) = self
                         .config
                         .accounts

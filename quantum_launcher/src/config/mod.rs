@@ -1,12 +1,12 @@
 use crate::config::sidebar::{InstanceKind, SidebarConfig, SidebarNode, SidebarNodeKind};
 use crate::stylesheet::styles::{LauncherTheme, LauncherThemeColor, LauncherThemeLightness};
 use crate::{WINDOW_HEIGHT, WINDOW_WIDTH};
+use ql_auth::{AccountData, TokenStorageMethod};
 use ql_core::json::GlobalSettings;
 use ql_core::ListEntryKind;
 use ql_core::{
     err, IntoIoError, IntoJsonError, JsonFileError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
 };
-use ql_instances::auth::{AccountData, TokenStorageMethod};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::{collections::HashMap, path::Path};
@@ -57,7 +57,7 @@ pub struct LauncherConfig {
     /// `String (username) : ConfigAccount { uuid: String, skin: None (unimplemented) }`
     ///
     /// Upon opening the launcher,
-    /// `read_refresh_token(username)` (in [`ql_instances::auth`])
+    /// `read_refresh_token(username)` (in [`ql_auth`])
     /// is called on each account's key value (username)
     /// to get the refresh token (stored securely on disk).
     // Since: v0.4
@@ -383,7 +383,7 @@ pub struct ConfigAccount {
 
 impl ConfigAccount {
     pub fn from_account(data: &AccountData) -> Self {
-        let method = ql_instances::auth::token_store::get_storage_method();
+        let method = ql_auth::token_store::get_storage_method();
         Self {
             uuid: data.uuid.clone(),
             skin: None,

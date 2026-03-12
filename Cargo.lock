@@ -4132,6 +4132,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3eb8486b569e12e2c32ad3e204dbaba5e4b5b216e9367044f25f1dba42341773"
 
 [[package]]
+name = "ql_auth"
+version = "0.0.0"
+dependencies = [
+ "aes-gcm",
+ "argon2",
+ "base64",
+ "keyring",
+ "owo-colors",
+ "ql_core",
+ "rand 0.8.5",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.14",
+ "tokio",
+ "urlencoding",
+]
+
+[[package]]
 name = "ql_core"
 version = "0.0.0"
 dependencies = [
@@ -4158,24 +4177,19 @@ dependencies = [
 name = "ql_instances"
 version = "0.0.0"
 dependencies = [
- "aes-gcm",
- "argon2",
- "base64",
  "cfg-if",
  "chrono",
  "indicatif",
- "keyring",
  "owo-colors",
+ "ql_auth",
  "ql_core",
  "ql_java_handler",
- "rand 0.8.5",
  "reqwest",
  "semver",
  "serde",
  "serde_json",
  "thiserror 2.0.14",
  "tokio",
- "urlencoding",
  "zip",
 ]
 
@@ -4272,6 +4286,7 @@ dependencies = [
  "open",
  "owo-colors",
  "paste",
+ "ql_auth",
  "ql_core",
  "ql_instances",
  "ql_mod_manager",

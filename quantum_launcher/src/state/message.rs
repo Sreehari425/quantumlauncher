@@ -7,6 +7,10 @@ use crate::{
     stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
 };
 use iced::widget::{self, scrollable::AbsoluteOffset};
+use ql_auth::{
+    ms::{AuthCodeResponse, AuthTokenResponse},
+    AccountData, AccountType, TokenStorageMethod,
+};
 use ql_core::{
     file_utils::DirItem,
     jarmod::JarMods,
@@ -14,13 +18,7 @@ use ql_core::{
     read_log::Diagnostic,
     InstanceSelection, LaunchedProcess, ListEntry, Loader, ModId, StoreBackendType,
 };
-use ql_instances::{
-    auth::{
-        ms::{AuthCodeResponse, AuthTokenResponse},
-        AccountData, AccountType, TokenStorageMethod,
-    },
-    UpdateCheckInfo,
-};
+use ql_instances::UpdateCheckInfo;
 use ql_mod_manager::{
     loaders::{fabric, paper::PaperVersion},
     store::{CurseforgeNotAllowed, ImageResult, ModIndex, QueryType, RecommendedMod, SearchResult},
@@ -252,7 +250,7 @@ pub enum AccountMessage {
     AltOtpInput(String),
     AltShowPassword(bool),
     AltLogin,
-    AltLoginResponse(Res<ql_instances::auth::yggdrasil::Account>),
+    AltLoginResponse(Res<ql_auth::yggdrasil::Account>),
 
     LittleSkinOauthButtonClicked,
     LittleSkinDeviceCodeReady {

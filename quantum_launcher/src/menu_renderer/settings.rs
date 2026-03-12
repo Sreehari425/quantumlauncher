@@ -1,8 +1,8 @@
 use std::sync::LazyLock;
 
 use iced::{widget, Alignment, Length};
+use ql_auth::{encrypted_store, TokenStorageMethod};
 use ql_core::{LAUNCHER_DIR, WEBSITE};
-use ql_instances::auth::{encrypted_store, TokenStorageMethod};
 
 use super::{
     back_button, button_with_icon, get_mode_selector, sidebar_button, underline, Element, DISCORD,

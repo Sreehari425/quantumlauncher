@@ -3,10 +3,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use auth::AccountData;
 use iced::Task;
+use ql_auth::AccountData;
+use ql_auth::AccountType;
 use ql_core::IntoStringError;
-use ql_instances::auth::{self, AccountType};
 
 use crate::{
     config::ConfigAccount,
@@ -78,7 +78,7 @@ impl Launcher {
                 // Start polling for token
                 let device_code_clone = device_code.clone();
                 return Task::perform(
-                    auth::yggdrasil::oauth::poll_device_token(
+                    ql_auth::yggdrasil::oauth::poll_device_token(
                         device_code_clone,
                         interval,
                         expires_in,
@@ -103,7 +103,8 @@ impl Launcher {
                     .get(&username)
                     .map_or(AccountType::Microsoft, |n| n.account_type);
 
-                if let Err(err) = auth::logout(account_type.strip_name(&username), account_type) {
+                if let Err(err) = ql_auth::logout(account_type.strip_name(&username), account_type)
+                {
                     self.set_error(err);
                 }
                 if let Some(accounts) = &mut self.config.accounts {
@@ -144,7 +145,7 @@ impl Launcher {
             } => match kind {
                 AccountType::Microsoft => {
                     self.state = State::GenericMessage("Loading Login...".to_owned());
-                    return Task::perform(auth::ms::login_1_link(), move |n| {
+                    return Task::perform(ql_auth::ms::login_1_link(), move |n| {
                         AccountMessage::Response1 {
                             r: n.strerr(),
                             is_from_welcome_screen,
@@ -201,7 +202,7 @@ impl Launcher {
                     menu.is_loading = true;
 
                     return Task::perform(
-                        auth::yggdrasil::login_new(
+                        ql_auth::yggdrasil::login_new(
                             menu.username.clone(),
                             password,
                             if menu.is_littleskin {
@@ -218,10 +219,10 @@ impl Launcher {
                 if let State::LoginAlternate(menu) = &mut self.state {
                     menu.is_loading = false;
                     match acc {
-                        auth::yggdrasil::Account::Account(data) => {
+                        ql_auth::yggdrasil::Account::Account(data) => {
                             return self.account_response_3(data);
                         }
-                        auth::yggdrasil::Account::NeedsOTP => {
+                        ql_auth::yggdrasil::Account::NeedsOTP => {
                             menu.otp = Some(String::new());
                         }
                     }
@@ -234,7 +235,7 @@ impl Launcher {
                     menu.is_incorrect_password = false;
                 }
 
-                return Task::perform(auth::yggdrasil::oauth::request_device_code(), |resp| {
+                return Task::perform(ql_auth::yggdrasil::oauth::request_device_code(), |resp| {
                     Message::Account(match resp {
                         Ok(code) => AccountMessage::LittleSkinDeviceCodeReady {
                             user_code: code.user_code,
@@ -270,7 +271,7 @@ impl Launcher {
                 self.state = State::AccountLoginProgress(ProgressBar::with_recv(receiver));
 
                 Task::perform(
-                    auth::ms::login_refresh(
+                    ql_auth::ms::login_refresh(
                         account.username.clone(),
                         account.refresh_token.clone(),
                         Some(sender),
@@ -279,7 +280,7 @@ impl Launcher {
                 )
             }
             AccountType::ElyBy | AccountType::LittleSkin => Task::perform(
-                auth::yggdrasil::login_refresh(
+                ql_auth::yggdrasil::login_refresh(
                     account.username.clone(),
                     account.refresh_token.clone(),
                     account.account_type,
@@ -313,20 +314,20 @@ impl Launcher {
         self.go_to_launch_screen::<String>(None)
     }
 
-    fn account_response_2(&mut self, token: auth::ms::AuthTokenResponse) -> Task<Message> {
+    fn account_response_2(&mut self, token: ql_auth::ms::AuthTokenResponse) -> Task<Message> {
         let (sender, receiver) = std::sync::mpsc::channel();
         self.state = State::AccountLoginProgress(ProgressBar::with_recv(receiver));
-        Task::perform(auth::ms::login_3_xbox(token, Some(sender), true), |n| {
+        Task::perform(ql_auth::ms::login_3_xbox(token, Some(sender), true), |n| {
             AccountMessage::Response3(n.strerr()).into()
         })
     }
 
     fn account_response_1(
         &mut self,
-        code: auth::ms::AuthCodeResponse,
+        code: ql_auth::ms::AuthCodeResponse,
         is_from_welcome_screen: bool,
     ) -> Task<Message> {
-        let (task, handle) = Task::perform(auth::ms::login_2_wait(code.clone()), |n| {
+        let (task, handle) = Task::perform(ql_auth::ms::login_2_wait(code.clone()), |n| {
             AccountMessage::Response2(n.strerr()).into()
         })
         .abortable();

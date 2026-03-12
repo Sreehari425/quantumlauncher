@@ -1,7 +1,7 @@
 //! Handler for `TokenPasswordMessage` — password prompt for the encrypted token store.
 
 use iced::Task;
-use ql_instances::auth::{encrypted_store, TokenStorageMethod};
+use ql_auth::{encrypted_store, TokenStorageMethod};
 
 use crate::{
     state::{
@@ -125,7 +125,7 @@ impl Launcher {
             }
             TokenStoreMessage::TokenStorageChanged(method) => {
                 self.config.token_storage = Some(method);
-                ql_instances::set_token_storage_method(method);
+                ql_auth::token_store::set_storage_method(method);
                 // Reload the account list so the dropdown immediately reflects the new backend
                 let (accounts, dropdown, selected) = load_accounts(&mut self.config);
                 self.accounts = accounts;
@@ -181,7 +181,7 @@ impl Launcher {
                 });
                 // Switch back to keyring backend
                 self.config.token_storage = Some(TokenStorageMethod::Keyring);
-                ql_instances::set_token_storage_method(TokenStorageMethod::Keyring);
+                ql_auth::token_store::set_storage_method(TokenStorageMethod::Keyring);
                 self.go_to_launcher_settings();
                 return Task::none();
             }

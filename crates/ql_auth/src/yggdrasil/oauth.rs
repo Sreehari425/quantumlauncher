@@ -1,5 +1,4 @@
-use crate::auth::alt::OauthError;
-use crate::auth::{token_store, AccountType};
+use crate::{alt::OauthError, token_store, AccountType};
 use ql_core::request::check_for_success;
 use ql_core::{IntoJsonError, CLIENT};
 use serde::{Deserialize, Serialize};
@@ -119,7 +118,7 @@ pub async fn poll_device_token(
             .map_or_else(|| user_info.username.clone(), |p| p.name.clone()),
         refresh_token: mc_token_resp.access_token,
         needs_refresh: false,
-        account_type: crate::auth::AccountType::LittleSkin,
+        account_type: AccountType::LittleSkin,
     }))
 }
 
