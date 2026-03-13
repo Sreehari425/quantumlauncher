@@ -91,6 +91,8 @@ impl Launcher {
         } else {
             column![widget::text(if menu.is_viewing_server {
                 "Select a server\n\nNote: You are trying the *early-alpha* server manager feature.\nYou need playit.gg (or port-forwarding) for others to join"
+            } else if self.client_list.as_ref().is_some_and(|n| n.is_empty()) {
+                "Click \"New\" to create your first Minecraft instance"
             } else {
                 "Select an instance"
             })

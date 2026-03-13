@@ -242,7 +242,17 @@ impl MenuCreateInstanceChoosing {
         .padding(16);
 
         widget::container(widget::container(menu).style(|t: &LauncherTheme| {
-            t.style_container_round_box(BORDER_WIDTH, Color::Dark, BORDER_RADIUS)
+            widget::container::Style {
+                border: {
+                    iced::Border {
+                        color: t.get(Color::SecondDark),
+                        width: BORDER_WIDTH,
+                        radius: BORDER_RADIUS.into(),
+                    }
+                },
+                background: Some(t.get_bg(Color::Dark)),
+                ..Default::default()
+            }
         }))
         .padding(5)
         .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark))
