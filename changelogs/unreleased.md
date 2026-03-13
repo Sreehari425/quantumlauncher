@@ -7,11 +7,14 @@
 
 ---
 
-- Added instance folders, with drag & drop and renaming
+# Instance Folders
+
+- Added **instance folders**, with drag & drop and renaming
+- This allows for better organization and sorting (hello to those with a dozen instances!)
 
 # Shortcuts
 
-- Launch instances with a single click; no launcher required!
+- Launch instances with a single click, without opening the launcher!
 - Create one-click shortcuts for:
   - Desktop
   - Start Menu / Applications Menu (Windows/Linux)
@@ -31,6 +34,8 @@
 - Added a more visible toggler to mods list for enabling/disabling mods
 - Disabled mods now stay disabled when updating
 
+---
+
 # Technical
 
 - Mod update checking is no longer automatic
@@ -40,8 +45,8 @@
 - Usernames are now redacted in log paths
   - eg: `C:\Users\YOUR_NAME` -> `C:\Users\[REDACTED]`
   - Disable temporarily with `--no-redact-info` flag
-- When launching headlessly (`quantum_launcher launch <INSTANCE> <USERNAME>`),
-  you can now use `--show-progress` to get desktop notifications on account login progress or errors
+- Added `--show-progress` CLI flag to `quantum_launcher launch <INSTANCE> <USERNAME>`,
+  - Gives desktop notifications on account login progress/errors
   - Especially useful for shortcuts/scripts
 
 ## Java
