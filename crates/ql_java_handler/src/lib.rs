@@ -62,6 +62,7 @@ use std::{
     sync::{mpsc::Sender, Mutex},
 };
 use thiserror::Error;
+use tokio::fs;
 
 use ql_core::{
     constants::OS_NAME,
@@ -154,12 +155,23 @@ pub async fn get_java_binary(
         install_java(version, java_install_progress_sender).await?;
     }
 
-    let bin_path = find_java_bin(name, &java_dir).await?;
+    let bin_path = find_java_bin_in_dir(name, &java_dir).await?;
     Ok(canonicalize_a(&bin_path).await)
 }
 
-async fn find_java_bin(name: &str, java_dir: &Path) -> Result<PathBuf, JavaInstallError> {
+/// Intelligently searches the given path for the given Java binary name, and returns a `PathBuf` to if found.
+///
+/// # Errors
+/// - Java binary not found
+/// - Path doesn't exist, or user lacks permissions
+pub async fn find_java_bin_in_dir(name: &str, path: &Path) -> Result<PathBuf, JavaInstallError> {
+    let metadata = fs::metadata(path).await.path(path)?;
+    if metadata.is_file() {
+        return Ok(path.to_owned());
+    }
+
     let names = [
+        format!("{name}"),
         format!("bin/{name}"),
         format!("Contents/Home/bin/{name}"),
         format!("jre.bundle/Contents/Home/bin/{name}"),
@@ -169,20 +181,20 @@ async fn find_java_bin(name: &str, java_dir: &Path) -> Result<PathBuf, JavaInsta
     ];
 
     for name in names {
-        let path = java_dir.join(&name);
+        let path = path.join(&name);
         if exists(&path).await {
             return Ok(path);
         }
-        let path2 = java_dir.join(format!("{name}.exe"));
+        let path2 = path.join(format!("{name}.exe"));
         if exists(&path2).await {
             return Ok(path2);
         }
     }
 
-    let entries = file_utils::read_filenames_from_dir(java_dir).await;
+    let entries = file_utils::read_filenames_from_dir(path).await;
     if let Ok(entries) = entries.as_deref() {
         if let Some(entry) = entries.iter().find(|n| n.name.contains("bellsoft")) {
-            return Box::pin(find_java_bin(name, &java_dir.join(&entry.name))).await;
+            return Box::pin(find_java_bin_in_dir(name, &path.join(&entry.name))).await;
         }
     }
 

@@ -50,6 +50,9 @@
 - Improved Java installer with expanded platform support
   - Minecraft 1.20.5–1.21.11 now runs on many 32-bit systems
 - Platforms without Mojang Java now use **Azul Zulu** instead of Amazon Corretto
+- Java override in Edit tab, now supports folders too
+
+---
 
 # Fixes
 

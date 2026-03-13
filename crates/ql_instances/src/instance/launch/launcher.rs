@@ -742,10 +742,23 @@ impl GameLauncher {
     }
 
     pub async fn get_java_command(&mut self) -> Result<(Command, PathBuf), GameLaunchError> {
+        let which_java = if cfg!(target_os = "windows") && self.config.enable_logger.unwrap_or(true)
+        {
+            "javaw"
+        } else {
+            "java"
+        };
+
         if let Some(java_override) = self.config.get_java_override() {
             info!("Java (override): {java_override:?}\n");
-            return Ok((Command::new(&java_override), java_override));
+            return Ok((
+                Command::new(
+                    ql_java_handler::find_java_bin_in_dir(which_java, &java_override).await?,
+                ),
+                java_override,
+            ));
         }
+
         let version = if let Some(version) = self.config.java_override_version {
             version.into()
         } else if let Some(version) = self.version_json.javaVersion.clone() {
@@ -756,11 +769,7 @@ impl GameLauncher {
 
         let program = get_java_binary(
             version,
-            if cfg!(target_os = "windows") && self.config.enable_logger.unwrap_or(true) {
-                "javaw"
-            } else {
-                "java"
-            },
+            which_java,
             self.java_install_progress_sender.take().as_ref(),
         )
         .await?;
