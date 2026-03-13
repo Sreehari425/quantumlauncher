@@ -93,7 +93,7 @@ Structure:
 
 # More info
 
-- **MSRV** (Minimum Supported Rust Version): `1.82.0`
+- **MSRV** (Minimum Supported Rust Version): Follows [Debian stable](https://packages.debian.org/en/stable/rustc) (currently `1.85.0`)
   - Any mismatch is considered a bug, please report if found
 - [**Roadmap/Plans**](docs/ROADMAP.md)
 - [**Contributing**](CONTRIBUTING.md)

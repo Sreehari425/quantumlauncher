@@ -8,11 +8,8 @@ cfg-if.workspace = true
 tokio.workspace = true
 dirs.workspace = true
 
-# LNK shortcut generation
-# Don't forget, also used by quantum_launcher crate
-# If you update this update that too
 [target.'cfg(target_os = "windows")'.dependencies]
-windows = { version = "0.61", features = [
+windows = { version = "0.62.*", features = [
     "Win32_UI_Shell",
     "Win32_System_Com",
 ] }
