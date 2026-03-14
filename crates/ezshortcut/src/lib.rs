@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 mod os;
-pub use os::{get_menu_path, EXTENSION, EXTENSION_S};
+pub use os::{EXTENSION, EXTENSION_S, get_menu_path};
 
 /// Fetches the path to user's `Desktop` folder
 #[must_use]

@@ -8,13 +8,13 @@ use crate::state::{
     State,
 };
 use iced::{
-    keyboard::{self, key::Named, Key},
     Task,
+    keyboard::{self, Key, key::Named},
 };
 use ql_core::{
-    err,
+    InstanceSelection, err,
     jarmod::{JarMod, JarMods},
-    pt, InstanceSelection,
+    pt,
 };
 use std::ffi::OsStr;
 use std::path::Path;

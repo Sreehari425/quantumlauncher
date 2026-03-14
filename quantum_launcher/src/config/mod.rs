@@ -1,10 +1,10 @@
 use crate::config::sidebar::{InstanceKind, SidebarConfig, SidebarNode, SidebarNodeKind};
 use crate::stylesheet::styles::{LauncherTheme, LauncherThemeColor, LauncherThemeLightness};
 use crate::{WINDOW_HEIGHT, WINDOW_WIDTH};
-use ql_core::json::GlobalSettings;
 use ql_core::ListEntryKind;
+use ql_core::json::GlobalSettings;
 use ql_core::{
-    err, IntoIoError, IntoJsonError, JsonFileError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
+    IntoIoError, IntoJsonError, JsonFileError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME, err,
 };
 use ql_instances::auth::AccountData;
 use serde::{Deserialize, Serialize};
@@ -157,7 +157,9 @@ impl LauncherConfig {
         let mut config: Self = match serde_json::from_str(&config) {
             Ok(config) => config,
             Err(err) => {
-                err!("Invalid launcher config! This may be a sign of corruption! Please report if this happens to you.\nError: {err}");
+                err!(
+                    "Invalid launcher config! This may be a sign of corruption! Please report if this happens to you.\nError: {err}"
+                );
                 let old_path = LAUNCHER_DIR.join("config.json.bak");
                 _ = std::fs::copy(&config_path, &old_path);
                 return LauncherConfig::create(&config_path);

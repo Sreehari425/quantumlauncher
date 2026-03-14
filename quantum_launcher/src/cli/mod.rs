@@ -5,7 +5,7 @@ use std::{
 
 use clap::{Parser, Subcommand};
 use owo_colors::{OwoColorize, Style};
-use ql_core::{err, LAUNCHER_VERSION_NAME, REDACT_SENSITIVE_INFO, WEBSITE};
+use ql_core::{LAUNCHER_VERSION_NAME, REDACT_SENSITIVE_INFO, WEBSITE, err};
 
 use crate::{
     cli::helpers::render_row,
@@ -204,7 +204,8 @@ pub fn start_cli(is_dir_err: bool, launcher_dir: &mut Option<PathBuf>) {
 
     if let Some(p) = &cli.dir {
         *launcher_dir = Some(p.clone());
-        std::env::set_var("QLDIR", p);
+        // Safety: Other threads will not write to this right now
+        unsafe { std::env::set_var("QLDIR", p) };
     }
 
     if let Some(subcommand) = cli.command {

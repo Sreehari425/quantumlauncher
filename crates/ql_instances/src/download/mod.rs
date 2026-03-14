@@ -1,8 +1,8 @@
 use std::sync::mpsc::Sender;
 
 use ql_core::{
-    info, json::VersionDetails, DownloadProgress, InstanceSelection, IntoIoError, IntoStringError,
-    ListEntry, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
+    DownloadProgress, InstanceSelection, IntoIoError, IntoStringError, LAUNCHER_DIR,
+    LAUNCHER_VERSION_NAME, ListEntry, info, json::VersionDetails,
 };
 
 mod downloader;

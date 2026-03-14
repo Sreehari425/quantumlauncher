@@ -8,7 +8,7 @@
 
 use std::path::PathBuf;
 
-use ql_core::{impl_3_errs_jri, IoError, JsonError, RequestError};
+use ql_core::{IoError, JsonError, RequestError, impl_3_errs_jri};
 use ql_java_handler::JavaInstallError;
 
 mod create;

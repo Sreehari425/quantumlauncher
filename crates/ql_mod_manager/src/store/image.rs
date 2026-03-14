@@ -1,4 +1,4 @@
-use ql_core::{url_cache_get, IntoStringError};
+use ql_core::{IntoStringError, url_cache_get};
 
 #[derive(Clone)]
 pub struct ImageResult {

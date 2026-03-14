@@ -1,6 +1,6 @@
-use iced::{futures::executor::block_on, Task};
-use ql_core::{json::InstanceConfigJson, InstanceSelection, IntoStringError, JsonFileError, ModId};
-use ql_mod_manager::store::{RecommendedMod, RECOMMENDED_MODS};
+use iced::{Task, futures::executor::block_on};
+use ql_core::{InstanceSelection, IntoStringError, JsonFileError, ModId, json::InstanceConfigJson};
+use ql_mod_manager::store::{RECOMMENDED_MODS, RecommendedMod};
 
 use crate::state::{
     Launcher, MenuCurseforgeManualDownload, MenuRecommendedMods, Message, ProgressBar,

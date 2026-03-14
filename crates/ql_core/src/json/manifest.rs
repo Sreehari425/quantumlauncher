@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use crate::{err, file_utils, IntoJsonError, JsonDownloadError};
+use crate::{IntoJsonError, JsonDownloadError, err, file_utils};
 use cfg_if::cfg_if;
 use chrono::DateTime;
 use serde::Deserialize;
@@ -45,10 +45,8 @@ impl Manifest {
 
     #[allow(unused)]
     async fn load() -> Result<Manifest, JsonDownloadError> {
-        const ARM64: &str =
-            "https://raw.githubusercontent.com/theofficialgman/piston-meta-arm64/refs/heads/main/mc/game/version_manifest_v2.json";
-        const ARM32: &str =
-            "https://raw.githubusercontent.com/theofficialgman/piston-meta-arm32/refs/heads/main/mc/game/version_manifest_v2.json";
+        const ARM64: &str = "https://raw.githubusercontent.com/theofficialgman/piston-meta-arm64/refs/heads/main/mc/game/version_manifest_v2.json";
+        const ARM32: &str = "https://raw.githubusercontent.com/theofficialgman/piston-meta-arm32/refs/heads/main/mc/game/version_manifest_v2.json";
 
         const LAST_BETTERJSONS: &str = "26.1-snapshot-1";
         const LAST_BETTERJSONS_ALT: &str = "26.1-snap1";

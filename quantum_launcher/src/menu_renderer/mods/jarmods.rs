@@ -1,9 +1,9 @@
-use iced::{widget, Length};
+use iced::{Length, widget};
 use ql_core::InstanceSelection;
 
 use crate::{
     icons,
-    menu_renderer::{back_button, button_with_icon, link, Element},
+    menu_renderer::{Element, back_button, button_with_icon, link},
     state::{ManageJarModsMessage, ManageModsMessage, MenuEditJarMods, Message, SelectedState},
     stylesheet::{color::Color, styles::LauncherTheme},
 };

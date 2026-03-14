@@ -8,15 +8,16 @@ use std::{
 use cfg_if::cfg_if;
 use owo_colors::OwoColorize;
 use ql_core::{
+    DownloadProgress, IntoIoError, IoError,
     constants::*,
     do_jobs, err, file_utils, info,
     json::{
+        VersionDetails,
         version::{
             Library, LibraryClassifier, LibraryDownloadArtifact, LibraryDownloads, LibraryExtract,
         },
-        VersionDetails,
     },
-    pt, DownloadProgress, IntoIoError, IoError,
+    pt,
 };
 use tokio::fs;
 
@@ -314,10 +315,15 @@ impl GameDownloader {
     }
 
     async fn extract_file(&self, mut url: String) -> Result<(), DownloadError> {
-        if url == "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-natives-linux.jar" {
+        if url
+            == "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-natives-linux.jar"
+        {
             "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-patched-natives-linux-arm64.jar".clone_into(&mut url);
         }
-        if (cfg!(target_arch = "aarch64") && url == MACOS_X64_LWJGL_294) || url == "https://github.com/MinecraftMachina/lwjgl/releases/download/2.9.4-20150209-mmachina.2/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.jar" {
+        if (cfg!(target_arch = "aarch64") && url == MACOS_X64_LWJGL_294)
+            || url
+                == "https://github.com/MinecraftMachina/lwjgl/releases/download/2.9.4-20150209-mmachina.2/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.jar"
+        {
             MACOS_ARM_LWJGL_294.clone_into(&mut url);
         }
 

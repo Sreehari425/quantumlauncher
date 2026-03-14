@@ -6,14 +6,14 @@ use std::{
 
 use crate::json_profiles::ProfileJson;
 use ql_core::{
-    do_jobs, download,
+    DownloadFileError, DownloadProgress, IntoIoError, IntoJsonError, IoError, JsonError, ListEntry,
+    RequestError, do_jobs, download,
     file_utils::{self, LAUNCHER_DIR},
     impl_3_errs_jri, info,
     json::{
-        instance_config::VersionInfo, AssetIndex, InstanceConfigJson, Manifest, VersionDetails,
+        AssetIndex, InstanceConfigJson, Manifest, VersionDetails, instance_config::VersionInfo,
     },
-    pt, DownloadFileError, DownloadProgress, IntoIoError, IntoJsonError, IoError, JsonError,
-    ListEntry, RequestError,
+    pt,
 };
 use thiserror::Error;
 use tokio::{fs, sync::Mutex};
@@ -37,7 +37,9 @@ pub enum DownloadError {
     AssetsJsonFieldNotFound(String),
     #[error("{DOWNLOAD_ERR_PREFIX}could not extract native libraries:\n{0}")]
     NativesExtractError(zip::result::ZipError),
-    #[error("{DOWNLOAD_ERR_PREFIX}tried to remove natives outside folder. POTENTIAL SECURITY RISK AVOIDED")]
+    #[error(
+        "{DOWNLOAD_ERR_PREFIX}tried to remove natives outside folder. POTENTIAL SECURITY RISK AVOIDED"
+    )]
     NativesOutsideDirRemove,
 }
 

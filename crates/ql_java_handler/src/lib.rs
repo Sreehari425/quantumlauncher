@@ -59,17 +59,18 @@ use owo_colors::OwoColorize;
 use std::{
     env::consts::ARCH,
     path::{Path, PathBuf},
-    sync::{mpsc::Sender, Mutex},
+    sync::{Mutex, mpsc::Sender},
 };
 use thiserror::Error;
 use tokio::fs;
 
 use ql_core::{
+    GenericProgress, IntoIoError, IoError, JsonDownloadError, JsonError, LAUNCHER_DIR,
+    RequestError,
     constants::OS_NAME,
     do_jobs_with_limit, err,
-    file_utils::{self, canonicalize_a, exists, DirItem},
-    info, pt, GenericProgress, IntoIoError, IoError, JsonDownloadError, JsonError, RequestError,
-    LAUNCHER_DIR,
+    file_utils::{self, DirItem, canonicalize_a, exists},
+    info, pt,
 };
 
 mod compression;
@@ -399,7 +400,9 @@ pub enum JavaInstallError {
     ZipExtract(#[from] zip::result::ZipError),
     #[error("{ERR_PREF1}{OS_NAME} {ARCH}):\ncouldn't extract java tar.gz:\n{0}")]
     TarGzExtract(std::io::Error),
-    #[error("{ERR_PREF1}{OS_NAME} {ARCH}):\nunknown extension for java: {0}\n\nThis is a bug, please report on discord!")]
+    #[error(
+        "{ERR_PREF1}{OS_NAME} {ARCH}):\nunknown extension for java: {0}\n\nThis is a bug, please report on discord!"
+    )]
     UnknownExtension(String),
 }
 

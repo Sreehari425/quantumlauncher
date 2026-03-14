@@ -1,6 +1,6 @@
 use iced::{
-    widget::{self, column, row},
     Alignment, Length,
+    widget::{self, column, row},
 };
 use ql_instances::auth::AccountType;
 
@@ -8,8 +8,8 @@ use crate::{
     config::LauncherConfig,
     icons,
     menu_renderer::{
-        button_with_icon, center_x, get_mode_selector, onboarding::x86_warning,
-        settings::get_theme_selector, tsubtitle, Element, DISCORD,
+        DISCORD, Element, button_with_icon, center_x, get_mode_selector, onboarding::x86_warning,
+        settings::get_theme_selector, tsubtitle,
     },
     state::{AccountMessage, MainMenuMessage, MenuWelcome, Message},
 };

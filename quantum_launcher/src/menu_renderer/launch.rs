@@ -1,13 +1,13 @@
 use cfg_if::cfg_if;
 use frostmark::MarkWidget;
 use iced::widget::{column, horizontal_space, row, text_editor, tooltip::Position, vertical_space};
-use iced::{widget, Alignment, Length, Padding};
+use iced::{Alignment, Length, Padding, widget};
 use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
 
 use crate::cli::EXPERIMENTAL_SERVERS;
 use crate::menu_renderer::onboarding::x86_warning;
 use crate::menu_renderer::{
-    ctx_button, ctxbox, sidebar, tsubtitle, underline, CTXI_SIZE, FONT_MONO,
+    CTXI_SIZE, FONT_MONO, ctx_button, ctxbox, sidebar, tsubtitle, underline,
 };
 use crate::state::{
     GameLogMessage, InstanceNotes, LaunchModal, MainMenuMessage, NotesMessage, ShortcutMessage,
@@ -18,30 +18,22 @@ use crate::{
     menu_renderer::DISCORD,
     state::{
         AccountMessage, CreateInstanceMessage, InstanceLog, LaunchTab, Launcher,
-        LauncherSettingsMessage, ManageModsMessage, MenuLaunch, Message, State,
-        OFFLINE_ACCOUNT_NAME,
+        LauncherSettingsMessage, ManageModsMessage, MenuLaunch, Message, OFFLINE_ACCOUNT_NAME,
+        State,
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
 
-use super::{button_with_icon, shortcut_ctrl, tooltip, Element};
+use super::{Element, button_with_icon, shortcut_ctrl, tooltip};
 
 pub const TAB_BUTTON_WIDTH: f32 = 64.0;
 
 const fn tab_height(decor: bool) -> f32 {
-    if decor {
-        31.0
-    } else {
-        28.0
-    }
+    if decor { 31.0 } else { 28.0 }
 }
 
 const fn decorh(decor: bool) -> f32 {
-    if decor {
-        0.0
-    } else {
-        32.0
-    }
+    if decor { 0.0 } else { 32.0 }
 }
 
 impl Launcher {
@@ -111,14 +103,16 @@ impl Launcher {
             .into()
         };
 
-        widget::stack!(column![menu.get_tab_selector(decor)]
-            .push_maybe(view_info_message(menu))
-            .push(
-                widget::container(tab_body)
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .style(|t: &LauncherTheme| t.style_container_bg(0.0, None)),
-            ))
+        widget::stack!(
+            column![menu.get_tab_selector(decor)]
+                .push_maybe(view_info_message(menu))
+                .push(
+                    widget::container(tab_body)
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .style(|t: &LauncherTheme| t.style_container_bg(0.0, None)),
+                )
+        )
         .push_maybe(if let Some(LaunchModal::InstanceOptions) = &menu.modal {
             Some(
                 column![

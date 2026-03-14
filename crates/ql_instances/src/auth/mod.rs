@@ -1,4 +1,4 @@
-use ql_core::{err, IntoStringError};
+use ql_core::{IntoStringError, err};
 use std::fmt::Display;
 
 mod alt;
@@ -150,7 +150,10 @@ impl Display for KeyringError {
             keyring::Error::PlatformFailure(error)
                 if error.to_string().contains("The name is not activatable") =>
             {
-                write!(f, "{error}\n\nTry installing gnome-keyring and libsecret packages\n(may be called differently depending on your distro)")
+                write!(
+                    f,
+                    "{error}\n\nTry installing gnome-keyring and libsecret packages\n(may be called differently depending on your distro)"
+                )
             }
             #[cfg(target_os = "linux")]
             keyring::Error::NoStorageAccess(error)

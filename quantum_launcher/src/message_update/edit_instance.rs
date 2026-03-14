@@ -1,19 +1,18 @@
 use iced::Task;
 use ql_core::{
-    err,
+    IntoIoError, IntoStringError, LAUNCHER_DIR, err,
     json::{
-        instance_config::{CustomJarConfig, MainClassMode},
         GlobalSettings, InstanceConfigJson,
+        instance_config::{CustomJarConfig, MainClassMode},
     },
-    IntoIoError, IntoStringError, LAUNCHER_DIR,
 };
 
 use crate::{
     message_handler::format_memory,
     state::{
-        dir_watch, get_entries, CustomJarState, EditInstanceMessage, LaunchTab, Launcher,
-        MainMenuMessage, MenuCreateInstance, MenuEditInstance, MenuLaunch, Message, ProgressBar,
-        State, ADD_JAR_NAME, NONE_JAR_NAME, OPEN_FOLDER_JAR_NAME, REMOVE_JAR_NAME,
+        ADD_JAR_NAME, CustomJarState, EditInstanceMessage, LaunchTab, Launcher, MainMenuMessage,
+        MenuCreateInstance, MenuEditInstance, MenuLaunch, Message, NONE_JAR_NAME,
+        OPEN_FOLDER_JAR_NAME, ProgressBar, REMOVE_JAR_NAME, State, dir_watch, get_entries,
     },
 };
 

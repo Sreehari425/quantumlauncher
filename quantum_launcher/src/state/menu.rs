@@ -5,8 +5,8 @@ use std::{
 
 use crate::{
     config::{
-        sidebar::{FolderId, SDragLocation, SidebarSelection},
         SIDEBAR_WIDTH,
+        sidebar::{FolderId, SDragLocation, SidebarSelection},
     },
     message_handler::get_locally_installed_mods,
     state::NotesMessage,
@@ -14,15 +14,15 @@ use crate::{
 use ezshortcut::Shortcut;
 use frostmark::MarkState;
 use iced::{
-    widget::{self, scrollable::AbsoluteOffset},
     Task,
+    widget::{self, scrollable::AbsoluteOffset},
 };
 use ql_core::{
-    file_utils::DirItem,
-    jarmod::JarMods,
-    json::{instance_config::MainClassMode, InstanceConfigJson, VersionDetails},
     DownloadProgress, GenericProgress, InstanceSelection, IntoStringError, ListEntry, ModId,
     OptifineUniqueVersion, SelectedMod, StoreBackendType,
+    file_utils::DirItem,
+    jarmod::JarMods,
+    json::{InstanceConfigJson, VersionDetails, instance_config::MainClassMode},
 };
 use ql_mod_manager::loaders::paper::PaperVersion;
 use ql_mod_manager::{

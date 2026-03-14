@@ -2,14 +2,14 @@ use std::{fmt::Display, str::FromStr};
 
 use iced::widget::container::Style;
 use iced::widget::scrollable::Rail;
-use iced::{widget, Border};
+use iced::{Border, widget};
 use ql_core::err;
 use serde::{Deserialize, Serialize};
 
 use crate::stylesheet::color::{ADWAITA_DARK, ADWAITA_LIGHT};
 
 use super::{
-    color::{Color, BROWN, CATPPUCCIN, HALLOWEEN, PURPLE, SKY_BLUE, TEAL},
+    color::{BROWN, CATPPUCCIN, Color, HALLOWEEN, PURPLE, SKY_BLUE, TEAL},
     widgets::{IsFlat, StyleButton, StyleScrollable},
 };
 
@@ -757,11 +757,7 @@ fn get_radius_semi(radii: [bool; 4]) -> iced::border::Radius {
 }
 
 fn radius(t: bool) -> f32 {
-    if t {
-        BORDER_RADIUS
-    } else {
-        0.0
-    }
+    if t { BORDER_RADIUS } else { 0.0 }
 }
 
 pub fn mix(color1: iced::Color, color2: iced::Color) -> iced::Color {

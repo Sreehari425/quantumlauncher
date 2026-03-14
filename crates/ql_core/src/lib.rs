@@ -16,7 +16,7 @@
 
 use crate::{
     json::manifest::Version,
-    read_log::{read_logs, Diagnostic, LogLine, ReadError},
+    read_log::{Diagnostic, LogLine, ReadError, read_logs},
 };
 use futures::StreamExt;
 use json::VersionDetails;
@@ -28,7 +28,7 @@ use std::{
     future::Future,
     path::{Path, PathBuf},
     process::ExitStatus,
-    sync::{mpsc::Sender, Arc, LazyLock},
+    sync::{Arc, LazyLock, mpsc::Sender},
 };
 use tokio::process::Child;
 
@@ -54,12 +54,14 @@ pub use error::{
     DownloadFileError, IntoIoError, IntoJsonError, IntoStringError, IoError, JsonDownloadError,
     JsonError, JsonFileError,
 };
-pub use file_utils::{RequestError, LAUNCHER_DIR};
-pub use print::{logger_finish, LogType, LoggingState, LOGGER};
+pub use file_utils::{LAUNCHER_DIR, RequestError};
+pub use print::{LOGGER, LogType, LoggingState, logger_finish};
 pub use progress::{DownloadProgress, GenericProgress, Progress};
 pub use request::download;
 pub use structs::{JavaVersion, Loader};
 pub use urlcache::url_cache_get;
+
+pub const LAUNCHER_VERSION_NAME: &str = "0.5.1";
 
 pub static REGEX_SNAPSHOT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\d{2}w\d*[a-zA-Z]+").unwrap());
@@ -293,7 +295,7 @@ impl InstanceSelection {
 
     pub fn set_name(&mut self, name: &str) {
         match self {
-            Self::Instance(ref mut n) | Self::Server(ref mut n) => name.clone_into(n),
+            Self::Instance(n) | Self::Server(n) => name.clone_into(n),
         }
     }
 
@@ -461,8 +463,6 @@ impl ListEntryKind {
     }
 }
 
-pub const LAUNCHER_VERSION_NAME: &str = "0.5.0";
-
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ModId {
     Modrinth(String),
@@ -626,11 +626,25 @@ impl OptifineUniqueVersion {
     #[must_use]
     pub fn get_url(&self) -> (&'static str, bool) {
         match self {
-            OptifineUniqueVersion::V1_5_2 => ("https://optifine.net/adloadx?f=OptiFine_1.5.2_HD_U_D5.zip", false),
-            OptifineUniqueVersion::V1_2_5 => ("https://optifine.net/adloadx?f=OptiFine_1.5.2_HD_U_D2.zip", false),
-            OptifineUniqueVersion::B1_7_3 => ("https://b2.mcarchive.net/file/mcarchive/47df260a369eb2f79750ec24e4cfd9da93b9aac076f97a1332302974f19e6024/OptiFine_1_7_3_HD_G.zip", true),
-            OptifineUniqueVersion::B1_6_6 => ("https://optifine.net/adloadx?f=beta_OptiFog_Optimine_1.6.6.zip", false),
-            OptifineUniqueVersion::Forge => unreachable!("There isn't a direct URL for Optifine+Forge"),
+            OptifineUniqueVersion::V1_5_2 => (
+                "https://optifine.net/adloadx?f=OptiFine_1.5.2_HD_U_D5.zip",
+                false,
+            ),
+            OptifineUniqueVersion::V1_2_5 => (
+                "https://optifine.net/adloadx?f=OptiFine_1.5.2_HD_U_D2.zip",
+                false,
+            ),
+            OptifineUniqueVersion::B1_7_3 => (
+                "https://b2.mcarchive.net/file/mcarchive/47df260a369eb2f79750ec24e4cfd9da93b9aac076f97a1332302974f19e6024/OptiFine_1_7_3_HD_G.zip",
+                true,
+            ),
+            OptifineUniqueVersion::B1_6_6 => (
+                "https://optifine.net/adloadx?f=beta_OptiFog_Optimine_1.6.6.zip",
+                false,
+            ),
+            OptifineUniqueVersion::Forge => {
+                unreachable!("There isn't a direct URL for Optifine+Forge")
+            }
         }
     }
 }

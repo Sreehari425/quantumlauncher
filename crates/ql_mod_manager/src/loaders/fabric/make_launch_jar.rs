@@ -1,9 +1,9 @@
-use ql_core::{pt, IntoIoError};
+use ql_core::{IntoIoError, pt};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
-use zip::{write::FileOptions, ZipWriter};
+use zip::{ZipWriter, write::FileOptions};
 
 use super::error::FabricInstallError;
 

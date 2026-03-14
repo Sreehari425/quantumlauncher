@@ -3,7 +3,7 @@ use std::{
     sync::Mutex,
 };
 
-use iced::{widget, Task};
+use iced::{Task, widget};
 
 use crate::{menu_renderer::Element, state::Message};
 

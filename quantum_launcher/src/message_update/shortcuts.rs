@@ -1,9 +1,9 @@
 use ezshortcut::Shortcut;
 use iced::Task;
-use ql_core::{info, IntoStringError, LAUNCHER_DIR};
+use ql_core::{IntoStringError, LAUNCHER_DIR, info};
 
 use crate::state::{
-    Launcher, MenuShortcut, Message, ShortcutMessage, State, NEW_ACCOUNT_NAME, OFFLINE_ACCOUNT_NAME,
+    Launcher, MenuShortcut, Message, NEW_ACCOUNT_NAME, OFFLINE_ACCOUNT_NAME, ShortcutMessage, State,
 };
 
 macro_rules! iflet {

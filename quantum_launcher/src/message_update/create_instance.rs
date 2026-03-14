@@ -1,4 +1,4 @@
-use iced::{widget::pane_grid, Task};
+use iced::{Task, widget::pane_grid};
 use ql_core::{DownloadProgress, InstanceSelection, IntoStringError, ListEntry, ListEntryKind};
 
 use crate::{
@@ -28,7 +28,7 @@ impl Launcher {
                 self.set_error(err);
             }
             CreateInstanceMessage::ScreenOpen { is_server } => {
-                return self.go_to_create_screen(is_server)
+                return self.go_to_create_screen(is_server);
             }
             CreateInstanceMessage::VersionsLoaded(Ok((versions, latest))) => {
                 self.create_instance_finish_loading_versions_list(versions, latest);

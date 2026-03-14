@@ -1,18 +1,18 @@
 use crate::{
-    auth::{ms::CLIENT_ID, AccountData, AccountType},
+    auth::{AccountData, AccountType, ms::CLIENT_ID},
     download::GameDownloader,
     jarmod,
 };
 use ql_core::{
-    err, file_utils, info,
+    CLASSPATH_SEPARATOR, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError,
+    JsonFileError, LAUNCHER_DIR, Loader, err, file_utils, info,
     json::{
-        forge, version::Library, FabricJSON, GlobalSettings, InstanceConfigJson, JsonOptifine,
-        VersionDetails, V_1_12_2, V_1_5_2, V_PAULSCODE_LAST, V_PRECLASSIC_LAST,
+        FabricJSON, GlobalSettings, InstanceConfigJson, JsonOptifine, V_1_5_2, V_1_12_2,
+        V_PAULSCODE_LAST, V_PRECLASSIC_LAST, VersionDetails, forge, version::Library,
     },
-    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError, JsonFileError,
-    Loader, CLASSPATH_SEPARATOR, LAUNCHER_DIR,
+    pt,
 };
-use ql_java_handler::{get_java_binary, JavaVersion};
+use ql_java_handler::{JavaVersion, get_java_binary};
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},

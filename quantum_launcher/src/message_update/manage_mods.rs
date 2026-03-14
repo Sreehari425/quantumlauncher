@@ -1,7 +1,7 @@
+use iced::{Task, widget};
 use iced::{futures::executor::block_on, keyboard::Modifiers};
-use iced::{widget, Task};
 use ql_core::{
-    err, jarmod::JarMods, InstanceSelection, IntoIoError, IntoStringError, ModId, SelectedMod,
+    InstanceSelection, IntoIoError, IntoStringError, ModId, SelectedMod, err, jarmod::JarMods,
 };
 use ql_mod_manager::store::ModIndex;
 use std::{collections::HashSet, path::PathBuf};

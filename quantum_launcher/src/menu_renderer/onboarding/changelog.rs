@@ -3,7 +3,7 @@ use iced::widget;
 use crate::{
     config::LauncherConfig,
     menu_renderer::{
-        get_mode_selector, onboarding::IMG_MANAGE_MODS, settings::get_theme_selector, Element,
+        Element, get_mode_selector, onboarding::IMG_MANAGE_MODS, settings::get_theme_selector,
     },
     state::Message,
 };

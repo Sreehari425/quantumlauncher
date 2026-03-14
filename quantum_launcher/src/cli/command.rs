@@ -1,15 +1,15 @@
 use owo_colors::{OwoColorize, Style};
 use ql_core::{
+    InstanceSelection, IntoStringError, LAUNCHER_DIR, ListEntry, Loader, OptifineUniqueVersion,
     eeprintln, err, info,
     json::{InstanceConfigJson, VersionDetails},
-    InstanceSelection, IntoStringError, ListEntry, Loader, OptifineUniqueVersion, LAUNCHER_DIR,
 };
 use ql_instances::auth::{self, AccountType};
 use ql_mod_manager::loaders::LoaderInstallResult;
 use std::{path::PathBuf, process::exit};
 
 use crate::{
-    cli::{helpers::render_row, show_notification, QLoader},
+    cli::{QLoader, helpers::render_row, show_notification},
     config::LauncherConfig,
     state::get_entries,
 };
@@ -322,7 +322,9 @@ pub async fn loader(cmd: QLoader, servers: bool) -> Result<(), Box<dyn std::erro
             version,
         } => {
             if loader.eq_ignore_ascii_case("vanilla") {
-                err!("Vanilla refers to the base game.\n    Maybe you meant `./quantum_launcher loader uninstall ...`");
+                err!(
+                    "Vanilla refers to the base game.\n    Maybe you meant `./quantum_launcher loader uninstall ...`"
+                );
                 exit(1);
             }
             let Some(loader) = Loader::ALL

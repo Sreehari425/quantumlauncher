@@ -4,7 +4,7 @@ use std::{
 };
 
 use ql_core::{
-    info, InstanceSelection, IntoIoError, IntoJsonError, JsonFileError, StoreBackendType,
+    InstanceSelection, IntoIoError, IntoJsonError, JsonFileError, StoreBackendType, info,
 };
 use serde::{Deserialize, Serialize};
 use tokio::fs;

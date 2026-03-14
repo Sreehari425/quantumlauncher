@@ -4,16 +4,16 @@ use std::{
 };
 
 use ql_core::{
-    download, err, file_utils, info, json::VersionDetails, pt, GenericProgress, InstanceSelection,
-    ModId, StoreBackendType,
+    GenericProgress, InstanceSelection, ModId, StoreBackendType, download, err, file_utils, info,
+    json::VersionDetails, pt,
 };
 
 use crate::{
     rate_limiter::lock,
     store::{
-        curseforge::{get_query_type, ModQuery},
-        install_modpack, CurseforgeNotAllowed, DirStructure, ModConfig, ModError, ModFile,
-        ModIndex, QueryType,
+        CurseforgeNotAllowed, DirStructure, ModConfig, ModError, ModFile, ModIndex, QueryType,
+        curseforge::{ModQuery, get_query_type},
+        install_modpack,
     },
 };
 

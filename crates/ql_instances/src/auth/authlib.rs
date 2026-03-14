@@ -1,4 +1,4 @@
-use ql_core::{download, pt, DownloadFileError, IntoIoError, LAUNCHER_DIR};
+use ql_core::{DownloadFileError, IntoIoError, LAUNCHER_DIR, download, pt};
 
 /// Gets the java argument to start the authlib injector.
 ///

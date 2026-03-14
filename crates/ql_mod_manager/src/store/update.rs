@@ -1,11 +1,11 @@
 use std::sync::mpsc::Sender;
 
 use chrono::DateTime;
-use ql_core::{do_jobs, info, json::VersionDetails, GenericProgress, InstanceSelection, Loader};
+use ql_core::{GenericProgress, InstanceSelection, Loader, do_jobs, info, json::VersionDetails};
 
 use crate::store::{get_latest_version_date, toggle_mods};
 
-use super::{delete_mods, download_mods_bulk, ModError, ModId, ModIndex};
+use super::{ModError, ModId, ModIndex, delete_mods, download_mods_bulk};
 
 pub async fn apply_updates(
     selected_instance: InstanceSelection,

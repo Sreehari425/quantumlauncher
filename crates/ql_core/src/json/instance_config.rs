@@ -6,8 +6,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    InstanceSelection, IntoIoError, IntoJsonError, JsonFileError, Loader,
-    DEFAULT_RAM_MB_FOR_INSTANCE,
+    DEFAULT_RAM_MB_FOR_INSTANCE, InstanceSelection, IntoIoError, IntoJsonError, JsonFileError,
+    Loader,
 };
 
 /// Configuration for a specific instance.

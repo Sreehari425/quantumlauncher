@@ -1,4 +1,4 @@
-use ql_core::{json::Manifest, JsonDownloadError, ListEntry, ListEntryKind};
+use ql_core::{JsonDownloadError, ListEntry, ListEntryKind, json::Manifest};
 
 /// Returns a list of every downloadable version of Minecraft.
 /// Sources the list from multiple places (see [`Manifest`]).

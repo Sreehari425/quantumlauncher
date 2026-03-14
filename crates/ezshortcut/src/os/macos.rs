@@ -1,6 +1,6 @@
 use tokio::{fs, process::Command};
 
-use crate::{make_filename_safe, Shortcut};
+use crate::{Shortcut, make_filename_safe};
 use std::path::{Path, PathBuf};
 
 /// Fetches path to the Applications folder

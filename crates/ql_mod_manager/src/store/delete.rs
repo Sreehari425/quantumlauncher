@@ -2,7 +2,7 @@ use crate::{
     rate_limiter::lock,
     store::{ModError, ModIndex},
 };
-use ql_core::{err, info, pt, InstanceSelection, IoError, ModId};
+use ql_core::{InstanceSelection, IoError, ModId, err, info, pt};
 use std::{
     collections::{HashMap, HashSet},
     path::Path,

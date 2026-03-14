@@ -1,10 +1,10 @@
 use std::{collections::HashMap, time::Instant};
 
 use iced::futures::executor::block_on;
-use iced::{widget::scrollable::AbsoluteOffset, Task};
+use iced::{Task, widget::scrollable::AbsoluteOffset};
 use ql_core::{
-    json::{instance_config::InstanceConfigJson, version::VersionDetails},
     InstanceSelection, IntoStringError, JsonFileError, StoreBackendType,
+    json::{instance_config::InstanceConfigJson, version::VersionDetails},
 };
 use ql_mod_manager::store::{ModIndex, Query, QueryType};
 

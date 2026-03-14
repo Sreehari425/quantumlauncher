@@ -4,12 +4,12 @@ use std::{
 };
 
 use ql_core::{
-    info, json::version::LibraryDownloads, IntoIoError, CLASSPATH_SEPARATOR, LAUNCHER_VERSION_NAME,
+    CLASSPATH_SEPARATOR, IntoIoError, LAUNCHER_VERSION_NAME, info, json::version::LibraryDownloads,
 };
 
-use crate::{download::GameDownloader, LAUNCHER_VERSION};
+use crate::{LAUNCHER_VERSION, download::GameDownloader};
 
-use super::launch::{error::GameLaunchError, GameLauncher};
+use super::launch::{GameLauncher, error::GameLaunchError};
 
 impl GameLauncher {
     pub async fn migrate_old_instances(&self) -> Result<(), GameLaunchError> {
