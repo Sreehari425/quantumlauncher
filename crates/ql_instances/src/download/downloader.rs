@@ -29,6 +29,8 @@ pub enum DownloadError {
     #[error("{DOWNLOAD_ERR_PREFIX}{0}")]
     Io(#[from] IoError),
 
+    #[error("instance name is invalid (empty/disallowed characters)")]
+    InvalidName,
     #[error("an instance with that name already exists: {0}")]
     InstanceAlreadyExists(String),
     #[error("{DOWNLOAD_ERR_PREFIX}version not found in manifest.json: {0}")]

@@ -293,9 +293,9 @@ impl InstanceSelection {
         matches!(self, Self::Server(_))
     }
 
-    pub fn set_name(&mut self, name: &str) {
+    pub fn set_name(&mut self, name: String) {
         match self {
-            Self::Instance(n) | Self::Server(n) => name.clone_into(n),
+            Self::Instance(n) | Self::Server(n) => *n = name,
         }
     }
 
@@ -737,4 +737,13 @@ impl LaunchedProcess {
     ) -> Option<ReadLogOut> {
         Some(read_logs(self.child.clone(), sender, self.instance.clone(), censors).await)
     }
+}
+
+pub fn sanitize_instance_name(mut name: String) -> String {
+    let mut disallowed = vec![
+        '/', '\\', ':', '*', '?', '"', '<', '>', '|', '\'', '\0', '\u{7F}',
+    ];
+    disallowed.extend('\u{1}'..='\u{1F}');
+    name.retain(|c| !disallowed.contains(&c));
+    name.trim().to_owned()
 }

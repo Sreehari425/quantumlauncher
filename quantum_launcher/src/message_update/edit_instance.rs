@@ -5,6 +5,7 @@ use ql_core::{
         GlobalSettings, InstanceConfigJson,
         instance_config::{CustomJarConfig, MainClassMode},
     },
+    sanitize_instance_name,
 };
 
 use crate::{
@@ -378,23 +379,14 @@ impl Launcher {
             return Ok(Task::none());
         };
 
-        let mut disallowed = vec![
-            '/', '\\', ':', '*', '?', '"', '<', '>', '|', '\'', '\0', '\u{7F}',
-        ];
-        disallowed.extend('\u{1}'..='\u{1F}');
-
-        // Remove disallowed characters
-
-        let mut instance_name = menu.instance_name.clone();
-        instance_name.retain(|c| !disallowed.contains(&c));
-        let instance_name = instance_name.trim();
-
-        if instance_name.is_empty() {
+        let sanitized_name = sanitize_instance_name(menu.instance_name.clone());
+        if sanitized_name.is_empty() {
             err!("New name is empty or invalid");
             return Ok(Task::none());
         }
 
-        if menu.old_instance_name == instance_name || menu.old_instance_name == menu.instance_name {
+        if menu.old_instance_name == sanitized_name || menu.old_instance_name == menu.instance_name
+        {
             // Don't waste time talking to OS
             // and "renaming" instance if nothing has changed.
             return Ok(Task::none());
@@ -408,24 +400,29 @@ impl Launcher {
             });
 
         let old_path = instances_dir.join(&menu.old_instance_name);
-        let new_path = instances_dir.join(&instance_name);
+        let new_path = instances_dir.join(&sanitized_name);
 
         if !new_path.parent().is_some_and(|n| n == instances_dir) {
             err!("New instance path is outside instance dir!");
             return Ok(Task::none());
         }
 
-        menu.old_instance_name = menu.instance_name.clone();
-        if let Some(n) = &mut self.selected_instance {
-            n.set_name(&menu.instance_name);
-        }
+        menu.old_instance_name = sanitized_name.to_owned();
         std::fs::rename(&old_path, &new_path)
             .path(&old_path)
             .strerr()?;
 
+        let mut instance = self.selected_instance.clone().unwrap();
+        instance.set_name(sanitized_name);
+
         Ok(Task::perform(
             get_entries(self.instance().is_server()),
-            Message::CoreListLoaded,
+            move |n| {
+                Message::Multiple(vec![
+                    Message::CoreListLoaded(n),
+                    MainMenuMessage::InstanceSelected(instance.clone()).into(),
+                ])
+            },
         ))
     }
 }
