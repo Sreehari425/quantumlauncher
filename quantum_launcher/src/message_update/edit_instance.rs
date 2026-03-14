@@ -394,7 +394,7 @@ impl Launcher {
             return Ok(Task::none());
         }
 
-        if menu.old_instance_name == menu.instance_name {
+        if menu.old_instance_name == instance_name || menu.old_instance_name == menu.instance_name {
             // Don't waste time talking to OS
             // and "renaming" instance if nothing has changed.
             return Ok(Task::none());
@@ -408,7 +408,7 @@ impl Launcher {
             });
 
         let old_path = instances_dir.join(&menu.old_instance_name);
-        let new_path = instances_dir.join(&menu.instance_name);
+        let new_path = instances_dir.join(&instance_name);
 
         if !new_path.parent().is_some_and(|n| n == instances_dir) {
             err!("New instance path is outside instance dir!");

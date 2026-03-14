@@ -243,7 +243,11 @@ pub fn start_cli(is_dir_err: bool, launcher_dir: &mut Option<PathBuf>) {
                 std::process::exit(if let Err(err) = res {
                     err!("{err}");
                     if show_progress {
-                        show_notification("Error launching game", &err.to_string());
+                        let err = err.to_string();
+                        show_notification(
+                            "Error launching game",
+                            err.strip_prefix("while launching game:\n").unwrap_or(&err),
+                        );
                     }
                     1
                 } else {

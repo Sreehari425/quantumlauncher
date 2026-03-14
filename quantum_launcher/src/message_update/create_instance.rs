@@ -33,9 +33,12 @@ impl Launcher {
             CreateInstanceMessage::VersionsLoaded(Ok((versions, latest))) => {
                 self.create_instance_finish_loading_versions_list(versions, latest);
             }
-            CreateInstanceMessage::VersionSelected(ver) => iflet!(self, selected_version; {
-                *selected_version = ver;
-            }),
+            CreateInstanceMessage::VersionSelected(ver) => {
+                iflet!(self, selected_version, show_category_dropdown; {
+                    *show_category_dropdown = false;
+                    *selected_version = ver;
+                })
+            }
 
             CreateInstanceMessage::SearchInput(t) => iflet!(self, search_box; {
                 *search_box = t;
