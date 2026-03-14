@@ -258,6 +258,11 @@ async fn refresh_account(
             exit(1);
         };
 
+        let refresh_name = account
+            .username_nice
+            .clone()
+            .unwrap_or_else(|| real_name.clone());
+
         if show_progress {
             tokio::task::spawn_blocking(|| {
                 show_notification("Launching game", "Refreshing account...");
@@ -272,14 +277,10 @@ async fn refresh_account(
                 } else {
                     AccountType::LittleSkin
                 };
-                let refresh_token = auth::read_refresh_token(real_name, account_type)?;
+                let refresh_token = auth::read_refresh_token(&refresh_name, account_type)?;
                 Some(
-                    auth::yggdrasil::login_refresh(
-                        real_name.to_owned(),
-                        refresh_token,
-                        account_type,
-                    )
-                    .await?,
+                    auth::yggdrasil::login_refresh(refresh_name, refresh_token, account_type)
+                        .await?,
                 )
             }
             _ => {
