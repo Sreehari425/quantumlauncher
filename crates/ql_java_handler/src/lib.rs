@@ -182,13 +182,13 @@ pub async fn find_java_bin_in_dir(name: &str, path: &Path) -> Result<PathBuf, Ja
     ];
 
     for name in names {
-        let path = path.join(&name);
-        if exists(&path).await {
-            return Ok(path);
-        }
-        let path2 = path.join(format!("{name}.exe"));
-        if exists(&path2).await {
-            return Ok(path2);
+        let bin_path = if cfg!(target_os = "windows") {
+            path.join(format!("{name}.exe"))
+        } else {
+            path.join(&name)
+        };
+        if exists(&bin_path).await {
+            return Ok(bin_path);
         }
     }
 
@@ -199,7 +199,11 @@ pub async fn find_java_bin_in_dir(name: &str, path: &Path) -> Result<PathBuf, Ja
         }
     }
 
-    Err(JavaInstallError::NoJavaBinFound(entries))
+    Err(JavaInstallError::NoJavaBinFound {
+        name: name.to_owned(),
+        path: path.to_owned(),
+        entries,
+    })
 }
 
 #[cfg(target_os = "macos")]
@@ -371,7 +375,7 @@ async fn download_file(downloads: &JavaFileDownload) -> Result<Vec<u8>, JavaInst
     }
 }
 
-const ERR_PREF1: &str = "while installing Java (OS: ";
+const ERR_PREF1: &str = "while installing/managing Java (OS: ";
 const UNSUPPORTED_MESSAGE: &str = r"Automatic Java installation isn’t supported on your platform for this Minecraft version.
 You can:
 - Install Java manually and set the executable path in the Instance → Edit tab
@@ -389,9 +393,19 @@ pub enum JavaInstallError {
     #[error("{ERR_PREF1}{OS_NAME} {ARCH}):\n{0}")]
     Io(#[from] IoError),
     #[error(
-        "{ERR_PREF1}{OS_NAME} {ARCH}):\ncouldn't find java binary (this is a bug! please report on discord!)\n{0:?}"
+        r"{ERR_PREF1}{OS_NAME} {ARCH}):
+couldn't find java binary ({name})
+(this is a bug! please report on discord!)
+
+at: {path:?}
+
+{entries:?}"
     )]
-    NoJavaBinFound(Result<Vec<DirItem>, IoError>),
+    NoJavaBinFound {
+        name: String,
+        path: PathBuf,
+        entries: Result<Vec<DirItem>, IoError>,
+    },
 
     #[error("({OS_NAME} {ARCH})\n{UNSUPPORTED_MESSAGE}")]
     UnsupportedPlatform,
