@@ -30,9 +30,6 @@ pub use recommended::{RecommendedMod, RECOMMENDED_MODS};
 pub use toggle::{flip_filename, toggle_mods, toggle_mods_local};
 pub use update::{apply_updates, check_for_updates};
 
-pub const SOURCE_ID_MODRINTH: &str = "modrinth";
-pub const SOURCE_ID_CURSEFORGE: &str = "curseforge";
-
 #[allow(async_fn_in_trait)]
 pub trait Backend {
     /// # Takes in

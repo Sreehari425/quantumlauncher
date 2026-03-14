@@ -187,7 +187,11 @@ impl MenuModsDownload {
             .mod_index
             .mods
             .contains_key(&hit.get_id(backend).get_index_str())
-            || self.mod_index.mods.values().any(|n| n.name == hit.title);
+            || self
+                .mod_index
+                .mods
+                .values()
+                .any(|n| n.name == hit.title && n.project_source != backend);
         let is_downloading = self
             .mods_download_in_progress
             .contains_key(&ModId::from_pair(&hit.id, backend));

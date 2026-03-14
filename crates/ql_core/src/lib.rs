@@ -522,9 +522,11 @@ impl ModId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoreBackendType {
+    #[serde(rename = "modrinth")]
     Modrinth,
+    #[serde(rename = "curseforge")]
     Curseforge,
 }
 

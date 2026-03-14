@@ -5,7 +5,7 @@ use std::{
 
 use ql_core::{
     download, err, file_utils, info, json::VersionDetails, pt, GenericProgress, InstanceSelection,
-    ModId,
+    ModId, StoreBackendType,
 };
 
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
     store::{
         curseforge::{get_query_type, ModQuery},
         install_modpack, CurseforgeNotAllowed, DirStructure, ModConfig, ModError, ModFile,
-        ModIndex, QueryType, SOURCE_ID_CURSEFORGE,
+        ModIndex, QueryType,
     },
 };
 
@@ -196,7 +196,7 @@ impl<'a> ModDownloader<'a> {
                 enabled: true,
                 description: response.summary.clone(),
                 icon_url: response.logo.clone().map(|n| n.url),
-                project_source: SOURCE_ID_CURSEFORGE.to_owned(),
+                project_source: StoreBackendType::Curseforge,
                 project_id: id_index_str.clone(),
                 files: vec![ModFile {
                     url,

@@ -68,6 +68,8 @@
 - Fixed account login persistence for new users
 - Fixed post-1.21.11 versions (eg: snapshots) not launching on Linux ARM
 - Fixed unnecessary Java redownloads on some ARM systems
+- Fixed identically named mods in the store confusing the launcher
+  (eg: the two Clumps mods)
 
 ## Logging
 
