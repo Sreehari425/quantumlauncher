@@ -172,7 +172,7 @@ pub async fn find_java_bin_in_dir(name: &str, path: &Path) -> Result<PathBuf, Ja
     }
 
     let names = [
-        format!("{name}"),
+        name.to_owned(),
         format!("bin/{name}"),
         format!("Contents/Home/bin/{name}"),
         format!("jre.bundle/Contents/Home/bin/{name}"),

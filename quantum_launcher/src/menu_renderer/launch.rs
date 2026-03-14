@@ -83,7 +83,7 @@ impl Launcher {
         } else {
             column![widget::text(if menu.is_viewing_server {
                 "Select a server\n\nNote: You are trying the *early-alpha* server manager feature.\nYou need playit.gg (or port-forwarding) for others to join"
-            } else if self.client_list.as_ref().is_some_and(|n| n.is_empty()) {
+            } else if self.client_list.as_ref().is_some_and(Vec::is_empty) {
                 "Click \"New\" to create your first Minecraft instance"
             } else {
                 "Select an instance"
@@ -147,7 +147,7 @@ impl Launcher {
             } else {
                 self.get_client_play_button()
             },
-            self.get_mods_button(),
+            Self::get_mods_button(),
             Self::get_files_button(selected),
         ]
         .spacing(5)
@@ -232,7 +232,7 @@ impl Launcher {
         .into()
     }
 
-    fn get_mods_button(&self) -> widget::Button<'_, Message, LauncherTheme> {
+    fn get_mods_button() -> widget::Button<'static, Message, LauncherTheme> {
         button_with_icon(icons::download(), "Mods", 15)
             .on_press(ManageModsMessage::Open.into())
             .width(98)

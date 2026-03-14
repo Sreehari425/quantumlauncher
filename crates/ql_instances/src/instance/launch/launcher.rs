@@ -495,7 +495,8 @@ impl GameLauncher {
         let jar_path = jarmod::build(&instance).await?;
         debug_assert!(
             jar_path.is_file(),
-            "Minecraft JAR file should exist\nPath: {jar_path:?}"
+            "Minecraft JAR file should exist\nPath: {}",
+            jar_path.display()
         );
         let jar_path = jar_path
             .to_str()
@@ -556,7 +557,8 @@ impl GameLauncher {
                 let library_path = self.instance_dir.join("libraries").join(library.get_path());
                 debug_assert!(
                     library_path.is_file(),
-                    "Couldn't find library {library_path:?}"
+                    "Couldn't find library {}",
+                    library_path.display()
                 );
                 class_path.push_str(
                     library_path

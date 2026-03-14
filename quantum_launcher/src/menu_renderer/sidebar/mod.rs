@@ -243,7 +243,7 @@ impl Launcher {
         }
     }
 
-    pub(super) fn sidebar_context_menu<'a>(menu: &'a MenuLaunch) -> Option<Element<'a>> {
+    pub(super) fn sidebar_context_menu(menu: &MenuLaunch) -> Option<Element<'_>> {
         let Some(LaunchModal::SCtxMenu(instance, (x, y))) = &menu.modal else {
             return None;
         };

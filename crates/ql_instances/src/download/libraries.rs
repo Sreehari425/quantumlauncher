@@ -510,17 +510,17 @@ async fn finalize_natives_directory(dir: &Path, root: &Path) -> Result<(), IoErr
                 fs::remove_dir(&path).await.path(path)?;
             }
         } else if file_type.is_file() {
-            let Some(filetype) = path.extension().and_then(|e| e.to_str()) else {
+            let Some(extension) = path.extension().and_then(|e| e.to_str()) else {
                 continue;
             };
             // Check if `.class` file
-            if filetype.eq_ignore_ascii_case("class") {
+            if extension.eq_ignore_ascii_case("class") {
                 fs::remove_file(&path).await.path(path)?;
             // Check if native library
             } else if !is_root
                 && (NATIVE_EXTENSIONS
                     .iter()
-                    .any(|n| n.eq_ignore_ascii_case(filetype)))
+                    .any(|n| n.eq_ignore_ascii_case(extension)))
             {
                 // Move to the root of the natives directory, since LWJGL expects that
                 // (Hopefully fixes macOS ARM crashes).
