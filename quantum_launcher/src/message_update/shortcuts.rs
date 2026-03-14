@@ -95,7 +95,6 @@ impl Launcher {
             ShortcutMessage::Done(result) => {
                 result?;
                 info!("Created shortcut");
-                // TODO: keep track of created shortcuts
             }
         }
         Ok(Task::none())
@@ -155,7 +154,12 @@ impl Launcher {
         if menu.account == OFFLINE_ACCOUNT_NAME {
             shortcut.exec_args.push(menu.account_offline.clone());
         } else {
-            shortcut.exec_args.push(menu.account.clone());
+            shortcut.exec_args.push(
+                self.accounts
+                    .get(&menu.account)
+                    .map(|n| n.nice_username.clone())
+                    .unwrap_or_else(|| menu.account.clone()),
+            );
             shortcut.exec_args.push("-u".to_owned());
         }
 

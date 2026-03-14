@@ -397,30 +397,35 @@ impl Launcher {
         if menu.old_instance_name == menu.instance_name {
             // Don't waste time talking to OS
             // and "renaming" instance if nothing has changed.
-            Ok(Task::none())
-        } else {
-            let instances_dir =
-                LAUNCHER_DIR.join(if self.selected_instance.as_ref().unwrap().is_server() {
-                    "servers"
-                } else {
-                    "instances"
-                });
-
-            let old_path = instances_dir.join(&menu.old_instance_name);
-            let new_path = instances_dir.join(&menu.instance_name);
-
-            menu.old_instance_name = menu.instance_name.clone();
-            if let Some(n) = &mut self.selected_instance {
-                n.set_name(&menu.instance_name);
-            }
-            std::fs::rename(&old_path, &new_path)
-                .path(&old_path)
-                .strerr()?;
-
-            Ok(Task::perform(
-                get_entries(self.instance().is_server()),
-                Message::CoreListLoaded,
-            ))
+            return Ok(Task::none());
         }
+
+        let instances_dir =
+            LAUNCHER_DIR.join(if self.selected_instance.as_ref().unwrap().is_server() {
+                "servers"
+            } else {
+                "instances"
+            });
+
+        let old_path = instances_dir.join(&menu.old_instance_name);
+        let new_path = instances_dir.join(&menu.instance_name);
+
+        if !new_path.parent().is_some_and(|n| n == instances_dir) {
+            err!("New instance path is outside instance dir!");
+            return Ok(Task::none());
+        }
+
+        menu.old_instance_name = menu.instance_name.clone();
+        if let Some(n) = &mut self.selected_instance {
+            n.set_name(&menu.instance_name);
+        }
+        std::fs::rename(&old_path, &new_path)
+            .path(&old_path)
+            .strerr()?;
+
+        Ok(Task::perform(
+            get_entries(self.instance().is_server()),
+            Message::CoreListLoaded,
+        ))
     }
 }

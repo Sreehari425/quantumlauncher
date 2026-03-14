@@ -265,7 +265,7 @@ impl Launcher {
                     widget::Space::with_height(5),
                     widget::horizontal_rule(2),
                     widget::Space::with_height(5),
-                    ctx_button(icons::file_s(CTXI_SIZE), "Change Icon"),
+                    // ctx_button(icons::file_s(CTXI_SIZE), "Change Icon"),
                     ctx_button(icons::edit_s(CTXI_SIZE), "Rename").on_press_with(
                         move || match inst {
                             SidebarSelection::Instance(name, kind) => {
