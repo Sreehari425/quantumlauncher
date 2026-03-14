@@ -271,7 +271,7 @@ impl LauncherTheme {
                 color: if hovered {
                     self.get(Color::Mid)
                 } else {
-                    blend_colors(self.get(Color::SecondDark), self.get(Color::Mid))
+                    mix(self.get(Color::SecondDark), self.get(Color::Mid))
                 },
                 border: self.get_border_style(&style, Color::Light),
             },
@@ -299,7 +299,7 @@ impl LauncherTheme {
                 color: if is_vertical_scrollbar_dragged {
                     self.get(Color::White)
                 } else {
-                    blend_colors(self.get(Color::Mid), self.get(Color::SecondDark))
+                    mix(self.get(Color::Mid), self.get(Color::SecondDark))
                 },
                 border: self.get_border_style(&style, Color::Light),
             },
@@ -430,7 +430,7 @@ impl LauncherTheme {
         let c = if let LauncherThemeColor::Adwaita = self.color {
             self.get(Color::Dark)
         } else {
-            blend_colors(self.get(Color::Dark), self.get(Color::ExtraDark))
+            mix(self.get(Color::Dark), self.get(Color::ExtraDark))
         };
         iced::Background::Color(c.scale_alpha(self.alpha))
     }
@@ -764,7 +764,7 @@ fn radius(t: bool) -> f32 {
     }
 }
 
-fn blend_colors(color1: iced::Color, color2: iced::Color) -> iced::Color {
+pub fn mix(color1: iced::Color, color2: iced::Color) -> iced::Color {
     // Calculate the average of each RGBA component
     let r = color1.r.midpoint(color2.r);
     let g = color1.g.midpoint(color2.g);

@@ -15,7 +15,11 @@ use crate::{
         EditInstanceMessage, LaunchModal, LaunchTab, Launcher, MainMenuMessage, MenuLaunch,
         Message, SidebarMessage, State,
     },
-    stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
+    stylesheet::{
+        color::Color,
+        styles::{mix, LauncherTheme},
+        widgets::StyleButton,
+    },
 };
 
 mod drop_recv;
@@ -93,20 +97,28 @@ impl Launcher {
         .size(15)
         .style(move |t: &LauncherTheme| t.style_text(Color::Mid));
 
-        let view = widget::stack!(underline(
-            widget::row![
-                widget::Space::with_width(2),
-                widget::text(if folder.is_expanded { "- " } else { "+ " })
-                    .font(FONT_MONO)
-                    .size(14)
-                    .style(move |t: &LauncherTheme| t.style_text(Color::Light)),
-                text,
-            ]
-            .width(Length::Fill)
-            .align_y(Alignment::Center)
-            .padding([4, 10]),
-            Color::Dark,
-        ));
+        let view = widget::stack!(
+            underline(
+                widget::row![
+                    widget::Space::with_width(2),
+                    widget::text(if folder.is_expanded { "- " } else { "+ " })
+                        .font(FONT_MONO)
+                        .size(14)
+                        .style(move |t: &LauncherTheme| t.style_text(Color::Light)),
+                    text,
+                ]
+                .width(Length::Fill)
+                .align_y(Alignment::Center)
+                .padding([4, 10]),
+                Color::Dark,
+            ),
+            widget::horizontal_rule(0.5).style(|t: &LauncherTheme| widget::rule::Style {
+                color: mix(t.get(Color::Dark), t.get(Color::SecondDark)),
+                width: 1,
+                radius: 0.into(),
+                fill_mode: widget::rule::FillMode::Full,
+            })
+        );
 
         let space = mode.get_space();
 
@@ -370,7 +382,7 @@ fn drag_handle(selection: &SidebarSelection) -> widget::MouseArea<'static, Messa
         widget::row![widget::text("=")
             .size(20)
             .style(|t: &LauncherTheme| t.style_text(Color::ExtraDark))]
-        .padding([0, 4])
+        .padding([0, 8])
         .align_y(Alignment::Center),
     )
     .on_press(
