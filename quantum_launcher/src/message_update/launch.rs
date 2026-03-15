@@ -123,11 +123,6 @@ impl Launcher {
                 }) = &mut self.state
                 {
                     self.config.c_sidebar().drag_drop(being_dragged, location);
-                    if let Some(sel) = &self.selected_instance {
-                        if being_dragged != sel {
-                            self.selected_instance = None;
-                        }
-                    }
                 }
                 self.sidebar_update_state();
             }

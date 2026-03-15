@@ -291,6 +291,8 @@ impl Launcher {
                     return Task::batch([menu.reload_notes(i.clone()), get_entries]);
                 }
             }
+            // We're going to the *instance* launch screen,
+            // there's a separate function for servers.
             Some(InstanceSelection::Server(_)) => self.selected_instance = None,
             None => {}
         }
