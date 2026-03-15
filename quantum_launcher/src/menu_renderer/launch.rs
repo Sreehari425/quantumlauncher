@@ -388,8 +388,8 @@ impl Launcher {
         if self.is_process_running(&InstanceSelection::new(name, menu.is_viewing_server)) {
             Some(row![
                 horizontal_space(),
-                icons::play_s(15),
-                widget::Space::with_width(10),
+                icons::play_s(12),
+                widget::Space::with_width(16),
             ])
         } else {
             None

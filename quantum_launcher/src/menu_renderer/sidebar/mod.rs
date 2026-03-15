@@ -146,10 +146,11 @@ impl Launcher {
             .style(move |t: &LauncherTheme| t.style_text(Color::SecondLight));
 
         let view = widget::stack!(underline_maybe(
-            widget::row![widget::Space::with_width(2), text]
+            widget::row![text]
                 .push_maybe(self.get_running_icon(menu, &node.name))
-                .padding([5, 10])
-                .width(Length::Fill),
+                .padding([5, 14])
+                .width(Length::Fill)
+                .align_y(Alignment::Center),
             Color::Dark,
             !is_selected
         ));
@@ -391,12 +392,15 @@ fn drag_tooltip<'a>(
 fn drag_handle(selection: &SidebarSelection) -> widget::MouseArea<'static, Message, LauncherTheme> {
     widget::mouse_area(
         widget::row![
-            widget::text("=")
-                .size(20)
-                .style(|t: &LauncherTheme| t.style_text(Color::ExtraDark))
+            widget::text(":")
+                .size(16)
+                .style(|t: &LauncherTheme| widget::text::Style {
+                    // color: Some(mix(t.get(Color::Mid), t.get(Color::Dark))),
+                    color: Some(mix(t.get(Color::Mid), t.get(Color::SecondDark))),
+                    // color: Some(t.get(Color::Mid)),
+                })
         ]
-        .padding([0, 8])
-        .align_y(Alignment::Center),
+        .padding([3, 14]),
     )
     .on_press(
         MainMenuMessage::Modal(Some(LaunchModal::SDragging {
