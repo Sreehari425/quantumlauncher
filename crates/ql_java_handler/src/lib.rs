@@ -10,7 +10,7 @@
 //!
 //! - ✅: [From Mojang](https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json)
 //! - 🟢: Supported through [Azul Zulu](https://www.azul.com/downloads/#zulu)
-//!       ([API](https://docs.azul.com/core/install/metadata-api))
+//!   ([API](https://docs.azul.com/core/install/metadata-api))
 //! - 🟢¹: Uses newer Java (with backwards compatibility)
 //! - 🟢²: Installed from:
 //!   - FreeBSD: <https://github.com/Mrmayman/get-jdk>
@@ -59,16 +59,18 @@ use owo_colors::OwoColorize;
 use std::{
     env::consts::ARCH,
     path::{Path, PathBuf},
-    sync::{mpsc::Sender, Mutex},
+    sync::{Mutex, mpsc::Sender},
 };
 use thiserror::Error;
+use tokio::fs;
 
 use ql_core::{
+    GenericProgress, IntoIoError, IoError, JsonDownloadError, JsonError, LAUNCHER_DIR,
+    RequestError,
     constants::OS_NAME,
     do_jobs_with_limit, err,
-    file_utils::{self, canonicalize_a, exists, DirItem},
-    info, pt, GenericProgress, IntoIoError, IoError, JsonDownloadError, JsonError, RequestError,
-    LAUNCHER_DIR,
+    file_utils::{self, DirItem, canonicalize_a, exists},
+    info, pt,
 };
 
 mod compression;
@@ -90,7 +92,7 @@ const fn which_java() -> &'static str {
 ///
 /// `javaw` on Windows, `java` on all other platforms.
 ///
-/// On windows, `javaw` is used to avoid accidentally opening
+/// On Windows, `javaw` is used to avoid accidentally opening
 /// secondary terminal window. This uses the Windows subsystem
 /// instead of the Console subsystem, so the OS treats it as
 /// a GUI app.
@@ -154,12 +156,23 @@ pub async fn get_java_binary(
         install_java(version, java_install_progress_sender).await?;
     }
 
-    let bin_path = find_java_bin(name, &java_dir).await?;
+    let bin_path = find_java_bin_in_dir(name, &java_dir).await?;
     Ok(canonicalize_a(&bin_path).await)
 }
 
-async fn find_java_bin(name: &str, java_dir: &Path) -> Result<PathBuf, JavaInstallError> {
+/// Intelligently searches the given path for the given Java binary name, and returns a `PathBuf` to if found.
+///
+/// # Errors
+/// - Java binary not found
+/// - Path doesn't exist, or user lacks permissions
+pub async fn find_java_bin_in_dir(name: &str, path: &Path) -> Result<PathBuf, JavaInstallError> {
+    let metadata = fs::metadata(path).await.path(path)?;
+    if metadata.is_file() {
+        return Ok(path.to_owned());
+    }
+
     let names = [
+        name.to_owned(),
         format!("bin/{name}"),
         format!("Contents/Home/bin/{name}"),
         format!("jre.bundle/Contents/Home/bin/{name}"),
@@ -169,24 +182,28 @@ async fn find_java_bin(name: &str, java_dir: &Path) -> Result<PathBuf, JavaInsta
     ];
 
     for name in names {
-        let path = java_dir.join(&name);
-        if exists(&path).await {
-            return Ok(path);
-        }
-        let path2 = java_dir.join(format!("{name}.exe"));
-        if exists(&path2).await {
-            return Ok(path2);
+        let bin_path = if cfg!(target_os = "windows") {
+            path.join(format!("{name}.exe"))
+        } else {
+            path.join(&name)
+        };
+        if exists(&bin_path).await {
+            return Ok(bin_path);
         }
     }
 
-    let entries = file_utils::read_filenames_from_dir(java_dir).await;
+    let entries = file_utils::read_filenames_from_dir(path).await;
     if let Ok(entries) = entries.as_deref() {
         if let Some(entry) = entries.iter().find(|n| n.name.contains("bellsoft")) {
-            return Box::pin(find_java_bin(name, &java_dir.join(&entry.name))).await;
+            return Box::pin(find_java_bin_in_dir(name, &path.join(&entry.name))).await;
         }
     }
 
-    Err(JavaInstallError::NoJavaBinFound(entries))
+    Err(JavaInstallError::NoJavaBinFound {
+        name: name.to_owned(),
+        path: path.to_owned(),
+        entries,
+    })
 }
 
 #[cfg(target_os = "macos")]
@@ -358,7 +375,7 @@ async fn download_file(downloads: &JavaFileDownload) -> Result<Vec<u8>, JavaInst
     }
 }
 
-const ERR_PREF1: &str = "while installing Java (OS: ";
+const ERR_PREF1: &str = "while installing/managing Java (OS: ";
 const UNSUPPORTED_MESSAGE: &str = r"Automatic Java installation isn’t supported on your platform for this Minecraft version.
 You can:
 - Install Java manually and set the executable path in the Instance → Edit tab
@@ -376,9 +393,19 @@ pub enum JavaInstallError {
     #[error("{ERR_PREF1}{OS_NAME} {ARCH}):\n{0}")]
     Io(#[from] IoError),
     #[error(
-        "{ERR_PREF1}{OS_NAME} {ARCH}):\ncouldn't find java binary (this is a bug! please report on discord!)\n{0:?}"
+        r"{ERR_PREF1}{OS_NAME} {ARCH}):
+couldn't find java binary ({name})
+(this is a bug! please report on discord!)
+
+at: {path:?}
+
+{entries:?}"
     )]
-    NoJavaBinFound(Result<Vec<DirItem>, IoError>),
+    NoJavaBinFound {
+        name: String,
+        path: PathBuf,
+        entries: Result<Vec<DirItem>, IoError>,
+    },
 
     #[error("({OS_NAME} {ARCH})\n{UNSUPPORTED_MESSAGE}")]
     UnsupportedPlatform,
@@ -387,7 +414,9 @@ pub enum JavaInstallError {
     ZipExtract(#[from] zip::result::ZipError),
     #[error("{ERR_PREF1}{OS_NAME} {ARCH}):\ncouldn't extract java tar.gz:\n{0}")]
     TarGzExtract(std::io::Error),
-    #[error("{ERR_PREF1}{OS_NAME} {ARCH}):\nunknown extension for java: {0}\n\nThis is a bug, please report on discord!")]
+    #[error(
+        "{ERR_PREF1}{OS_NAME} {ARCH}):\nunknown extension for java: {0}\n\nThis is a bug, please report on discord!"
+    )]
     UnknownExtension(String),
 }
 

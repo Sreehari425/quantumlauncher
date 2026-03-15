@@ -2,19 +2,19 @@ use chrono::DateTime;
 use ini::Ini;
 use std::{
     path::Path,
-    sync::{mpsc::Sender, Arc, Mutex},
+    sync::{Arc, Mutex, mpsc::Sender},
 };
 
-use crate::{import::pipe_progress, import::OUT_OF, InstancePackageError};
+use crate::{InstancePackageError, import::OUT_OF, import::pipe_progress};
 use ql_core::{
-    do_jobs, err, file_utils, info,
+    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, LAUNCHER_DIR, ListEntry,
+    Loader, do_jobs, download, err, file_utils, info,
     jarmod::{JarMod, JarMods},
     json::{
-        FabricJSON, InstanceConfigJson, Manifest, VersionDetails, V_1_12_2,
-        V_OFFICIAL_FABRIC_SUPPORT,
+        FabricJSON, InstanceConfigJson, Manifest, V_1_12_2, V_OFFICIAL_FABRIC_SUPPORT,
+        VersionDetails,
     },
-    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, ListEntry, Loader,
-    LAUNCHER_DIR,
+    pt,
 };
 use ql_mod_manager::loaders::fabric::{self, get_list_of_versions_from_backend};
 use serde::{Deserialize, Serialize};
@@ -88,7 +88,7 @@ pub async fn import(
     )
     .await?;
 
-    install_loader(&sender, &instance, &instance_recipe).await?;
+    install_loader(sender.as_deref(), &instance, &instance_recipe).await?;
 
     copy_files(temp_dir, sender, &instance).await?;
 
@@ -270,7 +270,7 @@ async fn get_instance_recipe(mmc_pack: &MmcPack) -> Result<InstanceRecipe, Insta
 }
 
 async fn install_loader(
-    sender: &Option<Arc<Sender<GenericProgress>>>,
+    sender: Option<&Sender<GenericProgress>>,
     instance: &InstanceSelection,
     instance_recipe: &InstanceRecipe,
 ) -> Result<(), InstancePackageError> {
@@ -278,7 +278,7 @@ async fn install_loader(
         match loader {
             n @ (Loader::Fabric | Loader::Quilt) => {
                 install_fabric(
-                    sender.as_deref(),
+                    sender,
                     instance,
                     instance_recipe.loader_version.clone(),
                     matches!(n, Loader::Quilt),
@@ -287,7 +287,7 @@ async fn install_loader(
             }
             n @ (Loader::Forge | Loader::Neoforge) => {
                 mmc_forge(
-                    sender.clone(),
+                    sender,
                     instance,
                     instance_recipe.loader_version.clone(),
                     matches!(n, Loader::Neoforge),
@@ -316,13 +316,7 @@ async fn install_fabric(
 
     let version_json = VersionDetails::load(instance_selection).await?;
     if !version_json.is_before_or_eq(V_OFFICIAL_FABRIC_SUPPORT) {
-        ql_mod_manager::loaders::fabric::install(
-            version,
-            instance_selection.clone(),
-            sender,
-            backend,
-        )
-        .await?;
+        fabric::install(version, instance_selection.clone(), sender, backend).await?;
         return Ok(());
     }
 
@@ -341,8 +335,10 @@ async fn install_fabric(
             get_list_of_versions_from_backend("1.14.4", backend, false)
                 .await?
                 .first()
-                .map(|n| n.loader.version.clone())
-                .unwrap_or_else(|| " No versions found! ".to_owned())
+                .map_or_else(
+                    || " No versions found! ".to_owned(),
+                    |n| n.loader.version.clone(),
+                )
         }
     );
     let fabric_json_text = file_utils::download_file_to_string(&url, false).await?;
@@ -371,7 +367,7 @@ async fn install_fabric(
         tokio::fs::create_dir_all(parent_dir)
             .await
             .path(parent_dir)?;
-        file_utils::download_file_to_path(&url, false, &path).await?;
+        download(&url).path(&path).await?;
 
         {
             let mut i = i.lock().unwrap();
@@ -468,13 +464,13 @@ async fn create_minecraft_instance(
 }
 
 async fn mmc_forge(
-    sender: Option<Arc<Sender<GenericProgress>>>,
+    sender: Option<&Sender<GenericProgress>>,
     instance_selection: &InstanceSelection,
     version: Option<String>,
     is_neoforge: bool,
 ) -> Result<(), InstancePackageError> {
     let (f_send, f_recv) = std::sync::mpsc::channel();
-    if let Some(sender) = sender.clone() {
+    if let Some(sender) = sender.cloned() {
         std::thread::spawn(move || {
             pipe_progress(f_recv, &sender);
         });

@@ -8,7 +8,7 @@ use std::{
 use chrono::{Datelike, Timelike};
 use regex::Regex;
 
-use crate::{eeprintln, file_utils, REDACT_SENSITIVE_INFO};
+use crate::{REDACT_SENSITIVE_INFO, eeprintln, file_utils};
 
 pub mod macros;
 
@@ -22,8 +22,8 @@ pub static REDACTION_USERNAME: LazyLock<(Vec<String>, String)> = LazyLock::new(|
             return (
                 vec![
                     home_str.to_owned(),
-                    home_str.replace("\\", "/"),
-                    home_str.replace("\\", "\\\\"),
+                    home_str.replace('\\', "/"),
+                    home_str.replace('\\', "\\\\"),
                 ],
                 username.to_owned(),
             );

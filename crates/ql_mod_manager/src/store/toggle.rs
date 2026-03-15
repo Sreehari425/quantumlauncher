@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use ql_core::{err, InstanceSelection, IoError};
+use ql_core::{InstanceSelection, IoError, err};
 
 use crate::store::ModIndex;
 

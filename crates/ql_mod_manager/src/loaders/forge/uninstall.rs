@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use ql_core::{
-    err, find_forge_shim_file, json::InstanceConfigJson, InstanceSelection, IntoIoError,
-    IntoStringError, Loader, LAUNCHER_DIR,
+    InstanceSelection, IntoIoError, IntoStringError, LAUNCHER_DIR, Loader, err,
+    find_forge_shim_file, json::InstanceConfigJson,
 };
 
 use crate::loaders::{self, change_instance_type};

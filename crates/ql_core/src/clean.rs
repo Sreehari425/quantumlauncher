@@ -4,10 +4,11 @@ use fs::DirEntry;
 use tokio::fs;
 
 use crate::{
+    IntoIoError, IntoJsonError, IoError, JsonFileError, LAUNCHER_DIR,
     file_utils::get_launcher_dir,
     info,
     json::{AssetIndex, VersionDetails},
-    pt, IntoIoError, IntoJsonError, IoError, JsonFileError, LAUNCHER_DIR,
+    pt,
 };
 
 const SIZE_LIMIT_BYTES: u64 = 100 * 1024 * 1024; // 100 MB

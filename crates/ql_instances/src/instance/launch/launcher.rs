@@ -1,18 +1,18 @@
 use crate::{
-    auth::{ms::CLIENT_ID, AccountData, AccountType},
+    auth::{AccountData, AccountType, ms::CLIENT_ID},
     download::GameDownloader,
     jarmod,
 };
 use ql_core::{
-    err, file_utils, info,
+    CLASSPATH_SEPARATOR, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError,
+    JsonFileError, LAUNCHER_DIR, Loader, err, file_utils, info,
     json::{
-        forge, version::Library, FabricJSON, GlobalSettings, InstanceConfigJson, JsonOptifine,
-        VersionDetails, V_1_12_2, V_1_5_2, V_PAULSCODE_LAST, V_PRECLASSIC_LAST,
+        FabricJSON, GlobalSettings, InstanceConfigJson, JsonOptifine, V_1_5_2, V_1_12_2,
+        V_PAULSCODE_LAST, V_PRECLASSIC_LAST, VersionDetails, forge, version::Library,
     },
-    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError, JsonFileError,
-    Loader, CLASSPATH_SEPARATOR, LAUNCHER_DIR,
+    pt,
 };
-use ql_java_handler::{get_java_binary, JavaVersion};
+use ql_java_handler::{JavaVersion, get_java_binary};
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
@@ -495,7 +495,8 @@ impl GameLauncher {
         let jar_path = jarmod::build(&instance).await?;
         debug_assert!(
             jar_path.is_file(),
-            "Minecraft JAR file should exist\nPath: {jar_path:?}"
+            "Minecraft JAR file should exist\nPath: {}",
+            jar_path.display()
         );
         let jar_path = jar_path
             .to_str()
@@ -556,7 +557,8 @@ impl GameLauncher {
                 let library_path = self.instance_dir.join("libraries").join(library.get_path());
                 debug_assert!(
                     library_path.is_file(),
-                    "Couldn't find library {library_path:?}"
+                    "Couldn't find library {}",
+                    library_path.display()
                 );
                 class_path.push_str(
                     library_path
@@ -742,10 +744,23 @@ impl GameLauncher {
     }
 
     pub async fn get_java_command(&mut self) -> Result<(Command, PathBuf), GameLaunchError> {
+        let which_java = if cfg!(target_os = "windows") && self.config.enable_logger.unwrap_or(true)
+        {
+            "javaw"
+        } else {
+            "java"
+        };
+
         if let Some(java_override) = self.config.get_java_override() {
             info!("Java (override): {java_override:?}\n");
-            return Ok((Command::new(&java_override), java_override));
+            return Ok((
+                Command::new(
+                    ql_java_handler::find_java_bin_in_dir(which_java, &java_override).await?,
+                ),
+                java_override,
+            ));
         }
+
         let version = if let Some(version) = self.config.java_override_version {
             version.into()
         } else if let Some(version) = self.version_json.javaVersion.clone() {
@@ -756,11 +771,7 @@ impl GameLauncher {
 
         let program = get_java_binary(
             version,
-            if cfg!(target_os = "windows") && self.config.enable_logger.unwrap_or(true) {
-                "javaw"
-            } else {
-                "java"
-            },
+            which_java,
             self.java_install_progress_sender.take().as_ref(),
         )
         .await?;
@@ -860,7 +871,7 @@ impl GameLauncher {
 
 async fn get_instance_dir(instance_name: &str) -> Result<PathBuf, GameLaunchError> {
     if instance_name.is_empty() {
-        return Err(GameLaunchError::InstanceNotFound);
+        return Err(GameLaunchError::InstanceNotFound(String::new()));
     }
 
     let launcher_dir = &*LAUNCHER_DIR;
@@ -875,7 +886,7 @@ async fn get_instance_dir(instance_name: &str) -> Result<PathBuf, GameLaunchErro
 
     let instance_dir = instances_folder_dir.join(instance_name);
     if !instance_dir.exists() {
-        return Err(GameLaunchError::InstanceNotFound);
+        return Err(GameLaunchError::InstanceNotFound(instance_name.to_owned()));
     }
     Ok(instance_dir)
 }

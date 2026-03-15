@@ -1,5 +1,5 @@
-use iced::{futures::executor::block_on, Task};
-use ql_core::{err, file_utils::DirItem, info, InstanceSelection, IntoIoError, IntoStringError};
+use iced::{Task, futures::executor::block_on};
+use ql_core::{InstanceSelection, IntoIoError, IntoStringError, err, file_utils::DirItem, info};
 use std::fmt::Write;
 use tokio::io::AsyncWriteExt;
 
@@ -7,7 +7,6 @@ use tokio::io::AsyncWriteExt;
 use owo_colors::OwoColorize;
 
 use crate::{
-    message_handler::{SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT},
     state::{
         AutoSaveKind, CustomJarState, GameProcess, LaunchTab, Launcher, LauncherSettingsMessage,
         ManageModsMessage, MenuExportInstance, MenuLaunch, MenuLicense, MenuWelcome, Message,
@@ -61,6 +60,8 @@ impl Launcher {
                 self.state = State::Welcome(MenuWelcome::P3Auth);
             }
 
+            Message::MainMenu(msg) => return self.update_main_menu(msg),
+            Message::SidebarMessage(msg) => return self.update_sidebar(msg),
             Message::Account(msg) => return self.update_account(msg),
             Message::ManageMods(msg) => return self.update_manage_mods(msg),
             Message::ExportMods(msg) => return self.update_export_mods(msg),
@@ -69,19 +70,15 @@ impl Launcher {
             Message::Window(msg) => return self.update_window_msg(msg),
             Message::Notes(msg) => return self.update_notes(msg),
             Message::GameLog(msg) => return self.update_game_log(msg),
+            Message::Shortcut(msg) => match self.update_shortcut(msg) {
+                Ok(n) => return n,
+                Err(e) => self.set_error(e),
+            },
 
-            Message::LaunchInstanceSelected(inst) => {
-                self.selected_instance = Some(inst);
-                return self.on_instance_selected();
-            }
             Message::LauncherSettings(msg) => return self.update_launcher_settings(msg),
             Message::InstallOptifine(msg) => return self.update_install_optifine(msg),
             Message::InstallPaper(msg) => return self.update_install_paper(msg),
 
-            Message::LaunchUsernameSet(username) => {
-                self.config.username = username;
-                self.autosave.remove(&AutoSaveKind::LauncherConfig);
-            }
             Message::LaunchStart => return self.launch_start(),
             Message::LaunchEnd(result) => return self.finish_launching(result),
             Message::CreateInstance(message) => return self.update_create_instance(message),
@@ -153,7 +150,7 @@ impl Launcher {
                 // tasks.push(
                 //     iced::window::get_latest()
                 //         .and_then(iced::window::get_maximized)
-                //         .map(|m| Message::Window(WindowMessage::IsMaximized(m))),
+                //         .map(|m| WindowMessage::IsMaximized(m).into()),
                 // );
 
                 let custom_jars_changed = self
@@ -178,7 +175,7 @@ impl Launcher {
                 return self.install_forge(kind);
             }
             Message::InstallForgeEnd(Ok(())) | Message::UninstallLoaderEnd(Ok(())) => {
-                return self.go_to_edit_mods_menu(false);
+                return self.go_to_edit_mods_menu();
             }
             Message::LaunchGameExited(Ok((status, instance, diagnostic))) => {
                 self.set_game_exited(status, &instance, diagnostic);
@@ -233,7 +230,7 @@ impl Launcher {
                 }
             }
             Message::CoreListLoaded(Ok((list, is_server))) => {
-                self.core_list_loaded(list, is_server)
+                self.core_list_loaded(list, is_server);
             }
             Message::CoreCopyText(txt) => {
                 return iced::clipboard::write(txt);
@@ -254,19 +251,13 @@ impl Launcher {
                         Message::ShowScreen("Uninstalling...".to_owned()),
                         (*msg).clone(),
                     ]),
-                    no: Message::ManageMods(ManageModsMessage::ScreenOpenWithoutUpdate),
+                    no: ManageModsMessage::Open.into(),
                 }
             }
             Message::ShowScreen(msg) => {
                 self.state = State::GenericMessage(msg);
             }
             Message::CoreEvent(event, status) => return self.iced_event(event, status),
-            Message::MChangeTab(launch_tab_id) => {
-                self.load_edit_instance(Some(launch_tab_id));
-                if let LaunchTab::Log = launch_tab_id {
-                    self.load_logs(self.instance().clone());
-                }
-            }
             Message::CoreLogToggle => {
                 self.is_log_open = !self.is_log_open;
             }
@@ -278,26 +269,6 @@ impl Launcher {
             }
             Message::CoreLogScrollAbsolute(lines) => {
                 self.log_scroll = lines;
-            }
-            Message::MSidebarResize(ratio) => {
-                if let State::Launch(menu) = &mut self.state {
-                    // self.autosave.remove(&AutoSaveKind::LauncherConfig);
-                    let window_width = self.window_state.size.0;
-                    let ratio = ratio * window_width;
-                    menu.resize_sidebar(
-                        ratio.clamp(SIDEBAR_LIMIT_LEFT, window_width - SIDEBAR_LIMIT_RIGHT)
-                            / window_width,
-                    );
-                }
-            }
-            Message::MSidebarScroll(total) => {
-                if let State::Launch(MenuLaunch {
-                    sidebar_scrolled: sidebar_height,
-                    ..
-                }) = &mut self.state
-                {
-                    *sidebar_height = total;
-                }
             }
 
             Message::ExportInstanceOpen => {
@@ -422,20 +393,17 @@ impl Launcher {
             Message::CoreFocusNext => {
                 return iced::widget::focus_next();
             }
-            Message::MModal(m) => {
-                if let State::Launch(menu) = &mut self.state {
-                    menu.modal = match (m, menu.modal) {
-                        // Unset if you click on it again
-                        (Some(m), Some(n)) if m == n => None,
-                        (m, _) => m,
-                    }
-                }
+            Message::CoreHideModal => {
+                self.hide_submenu();
             }
         }
         Task::none()
     }
 
     fn core_list_loaded(&mut self, list: Vec<String>, is_server: bool) {
+        self.config.update_sidebar(&list, is_server);
+        self.autosave.remove(&AutoSaveKind::LauncherConfig);
+
         let persistent = self.config.c_persistent();
         if is_server {
             if let Some(n) = &persistent.selected_server {
@@ -461,13 +429,13 @@ impl Launcher {
             .config
             .ui_mode
             .is_none_or(|n| n == LauncherThemeLightness::Auto);
+        #[allow(clippy::manual_is_multiple_of)] // Maintain Rust MSRV
         let interval = self.tick_timer % INTERVAL == 0;
 
         if is_auto_theme && interval {
             Task::perform(tokio::task::spawn_blocking(dark_light::detect), |n| {
-                Message::LauncherSettings(LauncherSettingsMessage::LoadedSystemTheme(
-                    n.strerr().and_then(|n| n.strerr()),
-                ))
+                LauncherSettingsMessage::LoadedSystemTheme(n.strerr().and_then(|n| n.strerr()))
+                    .into()
             })
         } else {
             Task::none()

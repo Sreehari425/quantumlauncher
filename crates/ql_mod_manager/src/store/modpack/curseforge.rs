@@ -4,17 +4,16 @@ use std::{
 };
 
 use ql_core::{
-    do_jobs, file_utils,
+    GenericProgress, InstanceSelection, IntoIoError, Loader, StoreBackendType, do_jobs, download,
     json::{InstanceConfigJson, VersionDetails},
-    pt, GenericProgress, InstanceSelection, IntoIoError, Loader,
+    pt,
 };
 use serde::Deserialize;
 use tokio::sync::Mutex;
 
 use crate::store::{
-    curseforge::{self, get_query_type, CFSearchResult, CurseforgeFileQuery, ModQuery},
     CurseforgeNotAllowed, DirStructure, ModConfig, ModFile, ModIndex, QueryType,
-    SOURCE_ID_CURSEFORGE,
+    curseforge::{self, CFSearchResult, CurseforgeFileQuery, ModQuery, get_query_type},
 };
 
 use super::PackError;
@@ -88,7 +87,7 @@ impl PackFile {
             }
         }
 
-        file_utils::download_file_to_path(&url, true, &path).await?;
+        download(&url).user_agent_ql().path(&path).await?;
         add_to_index(index, self.projectID.to_string(), &mod_info, query, url).await;
 
         send_progress(sender, i, len, &mod_info).await;
@@ -131,7 +130,7 @@ async fn add_to_index(
                 enabled: true,
                 description: mod_info.summary.clone(),
                 icon_url: mod_info.logo.clone().map(|n| n.url),
-                project_source: SOURCE_ID_CURSEFORGE.to_owned(),
+                project_source: StoreBackendType::Curseforge,
                 project_id,
                 files: vec![ModFile {
                     url,

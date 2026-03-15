@@ -2,14 +2,14 @@ use std::{fmt::Display, str::FromStr};
 
 use iced::widget::container::Style;
 use iced::widget::scrollable::Rail;
-use iced::{widget, Border};
+use iced::{Border, widget};
 use ql_core::err;
 use serde::{Deserialize, Serialize};
 
 use crate::stylesheet::color::{ADWAITA_DARK, ADWAITA_LIGHT};
 
 use super::{
-    color::{Color, BROWN, CATPPUCCIN, HALLOWEEN, PURPLE, SKY_BLUE, TEAL},
+    color::{BROWN, CATPPUCCIN, Color, HALLOWEEN, PURPLE, SKY_BLUE, TEAL},
     widgets::{IsFlat, StyleButton, StyleScrollable},
 };
 
@@ -271,7 +271,7 @@ impl LauncherTheme {
                 color: if hovered {
                     self.get(Color::Mid)
                 } else {
-                    blend_colors(self.get(Color::SecondDark), self.get(Color::Mid))
+                    mix(self.get(Color::SecondDark), self.get(Color::Mid))
                 },
                 border: self.get_border_style(&style, Color::Light),
             },
@@ -299,7 +299,7 @@ impl LauncherTheme {
                 color: if is_vertical_scrollbar_dragged {
                     self.get(Color::White)
                 } else {
-                    blend_colors(self.get(Color::Mid), self.get(Color::SecondDark))
+                    mix(self.get(Color::Mid), self.get(Color::SecondDark))
                 },
                 border: self.get_border_style(&style, Color::Light),
             },
@@ -430,7 +430,7 @@ impl LauncherTheme {
         let c = if let LauncherThemeColor::Adwaita = self.color {
             self.get(Color::Dark)
         } else {
-            blend_colors(self.get(Color::Dark), self.get(Color::ExtraDark))
+            mix(self.get(Color::Dark), self.get(Color::ExtraDark))
         };
         iced::Background::Color(c.scale_alpha(self.alpha))
     }
@@ -551,7 +551,9 @@ impl LauncherTheme {
                     | StyleButton::RoundDark
                     | StyleButton::SemiDark(_)
                     | StyleButton::SemiDarkBorder(_) => Color::Dark,
-                    StyleButton::FlatExtraDark | StyleButton::SemiExtraDark(_) => Color::ExtraDark,
+                    StyleButton::FlatExtraDark
+                    | StyleButton::SemiExtraDark(_)
+                    | StyleButton::FlatExtraDarkDead => Color::ExtraDark,
                 };
                 widget::button::Style {
                     background: Some(self.get_bg(color)),
@@ -582,6 +584,7 @@ impl LauncherTheme {
                     | StyleButton::SemiDark(_)
                     | StyleButton::SemiDarkBorder(_) => Color::Mid,
                     StyleButton::FlatExtraDark | StyleButton::SemiExtraDark(_) => Color::Dark,
+                    StyleButton::FlatExtraDarkDead => Color::ExtraDark,
                 };
                 widget::button::Style {
                     background: Some(self.get_bg(color)),
@@ -601,11 +604,15 @@ impl LauncherTheme {
             },
             widget::button::Status::Disabled => {
                 let color = match style {
-                    StyleButton::Flat | StyleButton::Round | StyleButton::RoundDark => Color::Dark,
-                    StyleButton::FlatDark
-                    | StyleButton::SemiDark(_)
+                    StyleButton::Flat
+                    | StyleButton::Round
+                    | StyleButton::RoundDark
+                    | StyleButton::FlatDark => Color::Dark,
+                    StyleButton::SemiDark(_)
                     | StyleButton::SemiDarkBorder(_)
-                    | StyleButton::SemiExtraDark(_) => Color::ExtraDark,
+                    | StyleButton::SemiExtraDark(_)
+                    | StyleButton::FlatExtraDarkDead => Color::ExtraDark,
+                    // Selected button
                     StyleButton::FlatExtraDark => Color::SecondDark,
                 };
                 widget::button::Style {
@@ -613,7 +620,7 @@ impl LauncherTheme {
                     text_color: self.get(Color::ExtraDark),
                     border: if let StyleButton::Round = style {
                         let (palette, color) = self.get_base(Color::SecondDark);
-                        iced::Border {
+                        Border {
                             color: palette.get(color),
                             width: 0.5,
                             radius: BORDER_RADIUS.into(),
@@ -750,14 +757,10 @@ fn get_radius_semi(radii: [bool; 4]) -> iced::border::Radius {
 }
 
 fn radius(t: bool) -> f32 {
-    if t {
-        BORDER_RADIUS
-    } else {
-        0.0
-    }
+    if t { BORDER_RADIUS } else { 0.0 }
 }
 
-fn blend_colors(color1: iced::Color, color2: iced::Color) -> iced::Color {
+pub fn mix(color1: iced::Color, color2: iced::Color) -> iced::Color {
     // Calculate the average of each RGBA component
     let r = color1.r.midpoint(color2.r);
     let g = color1.g.midpoint(color2.g);

@@ -3,7 +3,9 @@ use std::{
     io::ErrorKind,
 };
 
-use ql_core::{info, InstanceSelection, IntoIoError, IntoJsonError, JsonFileError};
+use ql_core::{
+    InstanceSelection, IntoIoError, IntoJsonError, JsonFileError, StoreBackendType, info,
+};
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 
@@ -20,7 +22,7 @@ pub struct ModConfig {
     pub icon_url: Option<String>,
     /// Source platform where the mod was downloaded from.
     /// Eg: "modrinth"
-    pub project_source: String,
+    pub project_source: StoreBackendType,
     pub project_id: String,
     pub files: Vec<ModFile>,
     pub supported_versions: Vec<String>,

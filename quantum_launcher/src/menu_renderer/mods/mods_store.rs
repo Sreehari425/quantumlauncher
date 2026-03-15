@@ -1,14 +1,14 @@
 use frostmark::MarkWidget;
 use iced::{
-    widget::{self, column, row},
     Length,
+    widget::{self, column, row},
 };
 use ql_core::{Loader, ModId, StoreBackendType};
 use ql_mod_manager::store::{QueryType, SearchMod};
 
 use crate::{
     icons,
-    menu_renderer::{back_button, button_with_icon, tooltip, Element, FONT_DEFAULT, FONT_MONO},
+    menu_renderer::{Element, FONT_DEFAULT, FONT_MONO, back_button, button_with_icon, tooltip},
     state::{
         ImageState, InstallModsMessage, ManageModsMessage, MenuModsDownload, Message, ModOperation,
     },
@@ -25,7 +25,7 @@ impl MenuModsDownload {
             widget::scrollable(
                 column!(
                     widget::text_input("Search...", &self.query)
-                        .on_input(|n| Message::InstallMods(InstallModsMessage::SearchInput(n))),
+                        .on_input(|n| InstallModsMessage::SearchInput(n).into()),
                     self.get_side_panel(),
                 )
                 .padding(10)
@@ -78,9 +78,7 @@ impl MenuModsDownload {
                         .id(widget::scrollable::Id::new("MenuModsDownload:main:mods_list"))
                         .height(Length::Fill)
                         .width(Length::Fill)
-                        .on_scroll(|viewport| {
-                            Message::InstallMods(InstallModsMessage::Scrolled(viewport))
-                        }),
+                        .on_scroll(|viewport| InstallModsMessage::Scrolled(viewport).into()),
                 )
         )
         .into()
@@ -88,16 +86,14 @@ impl MenuModsDownload {
 
     fn get_side_panel(&'_ self) -> Element<'_> {
         let normal_controls = column!(
-            back_button().on_press(Message::ManageMods(
-                ManageModsMessage::ScreenOpenWithoutUpdate
-            )),
-            widget::Space::with_height(5.0),
+            back_button().on_press(ManageModsMessage::Open.into()),
+            widget::Space::with_height(5),
             widget::text("Select store:").size(18),
             widget::radio(
                 "Modrinth",
                 StoreBackendType::Modrinth,
                 Some(self.backend),
-                |v| { Message::InstallMods(InstallModsMessage::ChangeBackend(v)) }
+                |v| InstallModsMessage::ChangeBackend(v).into()
             )
             .text_size(14)
             .size(14),
@@ -105,7 +101,7 @@ impl MenuModsDownload {
                 "CurseForge",
                 StoreBackendType::Curseforge,
                 Some(self.backend),
-                |v| { Message::InstallMods(InstallModsMessage::ChangeBackend(v)) }
+                |v| InstallModsMessage::ChangeBackend(v).into()
             )
             .text_size(14)
             .size(14),
@@ -113,7 +109,7 @@ impl MenuModsDownload {
             widget::text("Select Type:").size(18),
             widget::column(QueryType::STORE_QUERIES.iter().map(|n| {
                 widget::radio(n.to_string(), *n, Some(self.query_type), |v| {
-                    Message::InstallMods(InstallModsMessage::ChangeQueryType(v))
+                    InstallModsMessage::ChangeQueryType(v).into()
                 })
                 .text_size(14)
                 .size(14)
@@ -191,7 +187,11 @@ impl MenuModsDownload {
             .mod_index
             .mods
             .contains_key(&hit.get_id(backend).get_index_str())
-            || self.mod_index.mods.values().any(|n| n.name == hit.title);
+            || self
+                .mod_index
+                .mods
+                .values()
+                .any(|n| n.name == hit.title && n.project_source != backend);
         let is_downloading = self
             .mods_download_in_progress
             .contains_key(&ModId::from_pair(&hit.id, backend));
@@ -205,7 +205,7 @@ impl MenuModsDownload {
                     .style(|t: &LauncherTheme, s| {
                         t.style_button(s, StyleButton::SemiDarkBorder([true; 4]))
                     })
-                    .on_press(Message::InstallMods(InstallModsMessage::Uninstall(i))),
+                    .on_press(InstallModsMessage::Uninstall(i).into()),
                 "Uninstall",
                 widget::tooltip::Position::FollowCursor,
             )
@@ -213,10 +213,7 @@ impl MenuModsDownload {
         } else {
             // Download button
             side_button(icons::download())
-                .on_press_maybe(
-                    (!is_downloading)
-                        .then_some(Message::InstallMods(InstallModsMessage::Download(i))),
-                )
+                .on_press_maybe((!is_downloading).then_some(InstallModsMessage::Download(i).into()))
                 .into()
         };
 
@@ -259,7 +256,7 @@ impl MenuModsDownload {
                 .spacing(10),
             )
             .height(70)
-            .on_press(Message::InstallMods(InstallModsMessage::Click(i)))
+            .on_press(InstallModsMessage::Click(i).into())
         )
         .spacing(5)
         .into()
@@ -285,14 +282,18 @@ impl MenuModsDownload {
         images: &'a ImageState,
         tick_timer: usize,
     ) -> Element<'a> {
-        // Parses the markdown description of the mod.
+        // Parses the Markdown description of the mod.
         let markdown_description = if let Some(desc) = &self.description {
-            column!(MarkWidget::new(desc)
-                .on_clicking_link(Message::CoreOpenLink)
-                .on_drawing_image(|img| { images.view(img.url, img.width, img.height, "".into()) })
-                .on_updating_state(|n| Message::InstallMods(InstallModsMessage::TickDesc(n)))
-                .font(FONT_DEFAULT)
-                .font_mono(FONT_MONO))
+            column!(
+                MarkWidget::new(desc)
+                    .on_clicking_link(Message::CoreOpenLink)
+                    .on_drawing_image(|img| {
+                        images.view(img.url, img.width, img.height, "".into())
+                    })
+                    .on_updating_state(|n| InstallModsMessage::TickDesc(n).into())
+                    .font(FONT_DEFAULT)
+                    .font_mono(FONT_MONO)
+            )
         } else {
             let dots = ".".repeat((tick_timer % 3) + 1);
             column!(widget::text!("Loading...{dots}"))
@@ -311,8 +312,7 @@ impl MenuModsDownload {
         widget::scrollable(
             column!(
                 row!(
-                    back_button()
-                        .on_press(Message::InstallMods(InstallModsMessage::BackToMainScreen)),
+                    back_button().on_press(InstallModsMessage::BackToMainScreen.into()),
                     widget::tooltip(
                         button_with_icon(icons::globe(), "Open Mod Page", 14)
                             .on_press(Message::CoreOpenLink(url.clone())),
@@ -365,9 +365,5 @@ fn safe_slice(s: &str, max_len: usize) -> &str {
     for (i, _) in s.char_indices().take(max_len) {
         end = i;
     }
-    if end == 0 {
-        s
-    } else {
-        &s[..end]
-    }
+    if end == 0 { s } else { &s[..end] }
 }

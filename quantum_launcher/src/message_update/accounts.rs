@@ -12,7 +12,7 @@ use crate::{
     config::ConfigAccount,
     state::{
         AccountMessage, AutoSaveKind, Launcher, LittleSkinOauth, MenuLoginAlternate, MenuLoginMS,
-        Message, ProgressBar, State, NEW_ACCOUNT_NAME, OFFLINE_ACCOUNT_NAME,
+        Message, NEW_ACCOUNT_NAME, OFFLINE_ACCOUNT_NAME, ProgressBar, State,
     },
 };
 
@@ -33,9 +33,7 @@ impl Launcher {
             | AccountMessage::RefreshComplete(Err(err)) => {
                 self.set_error(err);
             }
-            AccountMessage::Selected(account) => {
-                return self.account_selected(account);
-            }
+            AccountMessage::Selected(account) => self.account_selected(account),
             AccountMessage::Response1 {
                 r: Ok(code),
                 is_from_welcome_screen,
@@ -49,11 +47,10 @@ impl Launcher {
                 return self.account_response_3(data);
             }
             AccountMessage::LogoutCheck => {
-                let username = self.accounts_selected.as_ref().unwrap();
                 self.state = State::ConfirmAction {
-                    msg1: format!("log out of your account: {username}"),
+                    msg1: format!("log out of your account: {}", self.account_selected),
                     msg2: "You can always log in later".to_owned(),
-                    yes: Message::Account(AccountMessage::LogoutConfirm),
+                    yes: AccountMessage::LogoutConfirm.into(),
                     no: Message::MScreenOpen {
                         message: None,
                         clear_selection: false,
@@ -87,12 +84,8 @@ impl Launcher {
                         expires_in,
                     ),
                     |resp| match resp {
-                        Ok(account) => {
-                            Message::Account(AccountMessage::AltLoginResponse(Ok(account)))
-                        }
-                        Err(e) => Message::Account(AccountMessage::LittleSkinDeviceCodeError(
-                            e.to_string(),
-                        )),
+                        Ok(account) => AccountMessage::AltLoginResponse(Ok(account)).into(),
+                        Err(e) => AccountMessage::LittleSkinDeviceCodeError(e.to_string()).into(),
                     },
                 );
             }
@@ -104,7 +97,7 @@ impl Launcher {
             }
             AccountMessage::LogoutConfirm => {
                 self.autosave.remove(&AutoSaveKind::LauncherConfig);
-                let username = self.accounts_selected.clone().unwrap();
+                let username = self.account_selected.clone();
                 let account_type = self
                     .accounts
                     .get(&username)
@@ -130,7 +123,7 @@ impl Launcher {
                     .first()
                     .cloned()
                     .unwrap_or_else(|| OFFLINE_ACCOUNT_NAME.to_owned());
-                self.accounts_selected = Some(selected_account);
+                self.account_selected = selected_account;
 
                 return self.go_to_launch_screen(Option::<String>::None);
             }
@@ -152,10 +145,11 @@ impl Launcher {
                 AccountType::Microsoft => {
                     self.state = State::GenericMessage("Loading Login...".to_owned());
                     return Task::perform(auth::ms::login_1_link(), move |n| {
-                        Message::Account(AccountMessage::Response1 {
+                        AccountMessage::Response1 {
                             r: n.strerr(),
                             is_from_welcome_screen,
-                        })
+                        }
+                        .into()
                     });
                 }
                 AccountType::ElyBy | AccountType::LittleSkin => {
@@ -216,7 +210,7 @@ impl Launcher {
                                 AccountType::ElyBy
                             },
                         ),
-                        |n| Message::Account(AccountMessage::AltLoginResponse(n.strerr())),
+                        |n| AccountMessage::AltLoginResponse(n.strerr()).into(),
                     );
                 }
             }
@@ -257,16 +251,15 @@ impl Launcher {
         Task::none()
     }
 
-    fn account_selected(&mut self, account: String) -> Task<Message> {
+    fn account_selected(&mut self, account: String) {
         if account == NEW_ACCOUNT_NAME {
             self.state = State::AccountLogin;
         } else {
             if account != OFFLINE_ACCOUNT_NAME {
                 self.config.account_selected = Some(account.clone());
             }
-            self.accounts_selected = Some(account);
+            self.account_selected = account;
         }
-        Task::none()
     }
 
     pub fn account_refresh(&mut self, account: &AccountData) -> Task<Message> {
@@ -281,7 +274,7 @@ impl Launcher {
                         account.refresh_token.clone(),
                         Some(sender),
                     ),
-                    |n| Message::Account(AccountMessage::RefreshComplete(n.strerr())),
+                    |n| AccountMessage::RefreshComplete(n.strerr()).into(),
                 )
             }
             AccountType::ElyBy | AccountType::LittleSkin => Task::perform(
@@ -290,7 +283,7 @@ impl Launcher {
                     account.refresh_token.clone(),
                     account.account_type,
                 ),
-                |n| Message::Account(AccountMessage::RefreshComplete(n.strerr())),
+                |n| AccountMessage::RefreshComplete(n.strerr()).into(),
             ),
         }
     }
@@ -309,18 +302,9 @@ impl Launcher {
         self.accounts_dropdown.insert(0, username.clone());
 
         let config_accounts = self.config.accounts.get_or_insert_with(HashMap::new);
-        config_accounts.insert(
-            username.clone(),
-            ConfigAccount {
-                uuid: data.uuid.clone(),
-                skin: None,
-                account_type: Some(data.account_type.to_string()),
-                keyring_identifier: Some(data.username.clone()),
-                username_nice: Some(data.nice_username.clone()),
-            },
-        );
+        config_accounts.insert(username.clone(), ConfigAccount::from_account(&data));
 
-        self.accounts_selected = Some(username.clone());
+        self.account_selected.clone_from(&username);
         self.accounts.insert(username.clone(), data);
 
         self.go_to_launch_screen::<String>(None)
@@ -330,7 +314,7 @@ impl Launcher {
         let (sender, receiver) = std::sync::mpsc::channel();
         self.state = State::AccountLoginProgress(ProgressBar::with_recv(receiver));
         Task::perform(auth::ms::login_3_xbox(token, Some(sender), true), |n| {
-            Message::Account(AccountMessage::Response3(n.strerr()))
+            AccountMessage::Response3(n.strerr()).into()
         })
     }
 
@@ -340,7 +324,7 @@ impl Launcher {
         is_from_welcome_screen: bool,
     ) -> Task<Message> {
         let (task, handle) = Task::perform(auth::ms::login_2_wait(code.clone()), |n| {
-            Message::Account(AccountMessage::Response2(n.strerr()))
+            AccountMessage::Response2(n.strerr()).into()
         })
         .abortable();
 
@@ -355,14 +339,11 @@ impl Launcher {
     }
 
     pub fn get_selected_account_data(&self) -> Option<AccountData> {
-        if let Some(account) = &self.accounts_selected {
-            if account == NEW_ACCOUNT_NAME || account == OFFLINE_ACCOUNT_NAME {
-                None
-            } else {
-                self.accounts.get(account).cloned()
-            }
-        } else {
+        let account = &self.account_selected;
+        if account == NEW_ACCOUNT_NAME || account == OFFLINE_ACCOUNT_NAME {
             None
+        } else {
+            self.accounts.get(account).cloned()
         }
     }
 }

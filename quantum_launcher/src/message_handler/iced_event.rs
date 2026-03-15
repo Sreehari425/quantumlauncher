@@ -1,19 +1,20 @@
 use crate::message_update::MSG_RESIZE;
 use crate::state::{
     AutoSaveKind, CreateInstanceMessage, LaunchTab, Launcher, LauncherSettingsMessage,
-    LauncherSettingsTab, MenuCreateInstance, MenuCreateInstanceChoosing, MenuEditMods,
-    MenuEditPresets, MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper,
-    MenuLauncherSettings, MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods,
-    Message, State,
+    LauncherSettingsTab, MainMenuMessage, ManageModsMessage, MenuCreateInstance,
+    MenuCreateInstanceChoosing, MenuEditMods, MenuEditPresets, MenuExportInstance,
+    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLauncherSettings,
+    MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, MenuWelcome, Message,
+    State,
 };
 use iced::{
-    keyboard::{self, key::Named, Key},
     Task,
+    keyboard::{self, Key, key::Named},
 };
 use ql_core::{
-    err,
+    InstanceSelection, err,
     jarmod::{JarMod, JarMods},
-    pt, InstanceSelection,
+    pt,
 };
 use std::ffi::OsStr;
 use std::path::Path;
@@ -131,52 +132,48 @@ impl Launcher {
                 // ========
                 // MANAGE MODS MENU
                 // ========
-                ("a", true, _, true, State::EditMods(_)) => {
-                    Message::ManageMods(crate::state::ManageModsMessage::SelectAll)
-                }
+                ("a", true, _, true, State::EditMods(_)) => ManageModsMessage::SelectAll.into(),
                 // Ctrl-F search in mods list (with toggling)
                 #[rustfmt::skip]
                 ("f", true, _, _, State::EditMods(MenuEditMods { search: Some(_), .. })) => {
-                    Message::ManageMods(crate::state::ManageModsMessage::SetSearch(None))
+                    ManageModsMessage::SetSearch(None).into()
                 },
                 ("f", true, _, _, State::EditMods(_)) => Message::Multiple(vec![
-                    Message::ManageMods(crate::state::ManageModsMessage::SetSearch(Some(
-                        String::new(),
-                    ))),
+                    ManageModsMessage::SetSearch(Some(String::new())).into(),
                     Message::CoreFocusNext,
                 ]),
 
                 // Search Action (general)
-                ("f", true, _, _, State::Create(MenuCreateInstance::Choosing { .. }))
-                | ("/", _, _, true, State::Create(MenuCreateInstance::Choosing { .. }))
-                | ("f", true, _, _, State::ModsDownload(_))
-                | ("/", _, _, true, State::ModsDownload(_)) => Message::CoreFocusNext,
+                #[rustfmt::skip]
+                ("f", true, _, _,
+                    State::Create(MenuCreateInstance::Choosing { .. }) | State::ModsDownload(_))
+                | ("/", _, _, true,
+                    State::Create(MenuCreateInstance::Choosing { .. }) | State::ModsDownload(_))
+                => Message::CoreFocusNext,
 
                 // Misc
                 ("a", true, _, true, State::EditJarMods(_)) => {
-                    Message::ManageJarMods(crate::state::ManageJarModsMessage::SelectAll)
+                    crate::state::ManageJarModsMessage::SelectAll.into()
                 }
 
                 // ========
                 // MAIN MENU
                 // ========
-                ("n", true, _, _, State::Launch(n)) => {
-                    Message::CreateInstance(CreateInstanceMessage::ScreenOpen {
-                        is_server: n.is_viewing_server,
-                    })
+                ("n", true, _, _, State::Launch(n)) => CreateInstanceMessage::ScreenOpen {
+                    is_server: n.is_viewing_server,
                 }
+                .into(),
                 ("1", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
-                    Message::MChangeTab(LaunchTab::Buttons)
+                    MainMenuMessage::ChangeTab(LaunchTab::Buttons).into()
                 }
                 ("2", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
-                    Message::MChangeTab(LaunchTab::Edit)
+                    MainMenuMessage::ChangeTab(LaunchTab::Edit).into()
                 }
                 ("3", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
-                    Message::MChangeTab(LaunchTab::Log)
+                    MainMenuMessage::ChangeTab(LaunchTab::Log).into()
                 }
-                (",", true, _, _, State::Launch(_)) => {
-                    Message::LauncherSettings(LauncherSettingsMessage::Open)
-                }
+                (",", true, _, _, State::Launch(_)) => LauncherSettingsMessage::Open.into(),
+
                 _ => Message::Nothing,
             };
             return Task::done(msg);
@@ -217,8 +214,22 @@ impl Launcher {
         {
             if let Key::Named(Named::Enter) = key {
                 if modifiers.command() {
-                    return Task::done(Message::CreateInstance(CreateInstanceMessage::Start));
+                    return Task::done(CreateInstanceMessage::Start.into());
                 }
+            }
+        } else if let State::Welcome(menu) = &mut self.state {
+            if let Key::Named(Named::Enter) = key {
+                *menu = match menu {
+                    MenuWelcome::P1InitialScreen => MenuWelcome::P2Theme,
+                    MenuWelcome::P2Theme => MenuWelcome::P3Auth,
+                    MenuWelcome::P3Auth => {
+                        return Task::done(Message::MScreenOpen {
+                            message: Some("Install Minecraft by clicking \"+ New\"".to_owned()),
+                            clear_selection: true,
+                            is_server: Some(false),
+                        });
+                    }
+                };
             }
         }
         self.keys_pressed.insert(key);
@@ -315,6 +326,7 @@ impl Launcher {
             | State::LoginAlternate(MenuLoginAlternate {
                 is_loading: false, ..
             })
+            | State::CreateShortcut(_)
             | State::Welcome(_) => {
                 ret_to_main_screen = true;
             }
@@ -337,8 +349,10 @@ impl Launcher {
                 }
             }
             State::InstallOptifine(MenuInstallOptifine::Choosing { .. })
-            | State::InstallFabric(MenuInstallFabric::Loading { .. })
-            | State::InstallFabric(MenuInstallFabric::Loaded { progress: None, .. })
+            | State::InstallFabric(
+                MenuInstallFabric::Loading { .. }
+                | MenuInstallFabric::Loaded { progress: None, .. },
+            )
             | State::EditJarMods(_)
             | State::ExportMods(_)
             | State::ManagePresets(MenuEditPresets {
@@ -388,7 +402,7 @@ impl Launcher {
                 return (true, self.go_to_main_menu_with_message(None::<String>));
             }
             if ret_to_mods {
-                return (true, self.go_to_edit_mods_menu(false));
+                return (true, self.go_to_edit_mods_menu());
             }
             if ret_to_mod_store {
                 if let State::ModsDownload(menu) = &mut self.state {
@@ -411,7 +425,7 @@ impl Launcher {
         )
     }
 
-    fn hide_submenu(&mut self) -> bool {
+    pub fn hide_submenu(&mut self) -> bool {
         if let State::EditMods(menu) = &mut self.state {
             if menu.modal.is_some() {
                 menu.modal = None;

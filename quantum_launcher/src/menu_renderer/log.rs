@@ -42,7 +42,7 @@
 //!
 //! See [`Launcher::view_launcher_log`] for more info.
 
-use iced::{widget, Length};
+use iced::{Length, widget};
 
 use crate::{
     state::{Launcher, Message},

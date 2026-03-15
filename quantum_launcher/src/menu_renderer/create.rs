@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
 use iced::{
-    widget::{self, column, row, tooltip::Position},
     Alignment, Length,
+    widget::{self, column, row, tooltip::Position},
 };
 use ql_core::ListEntryKind;
 
@@ -10,18 +10,19 @@ use crate::{
     cli::EXPERIMENTAL_MMC_IMPORT,
     icons,
     menu_renderer::{
-        button_with_icon, ctxbox, dots, shortcut_ctrl, sidebar_button, tooltip, tsubtitle, Element,
+        Element, button_with_icon, ctxbox, dots, offset, shortcut_ctrl, sidebar_button, tooltip,
+        tsubtitle,
     },
     state::{CreateInstanceMessage, MenuCreateInstance, MenuCreateInstanceChoosing, Message},
     stylesheet::{
         color::Color,
-        styles::{LauncherTheme, BORDER_RADIUS, BORDER_WIDTH},
+        styles::{BORDER_RADIUS, BORDER_WIDTH, LauncherTheme},
         widgets::StyleButton,
     },
 };
 
 impl MenuCreateInstance {
-    pub fn view<'a>(&'a self, existing_instances: Option<&[String]>, timer: usize) -> Element<'a> {
+    pub fn view(&self, existing_instances: Option<&[String]>, timer: usize) -> Element<'_> {
         match self {
             MenuCreateInstance::Choosing(menu) => menu.view(existing_instances, timer),
             MenuCreateInstance::DownloadingInstance(progress) => column![
@@ -51,25 +52,18 @@ impl MenuCreateInstanceChoosing {
                 self.get_main_page(existing_instances).into()
             }
         })
-        .on_resize(10, |t| {
-            Message::CreateInstance(CreateInstanceMessage::SidebarResize(t.ratio))
-        });
+        .on_resize(10, |t| CreateInstanceMessage::SidebarResize(t.ratio).into());
 
         widget::stack!(view)
-            .push_maybe(self.show_category_dropdown.then_some(row![
-                widget::Space::with_width(90),
-                column![
-                    widget::Space::with_height(40),
-                    ctxbox(Self::get_category_dropdown(&self.selected_categories))
-                ]
-            ]))
+            .push_maybe(self.show_category_dropdown.then_some(offset(
+                ctxbox(Self::get_category_dropdown(&self.selected_categories)),
+                90,
+                40,
+            )))
             .into()
     }
 
-    fn get_sidebar_contents<'a>(
-        &'a self,
-        timer: usize,
-    ) -> widget::Container<'a, Message, LauncherTheme> {
+    fn get_sidebar_contents(&self, timer: usize) -> widget::Container<'_, Message, LauncherTheme> {
         let header = self.get_sidebar_header();
 
         let Some(versions) = &self.list else {
@@ -115,14 +109,12 @@ impl MenuCreateInstanceChoosing {
                         n,
                         &self.selected_version,
                         label,
-                        Message::CreateInstance(CreateInstanceMessage::VersionSelected(n.clone())),
+                        CreateInstanceMessage::VersionSelected(n.clone()).into(),
                     )
                 })))
                 .style(LauncherTheme::style_scrollable_flat_extra_dark)
                 .height(Length::Fill)
-                .id(iced::widget::scrollable::Id::new(
-                    "MenuCreateInstance:sidebar"
-                ))
+                .id(widget::scrollable::Id::new("MenuCreateInstance:sidebar"))
             ]
             .spacing(10),
         )
@@ -135,35 +127,37 @@ impl MenuCreateInstanceChoosing {
         let opened_controls = self.show_category_dropdown;
         let hidden = self.selected_categories.len() == ListEntryKind::ALL.len();
 
-        column![row![
-            button_with_icon(icons::back_s(12), "Back", 13)
+        column![
+            row![
+                button_with_icon(icons::back_s(12), "Back", 13)
+                    .padding(pb)
+                    .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
+                    .on_press(Message::MScreenOpen {
+                        message: None,
+                        clear_selection: false,
+                        is_server: Some(self.is_server),
+                    }),
+                button_with_icon(
+                    icons::filter_s(12),
+                    if hidden { "Filters" } else { "Filters •" },
+                    13
+                )
                 .padding(pb)
-                .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
-                .on_press(Message::MScreenOpen {
-                    message: None,
-                    clear_selection: false,
-                    is_server: Some(self.is_server),
-                }),
-            button_with_icon(
-                icons::filter_s(12),
-                if hidden { "Filters" } else { "Filters •" },
-                13
-            )
-            .padding(pb)
-            .style(move |t: &LauncherTheme, s| t.style_button(
-                s,
-                if opened_controls {
-                    StyleButton::Round
-                } else {
-                    StyleButton::RoundDark
-                }
-            ))
-            .on_press(Message::CreateInstance(
-                CreateInstanceMessage::ContextMenuToggle
-            ))
+                .style(move |t: &LauncherTheme, s| t.style_button(
+                    s,
+                    if opened_controls {
+                        StyleButton::Round
+                    } else {
+                        StyleButton::RoundDark
+                    }
+                ))
+                .on_press(Message::CreateInstance(
+                    CreateInstanceMessage::ContextMenuToggle
+                ))
+            ]
+            .spacing(5)
+            .wrap()
         ]
-        .spacing(5)
-        .wrap()]
         .push_maybe(
             (!hidden).then_some(
                 widget::text!(
@@ -181,8 +175,8 @@ impl MenuCreateInstanceChoosing {
         .push(
             widget::text_input("Search...", &self.search_box)
                 .size(14)
-                .on_input(|t| Message::CreateInstance(CreateInstanceMessage::SearchInput(t)))
-                .on_submit(Message::CreateInstance(CreateInstanceMessage::SearchSubmit)),
+                .on_input(|t| CreateInstanceMessage::SearchInput(t).into())
+                .on_submit(CreateInstanceMessage::SearchSubmit.into()),
         )
         .push_maybe(
             (!self.search_box.trim().is_empty())
@@ -205,7 +199,7 @@ impl MenuCreateInstanceChoosing {
                 {
                     let placeholder = self.selected_version.name.as_str();
                     widget::text_input(placeholder, &self.instance_name)
-                        .on_input(|n| Message::CreateInstance(CreateInstanceMessage::NameInput(n)))
+                        .on_input(|n| CreateInstanceMessage::NameInput(n).into())
                 }
             ].spacing(10).align_y(Alignment::Center),
 
@@ -238,7 +232,7 @@ impl MenuCreateInstanceChoosing {
                 .push_maybe(
                     EXPERIMENTAL_MMC_IMPORT.read().unwrap().then_some(tooltip(
                         button_with_icon(icons::upload(), "Import from MultiMC...", 16)
-                            .on_press(Message::CreateInstance(CreateInstanceMessage::Import)),
+                            .on_press(CreateInstanceMessage::Import.into()),
                         widget::text("Import Instance... (VERY EXPERIMENTAL right now)").size(14),
                         Position::Top
                     ))
@@ -250,7 +244,17 @@ impl MenuCreateInstanceChoosing {
         .padding(16);
 
         widget::container(widget::container(menu).style(|t: &LauncherTheme| {
-            t.style_container_round_box(BORDER_WIDTH, Color::Dark, BORDER_RADIUS)
+            widget::container::Style {
+                border: {
+                    iced::Border {
+                        color: t.get(Color::SecondDark),
+                        width: BORDER_WIDTH,
+                        radius: BORDER_RADIUS.into(),
+                    }
+                },
+                background: Some(t.get_bg(Color::Dark)),
+                ..Default::default()
+            }
         }))
         .padding(5)
         .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark))
@@ -268,9 +272,7 @@ impl MenuCreateInstanceChoosing {
                 widget::checkbox(kind.to_string(), is_checked)
                     .text_size(13)
                     .size(13)
-                    .on_toggle(move |_| {
-                        Message::CreateInstance(CreateInstanceMessage::CategoryToggle(*kind))
-                    }),
+                    .on_toggle(move |_| CreateInstanceMessage::CategoryToggle(*kind).into()),
             );
         }
 
@@ -279,9 +281,8 @@ impl MenuCreateInstanceChoosing {
 }
 
 fn get_create_button(already_exists: bool) -> widget::Tooltip<'static, Message, LauncherTheme> {
-    let create_button = button_with_icon(icons::new(), "Create", 16).on_press_maybe(
-        (!already_exists).then_some(Message::CreateInstance(CreateInstanceMessage::Start)),
-    );
+    let create_button = button_with_icon(icons::new(), "Create", 16)
+        .on_press_maybe((!already_exists).then_some(CreateInstanceMessage::Start.into()));
 
     if already_exists {
         tooltip(

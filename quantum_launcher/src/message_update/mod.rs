@@ -3,16 +3,17 @@ use std::path::Path;
 use frostmark::MarkState;
 use iced::futures::executor::block_on;
 use iced::widget::text_editor;
-use iced::{widget::scrollable::AbsoluteOffset, Task};
-use ql_core::{err, InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion};
+use iced::{Task, widget::scrollable::AbsoluteOffset};
+use ql_core::{InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion, err};
 use ql_mod_manager::{
     loaders,
-    store::{get_description, QueryType},
+    store::{QueryType, get_description},
 };
 
 mod accounts;
 mod create_instance;
 mod edit_instance;
+mod launch;
 mod manage_mods;
 mod presets;
 mod recommended;
@@ -29,13 +30,15 @@ use crate::{
     },
 };
 
+mod shortcuts;
+
 pub const MSG_RESIZE: &str = "Resize your window to apply the changes.";
 
 impl Launcher {
     pub fn update_install_fabric(&mut self, message: InstallFabricMessage) -> Task<Message> {
         match message {
             InstallFabricMessage::End(result) => match result {
-                Ok(()) => return self.go_to_edit_mods_menu(false),
+                Ok(()) => return self.go_to_edit_mods_menu(),
                 Err(err) => self.set_error(err),
             },
             InstallFabricMessage::VersionSelected(selection) => {
@@ -107,7 +110,7 @@ impl Launcher {
                             )
                             .await
                         },
-                        |m| Message::InstallFabric(InstallFabricMessage::End(m.strerr())),
+                        |m| InstallFabricMessage::End(m.strerr()).into(),
                     );
                 }
             }
@@ -115,7 +118,7 @@ impl Launcher {
                 let instance_name = self.selected_instance.clone().unwrap();
                 let (task, handle) = Task::perform(
                     loaders::fabric::get_list_of_versions(instance_name, is_quilt),
-                    |m| Message::InstallFabric(InstallFabricMessage::VersionsLoaded(m.strerr())),
+                    |m| InstallFabricMessage::VersionsLoaded(m.strerr()).into(),
                 )
                 .abortable();
 
@@ -218,7 +221,7 @@ impl Launcher {
                             let id = ModId::from_pair(&hit.id, backend);
 
                             return Task::perform(get_description(id), |n| {
-                                Message::InstallMods(InstallModsMessage::LoadData(n.strerr()))
+                                InstallModsMessage::LoadData(n.strerr()).into()
                             });
                         }
                     }
@@ -261,8 +264,7 @@ impl Launcher {
                     return task;
                 }
                 self.state = State::CurseforgeManualDownload(MenuCurseforgeManualDownload {
-                    unsupported: not_allowed,
-                    is_store: true,
+                    not_allowed,
                     delete_mods: true,
                 });
             }
@@ -293,7 +295,6 @@ impl Launcher {
                 self.state = State::ImportModpack(ProgressBar::with_recv(receiver));
 
                 let selected_instance = self.selected_instance.clone().unwrap();
-                self.mod_updates_checked.remove(&selected_instance);
 
                 return Task::perform(
                     async move {
@@ -301,7 +302,7 @@ impl Launcher {
                             .await
                             .map(|not_allowed| (id, not_allowed))
                     },
-                    |n| Message::InstallMods(InstallModsMessage::DownloadComplete(n.strerr())),
+                    |n| InstallModsMessage::DownloadComplete(n.strerr()).into(),
                 );
             }
             InstallModsMessage::Uninstall(index) => {
@@ -325,7 +326,7 @@ impl Launcher {
 
                 return Task::perform(
                     ql_mod_manager::store::delete_mods(vec![mod_id], selected_instance),
-                    |n| Message::InstallMods(InstallModsMessage::UninstallComplete(n.strerr())),
+                    |n| InstallModsMessage::UninstallComplete(n.strerr()).into(),
                 );
             }
             InstallModsMessage::UninstallComplete(Ok(ids)) => {
@@ -368,8 +369,8 @@ impl Launcher {
                 msg1: format!("install the modpack: {}", hit.title),
                 msg2: "This might take a while, install many files, and use a lot of network..."
                     .to_owned(),
-                yes: Message::InstallMods(InstallModsMessage::InstallModpack(id)),
-                no: Message::InstallMods(InstallModsMessage::Open),
+                yes: InstallModsMessage::InstallModpack(id).into(),
+                no: InstallModsMessage::Open.into(),
             };
             Task::none()
         } else {
@@ -377,9 +378,9 @@ impl Launcher {
                 async move {
                     ql_mod_manager::store::download_mod(&id, &selected_instance, None)
                         .await
-                        .map(|not_allowed| (ModId::Modrinth(project_id), not_allowed))
+                        .map(|not_allowed| (id, not_allowed))
                 },
-                |n| Message::InstallMods(InstallModsMessage::DownloadComplete(n.strerr())),
+                |n| InstallModsMessage::DownloadComplete(n.strerr()).into(),
             )
         }
     }
@@ -405,7 +406,7 @@ impl Launcher {
                     let url = version.get_url().0;
                     return Task::perform(
                         loaders::optifine::install_b173(selected_instance, url),
-                        |n| Message::InstallOptifine(InstallOptifineMessage::End(n.strerr())),
+                        |n| InstallOptifineMessage::End(n.strerr()).into(),
                     );
                 }
 
@@ -437,7 +438,7 @@ impl Launcher {
                 if let Err(err) = result {
                     self.set_error(err);
                 } else {
-                    return self.go_to_edit_mods_menu(false);
+                    return self.go_to_edit_mods_menu();
                 }
             }
         }
@@ -491,7 +492,7 @@ impl Launcher {
                 Some(j_sender),
                 optifine_unique_version,
             ),
-            |n| Message::InstallOptifine(InstallOptifineMessage::End(n.strerr())),
+            |n| InstallOptifineMessage::End(n.strerr()).into(),
         )
         .chain(Task::perform(
             async move {
@@ -550,7 +551,11 @@ impl Launcher {
                 self.confirm_clear_java_installs();
             }
             LauncherSettingsMessage::ClearJavaInstallsConfirm => {
-                return Task::perform(ql_instances::delete_java_installs(), |()| Message::Nothing);
+                return Task::perform(ql_instances::delete_java_installs(), |()| {
+                    Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(
+                        state::LauncherSettingsTab::Internal,
+                    ))
+                });
             }
             LauncherSettingsMessage::ChangeTab(tab) => {
                 self.go_to_launcher_settings();
@@ -639,10 +644,8 @@ impl Launcher {
         self.state = State::ConfirmAction {
             msg1: "delete auto-installed Java files".to_owned(),
             msg2: "They will get reinstalled automatically as needed".to_owned(),
-            yes: Message::LauncherSettings(LauncherSettingsMessage::ClearJavaInstallsConfirm),
-            no: Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(
-                state::LauncherSettingsTab::Internal,
-            )),
+            yes: LauncherSettingsMessage::ClearJavaInstallsConfirm.into(),
+            no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Internal).into(),
         }
     }
 
@@ -710,7 +713,7 @@ impl Launcher {
                 if let Err(err) = res {
                     self.set_error(err);
                 } else {
-                    return self.go_to_edit_mods_menu(false);
+                    return self.go_to_edit_mods_menu();
                 }
             }
         }
@@ -840,14 +843,14 @@ impl Launcher {
                     menu.is_uploading_mclogs = true;
                 }
 
-                let instance = self.instance();
+                let instance = self.selected_instance.clone().unwrap();
 
-                if let Some(log) = self.logs.get(instance) {
+                if let Some(log) = self.logs.get(&instance) {
                     let log_content = log.log.join("");
                     if !log_content.trim().is_empty() {
                         return Task::perform(
-                            crate::mclog_upload::upload_log(log_content),
-                            |res| Message::GameLog(GameLogMessage::Uploaded(res.strerr())),
+                            crate::mclog_upload::upload_log(log_content, instance),
+                            |res| GameLogMessage::Uploaded(res.strerr()).into(),
                         );
                     }
                 }

@@ -1,13 +1,17 @@
+use crate::config::sidebar::{InstanceKind, SidebarConfig, SidebarNode, SidebarNodeKind};
 use crate::stylesheet::styles::{LauncherTheme, LauncherThemeColor, LauncherThemeLightness};
 use crate::{WINDOW_HEIGHT, WINDOW_WIDTH};
-use ql_core::json::GlobalSettings;
 use ql_core::ListEntryKind;
+use ql_core::json::GlobalSettings;
 use ql_core::{
-    err, IntoIoError, IntoJsonError, JsonFileError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
+    IntoIoError, IntoJsonError, JsonFileError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME, err,
 };
+use ql_instances::auth::{AccountData, AccountType};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::{collections::HashMap, path::Path};
+
+pub mod sidebar;
 
 pub const SIDEBAR_WIDTH: f32 = 0.33;
 const OPACITY: f32 = 0.9;
@@ -20,7 +24,7 @@ const OPACITY: f32 = 0.9;
 ///
 /// # Why `Option`?
 ///
-/// Many fields are `Option`s for backwards compatibility.
+/// Many fields are `Option`'s for backwards compatibility.
 /// If upgrading from an older version,
 /// `serde` will deserialize missing fields as `None`,
 /// which is treated as a default value.
@@ -94,6 +98,12 @@ pub struct LauncherConfig {
     pub ui: Option<UiSettings>,
     // Since: v0.5.0
     pub persistent: Option<PersistentSettings>,
+    // Since: v0.5.1
+    pub sidebar: Option<SidebarConfig>,
+
+    /// Preserve fields when downgrading
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
 }
 
 impl Default for LauncherConfig {
@@ -114,6 +124,8 @@ impl Default for LauncherConfig {
             extra_java_args: None,
             ui: None,
             persistent: None,
+            sidebar: None,
+            _extra: HashMap::new(),
         }
     }
 }
@@ -145,7 +157,9 @@ impl LauncherConfig {
         let mut config: Self = match serde_json::from_str(&config) {
             Ok(config) => config,
             Err(err) => {
-                err!("Invalid launcher config! This may be a sign of corruption! Please report if this happens to you.\nError: {err}");
+                err!(
+                    "Invalid launcher config! This may be a sign of corruption! Please report if this happens to you.\nError: {err}"
+                );
                 let old_path = LAUNCHER_DIR.join("config.json.bak");
                 _ = std::fs::copy(&config_path, &old_path);
                 return LauncherConfig::create(&config_path);
@@ -164,6 +178,31 @@ impl LauncherConfig {
             .await
             .path(config_path)?;
         Ok(())
+    }
+
+    pub fn update_sidebar(&mut self, instances: &[String], is_server: bool) {
+        let sidebar = self.sidebar.get_or_insert_with(SidebarConfig::default);
+        let kind = if is_server {
+            InstanceKind::Server
+        } else {
+            InstanceKind::Client
+        };
+
+        // Remove nonexistent instances
+        sidebar.retain_instances(|node| match &node.kind {
+            SidebarNodeKind::Instance(instance_kind) => {
+                *instance_kind == kind && instances.contains(&node.name)
+            }
+            SidebarNodeKind::Folder { .. } => true,
+        });
+        // Add new instances
+        for instance in instances {
+            if !sidebar.contains_instance(instance, kind) {
+                sidebar
+                    .list
+                    .push(SidebarNode::new_instance(instance.clone(), kind));
+            }
+        }
     }
 
     fn create(path: &Path) -> Result<Self, JsonFileError> {
@@ -215,10 +254,10 @@ impl LauncherConfig {
     }
 
     pub fn uses_system_decorations(&self) -> bool {
+        // change this to `is_some_and` when enabling the experimental decorations
         self.ui
             .as_ref()
-            .map(|n| matches!(n.window_decorations, UiWindowDecorations::System))
-            .unwrap_or(true) // change this to false when enabling the experimental decorations
+            .is_none_or(|n| matches!(n.window_decorations, UiWindowDecorations::System))
     }
 
     pub fn c_theme(&self) -> LauncherTheme {
@@ -226,9 +265,7 @@ impl LauncherConfig {
             lightness: self.ui_mode.unwrap_or_default(),
             color: self.ui_theme.unwrap_or_default(),
             alpha: self.c_ui_opacity(),
-            system_dark_mode: dark_light::detect()
-                .map(|n| n == dark_light::Mode::Dark)
-                .unwrap_or_default(),
+            system_dark_mode: dark_light::detect().is_ok_and(|n| n == dark_light::Mode::Dark),
         }
     }
 
@@ -245,30 +282,40 @@ impl LauncherConfig {
         self.persistent
             .get_or_insert_with(PersistentSettings::default)
     }
+
+    pub fn c_sidebar(&mut self) -> &mut SidebarConfig {
+        self.sidebar.get_or_insert_with(SidebarConfig::default)
+    }
+
+    pub fn c_idle_fps(&self) -> u64 {
+        const IDLE_FPS: u64 = 6;
+
+        self.ui
+            .as_ref()
+            .and_then(|n| n.idle_fps)
+            .unwrap_or(IDLE_FPS)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ConfigAccount {
-    /// UUID of the Minecraft account. Stored as a string without dashes.
+    /// UUID of the Minecraft account. Stored as string without dashes
     ///
-    /// Example: `2553495fc9094d40a82646cfc92cd7a5`
+    /// Eg: `2553495fc9094d40a82646cfc92cd7a5`
     ///
     /// A UUID is like an alternate username that can be used to identify
     /// an account. Unlike a username it can't be changed, so it's useful for
-    /// dealing with account data in a stable manner.
+    /// dealing with accounts in a stable manner.
     ///
     /// You can find someone's UUID through many online services where you
     /// input their username.
     pub uuid: String,
+
     /// Currently unimplemented, does nothing.
     pub skin: Option<String>, // TODO: Add skin visualization?
 
-    /// Type of account:
-    ///
-    /// - `"Microsoft"`
-    /// - `"ElyBy"`
-    /// - `"LittleSkin"`
-    pub account_type: Option<String>,
+    /// Type of account (default: `Microsoft`)
+    pub account_type: Option<AccountType>,
 
     /// The original login identifier used for keyring operations.
     /// This is the email address or username that was used during login.
@@ -286,6 +333,34 @@ pub struct ConfigAccount {
     /// username while the regular "username"
     /// would be an email.
     pub username_nice: Option<String>,
+
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
+}
+
+impl ConfigAccount {
+    pub fn from_account(data: &AccountData) -> Self {
+        Self {
+            uuid: data.uuid.clone(),
+            skin: None,
+            account_type: Some(data.account_type),
+            keyring_identifier: Some(data.username.clone()),
+            username_nice: Some(data.nice_username.clone()),
+            _extra: HashMap::new(),
+        }
+    }
+
+    pub fn get_keyring_identifier<'a>(&'a self, key_username: &'a str) -> &'a str {
+        self.keyring_identifier.as_deref().unwrap_or_else(|| {
+            // Fallback to old behavior for backwards compatibility
+            match self.account_type.unwrap_or_default() {
+                AccountType::ElyBy => key_username.strip_suffix(" (elyby)"),
+                AccountType::LittleSkin => key_username.strip_suffix(" (littleskin)"),
+                AccountType::Microsoft => Some(key_username),
+            }
+            .unwrap_or(key_username)
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -302,6 +377,9 @@ pub struct WindowProperties {
     /// Used to restore the window size between launches.
     // Since: v0.4.2
     pub height: Option<f32>,
+
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
 }
 
 impl Default for WindowProperties {
@@ -310,11 +388,12 @@ impl Default for WindowProperties {
             save_window_size: true,
             width: None,
             height: None,
+            _extra: HashMap::new(),
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UiSettings {
     // Since: v0.5.0
     pub window_decorations: UiWindowDecorations,
@@ -322,6 +401,8 @@ pub struct UiSettings {
     pub window_opacity: f32,
     // Since: v0.5.0
     pub idle_fps: Option<u64>,
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
 }
 
 impl Default for UiSettings {
@@ -330,13 +411,8 @@ impl Default for UiSettings {
             window_decorations: UiWindowDecorations::default(),
             window_opacity: OPACITY,
             idle_fps: None,
+            _extra: HashMap::new(),
         }
-    }
-}
-
-impl UiSettings {
-    pub fn get_idle_fps(&self) -> u64 {
-        self.idle_fps.unwrap_or(6)
     }
 }
 
@@ -368,6 +444,9 @@ pub struct PersistentSettings {
 
     /// Remembers version filters (eg: snapshot, release, etc) in Create Instance
     pub create_instance_filters: Option<HashSet<ListEntryKind>>,
+
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
 }
 
 impl Default for PersistentSettings {
@@ -377,13 +456,14 @@ impl Default for PersistentSettings {
             selected_server: None,
             selected_remembered: true,
             create_instance_filters: None,
+            _extra: HashMap::new(),
         }
     }
 }
 
 impl PersistentSettings {
     #[must_use]
-    pub fn get_create_instance_filters(&self) -> std::collections::HashSet<ListEntryKind> {
+    pub fn get_create_instance_filters(&self) -> HashSet<ListEntryKind> {
         self.create_instance_filters
             .clone()
             .filter(|n| !n.is_empty())

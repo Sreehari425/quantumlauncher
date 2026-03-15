@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     fmt::{Display, Write},
     process::ExitStatus,
-    sync::{mpsc::Sender, Arc},
+    sync::{Arc, mpsc::Sender},
 };
 
 use owo_colors::OwoColorize;
@@ -16,8 +16,8 @@ use tokio::{
 };
 
 use crate::{
-    err, json::VersionDetails, print::REDACTION_USERNAME, InstanceSelection, IoError, JsonError,
-    JsonFileError, REDACT_SENSITIVE_INFO,
+    InstanceSelection, IoError, JsonError, JsonFileError, REDACT_SENSITIVE_INFO, err,
+    json::VersionDetails, print::REDACTION_USERNAME,
 };
 
 // TODO: Use the "newfangled" approach of the Modrinth launcher:
@@ -125,7 +125,7 @@ async fn read_log_from_stream<R: AsyncBufRead + Unpin>(
                 LogLine::Error
             } else {
                 LogLine::Message
-            }(remaining.replace('\t', "\n    ")),
+            }(remaining.replace('\t', "\n\t")),
         );
     }
 
@@ -283,9 +283,13 @@ impl From<JsonFileError> for ReadError {
 
 #[derive(Debug, Error, Clone)]
 pub enum Diagnostic {
-    #[error("xrandr isn't installed on your system!\nInstall it from your package manager (apt, dnf, pacman, pkg, etc.)")]
+    #[error(
+        "xrandr isn't installed on your system!\nInstall it from your package manager (apt, dnf, pacman, pkg, etc.)"
+    )]
     XrandrNotInstalled,
-    #[error("Not enough stack size allocated! Add this to Java arguments:\n-Dorg.lwjgl.system.stackSize=256")]
+    #[error(
+        "Not enough stack size allocated! Add this to Java arguments:\n-Dorg.lwjgl.system.stackSize=256"
+    )]
     OutOfStackSpace,
     #[error("Your mac's graphics drivers aren't working!\nThis is normal in virtual machines")]
     MacOSPixelFormat,
@@ -463,11 +467,10 @@ impl Display for LogEvent {
         let date = self.get_time().unwrap_or_else(|| self.timestamp.clone());
         writeln!(
             f,
-            // "[{level}] [{date}:{thread}:{class}] {msg}",
-            "[{level}] [{date}] {msg}",
+            "[{date}] [{class}/{level}]: {msg}",
             level = self.level,
             // thread = self.thread,
-            // class = self.logger,
+            class = self.logger,
             msg = if let Some(n) = &self.message { &n } else { "" }
         )?;
         if let Some(throwable) = self.throwable.as_deref() {
