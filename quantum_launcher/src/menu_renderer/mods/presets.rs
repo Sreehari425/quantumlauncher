@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 
-use iced::{widget, Length};
+use iced::{Length, widget};
 use ql_core::SelectedMod;
 
 use crate::{
     icons,
-    menu_renderer::{back_button, button_with_icon, tsubtitle, Element},
+    menu_renderer::{Element, back_button, button_with_icon, tsubtitle},
     state::{
         EditPresetsMessage, ManageModsMessage, MenuEditPresets, MenuRecommendedMods, Message,
         ModListEntry, SelectedState,
@@ -63,14 +63,14 @@ Modrinth/Curseforge modpack"
             .spacing(10),
             widget::container(
                 widget::column![
-                    widget::column![widget::button(
-                        if let SelectedState::All = self.selected_state {
+                    widget::column![
+                        widget::button(if let SelectedState::All = self.selected_state {
                             "Unselect All"
                         } else {
                             "Select All"
-                        }
-                    )
-                    .on_press(EditPresetsMessage::SelectAll.into())]
+                        })
+                        .on_press(EditPresetsMessage::SelectAll.into())
+                    ]
                     .padding({
                         let p: iced::Padding = 10.into();
                         p.bottom(0)

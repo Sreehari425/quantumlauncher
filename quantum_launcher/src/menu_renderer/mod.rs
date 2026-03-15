@@ -1,11 +1,11 @@
 use iced::{
-    widget::{self, column, row, tooltip::Position},
     Alignment, Length,
+    widget::{self, column, row, tooltip::Position},
 };
 use ql_core::{Progress, WEBSITE};
 use ql_instances::auth::AccountType;
 
-use crate::stylesheet::styles::{LauncherThemeLightness, BORDER_RADIUS, BORDER_WIDTH};
+use crate::stylesheet::styles::{BORDER_RADIUS, BORDER_WIDTH, LauncherThemeLightness};
 use crate::{
     config::LauncherConfig,
     icons,

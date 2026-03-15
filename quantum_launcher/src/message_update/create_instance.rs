@@ -1,4 +1,4 @@
-use iced::{widget::pane_grid, Task};
+use iced::{Task, widget::pane_grid};
 use ql_core::{DownloadProgress, InstanceSelection, IntoStringError, ListEntry, ListEntryKind};
 
 use crate::{
@@ -28,14 +28,17 @@ impl Launcher {
                 self.set_error(err);
             }
             CreateInstanceMessage::ScreenOpen { is_server } => {
-                return self.go_to_create_screen(is_server)
+                return self.go_to_create_screen(is_server);
             }
             CreateInstanceMessage::VersionsLoaded(Ok((versions, latest))) => {
                 self.create_instance_finish_loading_versions_list(versions, latest);
             }
-            CreateInstanceMessage::VersionSelected(ver) => iflet!(self, selected_version; {
-                *selected_version = ver;
-            }),
+            CreateInstanceMessage::VersionSelected(ver) => {
+                iflet!(self, selected_version, show_category_dropdown; {
+                    *show_category_dropdown = false;
+                    *selected_version = ver;
+                })
+            }
 
             CreateInstanceMessage::SearchInput(t) => iflet!(self, search_box; {
                 *search_box = t;

@@ -5,13 +5,14 @@ use std::{
 
 use clap::{Parser, Subcommand};
 use owo_colors::{OwoColorize, Style};
-use ql_core::{err, LAUNCHER_VERSION_NAME, REDACT_SENSITIVE_INFO, WEBSITE};
+use ql_core::{LAUNCHER_VERSION_NAME, REDACT_SENSITIVE_INFO, WEBSITE, err};
 
 use crate::{
     cli::helpers::render_row,
     menu_renderer::{DISCORD, GITHUB},
 };
 
+mod account;
 mod command;
 mod helpers;
 
@@ -67,6 +68,10 @@ enum QSubCommand {
         // Used by shortcuts
         #[arg(long)]
         show_progress: bool,
+        // Used by shortcuts
+        #[arg(long)]
+        #[arg(help = "microsoft/elyby/littleskin")]
+        account_type: Option<String>,
     },
     #[command(aliases = ["list", "list-instances"], short_flag = 'l')]
     #[command(about = "Lists installed instances")]
@@ -204,7 +209,8 @@ pub fn start_cli(is_dir_err: bool, launcher_dir: &mut Option<PathBuf>) {
 
     if let Some(p) = &cli.dir {
         *launcher_dir = Some(p.clone());
-        std::env::set_var("QLDIR", p);
+        // Safety: Other threads will not write to this right now
+        unsafe { std::env::set_var("QLDIR", p) };
     }
 
     if let Some(subcommand) = cli.command {
@@ -231,6 +237,7 @@ pub fn start_cli(is_dir_err: bool, launcher_dir: &mut Option<PathBuf>) {
                 username,
                 use_account,
                 show_progress,
+                account_type,
             } => {
                 let res = runtime.block_on(command::launch_instance(
                     instance_name,
@@ -238,11 +245,16 @@ pub fn start_cli(is_dir_err: bool, launcher_dir: &mut Option<PathBuf>) {
                     use_account,
                     cli.server,
                     show_progress,
+                    account_type.as_deref(),
                 ));
                 std::process::exit(if let Err(err) = res {
                     err!("{err}");
                     if show_progress {
-                        show_notification("Error launching game", &err.to_string());
+                        let err = err.to_string();
+                        show_notification(
+                            "Error launching game",
+                            err.strip_prefix("while launching game:\n").unwrap_or(&err),
+                        );
                     }
                     1
                 } else {

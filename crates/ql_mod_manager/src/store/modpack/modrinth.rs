@@ -1,9 +1,9 @@
 use std::{collections::HashMap, path::Path, sync::mpsc::Sender};
 
 use ql_core::{
-    do_jobs, download,
+    GenericProgress, InstanceSelection, Loader, do_jobs, download,
     json::{InstanceConfigJson, VersionDetails},
-    pt, GenericProgress, InstanceSelection, Loader,
+    pt,
 };
 use serde::Deserialize;
 use tokio::sync::Mutex;
@@ -98,11 +98,11 @@ pub async fn install(
                     || url == "https://cdn.modrinth.com/data/gHvKJofA/versions/fYlGcfZd/Legacy4J-1.21-1.7.3-neoforge.jar" {
                     "https://cdn.modrinth.com/data/gHvKJofA/versions/RD8XgI0Y/Legacy4J-1.21-1.7.4-neoforge.jar"
                 } else {
-                    &url
+                    url
                 };
 
                 let bytes_path = mc_dir.join(&file.path);
-                download(&url).user_agent_ql().path(&bytes_path).await?;
+                download(url).user_agent_ql().path(&bytes_path).await?;
 
                 send_progress(sender, i, len, file).await;
 

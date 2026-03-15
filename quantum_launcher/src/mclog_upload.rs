@@ -1,6 +1,6 @@
 use ql_core::{
-    json::VersionDetails, request::check_for_success, InstanceConfigJson, InstanceSelection,
-    IntoJsonError, IntoStringError, Loader, CLIENT,
+    CLIENT, InstanceConfigJson, InstanceSelection, IntoJsonError, IntoStringError, Loader,
+    json::VersionDetails, request::check_for_success,
 };
 use serde::Deserialize;
 

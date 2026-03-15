@@ -5,9 +5,9 @@ use std::{
 };
 
 use ql_core::{
-    err, info,
+    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, err, info,
     json::{InstanceConfigJson, VersionDetails},
-    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError,
+    pt,
 };
 
 mod curseforge;
@@ -16,7 +16,7 @@ mod modrinth;
 
 pub use error::PackError;
 
-use crate::{store::download_mods_bulk, Preset};
+use crate::{Preset, store::download_mods_bulk};
 
 use super::CurseforgeNotAllowed;
 

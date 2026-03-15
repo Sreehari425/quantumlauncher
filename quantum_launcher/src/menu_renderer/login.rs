@@ -1,4 +1,4 @@
-use iced::{widget, Alignment, Length};
+use iced::{Alignment, Length, widget};
 
 use crate::{
     icons,
@@ -6,7 +6,7 @@ use crate::{
     state::{AccountMessage, MenuLoginAlternate, MenuLoginMS, Message, NEW_ACCOUNT_NAME},
 };
 
-use super::{back_button, button_with_icon, center_x, Element};
+use super::{Element, back_button, button_with_icon, center_x};
 
 impl MenuLoginAlternate {
     pub fn view(&'_ self, tick_timer: usize) -> Element<'_> {
@@ -21,8 +21,10 @@ impl MenuLoginAlternate {
                     .padding(8)
                     .into()
             } else {
-                widget::column![button_with_icon(icons::checkmark(), "Login", 16)
-                    .on_press(AccountMessage::AltLogin.into())]
+                widget::column![
+                    button_with_icon(icons::checkmark(), "Login", 16)
+                        .on_press(AccountMessage::AltLogin.into())
+                ]
                 .align_x(Alignment::Center)
                 .push_maybe(self.is_littleskin.then_some(
                     widget::button("Login with OAuth").on_press(Message::Account(

@@ -8,15 +8,16 @@ use std::{
 use cfg_if::cfg_if;
 use owo_colors::OwoColorize;
 use ql_core::{
+    DownloadProgress, IntoIoError, IoError,
     constants::*,
     do_jobs, err, file_utils, info,
     json::{
+        VersionDetails,
         version::{
             Library, LibraryClassifier, LibraryDownloadArtifact, LibraryDownloads, LibraryExtract,
         },
-        VersionDetails,
     },
-    pt, DownloadProgress, IntoIoError, IoError,
+    pt,
 };
 use tokio::fs;
 
@@ -314,10 +315,15 @@ impl GameDownloader {
     }
 
     async fn extract_file(&self, mut url: String) -> Result<(), DownloadError> {
-        if url == "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-natives-linux.jar" {
+        if url
+            == "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-natives-linux.jar"
+        {
             "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-patched-natives-linux-arm64.jar".clone_into(&mut url);
         }
-        if (cfg!(target_arch = "aarch64") && url == MACOS_X64_LWJGL_294) || url == "https://github.com/MinecraftMachina/lwjgl/releases/download/2.9.4-20150209-mmachina.2/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.jar" {
+        if (cfg!(target_arch = "aarch64") && url == MACOS_X64_LWJGL_294)
+            || url
+                == "https://github.com/MinecraftMachina/lwjgl/releases/download/2.9.4-20150209-mmachina.2/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.jar"
+        {
             MACOS_ARM_LWJGL_294.clone_into(&mut url);
         }
 
@@ -504,17 +510,17 @@ async fn finalize_natives_directory(dir: &Path, root: &Path) -> Result<(), IoErr
                 fs::remove_dir(&path).await.path(path)?;
             }
         } else if file_type.is_file() {
-            let Some(filetype) = path.extension().and_then(|e| e.to_str()) else {
+            let Some(extension) = path.extension().and_then(|e| e.to_str()) else {
                 continue;
             };
             // Check if `.class` file
-            if filetype.eq_ignore_ascii_case("class") {
+            if extension.eq_ignore_ascii_case("class") {
                 fs::remove_file(&path).await.path(path)?;
             // Check if native library
             } else if !is_root
                 && (NATIVE_EXTENSIONS
                     .iter()
-                    .any(|n| n.eq_ignore_ascii_case(filetype)))
+                    .any(|n| n.eq_ignore_ascii_case(extension)))
             {
                 // Move to the root of the natives directory, since LWJGL expects that
                 // (Hopefully fixes macOS ARM crashes).

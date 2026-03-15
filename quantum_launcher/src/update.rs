@@ -1,5 +1,5 @@
-use iced::{futures::executor::block_on, Task};
-use ql_core::{err, file_utils::DirItem, info, InstanceSelection, IntoIoError, IntoStringError};
+use iced::{Task, futures::executor::block_on};
+use ql_core::{InstanceSelection, IntoIoError, IntoStringError, err, file_utils::DirItem, info};
 use std::fmt::Write;
 use tokio::io::AsyncWriteExt;
 

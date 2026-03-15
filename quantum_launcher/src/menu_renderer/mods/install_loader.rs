@@ -1,11 +1,11 @@
-use iced::{widget, Alignment, Length};
+use iced::{Alignment, Length, widget};
 use ql_core::InstanceSelection;
 use ql_mod_manager::loaders::fabric::{self, FabricVersionList, FabricVersionListItem};
 
 use crate::state::{InstallPaperMessage, MenuInstallPaper};
 use crate::{
     icons,
-    menu_renderer::{back_button, button_with_icon, Element},
+    menu_renderer::{Element, back_button, button_with_icon},
     state::{
         InstallFabricMessage, InstallOptifineMessage, ManageModsMessage, MenuInstallFabric,
         MenuInstallForge, MenuInstallOptifine, Message,

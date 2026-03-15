@@ -7,14 +7,15 @@ use std::{
 };
 
 use ql_core::{
-    download, file_utils, impl_3_errs_jri, info, jarmod,
+    CLASSPATH_SEPARATOR, GenericProgress, InstanceSelection, IntoIoError, IoError, JsonError,
+    LAUNCHER_DIR, Loader, OptifineUniqueVersion, Progress, RequestError, download, file_utils,
+    impl_3_errs_jri, info, jarmod,
     json::{
-        instance_config::ModTypeInfo, optifine::JsonOptifine, InstanceConfigJson, VersionDetails,
+        InstanceConfigJson, VersionDetails, instance_config::ModTypeInfo, optifine::JsonOptifine,
     },
-    no_window, pt, GenericProgress, InstanceSelection, IntoIoError, IoError, JsonError, Loader,
-    OptifineUniqueVersion, Progress, RequestError, CLASSPATH_SEPARATOR, LAUNCHER_DIR,
+    no_window, pt,
 };
-use ql_java_handler::{get_java_binary, JavaInstallError, JavaVersion, JAVA};
+use ql_java_handler::{JAVA, JavaInstallError, JavaVersion, get_java_binary};
 use thiserror::Error;
 
 use super::change_instance_type;

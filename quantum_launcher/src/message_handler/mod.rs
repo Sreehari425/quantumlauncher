@@ -5,24 +5,23 @@ use crate::state::{
 };
 use crate::tick::sort_dependencies;
 use crate::{
-    get_entries,
+    Launcher, Message, get_entries,
     state::{
         EditPresetsMessage, ManageModsMessage, MenuEditInstance, MenuEditMods, MenuInstallForge,
-        MenuLaunch, ProgressBar, SelectedState, State, OFFLINE_ACCOUNT_NAME,
+        MenuLaunch, OFFLINE_ACCOUNT_NAME, ProgressBar, SelectedState, State,
     },
-    Launcher, Message,
 };
+use iced::Task;
 use iced::futures::executor::block_on;
 use iced::widget::scrollable::AbsoluteOffset;
-use iced::Task;
-use ql_core::json::instance_config::ModTypeInfo;
 use ql_core::json::VersionDetails;
+use ql_core::json::instance_config::ModTypeInfo;
 use ql_core::read_log::{Diagnostic, ReadError};
 use ql_core::{
-    err, json::instance_config::InstanceConfigJson, GenericProgress, InstanceSelection,
-    IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
+    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
+    err, json::instance_config::InstanceConfigJson,
 };
-use ql_core::{info, pt, LaunchedProcess};
+use ql_core::{LaunchedProcess, info, pt};
 use ql_instances::auth::AccountData;
 use ql_mod_manager::{loaders, store::ModIndex};
 use std::{

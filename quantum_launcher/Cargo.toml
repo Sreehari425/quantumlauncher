@@ -1,7 +1,8 @@
 [package]
 name = "quantum_launcher"
-version = "0.5.0"
-edition = "2021"
+version = "0.5.1"
+edition = "2024"
+rust-version = "1.85"
 
 authors = ["Mrmayman <navneetkrishna22@gmail.com>"]
 description = "A simple, powerful Minecraft Launcher"
@@ -48,8 +49,7 @@ iced = { version = "0.13", default-features = false, features = [
     "advanced",
 ] }
 # The HTML/Markdown renderer
-# There is a "0.1.0" version, but it's outdated.
-frostmark = { git = "https://github.com/Mrmayman/frostmark.git", rev = "94a4e90456fcc31479c6d58e3b3ca89c8ec5e6c4", default-features = false, features = ["markdown"] } # TOML is a terrible language
+frostmark = { version = "0.2", default-features = false, features = ["markdown"] }
 # For table widget, I don't need this
 # tabular = { git = "https://github.com/Mrmayman/tabular.git" }
 
@@ -75,7 +75,7 @@ filthy-rich = "0.5.1"
 
 # Terminal
 owo-colors.workspace = true
-clap = { version = "4", features = ["help", "derive"] }
+clap.workspace = true
 terminal_size = "0.4"
 
 # OS APIs
@@ -85,12 +85,10 @@ dark-light = "2"
 dirs.workspace = true
 
 constcat = "0.6"
-rand = "0.9"
+rand = "0.10"
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 notify-rust = { version = "4", default-features = false, features = ["z-with-tokio"] }
 
-# Don't forget, also used by ezshortcut crate
-# If you update this update that too
 [target.'cfg(target_os = "windows")'.dependencies]
-windows = { version = "0.61", features = ["Win32_System_Console"] }
+windows = { version = "0.62.*", features = ["Win32_System_Console"] }

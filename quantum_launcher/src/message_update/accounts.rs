@@ -12,7 +12,7 @@ use crate::{
     config::ConfigAccount,
     state::{
         AccountMessage, AutoSaveKind, Launcher, LittleSkinOauth, MenuLoginAlternate, MenuLoginMS,
-        Message, ProgressBar, State, NEW_ACCOUNT_NAME, OFFLINE_ACCOUNT_NAME,
+        Message, NEW_ACCOUNT_NAME, OFFLINE_ACCOUNT_NAME, ProgressBar, State,
     },
 };
 

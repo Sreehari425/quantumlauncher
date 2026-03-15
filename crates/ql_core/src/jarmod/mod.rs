@@ -19,10 +19,11 @@
 use std::path::{Path, PathBuf, StripPrefixError};
 
 use crate::{
+    InstanceSelection, IntoIoError, IoError, JsonError, JsonFileError,
     file_utils::{extract_zip_archive, zip_directory_to_bytes},
     get_jar_path,
     json::{InstanceConfigJson, JsonOptifine, VersionDetails},
-    pt, InstanceSelection, IntoIoError, IoError, JsonError, JsonFileError,
+    pt,
 };
 use thiserror::Error;
 

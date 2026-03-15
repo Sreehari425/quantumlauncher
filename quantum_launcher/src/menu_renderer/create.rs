@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
 use iced::{
-    widget::{self, column, row, tooltip::Position},
     Alignment, Length,
+    widget::{self, column, row, tooltip::Position},
 };
 use ql_core::ListEntryKind;
 
@@ -10,13 +10,13 @@ use crate::{
     cli::EXPERIMENTAL_MMC_IMPORT,
     icons,
     menu_renderer::{
-        button_with_icon, ctxbox, dots, offset, shortcut_ctrl, sidebar_button, tooltip, tsubtitle,
-        Element,
+        Element, button_with_icon, ctxbox, dots, offset, shortcut_ctrl, sidebar_button, tooltip,
+        tsubtitle,
     },
     state::{CreateInstanceMessage, MenuCreateInstance, MenuCreateInstanceChoosing, Message},
     stylesheet::{
         color::Color,
-        styles::{LauncherTheme, BORDER_RADIUS, BORDER_WIDTH},
+        styles::{BORDER_RADIUS, BORDER_WIDTH, LauncherTheme},
         widgets::StyleButton,
     },
 };
@@ -127,35 +127,37 @@ impl MenuCreateInstanceChoosing {
         let opened_controls = self.show_category_dropdown;
         let hidden = self.selected_categories.len() == ListEntryKind::ALL.len();
 
-        column![row![
-            button_with_icon(icons::back_s(12), "Back", 13)
+        column![
+            row![
+                button_with_icon(icons::back_s(12), "Back", 13)
+                    .padding(pb)
+                    .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
+                    .on_press(Message::MScreenOpen {
+                        message: None,
+                        clear_selection: false,
+                        is_server: Some(self.is_server),
+                    }),
+                button_with_icon(
+                    icons::filter_s(12),
+                    if hidden { "Filters" } else { "Filters •" },
+                    13
+                )
                 .padding(pb)
-                .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
-                .on_press(Message::MScreenOpen {
-                    message: None,
-                    clear_selection: false,
-                    is_server: Some(self.is_server),
-                }),
-            button_with_icon(
-                icons::filter_s(12),
-                if hidden { "Filters" } else { "Filters •" },
-                13
-            )
-            .padding(pb)
-            .style(move |t: &LauncherTheme, s| t.style_button(
-                s,
-                if opened_controls {
-                    StyleButton::Round
-                } else {
-                    StyleButton::RoundDark
-                }
-            ))
-            .on_press(Message::CreateInstance(
-                CreateInstanceMessage::ContextMenuToggle
-            ))
+                .style(move |t: &LauncherTheme, s| t.style_button(
+                    s,
+                    if opened_controls {
+                        StyleButton::Round
+                    } else {
+                        StyleButton::RoundDark
+                    }
+                ))
+                .on_press(Message::CreateInstance(
+                    CreateInstanceMessage::ContextMenuToggle
+                ))
+            ]
+            .spacing(5)
+            .wrap()
         ]
-        .spacing(5)
-        .wrap()]
         .push_maybe(
             (!hidden).then_some(
                 widget::text!(
@@ -242,7 +244,17 @@ impl MenuCreateInstanceChoosing {
         .padding(16);
 
         widget::container(widget::container(menu).style(|t: &LauncherTheme| {
-            t.style_container_round_box(BORDER_WIDTH, Color::Dark, BORDER_RADIUS)
+            widget::container::Style {
+                border: {
+                    iced::Border {
+                        color: t.get(Color::SecondDark),
+                        width: BORDER_WIDTH,
+                        radius: BORDER_RADIUS.into(),
+                    }
+                },
+                background: Some(t.get_bg(Color::Dark)),
+                ..Default::default()
+            }
         }))
         .padding(5)
         .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark))
