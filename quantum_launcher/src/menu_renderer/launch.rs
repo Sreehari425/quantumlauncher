@@ -344,7 +344,12 @@ impl Launcher {
                     .id(widget::scrollable::Id::new("MenuLaunch:sidebar"))
                     .on_scroll(|n| {
                         let total = n.content_bounds().height - n.bounds().height;
-                        SidebarMessage::Scroll(total).into()
+                        SidebarMessage::Scroll {
+                            total,
+                            offset: n.absolute_offset().y,
+                            bounds: n.bounds(),
+                        }
+                        .into()
                     })
             )
             .on_right_press(

@@ -357,7 +357,11 @@ pub enum GameLogMessage {
 #[derive(Debug, Clone)]
 pub enum SidebarMessage {
     Resize(f32),
-    Scroll(f32),
+    Scroll {
+        total: f32,
+        offset: f32,
+        bounds: iced::Rectangle,
+    },
     FolderRenameConfirm,
 
     NewFolder(Option<SidebarSelection>),

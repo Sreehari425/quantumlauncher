@@ -290,10 +290,18 @@ impl LauncherConfig {
     pub fn c_idle_fps(&self) -> u64 {
         const IDLE_FPS: u64 = 6;
 
-        self.ui
+        let i = self
+            .ui
             .as_ref()
             .and_then(|n| n.idle_fps)
-            .unwrap_or(IDLE_FPS)
+            .unwrap_or(IDLE_FPS);
+
+        if i > 0 {
+            i
+        } else {
+            debug_assert!(false, "idle FPS shouldn't be zero");
+            IDLE_FPS
+        }
     }
 }
 

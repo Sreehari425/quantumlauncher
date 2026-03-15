@@ -14,7 +14,7 @@ use crate::{
 use ezshortcut::Shortcut;
 use frostmark::MarkState;
 use iced::{
-    Task,
+    Rectangle, Task,
     widget::{self, scrollable::AbsoluteOffset},
 };
 use ql_core::{
@@ -69,6 +69,7 @@ pub enum LaunchModal {
     SRenamingFolder(FolderId, String, bool),
 }
 
+
 pub enum InstanceNotes {
     Viewing {
         content: String,
@@ -103,7 +104,9 @@ pub struct MenuLaunch {
     pub log_state: Option<LogState>,
     pub modal: Option<LaunchModal>,
 
-    pub sidebar_scrolled: f32,
+    pub sidebar_scroll_total: f32,
+    pub sidebar_scroll_offset: f32,
+    pub sidebar_scroll_bounds: Option<Rectangle>,
     pub sidebar_grid_state: widget::pane_grid::State<bool>,
     sidebar_split: Option<widget::pane_grid::Split>,
 
@@ -133,7 +136,9 @@ impl MenuLaunch {
             tab: LaunchTab::default(),
             edit_instance: None,
             login_progress: None,
-            sidebar_scrolled: 100.0,
+            sidebar_scroll_total: 100.0,
+            sidebar_scroll_offset: 0.0,
+            sidebar_scroll_bounds: None,
             is_viewing_server: false,
             sidebar_grid_state,
             log_state: None,
