@@ -1,5 +1,7 @@
 use iced::widget;
 
+use crate::stylesheet::styles::BORDER_WIDTH;
+
 use super::{color::Color, styles::LauncherTheme};
 
 #[derive(Default, Clone, Copy)]
@@ -482,6 +484,45 @@ impl widget::pane_grid::Catalog for LauncherTheme {
                 color: self.get(Color::Mid),
                 width: 1.0,
             },
+        }
+    }
+}
+
+impl widget::toggler::Catalog for LauncherTheme {
+    type Class<'a> = ();
+
+    fn default<'a>() -> Self::Class<'a> {}
+
+    fn style(
+        &self,
+        (): &<Self as widget::toggler::Catalog>::Class<'_>,
+        status: widget::toggler::Status,
+    ) -> widget::toggler::Style {
+        widget::toggler::Style {
+            background: self.get(match status {
+                widget::toggler::Status::Hovered { is_toggled: false } => Color::Dark,
+                widget::toggler::Status::Active { is_toggled: true }
+                | widget::toggler::Status::Hovered { is_toggled: true } => Color::SecondDark,
+                widget::toggler::Status::Active { is_toggled: false }
+                | widget::toggler::Status::Disabled => Color::ExtraDark,
+            }),
+            background_border_width: BORDER_WIDTH,
+            background_border_color: self.get(match status {
+                widget::toggler::Status::Active { is_toggled: true }
+                | widget::toggler::Status::Hovered { is_toggled: false } => Color::Mid,
+                widget::toggler::Status::Active { is_toggled: false } => Color::SecondDark,
+                widget::toggler::Status::Hovered { is_toggled: true } => Color::SecondLight,
+                widget::toggler::Status::Disabled => Color::Dark,
+            }),
+            foreground: self.get(match status {
+                widget::toggler::Status::Active { is_toggled: true } => Color::SecondLight,
+                widget::toggler::Status::Active { is_toggled: false } => Color::SecondDark,
+                widget::toggler::Status::Hovered { is_toggled: true } => Color::Light,
+                widget::toggler::Status::Hovered { is_toggled: false } => Color::Mid,
+                widget::toggler::Status::Disabled => Color::SecondDark,
+            }),
+            foreground_border_width: BORDER_WIDTH,
+            foreground_border_color: self.get(Color::Mid),
         }
     }
 }

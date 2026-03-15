@@ -6,14 +6,14 @@ use std::{
 
 use crate::json_profiles::ProfileJson;
 use ql_core::{
-    do_jobs,
+    DownloadFileError, DownloadProgress, IntoIoError, IntoJsonError, IoError, JsonError, ListEntry,
+    RequestError, do_jobs, download,
     file_utils::{self, LAUNCHER_DIR},
     impl_3_errs_jri, info,
     json::{
-        instance_config::VersionInfo, AssetIndex, InstanceConfigJson, Manifest, VersionDetails,
+        AssetIndex, InstanceConfigJson, Manifest, VersionDetails, instance_config::VersionInfo,
     },
-    pt, DownloadFileError, DownloadProgress, IntoIoError, IntoJsonError, IoError, JsonError,
-    ListEntry, RequestError,
+    pt,
 };
 use thiserror::Error;
 use tokio::{fs, sync::Mutex};
@@ -29,6 +29,8 @@ pub enum DownloadError {
     #[error("{DOWNLOAD_ERR_PREFIX}{0}")]
     Io(#[from] IoError),
 
+    #[error("instance name is invalid (empty/disallowed characters)")]
+    InvalidName,
     #[error("an instance with that name already exists: {0}")]
     InstanceAlreadyExists(String),
     #[error("{DOWNLOAD_ERR_PREFIX}version not found in manifest.json: {0}")]
@@ -37,7 +39,9 @@ pub enum DownloadError {
     AssetsJsonFieldNotFound(String),
     #[error("{DOWNLOAD_ERR_PREFIX}could not extract native libraries:\n{0}")]
     NativesExtractError(zip::result::ZipError),
-    #[error("{DOWNLOAD_ERR_PREFIX}tried to remove natives outside folder. POTENTIAL SECURITY RISK AVOIDED")]
+    #[error(
+        "{DOWNLOAD_ERR_PREFIX}tried to remove natives outside folder. POTENTIAL SECURITY RISK AVOIDED"
+    )]
     NativesOutsideDirRemove,
 }
 
@@ -127,12 +131,9 @@ impl GameDownloader {
 
         let jar_path = version_dir.join(format!("{}.jar", self.version_json.get_id()));
 
-        file_utils::download_file_to_path(
-            &self.version_json.downloads.client.url,
-            false,
-            &jar_path,
-        )
-        .await?;
+        download(&self.version_json.downloads.client.url)
+            .path(&jar_path)
+            .await?;
 
         Ok(())
     }
@@ -142,7 +143,8 @@ impl GameDownloader {
             let log_config_name = format!("logging-{}", logging.client.file.id);
             let config_path = self.instance_dir.join(log_config_name);
 
-            file_utils::download_file_to_path(&logging.client.file.url, false, &config_path)
+            download(&logging.client.file.url)
+                .path(&config_path)
                 .await?;
         }
         Ok(())
@@ -342,9 +344,7 @@ impl GameDownloader {
         if let Some(sender) = sender {
             _ = sender.send(DownloadProgress::DownloadingVersionJson);
         }
-        let json = file_utils::download_file_to_string(&version.url, false).await?;
-        let json = serde_json::from_str(&json).json(json)?;
-        Ok(json)
+        Ok(download(&version.url).json().await?)
     }
 
     async fn new_get_instance_dir(instance_name: &str) -> Result<Option<PathBuf>, IoError> {
@@ -402,7 +402,5 @@ impl GameDownloader {
 }
 
 fn already_downloaded_natives() -> Mutex<HashSet<String>> {
-    Mutex::new(HashSet::from_iter(
-        SKIP_NATIVES.iter().map(|n| n.to_string()),
-    ))
+    Mutex::new(SKIP_NATIVES.iter().map(|n| n.to_string()).collect())
 }

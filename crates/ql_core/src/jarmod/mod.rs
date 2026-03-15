@@ -19,10 +19,11 @@
 use std::path::{Path, PathBuf, StripPrefixError};
 
 use crate::{
+    InstanceSelection, IntoIoError, IoError, JsonError, JsonFileError,
     file_utils::{extract_zip_archive, zip_directory_to_bytes},
     get_jar_path,
     json::{InstanceConfigJson, JsonOptifine, VersionDetails},
-    pt, InstanceSelection, IntoIoError, IoError, JsonError, JsonFileError,
+    pt,
 };
 use thiserror::Error;
 
@@ -166,8 +167,6 @@ pub enum JarModError {
     Io(#[from] IoError),
     #[error("{JARMOD_ERR_PREFIX}{0}")]
     Json(#[from] JsonError),
-    #[error("{JARMOD_ERR_PREFIX}while walking through dir:\n{0}")]
-    WalkDir(#[from] walkdir::Error),
     #[error("{JARMOD_ERR_PREFIX}while stripping prefix of jarmods/tmp:\n{0}")]
     StripPrefix(#[from] StripPrefixError),
 

@@ -2,19 +2,19 @@ use chrono::DateTime;
 use ini::Ini;
 use std::{
     path::Path,
-    sync::{mpsc::Sender, Arc, Mutex},
+    sync::{Arc, Mutex, mpsc::Sender},
 };
 
-use crate::{import::pipe_progress, import::OUT_OF, InstancePackageError};
+use crate::{InstancePackageError, import::OUT_OF, import::pipe_progress};
 use ql_core::{
-    do_jobs, err, file_utils, info,
+    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, LAUNCHER_DIR, ListEntry,
+    Loader, do_jobs, download, err, file_utils, info,
     jarmod::{JarMod, JarMods},
     json::{
-        FabricJSON, InstanceConfigJson, Manifest, VersionDetails, V_1_12_2,
-        V_OFFICIAL_FABRIC_SUPPORT,
+        FabricJSON, InstanceConfigJson, Manifest, V_1_12_2, V_OFFICIAL_FABRIC_SUPPORT,
+        VersionDetails,
     },
-    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, ListEntry, Loader,
-    LAUNCHER_DIR,
+    pt,
 };
 use ql_mod_manager::loaders::fabric::{self, get_list_of_versions_from_backend};
 use serde::{Deserialize, Serialize};
@@ -367,7 +367,7 @@ async fn install_fabric(
         tokio::fs::create_dir_all(parent_dir)
             .await
             .path(parent_dir)?;
-        file_utils::download_file_to_path(&url, false, &path).await?;
+        download(&url).path(&path).await?;
 
         {
             let mut i = i.lock().unwrap();

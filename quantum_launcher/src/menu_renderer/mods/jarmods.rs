@@ -1,9 +1,9 @@
-use iced::{widget, Length};
+use iced::{Length, widget};
 use ql_core::InstanceSelection;
 
 use crate::{
     icons,
-    menu_renderer::{back_button, button_with_icon, link, Element},
+    menu_renderer::{Element, back_button, button_with_icon, link},
     state::{ManageJarModsMessage, ManageModsMessage, MenuEditJarMods, Message, SelectedState},
     stylesheet::{color::Color, styles::LauncherTheme},
 };
@@ -14,7 +14,7 @@ impl MenuEditJarMods {
             widget::container(
                 widget::scrollable(
                     widget::column!(
-                        back_button().on_press(ManageModsMessage::ScreenOpenWithoutUpdate.into()),
+                        back_button().on_press(ManageModsMessage::Open.into()),
                         widget::column![
                             {
                                 let path = selected_instance.get_instance_path().join("jarmods");

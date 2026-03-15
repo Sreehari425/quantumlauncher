@@ -1,11 +1,11 @@
 use std::sync::LazyLock;
 
-use iced::{widget, Alignment, Length};
+use iced::{Alignment, Length, widget};
 use ql_core::{LAUNCHER_DIR, WEBSITE};
 
 use super::{
-    back_button, button_with_icon, get_mode_selector, sidebar_button, underline, Element, DISCORD,
-    GITHUB,
+    DISCORD, Element, GITHUB, back_button, button_with_icon, get_mode_selector, sidebar_button,
+    underline,
 };
 use crate::menu_renderer::edit_instance::{args_split_by_space, get_args_list, resolution_dialog};
 use crate::menu_renderer::{back_to_launch_screen, checkered_list, sidebar, tsubtitle};

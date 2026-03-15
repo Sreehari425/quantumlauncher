@@ -1,13 +1,13 @@
 use crate::{
     icons,
-    menu_renderer::{back_button, button_with_icon, tooltip, tsubtitle, Element},
-    state::{MenuShortcut, Message, ShortcutMessage, OFFLINE_ACCOUNT_NAME},
+    menu_renderer::{Element, back_button, button_with_icon, tooltip, tsubtitle},
+    state::{MenuShortcut, Message, OFFLINE_ACCOUNT_NAME, ShortcutMessage},
     stylesheet::styles::LauncherTheme,
 };
 use cfg_if::cfg_if;
 use iced::{
-    widget::{self, column, row},
     Alignment, Length,
+    widget::{self, column, row},
 };
 
 cfg_if!(if #[cfg(target_os = "windows")] {
@@ -171,11 +171,13 @@ impl MenuShortcut {
         }))
         .push(ifield(
             "Account:",
-            row![widget::pick_list(accounts, Some(&self.account), |n| {
-                ShortcutMessage::AccountSelected(n).into()
-            })
-            .text_size(14)
-            .width(Length::Fill)]
+            row![
+                widget::pick_list(accounts, Some(&self.account), |n| {
+                    ShortcutMessage::AccountSelected(n).into()
+                })
+                .text_size(14)
+                .width(Length::Fill)
+            ]
             .push_maybe(
                 (self.account == OFFLINE_ACCOUNT_NAME).then_some(
                     widget::text_input("Enter username...", &self.account_offline)

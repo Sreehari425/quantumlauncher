@@ -1,11 +1,11 @@
 use chrono::DateTime;
 use ql_core::{
-    file_utils, info,
-    json::{instance_config::ModTypeInfo, VersionDetails},
-    no_window, pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError, Loader,
-    CLASSPATH_SEPARATOR, REGEX_SNAPSHOT,
+    CLASSPATH_SEPARATOR, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError,
+    Loader, REGEX_SNAPSHOT, download, file_utils, info,
+    json::{VersionDetails, instance_config::ModTypeInfo},
+    no_window, pt,
 };
-use ql_java_handler::{get_java_binary, JavaVersion};
+use ql_java_handler::{JavaVersion, get_java_binary};
 use serde::Deserialize;
 use std::{fmt::Write, io::Cursor, path::Path, sync::mpsc::Sender};
 use tokio::{fs, process::Command};
@@ -151,7 +151,7 @@ async fn download_libraries(
         // WTF: I am NOT dealing with the unpack200 augmented library NONSENSE
         // because I haven't seen the launcher using it ONCE.
         // Please open an issue if you actually need it.
-        file_utils::download_file_to_path(&url, false, &file_path).await?;
+        download(&url).path(&file_path).await?;
     }
 
     let classpath_path = neoforge_dir.join("classpath.txt");
@@ -172,7 +172,9 @@ async fn get_installer(
 ) -> Result<Vec<u8>, ForgeInstallError> {
     pt!("Downloading installer");
     send_progress(f_progress, ForgeInstallProgress::P3DownloadingInstaller);
-    let installer_url = format!("https://maven.neoforged.net/releases/net/neoforged/neoforge/{neoforge_version}/neoforge-{neoforge_version}-installer.jar");
+    let installer_url = format!(
+        "https://maven.neoforged.net/releases/net/neoforged/neoforge/{neoforge_version}/neoforge-{neoforge_version}-installer.jar"
+    );
     Ok(file_utils::download_file_to_bytes(&installer_url, false).await?)
 }
 

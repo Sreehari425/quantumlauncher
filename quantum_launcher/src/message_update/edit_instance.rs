@@ -1,19 +1,19 @@
 use iced::Task;
 use ql_core::{
-    err,
+    IntoIoError, IntoStringError, LAUNCHER_DIR, err,
     json::{
-        instance_config::{CustomJarConfig, MainClassMode},
         GlobalSettings, InstanceConfigJson,
+        instance_config::{CustomJarConfig, MainClassMode},
     },
-    IntoIoError, IntoStringError, LAUNCHER_DIR,
+    sanitize_instance_name,
 };
 
 use crate::{
     message_handler::format_memory,
     state::{
-        dir_watch, get_entries, CustomJarState, EditInstanceMessage, LaunchTab, Launcher,
-        MainMenuMessage, MenuCreateInstance, MenuEditInstance, MenuLaunch, Message, ProgressBar,
-        State, ADD_JAR_NAME, NONE_JAR_NAME, OPEN_FOLDER_JAR_NAME, REMOVE_JAR_NAME,
+        ADD_JAR_NAME, CustomJarState, EditInstanceMessage, LaunchTab, Launcher, MainMenuMessage,
+        MenuCreateInstance, MenuEditInstance, MenuLaunch, Message, NONE_JAR_NAME,
+        OPEN_FOLDER_JAR_NAME, ProgressBar, REMOVE_JAR_NAME, State, dir_watch, get_entries,
     },
 };
 
@@ -434,49 +434,50 @@ impl Launcher {
             return Ok(Task::none());
         };
 
-        let mut disallowed = vec![
-            '/', '\\', ':', '*', '?', '"', '<', '>', '|', '\'', '\0', '\u{7F}',
-        ];
-        disallowed.extend('\u{1}'..='\u{1F}');
-
-        // Remove disallowed characters
-
-        let mut instance_name = menu.instance_name.clone();
-        instance_name.retain(|c| !disallowed.contains(&c));
-        let instance_name = instance_name.trim();
-
-        if instance_name.is_empty() {
+        let sanitized_name = sanitize_instance_name(menu.instance_name.clone());
+        if sanitized_name.is_empty() {
             err!("New name is empty or invalid");
             return Ok(Task::none());
         }
 
-        if menu.old_instance_name == menu.instance_name {
+        if menu.old_instance_name == sanitized_name || menu.old_instance_name == menu.instance_name
+        {
             // Don't waste time talking to OS
             // and "renaming" instance if nothing has changed.
-            Ok(Task::none())
-        } else {
-            let instances_dir =
-                LAUNCHER_DIR.join(if self.selected_instance.as_ref().unwrap().is_server() {
-                    "servers"
-                } else {
-                    "instances"
-                });
-
-            let old_path = instances_dir.join(&menu.old_instance_name);
-            let new_path = instances_dir.join(&menu.instance_name);
-
-            menu.old_instance_name = menu.instance_name.clone();
-            if let Some(n) = &mut self.selected_instance {
-                n.set_name(&menu.instance_name);
-            }
-            std::fs::rename(&old_path, &new_path)
-                .path(&old_path)
-                .strerr()?;
-
-            Ok(Task::perform(
-                get_entries(self.instance().is_server()),
-                Message::CoreListLoaded,
-            ))
+            return Ok(Task::none());
         }
+
+        let instances_dir =
+            LAUNCHER_DIR.join(if self.selected_instance.as_ref().unwrap().is_server() {
+                "servers"
+            } else {
+                "instances"
+            });
+
+        let old_path = instances_dir.join(&menu.old_instance_name);
+        let new_path = instances_dir.join(&sanitized_name);
+
+        if new_path.parent().is_none_or(|n| n != instances_dir) {
+            err!("New instance path is outside instance dir!");
+            return Ok(Task::none());
+        }
+
+        menu.old_instance_name = sanitized_name.to_owned();
+        std::fs::rename(&old_path, &new_path)
+            .path(&old_path)
+            .strerr()?;
+
+        let mut instance = self.selected_instance.clone().unwrap();
+        instance.set_name(sanitized_name);
+
+        Ok(Task::perform(
+            get_entries(self.instance().is_server()),
+            move |n| {
+                Message::Multiple(vec![
+                    Message::CoreListLoaded(n),
+                    MainMenuMessage::InstanceSelected(instance.clone()).into(),
+                ])
+            },
+        ))
     }
 }

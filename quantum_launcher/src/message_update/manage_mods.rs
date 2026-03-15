@@ -1,7 +1,7 @@
+use iced::{Task, widget};
 use iced::{futures::executor::block_on, keyboard::Modifiers};
-use iced::{widget, Task};
 use ql_core::{
-    err, jarmod::JarMods, InstanceSelection, IntoIoError, IntoStringError, ModId, SelectedMod,
+    InstanceSelection, IntoIoError, IntoStringError, ModId, SelectedMod, err, jarmod::JarMods,
 };
 use ql_mod_manager::store::ModIndex;
 use std::{collections::HashSet, path::PathBuf};
@@ -15,16 +15,28 @@ use crate::state::{
 impl Launcher {
     pub fn update_manage_mods(&mut self, msg: ManageModsMessage) -> Task<Message> {
         match msg {
-            ManageModsMessage::ScreenOpen => return self.go_to_edit_mods_menu(true),
-            ManageModsMessage::ScreenOpenWithoutUpdate => {
-                return self.go_to_edit_mods_menu(false);
-            }
+            ManageModsMessage::Open => return self.go_to_edit_mods_menu(),
 
             ManageModsMessage::AddFileDone(Err(err))
             | ManageModsMessage::DeleteFinished(Err(err))
             | ManageModsMessage::LocalDeleteFinished(Err(err))
             | ManageModsMessage::ToggleFinished(Err(err))
-            | ManageModsMessage::UpdateModsFinished(Err(err)) => self.set_error(err),
+            | ManageModsMessage::UpdatePerformDone(Err(err)) => self.set_error(err),
+
+            ManageModsMessage::UpdateCheck => {
+                let (task, handle) = Task::perform(
+                    ql_mod_manager::store::check_for_updates(
+                        self.selected_instance.clone().unwrap(),
+                    ),
+                    |n| ManageModsMessage::UpdateCheckResult(n.strerr()).into(),
+                )
+                .abortable();
+                if let State::EditMods(menu) = &mut self.state {
+                    menu.update_check_handle = Some(handle);
+                    menu.modal = None;
+                }
+                return task;
+            }
 
             ManageModsMessage::ListScrolled(offset) => {
                 if let State::EditMods(menu) = &mut self.state {
@@ -60,15 +72,14 @@ impl Launcher {
             ManageModsMessage::AddFile(delete_file) => {
                 return self.add_file_select(delete_file);
             }
-            ManageModsMessage::AddFileDone(Ok(unsupported)) => {
-                if !unsupported.is_empty() {
+            ManageModsMessage::AddFileDone(Ok(not_allowed)) => {
+                if !not_allowed.is_empty() {
                     self.state = State::CurseforgeManualDownload(MenuCurseforgeManualDownload {
-                        unsupported,
-                        is_store: false,
+                        not_allowed,
                         delete_mods: true,
                     });
                 }
-                return self.go_to_edit_mods_menu(false);
+                return self.go_to_edit_mods_menu();
             }
             ManageModsMessage::DeleteSelected => {
                 if let State::EditMods(menu) = &mut self.state {
@@ -139,10 +150,8 @@ impl Launcher {
             ManageModsMessage::ToggleSelected => return self.manage_mods_toggle_selected(),
 
             ManageModsMessage::ToggleFinished(Ok(())) => self.update_mod_index(),
-            ManageModsMessage::UpdateMods => return self.update_mods(),
-            ManageModsMessage::UpdateModsFinished(Ok(())) => {
-                self.mod_updates_checked
-                    .insert(self.selected_instance.clone().unwrap(), Vec::new());
+            ManageModsMessage::UpdatePerform => return self.update_mods(),
+            ManageModsMessage::UpdatePerformDone(Ok(())) => {
                 self.update_mod_index();
                 if let State::EditMods(menu) = &mut self.state {
                     menu.available_updates.clear();
@@ -153,13 +162,17 @@ impl Launcher {
                     menu.update_check_handle = None;
                     match updates {
                         Ok(updates) => {
-                            let available_updates: Vec<(ModId, String, bool)> =
-                                updates.into_iter().map(|(a, b)| (a, b, true)).collect();
-                            self.mod_updates_checked.insert(
-                                self.selected_instance.clone().unwrap(),
-                                available_updates.clone(),
-                            );
-                            menu.available_updates = available_updates;
+                            menu.available_updates = updates
+                                .into_iter()
+                                .map(|(id, title)| {
+                                    let enabled = menu
+                                        .mods
+                                        .mods
+                                        .get(&id.get_index_str())
+                                        .is_none_or(|n| n.enabled);
+                                    (id, title, enabled)
+                                })
+                                .collect();
                         }
                         Err(err) => {
                             err!(no_log, "Could not check for updates: {err}");
@@ -273,6 +286,19 @@ impl Launcher {
                     return menu.scroll_fix();
                 }
             }
+            ManageModsMessage::ToggleOne(id) => {
+                let instance_name = self.selected_instance.clone().unwrap();
+                let id = id.get_index_str();
+                if let State::EditMods(menu) = &mut self.state {
+                    if let Some(m) = menu.mods.mods.get_mut(&id) {
+                        m.enabled = !m.enabled;
+                    }
+                }
+                return Task::perform(
+                    ql_mod_manager::store::toggle_mods(vec![id], instance_name),
+                    |n| ManageModsMessage::ToggleFinished(n.strerr()).into(),
+                );
+            }
         }
         Task::none()
     }
@@ -283,6 +309,15 @@ impl Launcher {
         };
         let (ids_downloaded, ids_local) = menu.get_kinds_of_ids();
         let instance_name = self.selected_instance.clone().unwrap();
+
+        // Show change in UI beforehand, don't want for disk sync
+        for m in &ids_downloaded {
+            if let Some(m) = menu.mods.mods.get_mut(m) {
+                m.enabled = !m.enabled;
+            } else {
+                println!("not found {m}");
+            }
+        }
 
         // menu.selected_mods.clear();
         // menu.selected_state = SelectedState::None;
@@ -325,19 +360,7 @@ impl Launcher {
         };
 
         let (sender, receiver) = std::sync::mpsc::channel();
-        let selected_instance = self.selected_instance.as_ref().unwrap();
-
         self.state = State::ImportModpack(ProgressBar::with_recv(receiver));
-        self.mod_updates_checked.remove(selected_instance);
-
-        // Modpacks being imported
-        if paths
-            .iter()
-            .filter_map(|n| n.extension())
-            .any(|n| !n.eq_ignore_ascii_case("jar"))
-        {
-            self.mod_updates_checked.remove(selected_instance);
-        }
 
         let files_task = Task::perform(
             ql_mod_manager::add_files(

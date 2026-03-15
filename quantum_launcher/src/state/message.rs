@@ -8,18 +8,18 @@ use crate::{
 };
 use iced::widget::{self, scrollable::AbsoluteOffset};
 use ql_core::{
+    InstanceSelection, LaunchedProcess, ListEntry, Loader, ModId, StoreBackendType,
     file_utils::DirItem,
     jarmod::JarMods,
     json::instance_config::{MainClassMode, PreLaunchPrefixMode},
     read_log::Diagnostic,
-    InstanceSelection, LaunchedProcess, ListEntry, Loader, ModId, StoreBackendType,
 };
 use ql_instances::{
-    auth::{
-        ms::{AuthCodeResponse, AuthTokenResponse},
-        AccountData, AccountType,
-    },
     UpdateCheckInfo,
+    auth::{
+        AccountData, AccountType,
+        ms::{AuthCodeResponse, AuthTokenResponse},
+    },
 };
 use ql_mod_manager::{
     loaders::{fabric, paper::PaperVersion},
@@ -121,9 +121,7 @@ pub enum EditLwjglMessage {
 
 #[derive(Debug, Clone)]
 pub enum ManageModsMessage {
-    ScreenOpen,
-    ScreenOpenWithoutUpdate,
-
+    Open,
     ListScrolled(AbsoluteOffset),
     /// Simple, dumb selection
     SelectEnsure(String, Option<ModId>),
@@ -138,11 +136,13 @@ pub enum ManageModsMessage {
 
     ToggleSelected,
     ToggleFinished(Res),
+    ToggleOne(ModId),
 
-    UpdateMods,
-    UpdateModsFinished(Res),
+    UpdateCheck,
     UpdateCheckResult(Res<Vec<(ModId, String)>>),
     UpdateCheckToggle(usize, bool),
+    UpdatePerform,
+    UpdatePerformDone(Res),
 
     /// Add a mod, preset or modpack to the current instance.
     /// The field represents whether to delete the file after importing it.

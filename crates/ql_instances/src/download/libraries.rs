@@ -8,15 +8,16 @@ use std::{
 use cfg_if::cfg_if;
 use owo_colors::OwoColorize;
 use ql_core::{
+    DownloadProgress, IntoIoError, IoError,
     constants::*,
     do_jobs, err, file_utils, info,
     json::{
+        VersionDetails,
         version::{
             Library, LibraryClassifier, LibraryDownloadArtifact, LibraryDownloads, LibraryExtract,
         },
-        VersionDetails,
     },
-    pt, DownloadProgress, IntoIoError, IoError,
+    pt,
 };
 use tokio::fs;
 
@@ -109,7 +110,7 @@ impl GameDownloader {
         _ = fs::remove_file(natives_dir.join("INDEX.LIST")).await;
         _ = fs::remove_file(natives_dir.join("MANIFEST.MF")).await;
 
-        if let Err(err) = cleanup_directory(&natives_dir).await {
+        if let Err(err) = finalize_natives_directory(&natives_dir, &natives_dir).await {
             err!("While cleaning up libraries/natives/: {err}");
         }
     }
@@ -406,10 +407,15 @@ impl GameDownloader {
     }
 
     async fn extract_file(&self, mut url: String) -> Result<(), DownloadError> {
-        if url == "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-natives-linux.jar" {
+        if url
+            == "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-natives-linux.jar"
+        {
             "https://github.com/theofficialgman/lwjgl3-binaries-arm64/raw/lwjgl-3.1.6/lwjgl-jemalloc-patched-natives-linux-arm64.jar".clone_into(&mut url);
         }
-        if (cfg!(target_arch = "aarch64") && url == MACOS_X64_LWJGL_294) || url == "https://github.com/MinecraftMachina/lwjgl/releases/download/2.9.4-20150209-mmachina.2/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.jar" {
+        if (cfg!(target_arch = "aarch64") && url == MACOS_X64_LWJGL_294)
+            || url
+                == "https://github.com/MinecraftMachina/lwjgl/releases/download/2.9.4-20150209-mmachina.2/lwjgl-platform-2.9.4-nightly-20150209-natives-osx.jar"
+        {
             MACOS_ARM_LWJGL_294.clone_into(&mut url);
         }
 
@@ -572,28 +578,49 @@ impl GameDownloader {
     }
 }
 
-async fn cleanup_directory(dir: &Path) -> Result<(), IoError> {
+async fn finalize_natives_directory(dir: &Path, root: &Path) -> Result<(), IoError> {
     async fn is_dir_empty(dir: &Path) -> Result<bool, IoError> {
         let mut entries = fs::read_dir(dir).await.path(dir)?;
         Ok(entries.next_entry().await.path(dir)?.is_none())
     }
 
+    const NATIVE_EXTENSIONS: &[&str] = &["dylib", "so", "dll"];
+
     let mut entries = fs::read_dir(dir).await.path(dir)?;
+
+    let is_root = dir == root;
 
     while let Some(entry) = entries.next_entry().await.path(dir)? {
         let path = entry.path();
         let file_type = entry.file_type().await.path(&path)?;
 
         if file_type.is_dir() {
-            Box::pin(cleanup_directory(&path)).await?;
+            Box::pin(finalize_natives_directory(&path, root)).await?;
 
             // After recursing, try to remove if empty
             if is_dir_empty(&path).await? {
                 fs::remove_dir(&path).await.path(path)?;
             }
-        } else if file_type.is_file() && path.extension().and_then(|e| e.to_str()) == Some("class")
-        {
-            fs::remove_file(&path).await.path(path)?;
+        } else if file_type.is_file() {
+            let Some(extension) = path.extension().and_then(|e| e.to_str()) else {
+                continue;
+            };
+            // Check if `.class` file
+            if extension.eq_ignore_ascii_case("class") {
+                fs::remove_file(&path).await.path(path)?;
+            // Check if native library
+            } else if !is_root
+                && (NATIVE_EXTENSIONS
+                    .iter()
+                    .any(|n| n.eq_ignore_ascii_case(extension)))
+            {
+                // Move to the root of the natives directory, since LWJGL expects that
+                // (Hopefully fixes macOS ARM crashes).
+                if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                    let new_path = root.join(file_name);
+                    fs::rename(&path, &new_path).await.path(&new_path)?;
+                }
+            }
         }
     }
 

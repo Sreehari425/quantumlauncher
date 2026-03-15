@@ -3,11 +3,11 @@ use std::path::Path;
 use frostmark::MarkState;
 use iced::futures::executor::block_on;
 use iced::widget::text_editor;
-use iced::{widget::scrollable::AbsoluteOffset, Task};
-use ql_core::{err, InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion};
+use iced::{Task, widget::scrollable::AbsoluteOffset};
+use ql_core::{InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion, err};
 use ql_mod_manager::{
     loaders,
-    store::{get_description, QueryType},
+    store::{QueryType, get_description},
 };
 
 mod accounts;
@@ -39,7 +39,7 @@ impl Launcher {
     pub fn update_install_fabric(&mut self, message: InstallFabricMessage) -> Task<Message> {
         match message {
             InstallFabricMessage::End(result) => match result {
-                Ok(()) => return self.go_to_edit_mods_menu(false),
+                Ok(()) => return self.go_to_edit_mods_menu(),
                 Err(err) => self.set_error(err),
             },
             InstallFabricMessage::VersionSelected(selection) => {
@@ -265,8 +265,7 @@ impl Launcher {
                     return task;
                 }
                 self.state = State::CurseforgeManualDownload(MenuCurseforgeManualDownload {
-                    unsupported: not_allowed,
-                    is_store: true,
+                    not_allowed,
                     delete_mods: true,
                 });
             }
@@ -297,7 +296,6 @@ impl Launcher {
                 self.state = State::ImportModpack(ProgressBar::with_recv(receiver));
 
                 let selected_instance = self.selected_instance.clone().unwrap();
-                self.mod_updates_checked.remove(&selected_instance);
 
                 return Task::perform(
                     async move {
@@ -441,7 +439,7 @@ impl Launcher {
                 if let Err(err) = result {
                     self.set_error(err);
                 } else {
-                    return self.go_to_edit_mods_menu(false);
+                    return self.go_to_edit_mods_menu();
                 }
             }
         }
@@ -554,7 +552,11 @@ impl Launcher {
                 self.confirm_clear_java_installs();
             }
             LauncherSettingsMessage::ClearJavaInstallsConfirm => {
-                return Task::perform(ql_instances::delete_java_installs(), |()| Message::Nothing);
+                return Task::perform(ql_instances::delete_java_installs(), |()| {
+                    Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(
+                        state::LauncherSettingsTab::Internal,
+                    ))
+                });
             }
             LauncherSettingsMessage::ChangeTab(tab) => {
                 self.go_to_launcher_settings();
@@ -712,7 +714,7 @@ impl Launcher {
                 if let Err(err) = res {
                     self.set_error(err);
                 } else {
-                    return self.go_to_edit_mods_menu(false);
+                    return self.go_to_edit_mods_menu();
                 }
             }
         }

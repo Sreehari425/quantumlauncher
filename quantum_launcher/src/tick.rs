@@ -4,10 +4,10 @@ use std::{
     sync::Arc,
 };
 
-use iced::{widget::text_editor, Task};
+use iced::{Task, widget::text_editor};
 use ql_core::{
-    constants::OS_NAME, json::InstanceConfigJson, InstanceSelection, IntoIoError, IntoJsonError,
-    IntoStringError, JsonFileError, ModId,
+    InstanceSelection, IntoIoError, IntoJsonError, IntoStringError, JsonFileError, ModId,
+    constants::OS_NAME, json::InstanceConfigJson,
 };
 use ql_mod_manager::store::{ModConfig, ModIndex};
 
@@ -90,7 +90,7 @@ impl Launcher {
                 }
             }
             State::ModsDownload(_) => {
-                return MenuModsDownload::tick(self.selected_instance.clone().unwrap())
+                return MenuModsDownload::tick(self.selected_instance.clone().unwrap());
             }
             State::LauncherSettings(_) => {
                 let launcher_config = self.config.clone();

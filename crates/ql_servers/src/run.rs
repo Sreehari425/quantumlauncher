@@ -1,16 +1,16 @@
 use std::{
     path::{Path, PathBuf},
     process::Stdio,
-    sync::{mpsc::Sender, Arc},
+    sync::{Arc, mpsc::Sender},
 };
 
 use ql_core::{
+    GenericProgress, InstanceSelection, IntoIoError, LAUNCHER_DIR, LaunchedProcess, Loader,
     find_forge_shim_file, info,
     json::{InstanceConfigJson, VersionDetails},
-    no_window, pt, GenericProgress, InstanceSelection, IntoIoError, LaunchedProcess, Loader,
-    LAUNCHER_DIR,
+    no_window, pt,
 };
-use ql_java_handler::{get_java_binary, JavaVersion};
+use ql_java_handler::{JavaVersion, get_java_binary};
 use tokio::{process::Command, sync::Mutex};
 
 use crate::ServerError;

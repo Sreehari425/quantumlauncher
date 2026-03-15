@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 
-use iced::{widget, Length};
+use iced::{Length, widget};
 use ql_core::SelectedMod;
 
 use crate::{
     icons,
-    menu_renderer::{back_button, button_with_icon, tsubtitle, Element},
+    menu_renderer::{Element, back_button, button_with_icon, tsubtitle},
     state::{
         EditPresetsMessage, ManageModsMessage, MenuEditPresets, MenuRecommendedMods, Message,
         ModListEntry, SelectedState,
@@ -35,7 +35,7 @@ impl MenuEditPresets {
 
         let p_main = widget::row![
             widget::column![
-                back_button().on_press(ManageModsMessage::ScreenOpenWithoutUpdate.into()),
+                back_button().on_press(ManageModsMessage::Open.into()),
                 widget::text(
                     r"Mod Presets (.qmp files) are a
 simple way to share
@@ -63,14 +63,14 @@ Modrinth/Curseforge modpack"
             .spacing(10),
             widget::container(
                 widget::column![
-                    widget::column![widget::button(
-                        if let SelectedState::All = self.selected_state {
+                    widget::column![
+                        widget::button(if let SelectedState::All = self.selected_state {
                             "Unselect All"
                         } else {
                             "Select All"
-                        }
-                    )
-                    .on_press(EditPresetsMessage::SelectAll.into())]
+                        })
+                        .on_press(EditPresetsMessage::SelectAll.into())
+                    ]
                     .padding({
                         let p: iced::Padding = 10.into();
                         p.bottom(0)
@@ -126,7 +126,7 @@ Modrinth/Curseforge modpack"
 
 impl MenuRecommendedMods {
     pub fn view(&'_ self) -> Element<'_> {
-        let back_button = back_button().on_press(ManageModsMessage::ScreenOpenWithoutUpdate.into());
+        let back_button = back_button().on_press(ManageModsMessage::Open.into());
 
         match self {
             MenuRecommendedMods::Loading { progress, .. } => progress.view().padding(10).into(),

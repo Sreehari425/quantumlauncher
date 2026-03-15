@@ -1,13 +1,13 @@
-use iced::{widget, Length};
+use iced::{Length, widget};
 use ql_core::{ModId, SelectedMod};
 
 use crate::{
     icons,
-    menu_renderer::{back_button, tsubtitle, underline, Element},
+    menu_renderer::{Element, back_button, tsubtitle, underline},
     state::{ExportModsMessage, ManageModsMessage, MenuExportMods, Message},
     stylesheet::{
         color::Color,
-        styles::{LauncherTheme, BORDER_RADIUS},
+        styles::{BORDER_RADIUS, LauncherTheme},
         widgets::StyleButton,
     },
 };
@@ -109,7 +109,7 @@ impl MenuExportMods {
 
         widget::column![
             widget::row![
-                back_button().on_press(ManageModsMessage::ScreenOpenWithoutUpdate.into()),
+                back_button().on_press(ManageModsMessage::Open.into()),
                 widget::text("Export Mods List")
                     .size(24)
                     .style(|theme: &LauncherTheme| { theme.style_text(Color::Light) }),

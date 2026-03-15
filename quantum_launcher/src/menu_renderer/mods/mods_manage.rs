@@ -1,17 +1,17 @@
 use iced::widget::tooltip::Position;
-use iced::{widget, Alignment, Length};
+use iced::{Alignment, Length, widget};
 use ql_core::{InstanceSelection, Loader, SelectedMod};
 
 use crate::menu_renderer::{
-    ctx_button, ctxbox, dots, offset, select_box, subbutton_with_icon, tsubtitle, CTXI_SIZE,
-    FONT_MONO,
+    CTXI_SIZE, FONT_MONO, ctx_button, ctxbox, dots, offset, select_box, subbutton_with_icon,
+    tsubtitle,
 };
 use crate::message_handler::ForgeKind;
 use crate::state::{ImageState, InstallPaperMessage, MenuEditModsModal};
 use crate::stylesheet::widgets::StyleButton;
 use crate::{
     icons,
-    menu_renderer::{back_button, back_to_launch_screen, button_with_icon, tooltip, Element},
+    menu_renderer::{Element, back_button, back_to_launch_screen, button_with_icon, tooltip},
     state::{
         EditPresetsMessage, InstallFabricMessage, InstallModsMessage, InstallOptifineMessage,
         ManageJarModsMessage, ManageModsMessage, MenuEditMods, Message, ModListEntry,
@@ -53,6 +53,8 @@ impl MenuEditMods {
             .into()
         } else if let Some(MenuEditModsModal::Submenu) = &self.modal {
             let submenu = widget::column![
+                ctx_button(icons::refresh_s(CTXI_SIZE), "Check for updates")
+                    .on_press(ManageModsMessage::UpdateCheck.into()),
                 ctx_button(icons::file_info_s(CTXI_SIZE), "Export list as text")
                     .on_press(ManageModsMessage::ExportMenuOpen.into()),
                 ctx_button(icons::file_zip_s(CTXI_SIZE), "Export QMP Preset")
@@ -191,7 +193,7 @@ impl MenuEditMods {
                     ))
                     .spacing(10),
                     button_with_icon(icons::version_download(), "Update", 16)
-                        .on_press(ManageModsMessage::UpdateMods.into()),
+                        .on_press(ManageModsMessage::UpdatePerform.into()),
                 )
                 .padding(10)
                 .spacing(10)
@@ -461,7 +463,7 @@ impl MenuEditMods {
             left: 20.0,
         };
         const ICON_SIZE: f32 = 18.0;
-        const SPACING: u16 = 25;
+        const SPACING: u16 = 16;
 
         let no_icon = widget::Column::new()
             .width(ICON_SIZE)
@@ -486,7 +488,13 @@ impl MenuEditMods {
 
                     let checkbox = select_box(
                         widget::row![
+                            widget::toggler(is_enabled)
+                                .on_toggle(move |_| {
+                                    ManageModsMessage::ToggleOne(id.clone()).into()
+                                })
+                                .size(14),
                             image,
+                            widget::Space::with_width(1),
                             widget::text(&config.name)
                                 .shaping(widget::text::Shaping::Advanced)
                                 .style(move |t: &LauncherTheme| {
@@ -499,11 +507,7 @@ impl MenuEditMods {
                                 .size(14)
                                 .width(self.width_name),
                             widget::text(&config.installed_version)
-                                .style(move |t: &LauncherTheme| t.style_text(if is_enabled {
-                                    Color::Mid
-                                } else {
-                                    Color::SecondDark
-                                }))
+                                .style(|t: &LauncherTheme| t.style_text(Color::Mid))
                                 .font(FONT_MONO)
                                 .size(12)
                         ]
@@ -523,7 +527,7 @@ impl MenuEditMods {
 
                             let measured: f32 = (config.installed_version.len() as f32) * 7.2;
                             let occupied =
-                                measured + self.width_name + PADDING.left + PADDING.right + 100.0;
+                                measured + self.width_name + PADDING.left + PADDING.right + 150.0;
                             let space = size.width - occupied;
                             (space > -10.0).then_some(widget::Space::with_width(space))
                         })
@@ -534,12 +538,6 @@ impl MenuEditMods {
                         ManageModsMessage::SelectMod(config.name.clone(), Some(id.clone())).into(),
                     )
                     .padding(0);
-
-                    let checkbox: Element = if is_enabled {
-                        checkbox.into()
-                    } else {
-                        tooltip(checkbox, "Disabled", Position::FollowCursor).into()
-                    };
 
                     let rightclick = ManageModsMessage::RightClick(id.clone()).into();
 

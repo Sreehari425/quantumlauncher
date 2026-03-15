@@ -1,13 +1,14 @@
 use ql_core::{
+    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, ListEntry, Progress,
     file_utils, info,
     json::{InstanceConfigJson, VersionDetails},
-    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, ListEntry, Progress,
+    pt,
 };
 use std::{
     path::{Path, PathBuf},
     sync::{
-        mpsc::{Receiver, Sender},
         Arc,
+        mpsc::{Receiver, Sender},
     },
 };
 use tokio::fs;

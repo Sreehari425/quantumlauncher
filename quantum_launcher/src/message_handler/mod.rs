@@ -5,24 +5,23 @@ use crate::state::{
 };
 use crate::tick::sort_dependencies;
 use crate::{
-    get_entries,
+    Launcher, Message, get_entries,
     state::{
         EditPresetsMessage, ManageModsMessage, MenuEditInstance, MenuEditMods, MenuInstallForge,
-        MenuLaunch, ProgressBar, SelectedState, State, OFFLINE_ACCOUNT_NAME,
+        MenuLaunch, OFFLINE_ACCOUNT_NAME, ProgressBar, SelectedState, State,
     },
-    Launcher, Message,
 };
+use iced::Task;
 use iced::futures::executor::block_on;
 use iced::widget::scrollable::AbsoluteOffset;
-use iced::Task;
-use ql_core::json::instance_config::ModTypeInfo;
 use ql_core::json::VersionDetails;
+use ql_core::json::instance_config::ModTypeInfo;
 use ql_core::read_log::{Diagnostic, ReadError};
 use ql_core::{
-    err, json::instance_config::InstanceConfigJson, GenericProgress, InstanceSelection,
-    IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
+    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
+    err, json::instance_config::InstanceConfigJson,
 };
-use ql_core::{info, pt, LaunchedProcess};
+use ql_core::{LaunchedProcess, info, pt};
 use ql_instances::auth::AccountData;
 use ql_mod_manager::{loaders, store::ModIndex};
 use std::{
@@ -227,11 +226,8 @@ impl Launcher {
         Ok(())
     }
 
-    pub fn go_to_edit_mods_menu(&mut self, check_updates: bool) -> Task<Message> {
-        async fn inner(
-            this: &mut Launcher,
-            check_updates: bool,
-        ) -> Result<Task<Message>, JsonFileError> {
+    pub fn go_to_edit_mods_menu(&mut self) -> Task<Message> {
+        async fn inner(this: &mut Launcher) -> Result<Task<Message>, JsonFileError> {
             let instance = this.selected_instance.as_ref().unwrap();
 
             let config_json = InstanceConfigJson::read(instance).await?;
@@ -244,26 +240,6 @@ impl Launcher {
             let locally_installed_mods = HashSet::new();
             let sorted_mods_list = sort_dependencies(&mods.mods, &locally_installed_mods);
 
-            let (update_cmd, update_check_handle) = if !check_updates
-                || this.mod_updates_checked.contains_key(instance)
-                || config_json.mod_type.is_vanilla()
-            {
-                (Task::none(), None)
-            } else {
-                let (a, b) = Task::perform(
-                    ql_mod_manager::store::check_for_updates(instance.clone()),
-                    |n| ManageModsMessage::UpdateCheckResult(n.strerr()).into(),
-                )
-                .abortable();
-                (a, Some(b.abort_on_drop()))
-            };
-
-            let available_updates = if let Some(updates) = this.mod_updates_checked.get(instance) {
-                updates.clone()
-            } else {
-                Vec::new()
-            };
-
             this.state = State::EditMods(MenuEditMods {
                 config: config_json,
                 mods,
@@ -271,11 +247,11 @@ impl Launcher {
                 shift_selected_mods: HashSet::new(),
                 sorted_mods_list,
                 selected_state: SelectedState::None,
-                available_updates,
+                available_updates: Vec::new(),
                 mod_update_progress: None,
                 locally_installed_mods,
                 drag_and_drop_hovered: false,
-                update_check_handle,
+                update_check_handle: None,
                 version_json,
                 modal: None,
                 search: None,
@@ -284,9 +260,9 @@ impl Launcher {
                 list_scroll: AbsoluteOffset::default(),
             });
 
-            Ok(Task::batch([update_local_mods_task, update_cmd]))
+            Ok(Task::batch([update_local_mods_task]))
         }
-        match block_on(inner(self, check_updates)) {
+        match block_on(inner(self)) {
             Ok(n) => n,
             Err(err) => {
                 self.set_error(format!("While opening Mods screen:\n{err}"));
@@ -349,7 +325,7 @@ impl Launcher {
             let selected_instance = self.selected_instance.clone().unwrap();
             Task::perform(
                 ql_mod_manager::store::apply_updates(selected_instance, updates, Some(sender)),
-                |n| ManageModsMessage::UpdateModsFinished(n.strerr()).into(),
+                |n| ManageModsMessage::UpdatePerformDone(n.strerr()).into(),
             )
         } else {
             Task::none()

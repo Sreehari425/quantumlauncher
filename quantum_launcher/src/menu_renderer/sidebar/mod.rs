@@ -1,6 +1,6 @@
 use iced::{
-    widget::{self, column, row},
     Alignment, Length,
+    widget::{self, column, row},
 };
 use ql_core::InstanceSelection;
 
@@ -8,14 +8,18 @@ use crate::{
     config::sidebar::{FolderId, SidebarFolder, SidebarNode, SidebarNodeKind, SidebarSelection},
     icons,
     menu_renderer::{
-        ctx_button, ctxbox, offset, sidebar::drop_recv::drag_drop_receiver, underline,
-        underline_maybe, Element, CTXI_SIZE, FONT_MONO,
+        CTXI_SIZE, Element, FONT_MONO, ctx_button, ctxbox, offset,
+        sidebar::drop_recv::drag_drop_receiver, underline, underline_maybe,
     },
     state::{
         EditInstanceMessage, LaunchModal, LaunchTab, Launcher, MainMenuMessage, MenuLaunch,
         Message, SidebarMessage, State,
     },
-    stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
+    stylesheet::{
+        color::Color,
+        styles::{LauncherTheme, mix},
+        widgets::StyleButton,
+    },
 };
 
 mod drop_recv;
@@ -93,31 +97,41 @@ impl Launcher {
         .size(15)
         .style(move |t: &LauncherTheme| t.style_text(Color::Mid));
 
-        let view = widget::stack!(underline(
-            widget::row![
-                widget::Space::with_width(2),
-                widget::text(if folder.is_expanded { "- " } else { "+ " })
-                    .font(FONT_MONO)
-                    .size(14)
-                    .style(move |t: &LauncherTheme| t.style_text(Color::Light)),
-                text,
-            ]
-            .width(Length::Fill)
-            .align_y(Alignment::Center)
-            .padding([4, 10]),
-            Color::Dark,
-        ));
+        let view = widget::stack!(
+            underline(
+                widget::row![
+                    widget::Space::with_width(2),
+                    widget::text(if folder.is_expanded { "- " } else { "+ " })
+                        .font(FONT_MONO)
+                        .size(14)
+                        .style(move |t: &LauncherTheme| t.style_text(Color::Light)),
+                    text,
+                ]
+                .width(Length::Fill)
+                .align_y(Alignment::Center)
+                .padding([4, 10]),
+                Color::Dark,
+            ),
+            widget::horizontal_rule(0.5).style(|t: &LauncherTheme| widget::rule::Style {
+                color: mix(t.get(Color::Dark), t.get(Color::SecondDark)),
+                width: 1,
+                radius: 0.into(),
+                fill_mode: widget::rule::FillMode::Full,
+            })
+        );
 
         let space = mode.get_space();
 
         match mode {
             NodeMode::InTree(nesting) => {
                 let regular = || {
-                    column![node_button(
-                        row![space, view.push_maybe(drop_receiver)],
-                        is_drag_happening
-                    )
-                    .on_press(SidebarMessage::ToggleFolderVisibility(folder.id).into())]
+                    column![
+                        node_button(
+                            row![space, view.push_maybe(drop_receiver)],
+                            is_drag_happening
+                        )
+                        .on_press(SidebarMessage::ToggleFolderVisibility(folder.id).into())
+                    ]
                 };
 
                 if let Some(LaunchModal::SRenamingFolder(id, name, is_creating)) = &menu.modal {
@@ -251,7 +265,7 @@ impl Launcher {
                     widget::Space::with_height(5),
                     widget::horizontal_rule(2),
                     widget::Space::with_height(5),
-                    ctx_button(icons::file_s(CTXI_SIZE), "Change Icon"),
+                    // ctx_button(icons::file_s(CTXI_SIZE), "Change Icon"),
                     ctx_button(icons::edit_s(CTXI_SIZE), "Rename").on_press_with(
                         move || match inst {
                             SidebarSelection::Instance(name, kind) => {
@@ -367,10 +381,12 @@ fn drag_tooltip<'a>(
 
 fn drag_handle(selection: &SidebarSelection) -> widget::MouseArea<'static, Message, LauncherTheme> {
     widget::mouse_area(
-        widget::row![widget::text("=")
-            .size(20)
-            .style(|t: &LauncherTheme| t.style_text(Color::ExtraDark))]
-        .padding([0, 4])
+        widget::row![
+            widget::text("=")
+                .size(20)
+                .style(|t: &LauncherTheme| t.style_text(Color::ExtraDark))
+        ]
+        .padding([0, 8])
         .align_y(Alignment::Center),
     )
     .on_press(

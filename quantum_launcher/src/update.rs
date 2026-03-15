@@ -1,5 +1,5 @@
-use iced::{futures::executor::block_on, Task};
-use ql_core::{err, file_utils::DirItem, info, InstanceSelection, IntoIoError, IntoStringError};
+use iced::{Task, futures::executor::block_on};
+use ql_core::{InstanceSelection, IntoIoError, IntoStringError, err, file_utils::DirItem, info};
 use std::fmt::Write;
 use tokio::io::AsyncWriteExt;
 
@@ -176,7 +176,7 @@ impl Launcher {
                 return self.install_forge(kind);
             }
             Message::InstallForgeEnd(Ok(())) | Message::UninstallLoaderEnd(Ok(())) => {
-                return self.go_to_edit_mods_menu(false);
+                return self.go_to_edit_mods_menu();
             }
             Message::LaunchGameExited(Ok((status, instance, diagnostic))) => {
                 self.set_game_exited(status, &instance, diagnostic);
@@ -252,7 +252,7 @@ impl Launcher {
                         Message::ShowScreen("Uninstalling...".to_owned()),
                         (*msg).clone(),
                     ]),
-                    no: ManageModsMessage::ScreenOpenWithoutUpdate.into(),
+                    no: ManageModsMessage::Open.into(),
                 }
             }
             Message::ShowScreen(msg) => {

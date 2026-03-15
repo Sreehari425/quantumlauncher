@@ -2,24 +2,23 @@ use std::{
     collections::HashSet,
     ffi::OsStr,
     io::{Cursor, Write},
-    path::{Path, PathBuf, MAIN_SEPARATOR},
+    path::{MAIN_SEPARATOR, Path, PathBuf},
     sync::LazyLock,
 };
 
 use std::sync::mpsc::Sender;
 
 use futures::StreamExt;
-use reqwest::header::InvalidHeaderValue;
+use reqwest::{Response, header::InvalidHeaderValue};
 use serde::de::DeserializeOwned;
 use thiserror::Error;
 use tokio::io::AsyncWriteExt;
 use tokio_util::io::StreamReader;
 use walkdir::WalkDir;
-use zip::{write::FileOptions, ZipArchive, ZipWriter};
+use zip::{ZipArchive, ZipWriter, write::FileOptions};
 
 use crate::{
-    error::{DownloadFileError, IoError},
-    retry, IntoIoError, IntoJsonError, JsonDownloadError, CLIENT, WEBSITE,
+    CLIENT, DownloadFileError, IntoIoError, JsonDownloadError, download, error::IoError, retry,
 };
 
 /// The path to the QuantumLauncher root folder.
@@ -180,20 +179,11 @@ pub fn is_new_user() -> bool {
 /// - Redirect loop detected
 /// - Redirect limit exhausted.
 pub async fn download_file_to_string(url: &str, user_agent: bool) -> Result<String, RequestError> {
-    async fn inner(url: &str, user_agent: bool) -> Result<String, RequestError> {
-        let mut get = CLIENT.get(url);
-        if user_agent {
-            get = get.header(
-                "User-Agent",
-                format!("Mrmayman/quantumlauncher ({WEBSITE})"),
-            );
-        }
-        let response = get.send().await?;
-        check_for_success(&response)?;
-        Ok(response.text().await?)
+    let mut r = download(url);
+    if user_agent {
+        r = r.user_agent_ql();
     }
-
-    retry(|| async { inner(url, user_agent).await }).await
+    r.string().await
 }
 
 /// Downloads a file from the given URL into a JSON.
@@ -216,15 +206,11 @@ pub async fn download_file_to_json<T: DeserializeOwned>(
     url: &str,
     user_agent: bool,
 ) -> Result<T, JsonDownloadError> {
-    async fn inner<T: DeserializeOwned>(
-        url: &str,
-        user_agent: bool,
-    ) -> Result<T, JsonDownloadError> {
-        let text = download_file_to_string(url, user_agent).await?;
-        Ok(serde_json::from_str(&text).json(text)?)
+    let mut r = download(url);
+    if user_agent {
+        r = r.user_agent_ql();
     }
-
-    retry(|| async { inner(url, user_agent).await }).await
+    r.json().await
 }
 
 /// Downloads a file from the given URL into a `Vec<u8>`.
@@ -486,13 +472,6 @@ pub async fn set_executable(path: &Path) -> Result<(), IoError> {
     tokio::fs::set_permissions(path, perms).await.path(path)
 }
 
-#[cfg(unix)]
-use std::os::unix::fs::symlink;
-
-use reqwest::Response;
-#[cfg(windows)]
-use std::os::windows::fs::{symlink_dir, symlink_file};
-
 /// Creates a symbolic link (i.e. the file at `dest` "points" to `src`,
 /// accessing `dest` will actually access `src`)
 ///
@@ -504,17 +483,18 @@ use std::os::windows::fs::{symlink_dir, symlink_file};
 /// - If the path is invalid (part of path is not a directory for example)
 /// - Other niche stuff (Read only filesystem, Running out of disk space)
 pub fn create_symlink(src: &Path, dest: &Path) -> Result<(), IoError> {
+    #[cfg(windows)]
+    use std::os::windows::fs as osfs;
     #[cfg(unix)]
     {
-        symlink(src, dest).path(src)
+        std::os::unix::fs::symlink(src, dest).path(src)
     }
-
     #[cfg(windows)]
     {
         if src.is_dir() {
-            symlink_dir(src, dest).path(src)
+            osfs::symlink_dir(src, dest).path(src)
         } else {
-            symlink_file(src, dest).path(src)
+            osfs::symlink_file(src, dest).path(src)
         }
     }
 }

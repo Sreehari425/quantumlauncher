@@ -8,13 +8,13 @@ use crate::state::{
     State,
 };
 use iced::{
-    keyboard::{self, key::Named, Key},
     Task,
+    keyboard::{self, Key, key::Named},
 };
 use ql_core::{
-    err,
+    InstanceSelection, err,
     jarmod::{JarMod, JarMods},
-    pt, InstanceSelection,
+    pt,
 };
 use std::ffi::OsStr;
 use std::path::Path;
@@ -403,7 +403,7 @@ impl Launcher {
                 return (true, self.go_to_main_menu_with_message(None::<String>));
             }
             if ret_to_mods {
-                return (true, self.go_to_edit_mods_menu(false));
+                return (true, self.go_to_edit_mods_menu());
             }
             if ret_to_mod_store {
                 if let State::ModsDownload(menu) = &mut self.state {
