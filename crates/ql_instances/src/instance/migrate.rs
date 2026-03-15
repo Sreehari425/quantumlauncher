@@ -4,7 +4,8 @@ use std::{
 };
 
 use ql_core::{
-    CLASSPATH_SEPARATOR, IntoIoError, LAUNCHER_VERSION_NAME, info, json::version::LibraryDownloads,
+    CLASSPATH_SEPARATOR, IntoIoError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME, info,
+    json::version::LibraryDownloads,
 };
 
 use crate::{LAUNCHER_VERSION, download::GameDownloader};
@@ -19,6 +20,13 @@ impl GameLauncher {
 
         self.migrate_natives(&version).await?;
         self.migrate_classpath_to_relative(&version).await?;
+
+        if version <= ver(0, 5, 0) {
+            // Force it to download the new version (1.2.7),
+            // upgrading from 1.2.5
+            let old_authlib_version = LAUNCHER_DIR.join("downloads/authlib_injector.jar");
+            _ = tokio::fs::remove_file(&old_authlib_version).await;
+        }
 
         Ok(())
     }
