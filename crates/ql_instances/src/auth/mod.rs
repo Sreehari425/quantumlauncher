@@ -1,4 +1,5 @@
 use ql_core::{IntoStringError, err};
+use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
 mod alt;
@@ -23,12 +24,7 @@ pub struct AccountData {
 impl AccountData {
     #[must_use]
     pub fn get_username_modified(&self) -> String {
-        let suffix = match self.account_type {
-            AccountType::Microsoft => "",
-            AccountType::ElyBy => " (elyby)",
-            AccountType::LittleSkin => " (littleskin)",
-        };
-        format!("{}{suffix}", self.nice_username)
+        self.account_type.add_suffix_to_name(&self.nice_username)
     }
 
     #[must_use]
@@ -41,11 +37,13 @@ impl AccountData {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, Copy)]
 pub enum AccountType {
-    Microsoft,
     ElyBy,
     LittleSkin,
+    #[serde(other)]
+    #[default]
+    Microsoft,
 }
 
 impl Display for AccountType {
@@ -121,6 +119,16 @@ impl AccountType {
             AccountType::ElyBy => name.strip_suffix(" (elyby)").unwrap_or(name),
             AccountType::LittleSkin => name.strip_suffix(" (littleskin)").unwrap_or(name),
         }
+    }
+
+    #[must_use]
+    pub fn add_suffix_to_name(self, name: &str) -> String {
+        let suffix = match self {
+            AccountType::Microsoft => "",
+            AccountType::ElyBy => " (elyby)",
+            AccountType::LittleSkin => " (littleskin)",
+        };
+        format!("{}{suffix}", name)
     }
 }
 

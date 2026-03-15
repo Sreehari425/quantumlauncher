@@ -402,7 +402,7 @@ impl Launcher {
         let old_path = instances_dir.join(&menu.old_instance_name);
         let new_path = instances_dir.join(&sanitized_name);
 
-        if !new_path.parent().is_some_and(|n| n == instances_dir) {
+        if new_path.parent().is_none_or(|n| n != instances_dir) {
             err!("New instance path is outside instance dir!");
             return Ok(Task::none());
         }

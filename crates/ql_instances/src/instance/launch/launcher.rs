@@ -871,7 +871,7 @@ impl GameLauncher {
 
 async fn get_instance_dir(instance_name: &str) -> Result<PathBuf, GameLaunchError> {
     if instance_name.is_empty() {
-        return Err(GameLaunchError::InstanceNotFound);
+        return Err(GameLaunchError::InstanceNotFound(String::new()));
     }
 
     let launcher_dir = &*LAUNCHER_DIR;
@@ -886,7 +886,7 @@ async fn get_instance_dir(instance_name: &str) -> Result<PathBuf, GameLaunchErro
 
     let instance_dir = instances_folder_dir.join(instance_name);
     if !instance_dir.exists() {
-        return Err(GameLaunchError::InstanceNotFound);
+        return Err(GameLaunchError::InstanceNotFound(instance_name.to_owned()));
     }
     Ok(instance_dir)
 }

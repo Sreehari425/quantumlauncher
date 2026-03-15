@@ -20,8 +20,8 @@ pub enum GameLaunchError {
     UsernameHasSpaces,
     #[error("username is empty")]
     UsernameIsEmpty,
-    #[error("{GAME_ERR_PREFIX}instance not found")]
-    InstanceNotFound,
+    #[error("{GAME_ERR_PREFIX}instance not found: {0}")]
+    InstanceNotFound(String),
     #[error("{GAME_ERR_PREFIX}no arguments field in details.json")]
     VersionJsonNoArgumentsField(Box<VersionDetails>),
 

@@ -339,59 +339,19 @@ fn load_account(
     username: &str,
     account: &mut crate::config::ConfigAccount,
 ) {
-    fn get_refresh_token_for_account_type(
-        account_type: AccountType,
-        username: &str,
-        keyring_identifier: Option<&str>,
-    ) -> Result<String, String> {
-        let keyring_username = if let Some(keyring_id) = keyring_identifier {
-            keyring_id
-        } else {
-            // Fallback to old behavior for backwards compatibility
-            match account_type {
-                AccountType::ElyBy => username.strip_suffix(" (elyby)").unwrap_or(username),
-                AccountType::LittleSkin => {
-                    username.strip_suffix(" (littleskin)").unwrap_or(username)
-                }
-                AccountType::Microsoft => username,
-            }
-        };
-        ql_instances::auth::read_refresh_token(keyring_username, account_type).strerr()
-    }
-
-    let account_type =
-        if account.account_type.as_deref() == Some("ElyBy") || username.ends_with(" (elyby)") {
-            AccountType::ElyBy
-        } else if account.account_type.as_deref() == Some("LittleSkin")
-            || username.ends_with(" (littleskin)")
-        {
-            AccountType::LittleSkin
-        } else {
-            AccountType::Microsoft
-        };
-
-    let refresh_token = get_refresh_token_for_account_type(
-        account_type,
-        username,
-        account.keyring_identifier.as_deref(),
-    );
-
-    let keyring_username = if let Some(keyring_id) = &account.keyring_identifier {
-        keyring_id.clone()
+    let account_type = if username.ends_with(" (elyby)") {
+        AccountType::ElyBy
+    } else if username.ends_with(" (littleskin)") {
+        AccountType::LittleSkin
     } else {
-        // Fallback to old behavior for backwards compatibility
-        match account_type {
-            AccountType::ElyBy => username
-                .strip_suffix(" (elyby)")
-                .unwrap_or(username)
-                .to_owned(),
-            AccountType::LittleSkin => username
-                .strip_suffix(" (littleskin)")
-                .unwrap_or(username)
-                .to_owned(),
-            AccountType::Microsoft => username.to_owned(),
-        }
+        account.account_type.unwrap_or_default()
     };
+
+    let keyring_username = account.get_keyring_identifier(username);
+    let refresh_token =
+        ql_instances::auth::read_refresh_token(keyring_username, account_type).strerr();
+
+    let keyring_username = account.get_keyring_identifier(username);
 
     match refresh_token {
         Ok(refresh_token) => {
@@ -405,11 +365,11 @@ fn load_account(
                     needs_refresh: true,
                     account_type,
 
-                    username: keyring_username.clone(),
+                    username: keyring_username.to_owned(),
                     nice_username: account
                         .username_nice
                         .clone()
-                        .unwrap_or(keyring_username.clone()),
+                        .unwrap_or_else(|| username.to_owned()),
                 },
             );
         }

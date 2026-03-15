@@ -154,12 +154,14 @@ impl Launcher {
         if menu.account == OFFLINE_ACCOUNT_NAME {
             shortcut.exec_args.push(menu.account_offline.clone());
         } else {
-            shortcut.exec_args.push(
-                self.accounts
-                    .get(&menu.account)
-                    .map(|n| n.nice_username.clone())
-                    .unwrap_or_else(|| menu.account.clone()),
-            );
+            if let Some(acc) = self.accounts.get(&menu.account) {
+                shortcut.exec_args.push(acc.nice_username.clone());
+                shortcut.exec_args.push("--account-type".to_owned());
+                shortcut.exec_args.push(acc.account_type.to_string());
+            } else {
+                shortcut.exec_args.push(menu.account.clone());
+            }
+
             shortcut.exec_args.push("-u".to_owned());
         }
 

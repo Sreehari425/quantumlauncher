@@ -12,6 +12,7 @@ use crate::{
     menu_renderer::{DISCORD, GITHUB},
 };
 
+mod account;
 mod command;
 mod helpers;
 
@@ -67,6 +68,10 @@ enum QSubCommand {
         // Used by shortcuts
         #[arg(long)]
         show_progress: bool,
+        // Used by shortcuts
+        #[arg(long)]
+        #[arg(help = "microsoft/elyby/littleskin")]
+        account_type: Option<String>,
     },
     #[command(aliases = ["list", "list-instances"], short_flag = 'l')]
     #[command(about = "Lists installed instances")]
@@ -232,6 +237,7 @@ pub fn start_cli(is_dir_err: bool, launcher_dir: &mut Option<PathBuf>) {
                 username,
                 use_account,
                 show_progress,
+                account_type,
             } => {
                 let res = runtime.block_on(command::launch_instance(
                     instance_name,
@@ -239,6 +245,7 @@ pub fn start_cli(is_dir_err: bool, launcher_dir: &mut Option<PathBuf>) {
                     use_account,
                     cli.server,
                     show_progress,
+                    account_type.as_deref(),
                 ));
                 std::process::exit(if let Err(err) = res {
                     err!("{err}");
