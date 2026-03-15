@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use iced::{Task, widget::text_editor};
+use iced::{Rectangle, Task, widget::text_editor};
 use ql_core::{
     InstanceSelection, IntoIoError, IntoJsonError, IntoStringError, JsonFileError, ModId,
     constants::OS_NAME, json::InstanceConfigJson,
@@ -12,18 +12,17 @@ use ql_core::{
 use ql_mod_manager::store::{ModConfig, ModIndex};
 
 use crate::state::{
-    AutoSaveKind, EditInstanceMessage, GameProcess, InstallModsMessage, InstanceLog, LaunchTab,
-    Launcher, LogState, ManageJarModsMessage, MenuCreateInstance, MenuEditMods, MenuExportInstance,
-    MenuInstallFabric, MenuInstallOptifine, MenuLaunch, MenuLoginMS, MenuModsDownload,
-    MenuRecommendedMods, Message, ModListEntry, State,
+    AutoSaveKind, EditInstanceMessage, GameProcess, InstallModsMessage, InstanceLog, LaunchModal,
+    LaunchTab, Launcher, LogState, ManageJarModsMessage, MenuCreateInstance, MenuEditMods,
+    MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuLaunch, MenuLoginMS,
+    MenuModsDownload, MenuRecommendedMods, Message, ModListEntry, State,
 };
+use crate::config::SIDEBAR_WIDTH;
 
 impl Launcher {
     pub fn tick(&mut self) -> Task<Message> {
         match &mut self.state {
-            State::Launch(MenuLaunch {
-                edit_instance, tab, ..
-            }) => {
+            State::Launch(_) => {
                 if let Some(receiver) = &mut self.java_recv {
                     if receiver.tick() {
                         self.state = State::InstallJava;
@@ -33,8 +32,18 @@ impl Launcher {
 
                 let mut commands = Vec::new();
 
-                if let (Some(edit), LaunchTab::Edit) = (&edit_instance, tab) {
-                    let config = edit.config.clone();
+                let edit_config = if let State::Launch(MenuLaunch {
+                    edit_instance: Some(edit),
+                    tab: LaunchTab::Edit,
+                    ..
+                }) = &self.state
+                {
+                    Some(edit.config.clone())
+                } else {
+                    None
+                };
+
+                if let Some(config) = edit_config {
                     self.tick_edit_instance(config, &mut commands);
                 }
 
@@ -48,6 +57,9 @@ impl Launcher {
                 }
 
                 commands.push(self.autosave_config());
+                if let State::Launch(menu) = &self.state {
+                    self.tick_sidebar_auto_scroll(menu, &mut commands);
+                }
                 return Task::batch(commands);
             }
             State::Create(menu) => {
@@ -165,6 +177,69 @@ impl Launcher {
         }
 
         Task::none()
+    }
+
+    fn tick_sidebar_auto_scroll(&self, menu: &MenuLaunch, commands: &mut Vec<Task<Message>>) {
+        const EDGE_THRESHOLD: f32 = 36.0;
+        const MIN_SPEED: f32 = 2.0;
+        const MAX_SPEED: f32 = 14.0;
+        const FALLBACK_TOP: f32 = 60.0;
+        const FALLBACK_BOTTOM: f32 = 80.0;
+
+        let Some(LaunchModal::SDragging { .. }) = menu.modal.as_ref() else {
+            return;
+        };
+
+        if menu.sidebar_scroll_total <= 0.0 {
+            return;
+        }
+
+        let bounds = menu.sidebar_scroll_bounds.unwrap_or_else(|| {
+            let (width, height) = self.window_state.size;
+            let sidebar_width = width * SIDEBAR_WIDTH;
+            let usable_height = (height - FALLBACK_TOP - FALLBACK_BOTTOM).max(0.0);
+            Rectangle {
+                x: 0.0,
+                y: FALLBACK_TOP,
+                width: sidebar_width,
+                height: usable_height,
+            }
+        });
+
+        let (mouse_x, mouse_y) = self.window_state.mouse_pos;
+        if mouse_x < bounds.x || mouse_x > bounds.x + bounds.width {
+            return;
+        }
+
+        let top_dist = mouse_y - bounds.y;
+        let bottom_dist = bounds.y + bounds.height - mouse_y;
+        let mut delta = 0.0;
+
+        if (0.0..EDGE_THRESHOLD).contains(&top_dist) {
+            let strength = 1.0 - (top_dist / EDGE_THRESHOLD);
+            let speed = MIN_SPEED + (MAX_SPEED - MIN_SPEED) * strength * strength;
+            delta = -speed;
+        } else if (0.0..EDGE_THRESHOLD).contains(&bottom_dist) {
+            let strength = 1.0 - (bottom_dist / EDGE_THRESHOLD);
+            let speed = MIN_SPEED + (MAX_SPEED - MIN_SPEED) * strength * strength;
+            delta = speed;
+        }
+
+        if delta.abs() < f32::EPSILON {
+            return;
+        }
+
+        let new_offset = (menu.sidebar_scroll_offset + delta)
+            .clamp(0.0, menu.sidebar_scroll_total);
+
+        if (new_offset - menu.sidebar_scroll_offset).abs() < 0.25 {
+            return;
+        }
+
+        commands.push(iced::widget::scrollable::scroll_to(
+            iced::widget::scrollable::Id::new("MenuLaunch:sidebar"),
+            iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: new_offset },
+        ));
     }
 
     #[allow(clippy::manual_is_multiple_of)] // Maintain Rust MSRV

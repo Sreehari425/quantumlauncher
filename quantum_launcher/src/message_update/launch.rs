@@ -83,13 +83,21 @@ impl Launcher {
                     );
                 }
             }
-            SidebarMessage::Scroll(total) => {
+            SidebarMessage::Scroll {
+                total,
+                offset,
+                bounds,
+            } => {
                 if let State::Launch(MenuLaunch {
-                    sidebar_scrolled: sidebar_height,
+                    sidebar_scroll_total,
+                    sidebar_scroll_offset,
+                    sidebar_scroll_bounds,
                     ..
                 }) = &mut self.state
                 {
-                    *sidebar_height = total;
+                    *sidebar_scroll_total = total;
+                    *sidebar_scroll_offset = offset;
+                    *sidebar_scroll_bounds = Some(bounds);
                 }
             }
             SidebarMessage::NewFolder(at_position) => {
