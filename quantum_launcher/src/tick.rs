@@ -11,13 +11,13 @@ use ql_core::{
 };
 use ql_mod_manager::store::{ModConfig, ModIndex};
 
+use crate::config::SIDEBAR_WIDTH;
 use crate::state::{
     AutoSaveKind, EditInstanceMessage, GameProcess, InstallModsMessage, InstanceLog, LaunchModal,
     LaunchTab, Launcher, LogState, ManageJarModsMessage, MenuCreateInstance, MenuEditMods,
     MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuLaunch, MenuLoginMS,
     MenuModsDownload, MenuRecommendedMods, Message, ModListEntry, State,
 };
-use crate::config::SIDEBAR_WIDTH;
 
 impl Launcher {
     pub fn tick(&mut self) -> Task<Message> {
@@ -44,7 +44,10 @@ impl Launcher {
                 };
 
                 if let Some(config) = edit_config {
-                    self.tick_edit_instance(config, &mut commands);
+                    // TODO: Implement autosave debouncing to avoid excessive disk writes while the user is actively editing the config
+                    if self.tick_timer.is_multiple_of(2) {
+                        self.tick_autosave_instance_config(config, &mut commands);
+                    }
                 }
 
                 for (name, process) in &mut self.processes {
@@ -179,6 +182,19 @@ impl Launcher {
         Task::none()
     }
 
+    pub fn tick_interval(&self) -> u64 {
+        if let State::Launch(menu) = &self.state {
+            if let Some(LaunchModal::SDragging { .. }) = &menu.modal {
+                // Faster tick rate for smoother auto-scrolling
+                // while dragging in the sidebar
+                return 15;
+            }
+        }
+
+        self.config.c_idle_fps()
+    }
+
+    /// Automatically scrolls the sidebar when dragging near the edges
     fn tick_sidebar_auto_scroll(&self, menu: &MenuLaunch, commands: &mut Vec<Task<Message>>) {
         const EDGE_THRESHOLD: f32 = 36.0;
         const MIN_SPEED: f32 = 2.0;
@@ -229,8 +245,7 @@ impl Launcher {
             return;
         }
 
-        let new_offset = (menu.sidebar_scroll_offset + delta)
-            .clamp(0.0, menu.sidebar_scroll_total);
+        let new_offset = (menu.sidebar_scroll_offset + delta).clamp(0.0, menu.sidebar_scroll_total);
 
         if (new_offset - menu.sidebar_scroll_offset).abs() < 0.25 {
             return;
@@ -238,7 +253,10 @@ impl Launcher {
 
         commands.push(iced::widget::scrollable::scroll_to(
             iced::widget::scrollable::Id::new("MenuLaunch:sidebar"),
-            iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: new_offset },
+            iced::widget::scrollable::AbsoluteOffset {
+                x: 0.0,
+                y: new_offset,
+            },
         ));
     }
 
@@ -255,7 +273,11 @@ impl Launcher {
         }
     }
 
-    fn tick_edit_instance(&self, config: InstanceConfigJson, commands: &mut Vec<Task<Message>>) {
+    fn tick_autosave_instance_config(
+        &self,
+        config: InstanceConfigJson,
+        commands: &mut Vec<Task<Message>>,
+    ) {
         let Some(instance) = self.selected_instance.clone() else {
             return;
         };
