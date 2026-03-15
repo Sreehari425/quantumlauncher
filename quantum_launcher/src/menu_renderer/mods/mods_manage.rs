@@ -466,8 +466,22 @@ impl MenuEditMods {
                             widget::text("Select some content to perform actions on them")
                         } else {
                             widget::text!("{} items selected", self.selected_mods.len())
-                        }.size(12).style(|t: &LauncherTheme| t.style_text(Color::Mid))
+                        }
+                        .size(12)
+                        .style(|t: &LauncherTheme| t.style_text(Color::Mid))
                     )
+                    .push_maybe((!self.selected_mods.is_empty() && !self.can_toggle_selection()).then_some(
+                        widget::row![
+                            icons::warn_s(12),
+                            widget::text(
+                                "Only mods can be disabled. Resource packs, shaders, and data packs are not toggleable."
+                            )
+                            .size(12)
+                            .style(|t: &LauncherTheme| t.style_text(Color::SecondLight))
+                        ]
+                        .spacing(6)
+                        .align_y(Alignment::Center)
+                    ))
                     .push_maybe(self.search.as_ref().map(|search|
                         widget::text_input("Search...", search).size(14).on_input(|msg|
                             ManageModsMessage::SetSearch(Some(msg)).into()
@@ -565,13 +579,24 @@ impl MenuEditMods {
                         no_icon
                     };
 
+                    let can_toggle = entry.can_toggle();
+                    let toggle: Element = if can_toggle {
+                        widget::toggler(is_enabled)
+                            .on_toggle(move |_| ManageModsMessage::ToggleOne(id.clone()).into())
+                            .size(14)
+                            .into()
+                    } else {
+                        tooltip(
+                            widget::toggler(is_enabled).size(14),
+                            "Only mods can be disabled",
+                            Position::FollowCursor,
+                        )
+                        .into()
+                    };
+
                     let checkbox = select_box(
                         widget::row![
-                            widget::toggler(is_enabled)
-                                .on_toggle(move |_| {
-                                    ManageModsMessage::ToggleOne(id.clone()).into()
-                                })
-                                .size(14),
+                            toggle,
                             image,
                             widget::Space::with_width(1),
                             widget::text(&config.name)
