@@ -739,6 +739,7 @@ impl LaunchedProcess {
     }
 }
 
+#[must_use]
 pub fn sanitize_instance_name(mut name: String) -> String {
     let mut disallowed = vec![
         '/', '\\', ':', '*', '?', '"', '<', '>', '|', '\'', '\0', '\u{7F}',

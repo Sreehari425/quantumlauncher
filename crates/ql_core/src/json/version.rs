@@ -280,6 +280,7 @@ pub struct Library {
 
 impl Library {
     #[must_use]
+    #[allow(clippy::missing_panics_doc)] // will never panic
     pub fn get_artifact(&self) -> Option<LibraryDownloadArtifact> {
         match (&self.name, self.downloads.as_ref(), self.url.as_ref()) {
             (

@@ -16,10 +16,10 @@ impl SidebarConfig {
             return;
         };
 
-        self.insert_at(yoinked, location);
+        self.insert_at(yoinked, &location);
     }
 
-    fn insert_at(&mut self, yoinked: SidebarNode, location: SDragLocation) {
+    fn insert_at(&mut self, yoinked: SidebarNode, location: &SDragLocation) {
         if let Some((index, folder)) = self
             .list
             .iter_mut()
