@@ -44,8 +44,9 @@ impl Launcher {
                 };
 
                 if let Some(config) = edit_config {
-                    // TODO: Implement autosave debouncing to avoid excessive disk writes while the user is actively editing the config
-                    if self.tick_timer.is_multiple_of(2) {
+                    if self.autosave.insert(AutoSaveKind::InstanceConfig)
+                        || self.tick_timer.is_multiple_of(5)
+                    {
                         self.tick_autosave_instance_config(config, &mut commands);
                     }
                 }

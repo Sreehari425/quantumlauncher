@@ -11,8 +11,8 @@ use ql_core::{
 use crate::{
     message_handler::format_memory,
     state::{
-        ADD_JAR_NAME, CustomJarState, EditInstanceMessage, LaunchTab, Launcher, MainMenuMessage,
-        MenuCreateInstance, MenuEditInstance, MenuLaunch, Message, NONE_JAR_NAME,
+        ADD_JAR_NAME, AutoSaveKind, CustomJarState, EditInstanceMessage, LaunchTab, Launcher,
+        MainMenuMessage, MenuCreateInstance, MenuEditInstance, MenuLaunch, Message, NONE_JAR_NAME,
         OPEN_FOLDER_JAR_NAME, ProgressBar, REMOVE_JAR_NAME, State, dir_watch, get_entries,
     },
 };
@@ -308,6 +308,7 @@ impl Launcher {
         {
             if let Some(jar) = &menu.config.custom_jar {
                 if !choices.contains(&jar.name) {
+                    self.autosave.remove(&AutoSaveKind::InstanceConfig);
                     menu.config.custom_jar = None;
                 }
             }
@@ -424,5 +425,37 @@ impl Launcher {
                 ])
             },
         ))
+    }
+}
+
+impl EditInstanceMessage {
+    pub fn edits_config(&self) -> bool {
+        match self {
+            EditInstanceMessage::ReinstallLibraries |
+            EditInstanceMessage::UpdateAssets |
+            EditInstanceMessage::RenameToggle |
+            EditInstanceMessage::ToggleSplitArg(_) |
+            EditInstanceMessage::RenameEdit(_) |
+            EditInstanceMessage::RenameApply | // ?
+            EditInstanceMessage::CustomJarLoaded(_) |
+            EditInstanceMessage::ConfigSaved(_) => false,
+
+            EditInstanceMessage::MemoryChanged(_) |
+            EditInstanceMessage::MemoryInputChanged(_) |
+            EditInstanceMessage::LoggingToggle(_) |
+            EditInstanceMessage::CloseLauncherToggle(_) |
+            EditInstanceMessage::SetMainClass(_, _) |
+            EditInstanceMessage::JavaArgs(_) |
+            EditInstanceMessage::JavaArgsModeChanged(_) |
+            EditInstanceMessage::GameArgs(_) |
+            EditInstanceMessage::PreLaunchPrefix(_) |
+            EditInstanceMessage::PreLaunchPrefixModeChanged(_) |
+            EditInstanceMessage::JavaOverride(_) |
+            EditInstanceMessage::JavaOverrideVersion(_) |
+            EditInstanceMessage::WindowWidthChanged(_) |
+            EditInstanceMessage::WindowHeightChanged(_) |
+            EditInstanceMessage::CustomJarPathChanged(_) |
+            EditInstanceMessage::BrowseJavaOverride => true,
+        }
     }
 }
