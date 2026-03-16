@@ -4,7 +4,7 @@ use iced::widget::{column, horizontal_space, row, text_editor, tooltip::Position
 use iced::{Alignment, Length, Padding, widget};
 use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
 
-use crate::cli::EXPERIMENTAL_SERVERS;
+use crate::cli::{EXPERIMENTAL_MMC_IMPORT, EXPERIMENTAL_SERVERS};
 use crate::menu_renderer::onboarding::x86_warning;
 use crate::menu_renderer::{
     CTXI_SIZE, FONT_MONO, ctx_button, ctxbox, sidebar, tsubtitle, underline,
@@ -34,6 +34,20 @@ const fn tab_height(decor: bool) -> f32 {
 
 const fn decorh(decor: bool) -> f32 {
     if decor { 0.0 } else { 32.0 }
+}
+
+pub(super) fn import_description() -> widget::Row<'static, Message, LauncherTheme> {
+    row![
+        icons::upload_s(11),
+        column![
+            widget::text("Import Instance").size(13),
+            widget::text("(MultiMC/Prism/QuantumLauncher...)")
+                .size(10)
+                .style(tsubtitle)
+        ]
+    ]
+    .align_y(Alignment::Center)
+    .spacing(10)
 }
 
 impl Launcher {
@@ -103,6 +117,8 @@ impl Launcher {
             .into()
         };
 
+        let mmc_import = EXPERIMENTAL_MMC_IMPORT.read().unwrap();
+
         widget::stack!(
             column![menu.get_tab_selector(decor)]
                 .push_maybe(view_info_message(menu))
@@ -119,11 +135,22 @@ impl Launcher {
                     vertical_space(),
                     ctxbox(
                         column![
-                            ctx_button(icons::file_zip_s(CTXI_SIZE), "Export Instance")
-                                .on_press(Message::ExportInstanceOpen),
+                            // Not ready for production yet
+                            // ctx_button(icons::file_zip_s(CTXI_SIZE), "Export Instance")
+                            //     .on_press(Message::ExportInstanceOpen),
                             ctx_button(icons::file_gear_s(CTXI_SIZE), "Create Shortcut")
                                 .on_press(ShortcutMessage::Open.into()),
                         ]
+                        .push_maybe(mmc_import.then_some(widget::horizontal_rule(1)))
+                        .push_maybe(mmc_import.then(|| {
+                            widget::button(import_description())
+                                .width(Length::Fill)
+                                .style(|t: &LauncherTheme, s| {
+                                    t.style_button(s, StyleButton::FlatDark)
+                                })
+                                .padding(2)
+                                .on_press(CreateInstanceMessage::Import.into())
+                        }))
                         .spacing(4)
                     )
                     .width(150),
@@ -199,7 +226,6 @@ impl Launcher {
                 .spacing(16)
                 .align_y(Alignment::Center),
             main_buttons,
-            // widget::button("Export Instance").on_press(Message::ExportInstanceOpen),
             notes,
             row![
                 widget::Column::new()
