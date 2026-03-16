@@ -1,16 +1,14 @@
 use owo_colors::{OwoColorize, Style};
-use ql_auth::AccountType;
 use ql_core::{
+    InstanceSelection, IntoStringError, LAUNCHER_DIR, ListEntry, Loader, OptifineUniqueVersion,
     eeprintln, err, info,
     json::{InstanceConfigJson, VersionDetails},
-    InstanceSelection, IntoStringError, ListEntry, Loader, OptifineUniqueVersion, LAUNCHER_DIR,
 };
 use ql_mod_manager::loaders::LoaderInstallResult;
 use std::{path::PathBuf, process::exit};
 
 use crate::{
-    cli::{helpers::render_row, show_notification, QLoader},
-    config::LauncherConfig,
+    cli::{QLoader, account::refresh_account, helpers::render_row},
     state::get_entries,
 };
 
@@ -203,8 +201,13 @@ pub async fn launch_instance(
     use_account: bool,
     servers: bool,
     show_progress: bool,
+    account_type: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let account = refresh_account(&username, use_account, show_progress).await?;
+    let account = if servers {
+        None
+    } else {
+        refresh_account(&username, use_account, show_progress, account_type).await?
+    };
 
     let child = if servers {
         // TODO: stdin input
@@ -240,63 +243,6 @@ pub async fn launch_instance(
     Ok(())
 }
 
-async fn refresh_account(
-    username: &String,
-    use_account: bool,
-    show_progress: bool,
-) -> Result<Option<ql_auth::AccountData>, Box<dyn std::error::Error>> {
-    Ok(if use_account {
-        let config = LauncherConfig::load_s()?;
-        let Some((real_name, account)) = config.accounts.as_ref().and_then(|accounts| {
-            accounts.get_key_value(username).or_else(|| {
-                accounts
-                    .iter()
-                    .find(|n| n.1.username_nice.as_ref().is_some_and(|n| n == username))
-            })
-        }) else {
-            err!("No logged-in account called {username:?} was found!");
-            exit(1);
-        };
-
-        if show_progress {
-            tokio::task::spawn_blocking(|| {
-                show_notification("Launching game", "Refreshing account...");
-            });
-        }
-
-        match account.account_type.as_deref() {
-            // Hook: Account types
-            Some(kind @ ("ElyBy" | "LittleSkin")) => {
-                let account_type = if kind == "ElyBy" {
-                    AccountType::ElyBy
-                } else {
-                    AccountType::LittleSkin
-                };
-                let refresh_token = ql_auth::read_refresh_token(real_name, account_type)?;
-                Some(
-                    ql_auth::yggdrasil::login_refresh(
-                        real_name.to_owned(),
-                        refresh_token,
-                        account_type,
-                    )
-                    .await?,
-                )
-            }
-            _ => {
-                let refresh_token = ql_auth::read_refresh_token(real_name, AccountType::Microsoft)?;
-                Some(ql_auth::ms::login_refresh(real_name.clone(), refresh_token, None).await?)
-            }
-        }
-    } else {
-        if show_progress {
-            tokio::task::spawn_blocking(|| {
-                show_notification("Launching game", "Enjoy!");
-            });
-        }
-        None
-    })
-}
-
 pub async fn loader(cmd: QLoader, servers: bool) -> Result<(), Box<dyn std::error::Error>> {
     match cmd {
         QLoader::Info { instance } => {
@@ -322,7 +268,9 @@ pub async fn loader(cmd: QLoader, servers: bool) -> Result<(), Box<dyn std::erro
             version,
         } => {
             if loader.eq_ignore_ascii_case("vanilla") {
-                err!("Vanilla refers to the base game.\n    Maybe you meant `./quantum_launcher loader uninstall ...`");
+                err!(
+                    "Vanilla refers to the base game.\n    Maybe you meant `./quantum_launcher loader uninstall ...`"
+                );
                 exit(1);
             }
             let Some(loader) = Loader::ALL

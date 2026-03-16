@@ -12,11 +12,11 @@ use ql_auth::{
     AccountData, AccountType, TokenStorageMethod,
 };
 use ql_core::{
+    InstanceSelection, LaunchedProcess, ListEntry, Loader, ModId, StoreBackendType,
     file_utils::DirItem,
     jarmod::JarMods,
     json::instance_config::{MainClassMode, PreLaunchPrefixMode},
     read_log::Diagnostic,
-    InstanceSelection, LaunchedProcess, ListEntry, Loader, ModId, StoreBackendType,
 };
 use ql_instances::UpdateCheckInfo;
 use ql_mod_manager::{
@@ -365,7 +365,11 @@ pub enum GameLogMessage {
 #[derive(Debug, Clone)]
 pub enum SidebarMessage {
     Resize(f32),
-    Scroll(f32),
+    Scroll {
+        total: f32,
+        offset: f32,
+        bounds: iced::Rectangle,
+    },
     FolderRenameConfirm,
 
     NewFolder(Option<SidebarSelection>),

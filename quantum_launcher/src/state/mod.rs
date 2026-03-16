@@ -9,9 +9,9 @@ use iced::Task;
 use notify::Watcher;
 use ql_auth::{encrypted_store, ms::CLIENT_ID, AccountData, AccountType, TokenStorageMethod};
 use ql_core::{
-    err, file_utils, read_log::LogLine, GenericProgress, InstanceSelection, IntoIoError,
-    IntoStringError, IoError, JsonFileError, LaunchedProcess, Progress, LAUNCHER_DIR,
-    LAUNCHER_VERSION_NAME,
+    GenericProgress, InstanceSelection, IntoIoError, IntoStringError, IoError, JsonFileError,
+    LAUNCHER_DIR, LAUNCHER_VERSION_NAME, LaunchedProcess, Progress, err, file_utils,
+    read_log::LogLine,
 };
 use tokio::process::ChildStdin;
 
@@ -304,6 +304,8 @@ impl Launcher {
                     return Task::batch([menu.reload_notes(i.clone()), get_entries]);
                 }
             }
+            // We're going to the *instance* launch screen,
+            // there's a separate function for servers.
             Some(InstanceSelection::Server(_)) => self.selected_instance = None,
             None => {}
         }
@@ -392,21 +394,10 @@ fn load_account(
     fn get_refresh_token_for_account_type(
         account_type: AccountType,
         username: &str,
-        keyring_identifier: Option<&str>,
+        account: &crate::config::ConfigAccount,
         method: TokenStorageMethod,
     ) -> Result<String, String> {
-        let keyring_username = if let Some(keyring_id) = keyring_identifier {
-            keyring_id
-        } else {
-            // Fallback to old behavior for backwards compatibility
-            match account_type {
-                AccountType::ElyBy => username.strip_suffix(" (elyby)").unwrap_or(username),
-                AccountType::LittleSkin => {
-                    username.strip_suffix(" (littleskin)").unwrap_or(username)
-                }
-                AccountType::Microsoft => username,
-            }
-        };
+        let keyring_username = account.get_keyring_identifier(username);
         ql_auth::read_refresh_token_from(keyring_username, account_type, method)
             .map_err(|e| e.to_string())
     }
@@ -421,45 +412,31 @@ fn load_account(
     }
     // If this account uses the encrypted store and it's locked, skip it
     if per_account_method == TokenStorageMethod::EncryptedFile
-        && !ql_auth::encrypted_store::is_unlocked()
+        && !encrypted_store::is_unlocked()
     {
         return;
     }
 
-    let account_type =
-        if account.account_type.as_deref() == Some("ElyBy") || username.ends_with(" (elyby)") {
-            AccountType::ElyBy
-        } else if account.account_type.as_deref() == Some("LittleSkin")
-            || username.ends_with(" (littleskin)")
-        {
-            AccountType::LittleSkin
-        } else {
-            AccountType::Microsoft
-        };
+    let account_type = if account.account_type == Some(AccountType::ElyBy)
+        || username.ends_with(" (elyby)")
+    {
+        AccountType::ElyBy
+    } else if account.account_type == Some(AccountType::LittleSkin)
+        || username.ends_with(" (littleskin)")
+    {
+        AccountType::LittleSkin
+    } else {
+        AccountType::Microsoft
+    };
 
     let refresh_token = get_refresh_token_for_account_type(
         account_type,
         username,
-        account.keyring_identifier.as_deref(),
+        account,
         per_account_method,
     );
 
-    let keyring_username = if let Some(keyring_id) = &account.keyring_identifier {
-        keyring_id.clone()
-    } else {
-        // Fallback to old behavior for backwards compatibility
-        match account_type {
-            AccountType::ElyBy => username
-                .strip_suffix(" (elyby)")
-                .unwrap_or(username)
-                .to_owned(),
-            AccountType::LittleSkin => username
-                .strip_suffix(" (littleskin)")
-                .unwrap_or(username)
-                .to_owned(),
-            AccountType::Microsoft => username.to_owned(),
-        }
-    };
+    let keyring_username = account.get_keyring_identifier(username);
 
     match refresh_token {
         Ok(refresh_token) => {
@@ -473,11 +450,11 @@ fn load_account(
                     needs_refresh: true,
                     account_type,
 
-                    username: keyring_username.clone(),
+                    username: keyring_username.to_owned(),
                     nice_username: account
                         .username_nice
                         .clone()
-                        .unwrap_or(keyring_username.clone()),
+                        .unwrap_or_else(|| username.to_owned()),
                 },
             );
         }

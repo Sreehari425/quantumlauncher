@@ -1,7 +1,7 @@
 use sha2::{Digest, Sha256};
 use tokio::{fs, io::AsyncWriteExt};
 
-use crate::{download, file_utils, DownloadFileError, IntoIoError, LAUNCHER_DIR};
+use crate::{DownloadFileError, IntoIoError, LAUNCHER_DIR, download, file_utils};
 
 pub async fn url_cache_get(url: &str) -> Result<Vec<u8>, DownloadFileError> {
     let hash = hash(url);

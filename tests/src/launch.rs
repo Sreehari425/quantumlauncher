@@ -2,9 +2,9 @@ use std::process::ExitStatus;
 use std::{io::Write, time::Duration};
 
 use ql_core::read_log::Diagnostic;
-use ql_core::{err, IntoStringError};
+use ql_core::{IntoStringError, err};
 
-use crate::{attempt, search::search_for_window, set_terminal, Cli};
+use crate::{Cli, attempt, search::search_for_window, set_terminal};
 
 pub async fn launch(name: String, timeout: f32, cli: &Cli) -> bool {
     print!("Testing {name} ");

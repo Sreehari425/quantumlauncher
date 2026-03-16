@@ -1,8 +1,8 @@
-use iced::{widget, Length};
+use iced::{Length, widget};
 
 use crate::{
     icons,
-    menu_renderer::{back_button, back_to_launch_screen, button_with_icon, Element},
+    menu_renderer::{Element, back_button, back_to_launch_screen, button_with_icon},
     state::{MenuExportInstance, Message},
 };
 

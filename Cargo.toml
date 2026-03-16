@@ -21,30 +21,19 @@ serde_json = "1"
 semver = "1"
 dirs = "6"
 
-reqwest = { version = "0.12", default-features = false, features = [
-    "json",
-    "stream",
-    "rustls-tls",
-    # Default features
-    "charset",
-    "http2",
-] }
+reqwest = { version = "0.13.*", features = ["json", "stream", "query", "form"] }
 
 tokio = { version = "1", features = ["fs", "macros", "process", "rt", "rt-multi-thread"] }
 futures = { version = "0.3", default-features = false, features = ["executor"] }
 cfg-if = "1"
 
-owo-colors = "3"
+owo-colors = "4"
 chrono = "0.4"
 thiserror = "2"
-rfd = { version = "0.15", default-features = false, features = [
-    "xdg-portal",
-    "tokio",
-] }
+rfd = "0.16.*"
 clap = { version = "4", features = ["help", "derive"] }
 
-# Note: 5.1 not used because of MSRV
-zip = { version = "5.0.1", default-features = false, features = ["deflate"] }
+zip = { version = "=7.2", default-features = false, features = ["deflate"] } # MSRV
 
 walkdir = "2.3"
 image = { version = "0.24", default-features = false, features = [

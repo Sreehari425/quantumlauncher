@@ -3,12 +3,11 @@ use std::path::Path;
 use frostmark::MarkState;
 use iced::futures::executor::block_on;
 use iced::widget::text_editor;
-use iced::{widget::scrollable::AbsoluteOffset, Task};
-use ql_core::{err, InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion};
-
+use iced::{Task, widget::scrollable::AbsoluteOffset};
+use ql_core::{InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion, err};
 use ql_mod_manager::{
     loaders,
-    store::{get_description, QueryType},
+    store::{QueryType, get_description},
 };
 
 use crate::config::UiWindowDecorations;

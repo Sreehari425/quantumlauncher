@@ -1,9 +1,9 @@
 use std::fmt::Display;
 
 use ql_core::{
-    download, info,
-    json::{VersionDetails, V_OFFICIAL_FABRIC_SUPPORT},
-    pt, InstanceSelection, JsonDownloadError, RequestError,
+    InstanceSelection, JsonDownloadError, RequestError, download, info,
+    json::{V_OFFICIAL_FABRIC_SUPPORT, VersionDetails},
+    pt,
 };
 use serde::Deserialize;
 

@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::Path};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{download, err, DownloadFileError, IntoIoError, RequestError};
+use crate::{DownloadFileError, IntoIoError, RequestError, download, err};
 
 #[derive(Serialize, Deserialize)]
 pub struct AssetIndex {

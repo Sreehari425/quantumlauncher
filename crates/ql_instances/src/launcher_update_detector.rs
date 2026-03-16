@@ -1,12 +1,12 @@
 use std::{
     ffi::OsStr,
     process::Command,
-    sync::{mpsc::Sender, Arc},
+    sync::{Arc, mpsc::Sender},
 };
 
 use ql_core::{
-    err, file_utils, impl_3_errs_jri, info, GenericProgress, IntoIoError, IoError, JsonError,
-    RequestError,
+    GenericProgress, IntoIoError, IoError, JsonError, RequestError, err, file_utils,
+    impl_3_errs_jri, info,
 };
 use serde::Deserialize;
 use thiserror::Error;

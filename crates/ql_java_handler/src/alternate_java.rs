@@ -10,10 +10,10 @@ use std::{
 
 use cfg_if::cfg_if;
 use owo_colors::OwoColorize;
-use ql_core::{file_utils, pt, GenericProgress, JavaVersion};
+use ql_core::{GenericProgress, JavaVersion, file_utils, pt};
 use serde::Deserialize;
 
-use crate::{extract_tar_gz, send_progress, JavaInstallError};
+use crate::{JavaInstallError, extract_tar_gz, send_progress};
 
 pub(crate) async fn install(
     version: JavaVersion,

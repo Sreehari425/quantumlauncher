@@ -23,7 +23,7 @@ impl Launcher {
                     {
                         if self.selected_instance.is_none() {
                             self.selected_instance =
-                                Some(InstanceSelection::new(name, kind.is_server()))
+                                Some(InstanceSelection::new(name, kind.is_server()));
                         }
                     }
                     *modal = None;
@@ -83,13 +83,21 @@ impl Launcher {
                     );
                 }
             }
-            SidebarMessage::Scroll(total) => {
+            SidebarMessage::Scroll {
+                total,
+                offset,
+                bounds,
+            } => {
                 if let State::Launch(MenuLaunch {
-                    sidebar_scrolled: sidebar_height,
+                    sidebar_scroll_total,
+                    sidebar_scroll_offset,
+                    sidebar_scroll_bounds,
                     ..
                 }) = &mut self.state
                 {
-                    *sidebar_height = total;
+                    *sidebar_scroll_total = total;
+                    *sidebar_scroll_offset = offset;
+                    *sidebar_scroll_bounds = Some(bounds);
                 }
             }
             SidebarMessage::NewFolder(at_position) => {
@@ -123,11 +131,6 @@ impl Launcher {
                 }) = &mut self.state
                 {
                     self.config.c_sidebar().drag_drop(being_dragged, location);
-                    if let Some(sel) = &self.selected_instance {
-                        if being_dragged != sel {
-                            self.selected_instance = None;
-                        }
-                    }
                 }
                 self.sidebar_update_state();
             }

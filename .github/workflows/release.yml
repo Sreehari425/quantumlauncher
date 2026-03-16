@@ -104,7 +104,7 @@ jobs:
             final_name: windows_aarch64
           - build: i686-windows
             os: windows-latest
-            rust: stable-i686
+            rust: stable
             target: i686-pc-windows-msvc
             cross: false
             final_name: windows_i686

@@ -23,13 +23,11 @@ pub fn extract_tar_gz(archive: &[u8], output_dir: &Path) -> std::io::Result<()> 
     // Get the first entry path to determine the top-level directory
     let mut entries = tar.entries()?;
     let top_level_dir = if let Some(entry) = entries.next() {
-        let entry = entry?;
-        let path = entry
+        entry?
             .path()?
             .components()
             .next()
-            .map(|c| c.as_os_str().to_os_string());
-        path
+            .map(|c| c.as_os_str().to_os_string())
     } else {
         None
     };

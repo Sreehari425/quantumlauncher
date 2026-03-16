@@ -1,9 +1,9 @@
 use error::GameLaunchError;
 use ql_auth::AccountData;
 use ql_core::{
-    err, info, GenericProgress, InstanceSelection, LaunchedProcess, REDACT_SENSITIVE_INFO,
+    GenericProgress, InstanceSelection, LaunchedProcess, REDACT_SENSITIVE_INFO, err, info,
 };
-use std::sync::{mpsc::Sender, Arc};
+use std::sync::{Arc, mpsc::Sender};
 use tokio::sync::Mutex;
 
 pub(super) mod error;

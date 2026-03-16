@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::{
-    file_utils::find_item_in_dir, IntoIoError, IntoJsonError, IoError, JsonFileError, LAUNCHER_DIR,
+    IntoIoError, IntoJsonError, IoError, JsonFileError, LAUNCHER_DIR, file_utils::find_item_in_dir,
 };
 use serde::Deserialize;
 

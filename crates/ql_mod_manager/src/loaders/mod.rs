@@ -1,16 +1,16 @@
 use std::{
     path::Path,
     sync::{
-        mpsc::{Receiver, Sender},
         Arc,
+        mpsc::{Receiver, Sender},
     },
 };
 
 use crate::loaders::paper::PaperVer;
 use forge::ForgeInstallProgress;
 use ql_core::{
-    json::{instance_config::ModTypeInfo, InstanceConfigJson},
     GenericProgress, InstanceSelection, IntoStringError, JsonFileError, Loader, Progress,
+    json::{InstanceConfigJson, instance_config::ModTypeInfo},
 };
 
 pub mod fabric;
@@ -120,11 +120,11 @@ pub async fn install_specified_loader(
                 LoaderInstallResult::Unsupported
             } else {
                 LoaderInstallResult::NeedsOptifine
-            })
+            });
         }
 
         Loader::Liteloader | Loader::Modloader | Loader::Rift => {
-            return Ok(LoaderInstallResult::Unsupported)
+            return Ok(LoaderInstallResult::Unsupported);
         }
     }
     Ok(LoaderInstallResult::Ok)

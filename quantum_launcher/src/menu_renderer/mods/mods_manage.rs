@@ -1,17 +1,17 @@
 use iced::widget::tooltip::Position;
-use iced::{widget, Alignment, Length};
+use iced::{Alignment, Length, widget};
 use ql_core::{InstanceSelection, Loader, SelectedMod};
 
 use crate::menu_renderer::{
-    ctx_button, ctxbox, dots, offset, select_box, subbutton_with_icon, tsubtitle, CTXI_SIZE,
-    FONT_MONO,
+    CTXI_SIZE, FONT_MONO, ctx_button, ctxbox, dots, offset, select_box, subbutton_with_icon,
+    tsubtitle,
 };
 use crate::message_handler::ForgeKind;
 use crate::state::{ImageState, InstallPaperMessage, MenuEditModsModal};
 use crate::stylesheet::widgets::StyleButton;
 use crate::{
     icons,
-    menu_renderer::{back_button, back_to_launch_screen, button_with_icon, tooltip, Element},
+    menu_renderer::{Element, back_button, back_to_launch_screen, button_with_icon, tooltip},
     state::{
         EditPresetsMessage, InstallFabricMessage, InstallModsMessage, InstallOptifineMessage,
         ManageJarModsMessage, ManageModsMessage, MenuEditMods, Message, ModListEntry,

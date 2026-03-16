@@ -1,9 +1,10 @@
 use std::sync::mpsc::Sender;
 
 use ql_core::{
+    DownloadProgress, IntoIoError, IntoJsonError, IntoStringError, LAUNCHER_DIR, ListEntry,
     download, file_utils, info,
-    json::{instance_config::VersionInfo, InstanceConfigJson, Manifest, VersionDetails},
-    pt, DownloadProgress, IntoIoError, IntoJsonError, IntoStringError, ListEntry, LAUNCHER_DIR,
+    json::{InstanceConfigJson, Manifest, VersionDetails, instance_config::VersionInfo},
+    pt, sanitize_instance_name,
 };
 
 use crate::ServerError;
@@ -44,7 +45,15 @@ pub async fn create_server(
     version: ListEntry,
     sender: Option<&Sender<DownloadProgress>>,
 ) -> Result<String, ServerError> {
-    info!("Creating server");
+    let name = sanitize_instance_name(name);
+    if name.is_empty() {
+        return Err(ServerError::InvalidName);
+    }
+
+    info!(
+        "Started creating server: {name} (version: {}, kind: {})",
+        version.name, version.kind
+    );
     progress_manifest(sender);
     let manifest = Manifest::download().await?;
 

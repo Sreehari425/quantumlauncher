@@ -3,11 +3,11 @@ use std::{collections::HashSet, sync::mpsc::Sender, time::Instant};
 use chrono::DateTime;
 use download::version_sort;
 use info::ProjectInfo;
-use ql_core::{pt, GenericProgress, InstanceSelection, Loader, ModId};
+use ql_core::{GenericProgress, InstanceSelection, Loader, ModId, pt};
 use versions::ModVersion;
 
 use crate::{
-    rate_limiter::{lock, RATE_LIMITER},
+    rate_limiter::{RATE_LIMITER, lock},
     store::{SearchMod, StoreBackendType},
 };
 

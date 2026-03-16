@@ -1,12 +1,15 @@
-use iced::{widget, Alignment};
+use iced::{
+    Alignment, Length,
+    widget::{self, column, row},
+};
 use ql_auth::AccountType;
 
 use crate::{
     config::LauncherConfig,
     icons,
     menu_renderer::{
-        button_with_icon, center_x, get_mode_selector, onboarding::x86_warning,
-        settings::get_theme_selector, Element, DISCORD,
+        DISCORD, Element, button_with_icon, center_x, get_mode_selector, onboarding::x86_warning,
+        settings::get_theme_selector, tsubtitle,
     },
     state::{AccountMessage, MainMenuMessage, MenuWelcome, Message},
 };
@@ -16,55 +19,64 @@ use super::IMG_LOGO;
 impl MenuWelcome {
     pub fn view<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {
         match self {
-            MenuWelcome::P1InitialScreen => widget::column![
+            MenuWelcome::P1InitialScreen => column![
                 widget::vertical_space(),
-                center_x(widget::image(IMG_LOGO.clone()).width(200)),
-                center_x(widget::text("Welcome to QuantumLauncher!").size(20)),
-                center_x(widget::button("Get Started").on_press(Message::WelcomeContinueToTheme)),
+                row![
+                    widget::horizontal_space(),
+                    widget::image(IMG_LOGO.clone()).width(100),
+                    column![
+                        widget::text("Welcome to"),
+                        widget::text("QuantumLauncher").size(32),
+                    ],
+                    widget::horizontal_space(),
+                ]
+                .align_y(Alignment::Center),
+                if cfg!(target_arch = "x86") {
+                    let e: Element = x86_warning().into();
+                    e
+                } else {
+                    widget::text("Play Minecraft your own way!")
+                        .size(14)
+                        .style(tsubtitle)
+                        .into()
+                },
+                widget::Space::with_height(2),
+                button_with_icon(icons::play(), "Get Started", 16)
+                    .on_press(Message::WelcomeContinueToTheme),
+                widget::vertical_space()
             ]
-            .push_maybe(cfg!(target_arch = "x86").then(|| center_x(x86_warning())))
-            .push(widget::vertical_space())
-            .align_x(iced::alignment::Horizontal::Center)
+            .width(Length::Fill)
+            .align_x(Alignment::Center)
             .spacing(10)
             .into(),
             MenuWelcome::P2Theme => widget::column![
                 widget::vertical_space(),
                 center_x(widget::text("Customize your launcher!").size(24)),
+                widget::row!["Mode:", get_mode_selector(config)]
+                    .align_y(Alignment::Center)
+                    .spacing(10),
                 widget::row![
-                    widget::horizontal_space(),
-                    "Select Theme:",
-                    get_mode_selector(config),
-                    widget::horizontal_space(),
+                    widget::Space::with_width(20),
+                    "Theme:",
+                    get_theme_selector().wrap()
                 ]
-                .align_y(Alignment::Center)
-                .spacing(10),
-                widget::row![
-                    widget::horizontal_space(),
-                    "Select Color Scheme:",
-                    widget::row![get_theme_selector().wrap()].width(250),
-                    widget::horizontal_space(),
-                ]
+                .width(350)
                 .spacing(10),
                 widget::Space::with_height(5),
-                widget::row![
-                    widget::horizontal_space(),
-                    "Oh, and also consider",
-                    button_with_icon(icons::discord(), "Join our Discord", 14)
-                        .padding([4, 8])
-                        .on_press(Message::CoreOpenLink(DISCORD.to_owned())),
-                    widget::horizontal_space(),
-                ]
-                .align_y(Alignment::Center)
-                .spacing(10),
+                button_with_icon(icons::discord(), "Join our Discord", 14)
+                    .padding([4, 8])
+                    .on_press(Message::CoreOpenLink(DISCORD.to_owned())),
                 widget::Space::with_height(5),
                 center_x(widget::button("Continue").on_press(Message::WelcomeContinueToAuth)),
                 widget::vertical_space(),
             ]
+            .width(Length::Fill)
+            .align_x(Alignment::Center)
             .spacing(10)
             .into(),
             MenuWelcome::P3Auth => {
                 let next = Message::MScreenOpen {
-                    message: Some("Install Minecraft by clicking \"+ New\"".to_owned()),
+                    message: None,
                     clear_selection: true,
                     is_server: Some(false),
                 };

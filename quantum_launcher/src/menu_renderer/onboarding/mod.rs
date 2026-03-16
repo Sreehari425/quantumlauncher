@@ -9,9 +9,6 @@ pub use changelog::changelog;
 
 use crate::{menu_renderer::tsubtitle, state::Message, stylesheet::styles::LauncherTheme};
 
-pub static IMG_MANAGE_MODS: LazyLock<Handle> = LazyLock::new(|| {
-    Handle::from_bytes(include_bytes!("../../../../assets/screenshots/mod_manage.png").as_slice())
-});
 pub static IMG_LOGO: LazyLock<Handle> = LazyLock::new(|| {
     Handle::from_bytes(include_bytes!("../../../../assets/icon/ql_logo.png").as_slice())
 });

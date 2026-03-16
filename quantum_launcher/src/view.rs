@@ -1,15 +1,15 @@
-use iced::{widget, Alignment, Length};
+use iced::{Alignment, Length, widget};
 
 use crate::{
+    DEBUG_LOG_BUTTON_HEIGHT,
     config::UiWindowDecorations,
     icons,
     menu_renderer::{
-        button_with_icon, changelog, tooltip, view_account_login, view_confirm, view_error,
-        view_log_upload_result, Element, FONT_MONO,
+        Element, FONT_MONO, button_with_icon, changelog, tooltip, view_account_login, view_confirm,
+        view_error, view_log_upload_result,
     },
     state::{Launcher, Message, State, TokenStoreMessage, WindowMessage},
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
-    DEBUG_LOG_BUTTON_HEIGHT,
 };
 
 impl Launcher {
@@ -210,14 +210,16 @@ impl Launcher {
 
         fn win_button(icon: widget::Text<'_, LauncherTheme>, m: Message) -> Element<'_> {
             widget::mouse_area(
-                widget::row![widget::button(
-                    widget::row![icon.style(|t: &LauncherTheme| t.style_text(Color::Mid))]
-                        .align_y(Alignment::Center)
-                        .padding([4, 10]),
-                )
-                .padding(0)
-                .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
-                .on_press(m.clone())]
+                widget::row![
+                    widget::button(
+                        widget::row![icon.style(|t: &LauncherTheme| t.style_text(Color::Mid))]
+                            .align_y(Alignment::Center)
+                            .padding([4, 10]),
+                    )
+                    .padding(0)
+                    .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
+                    .on_press(m.clone())
+                ]
                 .height(Length::Fill)
                 .align_y(Alignment::Center)
                 .padding([3.0, 1.5]),
