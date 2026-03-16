@@ -64,6 +64,7 @@ semver.workspace = true
 owo-colors.workspace = true
 clap.workspace = true
 terminal_size = "0.4"
+rpassword = "7"
 
 # OS APIs
 notify = "8"
