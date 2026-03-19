@@ -10,8 +10,8 @@ use crate::{
     cli::EXPERIMENTAL_MMC_IMPORT,
     icons,
     menu_renderer::{
-        Element, button_with_icon, ctxbox, dots, offset, shortcut_ctrl, sidebar_button, tooltip,
-        tsubtitle,
+        Element, button_with_icon, ctxbox, dots, launch::import_description, offset, shortcut_ctrl,
+        sidebar_button, tooltip, tsubtitle,
     },
     state::{CreateInstanceMessage, MenuCreateInstance, MenuCreateInstanceChoosing, Message},
     stylesheet::{
@@ -226,18 +226,24 @@ impl MenuCreateInstanceChoosing {
             ])
         }).spacing(12);
 
+        let mmc_import = EXPERIMENTAL_MMC_IMPORT.read().unwrap();
+
         let menu = column![
-            widget::column![main_part, widget::vertical_space()],
-            row![widget::horizontal_space()]
+            main_part,
+            widget::vertical_space(),
+            widget::Row::new()
                 .push_maybe(
-                    EXPERIMENTAL_MMC_IMPORT.read().unwrap().then_some(tooltip(
-                        button_with_icon(icons::upload(), "Import from MultiMC...", 16)
+                    mmc_import.then_some(tooltip(
+                        widget::button(import_description())
+                            .padding([4, 8])
                             .on_press(CreateInstanceMessage::Import.into()),
                         widget::text("Import Instance... (VERY EXPERIMENTAL right now)").size(14),
                         Position::Top
                     ))
                 )
+                .push(widget::horizontal_space())
                 .push(get_create_button(already_exists))
+                .align_y(Alignment::End)
                 .spacing(5)
         ]
         .spacing(10)

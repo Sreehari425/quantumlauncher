@@ -459,7 +459,7 @@ impl Launcher {
             let State::Launch(menu) = &self.state else {
                 return Task::none();
             };
-            (menu.is_viewing_server, menu.sidebar_scrolled)
+            (menu.is_viewing_server, menu.sidebar_scroll_total)
         };
         let list = if is_viewing_server {
             self.server_list.clone()

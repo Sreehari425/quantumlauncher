@@ -402,5 +402,5 @@ impl GameDownloader {
 }
 
 fn already_downloaded_natives() -> Mutex<HashSet<String>> {
-    Mutex::new(SKIP_NATIVES.iter().map(|n| n.to_string()).collect())
+    Mutex::new(SKIP_NATIVES.iter().map(ToString::to_string).collect())
 }

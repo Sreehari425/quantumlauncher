@@ -29,7 +29,7 @@ pub struct InstanceConfigJson {
     // Since: v0.1
     pub mod_type: Loader,
     /// More metadata about the mod type
-    // Since: v0.5
+    // Since: v0.5.0
     pub mod_type_info: Option<ModTypeInfo>,
 
     /// Use a different **launcher-provided** java version.

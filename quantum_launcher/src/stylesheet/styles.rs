@@ -219,7 +219,11 @@ impl LauncherTheme {
             background: Some(self.get_bg(Color::ExtraDark)),
             border,
             scroller: widget::scrollable::Scroller {
-                color: self.get(Color::SecondDark),
+                color: mix(
+                    mix(self.get(Color::SecondDark), self.get(Color::Dark)),
+                    // self.get(Color::Dark),
+                    self.get(Color::SecondDark),
+                ),
                 border: self.get_border_style(&style, Color::Mid),
             },
         };
@@ -271,7 +275,7 @@ impl LauncherTheme {
                 color: if hovered {
                     self.get(Color::Mid)
                 } else {
-                    mix(self.get(Color::SecondDark), self.get(Color::Mid))
+                    self.get(Color::SecondDark)
                 },
                 border: self.get_border_style(&style, Color::Light),
             },

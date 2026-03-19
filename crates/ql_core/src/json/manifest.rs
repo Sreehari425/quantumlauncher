@@ -158,6 +158,7 @@ impl Version {
     }
 
     #[must_use]
+    #[allow(clippy::missing_panics_doc)] // will never panic
     pub fn supports_server(&self) -> bool {
         if !Self::guess_if_supports_server(&self.id) {
             return false;

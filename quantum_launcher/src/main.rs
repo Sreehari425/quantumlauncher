@@ -130,7 +130,7 @@ impl Launcher {
 
     #[allow(clippy::unused_self)]
     fn subscription(&self) -> iced::Subscription<Message> {
-        let tick = iced::time::every(Duration::from_millis(1000 / self.config.c_idle_fps()))
+        let tick = iced::time::every(Duration::from_millis(1000 / self.tick_interval()))
             .map(|_| Message::CoreTick);
         let events = iced::event::listen_with(|a, b, _| Some(Message::CoreEvent(a, b)));
 
