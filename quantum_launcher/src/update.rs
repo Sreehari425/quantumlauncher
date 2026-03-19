@@ -114,10 +114,15 @@ impl Launcher {
                     self.go_to_launch_screen(message)
                 };
             }
-            Message::EditInstance(message) => match self.update_edit_instance(message) {
-                Ok(n) => return n,
-                Err(err) => self.set_error(err),
-            },
+            Message::EditInstance(message) => {
+                if message.edits_config() {
+                    self.autosave.remove(&AutoSaveKind::InstanceConfig);
+                }
+                match self.update_edit_instance(message) {
+                    Ok(n) => return n,
+                    Err(err) => self.set_error(err),
+                }
+            }
             Message::InstallFabric(message) => return self.update_install_fabric(message),
             Message::CoreOpenLink(dir) => _ = open::that_detached(&dir),
             Message::CoreOpenPath(dir) => {
@@ -457,6 +462,7 @@ impl Launcher {
             if let (LaunchTab::Edit, Some(selected_instance)) =
                 (new_tab.unwrap_or(*tab), self.selected_instance.as_ref())
             {
+                self.autosave.insert(AutoSaveKind::InstanceConfig); // prevent it from saving *right now*
                 if let Err(err) = Self::load_edit_instance_inner(edit_instance, selected_instance) {
                     err!("Could not open edit instance menu: {err}");
                     *edit_instance = None;

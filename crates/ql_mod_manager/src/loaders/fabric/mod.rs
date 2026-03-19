@@ -309,16 +309,9 @@ fn send_progress(
 /// # Arguments
 /// - `loader_version` - (Optional) The version of the loader to install.
 ///   Will pick the latest compatible one if not specified.
-/// - `instance_name` - The name of the instance to install to.
-///   `InstanceSelection::Instance(n)` for a client instance,
-///   `InstanceSelection::Server(n)` for a server instance.
-/// - `progress` - A channel to send progress updates to.
-/// - `is_quilt` - Whether to install Quilt instead of Fabric.
-///   As much as people want you to think, Quilt is almost
-///   identical to Fabric. So it's just a matter of changing the URL.
-///
-/// Returns the `is_quilt` bool (so that the launcher can remember
-/// whether quilt or fabric was installed)
+/// - `instance` - The instance (client/server) to install to
+/// - `progress` - (Optional) A channel to send progress updates to.
+/// - `backend` - Backend fabric implementation (Fabric/Quilt/Babric/OrnitheMC/...)
 pub async fn install(
     loader_version: Option<String>,
     instance: InstanceSelection,

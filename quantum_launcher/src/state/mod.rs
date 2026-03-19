@@ -87,6 +87,7 @@ pub struct Launcher {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum AutoSaveKind {
     LauncherConfig,
+    InstanceConfig,
     Jarmods,
 }
 
