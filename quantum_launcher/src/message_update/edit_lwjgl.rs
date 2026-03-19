@@ -108,7 +108,11 @@ impl Launcher {
                                 if instance_is_lwjgl3 != override_is_lwjgl3 {
                                     let msg = format!(
                                         "This instance uses {} LWJGL libraries, but you selected LWJGL {}.\n\nMix-matching major versions often crashes and may cause 404 downloads.\n\nContinue?",
-                                        if instance_is_lwjgl3 { "LWJGL 3.x" } else { "LWJGL 2.x" },
+                                        if instance_is_lwjgl3 {
+                                            "LWJGL 3.x"
+                                        } else {
+                                            "LWJGL 2.x"
+                                        },
                                         selected_version
                                     );
                                     return Ok(ApplyLwjglResult::NeedsConfirmation(msg));
@@ -139,7 +143,7 @@ impl Launcher {
                     *is_applying = false;
                     match result {
                         Ok(ApplyLwjglResult::Saved) => {
-                            return Task::done(Message::EditLwjgl(EditLwjglMessage::Back))
+                            return Task::done(Message::EditLwjgl(EditLwjglMessage::Back));
                         }
                         Ok(ApplyLwjglResult::NeedsConfirmation(msg)) => {
                             *mismatch_confirm = Some(msg);
@@ -147,7 +151,7 @@ impl Launcher {
                         Err(err) => {
                             return Task::done(Message::Error(format!(
                                 "Failed to apply LWJGL version: {err}"
-                            )))
+                            )));
                         }
                     }
                 }

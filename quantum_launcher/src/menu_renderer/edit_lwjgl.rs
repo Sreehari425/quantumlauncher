@@ -1,7 +1,7 @@
-use iced::{widget, Alignment, Length};
+use iced::{Alignment, Length, widget};
 
 use crate::{
-    menu_renderer::{back_button, Element},
+    menu_renderer::{Element, back_button},
     state::{EditLwjglMessage, MenuEditLwjgl, Message},
     stylesheet::styles::LauncherTheme,
 };

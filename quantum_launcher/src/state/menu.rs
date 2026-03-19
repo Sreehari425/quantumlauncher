@@ -69,7 +69,6 @@ pub enum LaunchModal {
     SRenamingFolder(FolderId, String, bool),
 }
 
-
 pub enum InstanceNotes {
     Viewing {
         content: String,
