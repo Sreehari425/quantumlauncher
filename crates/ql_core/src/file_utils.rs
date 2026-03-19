@@ -13,7 +13,6 @@ use reqwest::{Response, header::InvalidHeaderValue};
 use serde::de::DeserializeOwned;
 use thiserror::Error;
 use tokio::io::AsyncWriteExt;
-use tokio_util::io::StreamReader;
 use walkdir::WalkDir;
 use zip::{ZipArchive, ZipWriter, write::FileOptions};
 
@@ -227,66 +226,11 @@ pub async fn download_file_to_json<T: DeserializeOwned>(
 /// - Redirect loop detected
 /// - Redirect limit exhausted.
 pub async fn download_file_to_bytes(url: &str, user_agent: bool) -> Result<Vec<u8>, RequestError> {
-    async fn inner(url: &str, user_agent: bool) -> Result<Vec<u8>, RequestError> {
-        let mut get = CLIENT.get(url);
-        if user_agent {
-            get = get.header("User-Agent", "quantumlauncher");
-        }
-        let response = get.send().await?;
-        check_for_success(&response)?;
-        Ok(response.bytes().await?.to_vec())
+    let mut r = download(url);
+    if user_agent {
+        r = r.user_agent_ql();
     }
-
-    retry(|| async { inner(url, user_agent).await }).await
-}
-
-/// Downloads a file from the given URL and saves it to a path.
-///
-/// This uses `tokio` streams internally allowing for highly
-/// efficient downloading.
-///
-/// # Arguments
-/// - `url`: the URL to download from
-/// - `user_agent`: whether to use the quantum launcher
-///   user agent (required for modrinth)
-/// - `path`: the `&Path` to save the files to
-///
-/// # Errors
-/// Returns an error if:
-/// - Error sending request
-/// - Request is rejected (HTTP status code)
-/// - Redirect loop detected
-/// - Redirect limit exhausted.
-pub async fn download_file_to_path(
-    url: &str,
-    user_agent: bool,
-    path: impl AsRef<Path>,
-) -> Result<(), DownloadFileError> {
-    async fn inner(url: &str, user_agent: bool, path: &Path) -> Result<(), DownloadFileError> {
-        let mut get = CLIENT.get(url);
-        if user_agent {
-            get = get.header("User-Agent", "quantumlauncher");
-        }
-        let response = get.send().await?;
-        check_for_success(&response)?;
-
-        let stream = response
-            .bytes_stream()
-            .map(|n| n.map_err(std::io::Error::other));
-        let mut stream = StreamReader::new(stream);
-
-        if let Some(parent) = path.parent() {
-            if !parent.is_dir() {
-                tokio::fs::create_dir_all(&parent).await.path(parent)?;
-            }
-        }
-
-        let mut file = tokio::fs::File::create(&path).await.path(path)?;
-        tokio::io::copy(&mut stream, &mut file).await.path(path)?;
-        Ok(())
-    }
-
-    retry(|| async { inner(url, user_agent, path.as_ref()).await }).await
+    r.bytes().await
 }
 
 /// Downloads a file from the given URL and saves it to a path,
@@ -373,37 +317,6 @@ pub async fn download_file_to_path_with_progress(
     }
 
     retry(|| async { inner(url, user_agent, path, progress_sender, progress_label).await }).await
-}
-
-/// Downloads a file from the given URL into a `Vec<u8>`,
-/// with a custom user agent.
-///
-/// # Arguments
-/// - `url`: the URL to download from
-/// - `user_agent`: whether to use the quantum launcher
-///   user agent (required for modrinth)
-///
-/// # Errors
-/// Returns an error if:
-/// - Error sending request
-/// - Request is rejected (HTTP status code)
-/// - Redirect loop detected
-/// - Redirect limit exhausted.
-pub async fn download_file_to_bytes_with_agent(
-    url: &str,
-    user_agent: &str,
-) -> Result<Vec<u8>, RequestError> {
-    async fn inner(url: &str, user_agent: &str) -> Result<Vec<u8>, RequestError> {
-        let response = CLIENT
-            .get(url)
-            .header("User-Agent", user_agent)
-            .send()
-            .await?;
-        check_for_success(&response)?;
-        Ok(response.bytes().await?.to_vec())
-    }
-
-    retry(|| async { inner(url, user_agent).await }).await
 }
 
 /// # Errors

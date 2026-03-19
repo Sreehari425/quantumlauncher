@@ -79,22 +79,18 @@ pub struct InstanceConfigJson {
     ///
     /// **Default: `CombineGlobalLocal`**
     pub pre_launch_prefix_mode: Option<PreLaunchPrefixMode>,
-    /// **Client and Server**
-    /// Custom jar configuration for using alternative client/server jars.
-    /// Replaces default Minecraft jar while using assets from the configured version.
+    /// Use a custom client or server jar instead of the default Minecraft jar
+    /// (e.g., Cypress, Omniarchive).
+    /// Assets are still loaded from the selected version.
     ///
-    /// Useful for:
-    /// - Modified client jars (e.g., Cypress, Omniarchive)
-    /// - Custom modded or external jars
-    /// - Custom server implementations
+    /// Supports modified clients, external jars, and custom servers.
     ///
-    /// **Default: `None`** (uses official Minecraft jar)
+    /// Most of the time you're probably looking for a Jar Mod, not this.
     pub custom_jar: Option<CustomJarConfig>,
     /// Information related to the currently-installed
     /// version of the game
     pub version_info: Option<VersionInfo>,
     /// An override for the main class when launching the game.
-    /// Mainly only used for debugging purposes.
     pub main_class_override: Option<String>,
     /// Override LWJGL version for this instance.
     ///
@@ -103,7 +99,7 @@ pub struct InstanceConfigJson {
     /// - Minecraft 1.12.2 and below use LWJGL 2.x
     /// - Minecraft 1.13+ use LWJGL 3.x
     ///
-    // Since: 0.5.1
+    // Since: 0.5.2
     pub lwjgl_version: Option<String>,
 
     #[serde(flatten)]

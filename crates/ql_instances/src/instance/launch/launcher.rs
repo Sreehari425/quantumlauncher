@@ -5,7 +5,7 @@ use crate::{
 };
 use ql_core::{
     CLASSPATH_SEPARATOR, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError,
-    JsonFileError, LAUNCHER_DIR, Loader, err, file_utils, info,
+    JsonFileError, LAUNCHER_DIR, Loader, download, err, file_utils, info,
     json::{
         FabricJSON, GlobalSettings, InstanceConfigJson, JsonOptifine, V_1_5_2, V_1_12_2,
         V_PAULSCODE_LAST, V_PRECLASSIC_LAST, VersionDetails, forge, lwjgl, version::Library,
@@ -824,7 +824,7 @@ impl GameLauncher {
             module,
             classifier.map(|c| format!(" ({c})")).unwrap_or_default()
         );
-        file_utils::download_file_to_path(&url, false, dest_path).await?;
+        download(&url).path(dest_path).await?;
 
         // If this is a natives JAR, extract it
         if classifier.is_some() && classifier.unwrap().starts_with("natives-") {

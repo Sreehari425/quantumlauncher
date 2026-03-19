@@ -10,7 +10,9 @@ use owo_colors::OwoColorize;
 use ql_core::{
     DownloadProgress, IntoIoError, IoError,
     constants::*,
-    do_jobs, err, file_utils, info,
+    do_jobs, err,
+    file_utils::{self, exists},
+    info,
     json::{
         VersionDetails,
         version::{
@@ -34,15 +36,14 @@ async fn should_reextract_natives(
 ) -> Result<bool, IoError> {
     let version_file = natives_dir.join(".lwjgl_version");
 
-    if !natives_dir.exists() {
+    if !exists(natives_dir).await {
+        return Ok(true);
+    }
+    if !exists(&version_file).await {
         return Ok(true);
     }
 
-    if !version_file.exists() {
-        return Ok(true);
-    }
-
-    match tokio::fs::read_to_string(&version_file).await {
+    match fs::read_to_string(&version_file).await {
         Ok(current_version) => Ok(current_version.trim() != lwjgl_version),
         Err(_) => Ok(true), // If we can't read the file, re-extract
     }
@@ -51,7 +52,7 @@ async fn should_reextract_natives(
 /// Mark the natives directory with the current LWJGL version
 async fn mark_natives_version(natives_dir: &Path, lwjgl_version: &str) -> Result<(), IoError> {
     let version_file = natives_dir.join(".lwjgl_version");
-    tokio::fs::write(&version_file, lwjgl_version)
+    fs::write(&version_file, lwjgl_version)
         .await
         .path(version_file)?;
     Ok(())
@@ -262,7 +263,7 @@ impl GameDownloader {
 
         // Check if library already exists and verify integrity
         if lib_file_path.exists() {
-            if let Ok(existing_bytes) = tokio::fs::read(&lib_file_path).await {
+            if let Ok(existing_bytes) = fs::read(&lib_file_path).await {
                 // Verify size matches if available
                 if let Some(expected_size) = artifact.size.as_u64() {
                     if existing_bytes.len() as u64 == expected_size {
@@ -319,13 +320,9 @@ impl GameDownloader {
 
         // Clear old natives if version changed
         if natives_dir.exists() {
-            tokio::fs::remove_dir_all(&natives_dir)
-                .await
-                .path(&natives_dir)?;
+            fs::remove_dir_all(&natives_dir).await.path(&natives_dir)?;
         }
-        tokio::fs::create_dir_all(&natives_dir)
-            .await
-            .path(&natives_dir)?;
+        fs::create_dir_all(&natives_dir).await.path(&natives_dir)?;
 
         for (os, download) in classifiers {
             if os == "sources" {
