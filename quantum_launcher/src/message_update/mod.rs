@@ -618,6 +618,11 @@ impl Launcher {
                 Err(err) if err.contains("Timeout reached") => {
                     // The system is just lagging, nothing we can do
                 }
+                Err(err) if err.contains("org.freedesktop.portal.Error.NotFound") => {
+                    // User is on barebones desktop environment
+                    // that doesn't support light/dark mode.
+                    // eg: Raspberry Pi OS, LXDE, Openbox, etc
+                }
                 Err(err) => {
                     err!(no_log, "while loading system theme: {err}");
                 }
