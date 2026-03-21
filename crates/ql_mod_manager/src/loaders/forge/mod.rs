@@ -1,16 +1,16 @@
 use error::Is404NotFound;
 use owo_colors::OwoColorize;
 use ql_core::{
-    do_jobs, download, err, file_utils, info,
+    CLASSPATH_SEPARATOR, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError,
+    Loader, Progress, do_jobs, download, err, file_utils, info,
     json::{
+        VersionDetails,
         forge::{JsonDetails, JsonDetailsLibrary, JsonInstallProfile, JsonVersions},
         instance_config::ModTypeInfo,
-        VersionDetails,
     },
-    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError, Loader, Progress,
-    CLASSPATH_SEPARATOR,
+    pt,
 };
-use ql_java_handler::{get_java_binary, JavaVersion, JAVA};
+use ql_java_handler::{JAVA, JavaVersion, get_java_binary};
 use std::sync::Mutex;
 use std::{
     fmt::Write,
@@ -21,7 +21,7 @@ use std::{
 };
 use tokio::fs;
 
-use crate::loaders::{change_instance_type, FORGE_INSTALLER_CLIENT, FORGE_INSTALLER_SERVER};
+use crate::loaders::{FORGE_INSTALLER_CLIENT, FORGE_INSTALLER_SERVER, change_instance_type};
 
 mod error;
 mod server;
@@ -192,8 +192,7 @@ impl ForgeInstaller {
                 // 1.12 - 1.18
                 format!(
                     "../forge/libraries/net/minecraftforge/forge/{}/forge-{}.jar{CLASSPATH_SEPARATOR}",
-                    self.short_version,
-                    self.short_version
+                    self.short_version, self.short_version
                 )
             } else {
                 // 1.18.1+

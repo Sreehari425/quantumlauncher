@@ -1,7 +1,7 @@
 use crate::{
     icons,
     menu_renderer::{
-        button_with_icon, checkered_list, settings::PREFIX_EXPLANATION, tsubtitle, FONT_MONO,
+        FONT_MONO, button_with_icon, checkered_list, settings::PREFIX_EXPLANATION, tsubtitle,
     },
     state::{
         CustomJarState, EditInstanceMessage, ListMessage, MenuEditInstance, Message, NONE_JAR_NAME,
@@ -9,16 +9,16 @@ use crate::{
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
 use iced::{
-    widget::{self, column, horizontal_space, row},
     Alignment, Length,
+    widget::{self, column, horizontal_space, row},
 };
 use ql_core::InstanceSelection;
 use ql_core::{
-    json::{
-        instance_config::{MainClassMode, PreLaunchPrefixMode},
-        GlobalSettings,
-    },
     JavaVersion,
+    json::{
+        GlobalSettings,
+        instance_config::{MainClassMode, PreLaunchPrefixMode},
+    },
 };
 
 use super::Element;
@@ -74,9 +74,11 @@ impl MenuEditInstance {
         selected_instance: &InstanceSelection,
     ) -> widget::Column<'_, Message, LauncherTheme> {
         column![
-            row![widget::text(selected_instance.get_name().to_owned())
-                .size(20)
-                .font(FONT_MONO)]
+            row![
+                widget::text(selected_instance.get_name().to_owned())
+                    .size(20)
+                    .font(FONT_MONO)
+            ]
             .push_maybe(
                 (!self.is_editing_name).then_some(
                     widget::button(
@@ -435,8 +437,10 @@ fn item_footer(
         ]
         .spacing(10),
         InstanceSelection::Server(_) => {
-            column![button_with_icon(icons::bin(), "Delete Server", 16)
-                .on_press(Message::DeleteInstanceMenu)]
+            column![
+                button_with_icon(icons::bin(), "Delete Server", 16)
+                    .on_press(Message::DeleteInstanceMenu)
+            ]
         }
     }
 }

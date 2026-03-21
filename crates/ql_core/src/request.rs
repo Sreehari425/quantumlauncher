@@ -3,7 +3,7 @@ use reqwest::Response;
 use tokio_util::io::StreamReader;
 
 use crate::{
-    retry, DownloadFileError, IntoIoError, IntoJsonError, JsonDownloadError, RequestError, CLIENT,
+    CLIENT, DownloadFileError, IntoIoError, IntoJsonError, JsonDownloadError, RequestError, retry,
 };
 
 #[must_use]

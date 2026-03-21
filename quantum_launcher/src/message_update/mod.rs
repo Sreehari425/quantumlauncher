@@ -3,11 +3,11 @@ use std::path::Path;
 use frostmark::MarkState;
 use iced::futures::executor::block_on;
 use iced::widget::text_editor;
-use iced::{widget::scrollable::AbsoluteOffset, Task};
-use ql_core::{err, InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion};
+use iced::{Task, widget::scrollable::AbsoluteOffset};
+use ql_core::{InstanceSelection, IntoStringError, Loader, ModId, OptifineUniqueVersion, err};
 use ql_mod_manager::{
     loaders,
-    store::{get_description, QueryType},
+    store::{QueryType, get_description},
 };
 
 mod accounts;
@@ -551,7 +551,11 @@ impl Launcher {
                 self.confirm_clear_java_installs();
             }
             LauncherSettingsMessage::ClearJavaInstallsConfirm => {
-                return Task::perform(ql_instances::delete_java_installs(), |()| Message::Nothing);
+                return Task::perform(ql_instances::delete_java_installs(), |()| {
+                    Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(
+                        state::LauncherSettingsTab::Internal,
+                    ))
+                });
             }
             LauncherSettingsMessage::ChangeTab(tab) => {
                 self.go_to_launcher_settings();
@@ -613,6 +617,11 @@ impl Launcher {
                 }
                 Err(err) if err.contains("Timeout reached") => {
                     // The system is just lagging, nothing we can do
+                }
+                Err(err) if err.contains("org.freedesktop.portal.Error.NotFound") => {
+                    // User is on barebones desktop environment
+                    // that doesn't support light/dark mode.
+                    // eg: Raspberry Pi OS, LXDE, Openbox, etc
                 }
                 Err(err) => {
                     err!(no_log, "while loading system theme: {err}");

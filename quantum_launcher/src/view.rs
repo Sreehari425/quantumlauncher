@@ -1,15 +1,15 @@
-use iced::{widget, Alignment, Length};
+use iced::{Alignment, Length, widget};
 
 use crate::{
+    DEBUG_LOG_BUTTON_HEIGHT,
     config::UiWindowDecorations,
     icons,
     menu_renderer::{
-        button_with_icon, changelog, tooltip, view_account_login, view_confirm, view_error,
-        view_log_upload_result, Element, FONT_MONO,
+        Element, FONT_MONO, tooltip, view_account_login, view_changelog, view_confirm, view_error,
+        view_log_upload_result,
     },
     state::{Launcher, Message, State, WindowMessage},
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
-    DEBUG_LOG_BUTTON_HEIGHT,
 };
 
 impl Launcher {
@@ -121,25 +121,7 @@ impl Launcher {
             State::ModsDownload(menu) => menu.view(&self.images, self.tick_timer),
             State::LauncherSettings(menu) => menu.view(&self.config),
             State::InstallPaper(menu) => menu.view(self.tick_timer),
-            State::ChangeLog => {
-                let back_msg = Message::MScreenOpen {
-                    message: None,
-                    clear_selection: true,
-                    is_server: None,
-                };
-                widget::scrollable(
-                    widget::column!(
-                        button_with_icon(icons::back(), "Skip", 16).on_press(back_msg.clone()),
-                        changelog(&self.config),
-                        button_with_icon(icons::back(), "Continue", 16).on_press(back_msg),
-                    )
-                    .padding(10)
-                    .spacing(10),
-                )
-                .style(LauncherTheme::style_scrollable_flat_extra_dark)
-                .height(Length::Fill)
-                .into()
-            }
+            State::ChangeLog => view_changelog(),
             State::Welcome(menu) => menu.view(&self.config),
             State::EditJarMods(menu) => menu.view(self.instance()),
             State::ImportModpack(progress) => {
@@ -152,7 +134,6 @@ impl Launcher {
                 view_log_upload_result(url, self.instance().is_server())
             }
             State::CreateShortcut(menu) => menu.view(&self.accounts_dropdown),
-
             State::LoginAlternate(menu) => menu.view(self.tick_timer),
             State::ExportInstance(menu) => menu.view(self.tick_timer),
 
@@ -205,14 +186,16 @@ impl Launcher {
 
         fn win_button(icon: widget::Text<'_, LauncherTheme>, m: Message) -> Element<'_> {
             widget::mouse_area(
-                widget::row![widget::button(
-                    widget::row![icon.style(|t: &LauncherTheme| t.style_text(Color::Mid))]
-                        .align_y(Alignment::Center)
-                        .padding([4, 10]),
-                )
-                .padding(0)
-                .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
-                .on_press(m.clone())]
+                widget::row![
+                    widget::button(
+                        widget::row![icon.style(|t: &LauncherTheme| t.style_text(Color::Mid))]
+                            .align_y(Alignment::Center)
+                            .padding([4, 10]),
+                    )
+                    .padding(0)
+                    .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
+                    .on_press(m.clone())
+                ]
                 .height(Length::Fill)
                 .align_y(Alignment::Center)
                 .padding([3.0, 1.5]),

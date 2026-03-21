@@ -8,7 +8,7 @@ use std::{
 use chrono::{Datelike, Timelike};
 use regex::Regex;
 
-use crate::{eeprintln, file_utils, REDACT_SENSITIVE_INFO};
+use crate::{REDACT_SENSITIVE_INFO, eeprintln, file_utils};
 
 pub mod macros;
 
@@ -36,11 +36,17 @@ pub static REDACTION_USERNAME: LazyLock<(Vec<String>, String)> = LazyLock::new(|
 /// This is called by all logging macros to ensure no username/path exposure.
 pub fn auto_redact(message: &str) -> String {
     let mut redacted = message.to_string();
-    if *REDACT_SENSITIVE_INFO.lock().unwrap() {
-        let (home_dir, username) = &*REDACTION_USERNAME;
-        if home_dir.iter().any(|n| message.contains(n)) {
-            redacted = redacted.replace(username, "[REDACTED]");
+
+    // If redacting turned off, just continue
+    if let Ok(should_redact) = REDACT_SENSITIVE_INFO.lock() {
+        if !*should_redact {
+            return redacted;
         }
+    }
+
+    let (home_dir, username) = &*REDACTION_USERNAME;
+    if home_dir.iter().any(|n| message.contains(n)) {
+        redacted = redacted.replace(username, "[REDACTED]");
     }
     redacted
 }

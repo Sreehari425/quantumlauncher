@@ -1,9 +1,9 @@
 use std::{collections::HashMap, path::Path, sync::mpsc::Sender};
 
 use ql_core::{
-    do_jobs, download,
+    GenericProgress, InstanceSelection, Loader, do_jobs, download,
     json::{InstanceConfigJson, VersionDetails},
-    pt, GenericProgress, InstanceSelection, Loader,
+    pt,
 };
 use serde::Deserialize;
 use tokio::sync::Mutex;

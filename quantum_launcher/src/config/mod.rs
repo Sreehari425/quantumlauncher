@@ -1,12 +1,12 @@
 use crate::config::sidebar::{InstanceKind, SidebarConfig, SidebarNode, SidebarNodeKind};
 use crate::stylesheet::styles::{LauncherTheme, LauncherThemeColor, LauncherThemeLightness};
 use crate::{WINDOW_HEIGHT, WINDOW_WIDTH};
-use ql_core::json::GlobalSettings;
 use ql_core::ListEntryKind;
+use ql_core::json::GlobalSettings;
 use ql_core::{
-    err, IntoIoError, IntoJsonError, JsonFileError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
+    IntoIoError, IntoJsonError, JsonFileError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME, err,
 };
-use ql_instances::auth::AccountData;
+use ql_instances::auth::{AccountData, AccountType};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::{collections::HashMap, path::Path};
@@ -157,7 +157,9 @@ impl LauncherConfig {
         let mut config: Self = match serde_json::from_str(&config) {
             Ok(config) => config,
             Err(err) => {
-                err!("Invalid launcher config! This may be a sign of corruption! Please report if this happens to you.\nError: {err}");
+                err!(
+                    "Invalid launcher config! This may be a sign of corruption! Please report if this happens to you.\nError: {err}"
+                );
                 let old_path = LAUNCHER_DIR.join("config.json.bak");
                 _ = std::fs::copy(&config_path, &old_path);
                 return LauncherConfig::create(&config_path);
@@ -288,35 +290,40 @@ impl LauncherConfig {
     pub fn c_idle_fps(&self) -> u64 {
         const IDLE_FPS: u64 = 6;
 
-        self.ui
+        let i = self
+            .ui
             .as_ref()
             .and_then(|n| n.idle_fps)
-            .unwrap_or(IDLE_FPS)
+            .unwrap_or(IDLE_FPS);
+
+        if i > 0 {
+            i
+        } else {
+            debug_assert!(false, "idle FPS shouldn't be zero");
+            IDLE_FPS
+        }
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ConfigAccount {
-    /// UUID of the Minecraft account. Stored as a string without dashes.
+    /// UUID of the Minecraft account. Stored as string without dashes
     ///
-    /// Example: `2553495fc9094d40a82646cfc92cd7a5`
+    /// Eg: `2553495fc9094d40a82646cfc92cd7a5`
     ///
     /// A UUID is like an alternate username that can be used to identify
     /// an account. Unlike a username it can't be changed, so it's useful for
-    /// dealing with account data in a stable manner.
+    /// dealing with accounts in a stable manner.
     ///
     /// You can find someone's UUID through many online services where you
     /// input their username.
     pub uuid: String,
+
     /// Currently unimplemented, does nothing.
     pub skin: Option<String>, // TODO: Add skin visualization?
 
-    /// Type of account:
-    ///
-    /// - `"Microsoft"`
-    /// - `"ElyBy"`
-    /// - `"LittleSkin"`
-    pub account_type: Option<String>,
+    /// Type of account (default: `Microsoft`)
+    pub account_type: Option<AccountType>,
 
     /// The original login identifier used for keyring operations.
     /// This is the email address or username that was used during login.
@@ -344,11 +351,23 @@ impl ConfigAccount {
         Self {
             uuid: data.uuid.clone(),
             skin: None,
-            account_type: Some(data.account_type.to_string()),
+            account_type: Some(data.account_type),
             keyring_identifier: Some(data.username.clone()),
             username_nice: Some(data.nice_username.clone()),
             _extra: HashMap::new(),
         }
+    }
+
+    pub fn get_keyring_identifier<'a>(&'a self, key_username: &'a str) -> &'a str {
+        self.keyring_identifier.as_deref().unwrap_or_else(|| {
+            // Fallback to old behavior for backwards compatibility
+            match self.account_type.unwrap_or_default() {
+                AccountType::ElyBy => key_username.strip_suffix(" (elyby)"),
+                AccountType::LittleSkin => key_username.strip_suffix(" (littleskin)"),
+                AccountType::Microsoft => Some(key_username),
+            }
+            .unwrap_or(key_username)
+        })
     }
 }
 

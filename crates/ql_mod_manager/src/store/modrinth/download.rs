@@ -6,14 +6,14 @@ use std::{
 
 use chrono::DateTime;
 use ql_core::{
-    download, err, file_utils, info, json::VersionDetails, pt, GenericProgress, InstanceSelection,
+    GenericProgress, InstanceSelection, StoreBackendType, download, err, file_utils, info,
+    json::VersionDetails, pt,
 };
 
 use crate::store::{
-    install_modpack,
+    DirStructure, ModError, QueryType, install_modpack,
     local_json::{ModConfig, ModIndex},
     modrinth::versions::ModVersion,
-    DirStructure, ModError, QueryType, SOURCE_ID_MODRINTH,
 };
 
 use super::info::ProjectInfo;
@@ -275,7 +275,7 @@ impl ModDownloader {
             enabled: true,
             installed_version: download_version.version_number.clone(),
             version_release_time: download_version.date_published.clone(),
-            project_source: SOURCE_ID_MODRINTH.to_owned(),
+            project_source: StoreBackendType::Modrinth,
         };
 
         if let QueryType::Mods = project_type {

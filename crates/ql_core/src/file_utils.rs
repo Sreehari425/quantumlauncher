@@ -2,7 +2,7 @@ use std::{
     collections::HashSet,
     ffi::OsStr,
     io::{Cursor, Write},
-    path::{Path, PathBuf, MAIN_SEPARATOR},
+    path::{MAIN_SEPARATOR, Path, PathBuf},
     sync::LazyLock,
 };
 
@@ -10,9 +10,9 @@ use reqwest::header::InvalidHeaderValue;
 use serde::de::DeserializeOwned;
 use thiserror::Error;
 use walkdir::WalkDir;
-use zip::{write::FileOptions, ZipArchive, ZipWriter};
+use zip::{ZipArchive, ZipWriter, write::FileOptions};
 
-use crate::{download, error::IoError, IntoIoError, JsonDownloadError};
+use crate::{IntoIoError, JsonDownloadError, download, error::IoError};
 
 /// The path to the QuantumLauncher root folder.
 ///

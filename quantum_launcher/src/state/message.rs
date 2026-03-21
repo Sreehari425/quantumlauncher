@@ -8,18 +8,18 @@ use crate::{
 };
 use iced::widget::{self, scrollable::AbsoluteOffset};
 use ql_core::{
+    InstanceSelection, LaunchedProcess, ListEntry, Loader, ModId, StoreBackendType,
     file_utils::DirItem,
     jarmod::JarMods,
     json::instance_config::{MainClassMode, PreLaunchPrefixMode},
     read_log::Diagnostic,
-    InstanceSelection, LaunchedProcess, ListEntry, Loader, ModId, StoreBackendType,
 };
 use ql_instances::{
-    auth::{
-        ms::{AuthCodeResponse, AuthTokenResponse},
-        AccountData, AccountType,
-    },
     UpdateCheckInfo,
+    auth::{
+        AccountData, AccountType,
+        ms::{AuthCodeResponse, AuthTokenResponse},
+    },
 };
 use ql_mod_manager::{
     loaders::{fabric, paper::PaperVersion},
@@ -357,7 +357,11 @@ pub enum GameLogMessage {
 #[derive(Debug, Clone)]
 pub enum SidebarMessage {
     Resize(f32),
-    Scroll(f32),
+    Scroll {
+        total: f32,
+        offset: f32,
+        bounds: iced::Rectangle,
+    },
     FolderRenameConfirm,
 
     NewFolder(Option<SidebarSelection>),

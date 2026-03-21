@@ -1,12 +1,13 @@
 use std::{
     path::{Path, PathBuf},
-    sync::{mpsc::Sender, Mutex},
+    sync::{Mutex, mpsc::Sender},
 };
 
 use ql_core::{
-    do_jobs, download, info,
-    json::{instance_config::ModTypeInfo, FabricJSON, VersionDetails, V_1_12_2},
-    pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, Loader, LAUNCHER_DIR,
+    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, LAUNCHER_DIR, Loader, do_jobs,
+    download, info,
+    json::{FabricJSON, V_1_12_2, VersionDetails, instance_config::ModTypeInfo},
+    pt,
 };
 use version_compare::compare_versions;
 
@@ -23,8 +24,8 @@ mod version_compare;
 mod version_list;
 
 pub use version_list::{
-    get_list_of_versions, get_list_of_versions_from_backend, BackendType, FabricVersion,
-    FabricVersionList, FabricVersionListItem,
+    BackendType, FabricVersion, FabricVersionList, FabricVersionListItem, get_list_of_versions,
+    get_list_of_versions_from_backend,
 };
 
 const CURSED_LEGACY_JSON: &str =
@@ -234,8 +235,12 @@ async fn get_fabric_json(
         } else {
             "fabric"
         };
-        let url1 = format!("https://meta.ornithemc.net/v3/versions/{fq}-loader/{game_version}/{loader_version}/{implementation}/json");
-        let url2 = format!("https://meta.ornithemc.net/v3/versions/{fq}-loader/{game_version}-{implementation_kind}/{loader_version}/{implementation}/json");
+        let url1 = format!(
+            "https://meta.ornithemc.net/v3/versions/{fq}-loader/{game_version}/{loader_version}/{implementation}/json"
+        );
+        let url2 = format!(
+            "https://meta.ornithemc.net/v3/versions/{fq}-loader/{game_version}-{implementation_kind}/{loader_version}/{implementation}/json"
+        );
 
         match download(&url1).string().await {
             Ok(n) => n,
@@ -304,16 +309,9 @@ fn send_progress(
 /// # Arguments
 /// - `loader_version` - (Optional) The version of the loader to install.
 ///   Will pick the latest compatible one if not specified.
-/// - `instance_name` - The name of the instance to install to.
-///   `InstanceSelection::Instance(n)` for a client instance,
-///   `InstanceSelection::Server(n)` for a server instance.
-/// - `progress` - A channel to send progress updates to.
-/// - `is_quilt` - Whether to install Quilt instead of Fabric.
-///   As much as people want you to think, Quilt is almost
-///   identical to Fabric. So it's just a matter of changing the URL.
-///
-/// Returns the `is_quilt` bool (so that the launcher can remember
-/// whether quilt or fabric was installed)
+/// - `instance` - The instance (client/server) to install to
+/// - `progress` - (Optional) A channel to send progress updates to.
+/// - `backend` - Backend fabric implementation (Fabric/Quilt/Babric/OrnitheMC/...)
 pub async fn install(
     loader_version: Option<String>,
     instance: InstanceSelection,

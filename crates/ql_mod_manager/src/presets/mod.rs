@@ -6,15 +6,15 @@ use std::{
 
 use owo_colors::OwoColorize;
 use ql_core::{
-    err, info,
+    InstanceSelection, IntoIoError, IntoJsonError, LAUNCHER_VERSION_NAME, Loader, ModId,
+    SelectedMod, err, info,
     json::{InstanceConfigJson, VersionDetails},
-    pt, InstanceSelection, IntoIoError, IntoJsonError, Loader, ModId, SelectedMod,
-    LAUNCHER_VERSION_NAME,
+    pt,
 };
 use serde::{Deserialize, Serialize};
 use zip::ZipWriter;
 
-use crate::store::{install_modpack, ModConfig, ModError, ModIndex};
+use crate::store::{ModConfig, ModError, ModIndex, install_modpack};
 
 #[must_use]
 #[derive(Debug, Clone, Default)]
@@ -202,7 +202,9 @@ impl Preset {
                         if !n.is_empty() {
                             let incompatible =
                                 n.iter().map(|n| n.name.as_str()).collect::<Vec<_>>();
-                            err!("Curseforge has blocked downloading these mods: {incompatible:?}\n\nPlease install them manually");
+                            err!(
+                                "Curseforge has blocked downloading these mods: {incompatible:?}\n\nPlease install them manually"
+                            );
                         }
                         Ok(PresetOutput::default())
                     }

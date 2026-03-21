@@ -1,15 +1,15 @@
 use tokio::{fs, task::spawn_blocking};
 use windows::{
-    core::{Interface, HSTRING},
     Win32::{
-        System::Com::{CoCreateInstance, CoTaskMemFree, IPersistFile, CLSCTX_INPROC_SERVER},
+        System::Com::{CLSCTX_INPROC_SERVER, CoCreateInstance, CoTaskMemFree, IPersistFile},
         UI::Shell::{
-            FOLDERID_Programs, IShellLinkW, SHGetKnownFolderPath, ShellLink, KNOWN_FOLDER_FLAG,
+            FOLDERID_Programs, IShellLinkW, KNOWN_FOLDER_FLAG, SHGetKnownFolderPath, ShellLink,
         },
     },
+    core::{HSTRING, Interface},
 };
 
-use crate::{os::windows::comguard::ComGuard, Shortcut};
+use crate::{Shortcut, os::windows::comguard::ComGuard};
 use std::path::{Path, PathBuf};
 
 mod comguard;

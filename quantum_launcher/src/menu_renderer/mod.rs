@@ -1,11 +1,11 @@
 use iced::{
-    widget::{self, column, row, tooltip::Position},
     Alignment, Length,
+    widget::{self, column, row, tooltip::Position},
 };
 use ql_core::{Progress, WEBSITE};
 use ql_instances::auth::AccountType;
 
-use crate::stylesheet::styles::{LauncherThemeLightness, BORDER_RADIUS, BORDER_WIDTH};
+use crate::stylesheet::styles::{BORDER_RADIUS, BORDER_WIDTH, LauncherThemeLightness};
 use crate::{
     config::LauncherConfig,
     icons,
@@ -592,4 +592,24 @@ fn style_button_color(
         border,
         ..Default::default()
     }
+}
+
+pub fn view_changelog() -> Element<'static> {
+    let back_msg = Message::MScreenOpen {
+        message: None,
+        clear_selection: true,
+        is_server: None,
+    };
+    widget::scrollable(
+        widget::column!(
+            button_with_icon(icons::back(), "Skip", 16).on_press(back_msg.clone()),
+            changelog(),
+            button_with_icon(icons::back(), "Continue", 16).on_press(back_msg),
+        )
+        .padding(10)
+        .spacing(10),
+    )
+    .style(LauncherTheme::style_scrollable_flat_extra_dark)
+    .height(Length::Fill)
+    .into()
 }

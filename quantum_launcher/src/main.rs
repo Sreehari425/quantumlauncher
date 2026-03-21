@@ -28,9 +28,9 @@ use std::{borrow::Cow, time::Duration};
 use config::LauncherConfig;
 use iced::{Settings, Task};
 use owo_colors::OwoColorize;
-use state::{get_entries, Launcher, Message};
+use state::{Launcher, Message, get_entries};
 
-use ql_core::{constants::OS_NAME, err, file_utils, info, pt, IntoStringError, JsonFileError};
+use ql_core::{IntoStringError, JsonFileError, constants::OS_NAME, err, file_utils, info, pt};
 
 use crate::{
     menu_renderer::FONT_DEFAULT,
@@ -130,7 +130,7 @@ impl Launcher {
 
     #[allow(clippy::unused_self)]
     fn subscription(&self) -> iced::Subscription<Message> {
-        let tick = iced::time::every(Duration::from_millis(1000 / self.config.c_idle_fps()))
+        let tick = iced::time::every(Duration::from_millis(1000 / self.tick_interval()))
             .map(|_| Message::CoreTick);
         let events = iced::event::listen_with(|a, b, _| Some(Message::CoreEvent(a, b)));
 
@@ -272,8 +272,8 @@ fn load_fonts() -> Vec<Cow<'static, [u8]>> {
 /// Basically Linux-default behavior.
 #[cfg(windows)]
 fn attach_to_console() {
-    use windows::Win32::System::Console::AttachConsole;
     use windows::Win32::System::Console::ATTACH_PARENT_PROCESS;
+    use windows::Win32::System::Console::AttachConsole;
 
     unsafe {
         // No one cares if it fails. Ignore the `Result<()>`
@@ -324,7 +324,9 @@ fn do_migration() {
         } else if let Err(e) = file_utils::create_symlink(&new_dir, &legacy_dir) {
             eprintln!("Migration successful but couldn't create symlink to the legacy dir: {e}");
         } else {
-            println!("Migration successful!\nYour launcher files are now in ~./local/share/QuantumLauncher");
+            println!(
+                "Migration successful!\nYour launcher files are now in ~./local/share/QuantumLauncher"
+            );
         }
     }
 }

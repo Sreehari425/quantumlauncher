@@ -8,13 +8,13 @@ use crate::state::{
     State,
 };
 use iced::{
-    keyboard::{self, key::Named, Key},
     Task,
+    keyboard::{self, Key, key::Named},
 };
 use ql_core::{
-    err,
+    InstanceSelection, err,
     jarmod::{JarMod, JarMods},
-    pt, InstanceSelection,
+    pt,
 };
 use std::ffi::OsStr;
 use std::path::Path;
@@ -458,7 +458,7 @@ impl Launcher {
             let State::Launch(menu) = &self.state else {
                 return Task::none();
             };
-            (menu.is_viewing_server, menu.sidebar_scrolled)
+            (menu.is_viewing_server, menu.sidebar_scroll_total)
         };
         let list = if is_viewing_server {
             self.server_list.clone()

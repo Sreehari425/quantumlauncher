@@ -1,10 +1,10 @@
 use std::{fmt::Display, path::PathBuf, process::exit};
 
 use clap::Parser;
-use ql_core::{do_jobs, eeprintln, print::LogConfig, ListEntry, Loader, LAUNCHER_DIR};
+use ql_core::{LAUNCHER_DIR, ListEntry, Loader, do_jobs, eeprintln, print::LogConfig};
 use ql_instances::DownloadError;
 
-use crate::version::{Version, VERSIONS_LWJGL2, VERSIONS_LWJGL3};
+use crate::version::{VERSIONS_LWJGL2, VERSIONS_LWJGL3, Version};
 
 mod launch;
 mod search;

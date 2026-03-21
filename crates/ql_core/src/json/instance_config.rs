@@ -6,8 +6,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    InstanceSelection, IntoIoError, IntoJsonError, JsonFileError, Loader,
-    DEFAULT_RAM_MB_FOR_INSTANCE,
+    DEFAULT_RAM_MB_FOR_INSTANCE, InstanceSelection, IntoIoError, IntoJsonError, JsonFileError,
+    Loader,
 };
 
 /// Configuration for a specific instance.
@@ -29,7 +29,7 @@ pub struct InstanceConfigJson {
     // Since: v0.1
     pub mod_type: Loader,
     /// More metadata about the mod type
-    // Since: v0.5
+    // Since: v0.5.0
     pub mod_type_info: Option<ModTypeInfo>,
 
     /// Use a different **launcher-provided** java version.

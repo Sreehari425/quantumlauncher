@@ -1,6 +1,6 @@
 use tokio::{fs, process::Command};
 
-use crate::{make_filename_safe, Shortcut};
+use crate::{Shortcut, make_filename_safe};
 use std::path::{Path, PathBuf};
 
 /// Fetches path to the Applications folder
@@ -20,6 +20,8 @@ pub async fn create(shortcut: &Shortcut, path: impl AsRef<Path>) -> std::io::Res
     Ok(())
 }
 
+const SHIM: &[u8] = include_bytes!("../../../../assets/binaries/macos_shortcut/shortcut");
+
 async fn create_inner(shortcut: &Shortcut, path: &Path) -> std::io::Result<PathBuf> {
     let path = if path.extension().is_some_and(|n| n == "app") {
         path.to_owned()
@@ -34,8 +36,6 @@ async fn create_inner(shortcut: &Shortcut, path: &Path) -> std::io::Result<PathB
     fs::create_dir_all(&exec_dir).await?;
     fs::create_dir_all(&contents.join("Resources")).await?;
 
-    let exec_path = exec_dir.join("ql_shortcut");
-
     let script = format!(
         r#"#!/usr/bin/env sh
 
@@ -44,9 +44,8 @@ exec {:?} {}
         shortcut.exec,
         shortcut.get_formatted_args()
     );
-    fs::write(&exec_path, &script).await?;
-    use std::os::unix::fs::PermissionsExt;
-    fs::set_permissions(&exec_path, std::fs::Permissions::from_mode(0o755)).await?;
+    create_exec(&exec_dir.join("ql_shortcut"), script.as_bytes()).await?;
+    create_exec(&exec_dir.join("shortcut"), SHIM).await?;
 
     let info_plist = format!(
         r#"<?xml version="1.0" encoding="UTF-8" ?>
@@ -55,7 +54,7 @@ exec {:?} {}
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>ql_shortcut</string>
+    <string>shortcut</string>
     <key>CFBundleIdentifier</key>
     <string>io.github.Mrmayman.QLShortcut_{sanitized}</string>
     <key>CFBundleInfoDictionaryVersion</key>
@@ -90,6 +89,13 @@ exec {:?} {}
     _ = Command::new("xattr").arg("-rc").arg(&path).spawn();
 
     Ok(path)
+}
+
+async fn create_exec(path: &Path, contents: &[u8]) -> Result<(), std::io::Error> {
+    use std::os::unix::fs::PermissionsExt;
+    fs::write(&path, &contents).await?;
+    fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).await?;
+    Ok(())
 }
 
 pub async fn create_in_applications(shortcut: &Shortcut) -> std::io::Result<()> {

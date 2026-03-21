@@ -1,12 +1,13 @@
 use std::fmt::{Display, Formatter};
 use std::path::Path;
 
-use ql_core::{download, impl_3_errs_jri};
 use ql_core::{
-    file_utils, info,
-    json::{instance_config::ModTypeInfo, VersionDetails},
-    pt, IntoIoError, IntoJsonError, IoError, JsonError, Loader, RequestError, LAUNCHER_DIR,
+    IntoIoError, IntoJsonError, IoError, JsonError, LAUNCHER_DIR, Loader, RequestError, file_utils,
+    info,
+    json::{VersionDetails, instance_config::ModTypeInfo},
+    pt,
 };
+use ql_core::{download, impl_3_errs_jri};
 use serde::Deserialize;
 use thiserror::Error;
 

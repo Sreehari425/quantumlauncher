@@ -2,8 +2,8 @@ use std::{collections::HashSet, fmt::Display, path::PathBuf, sync::mpsc::Sender,
 
 use chrono::DateTime;
 use ql_core::{
-    json::VersionDetails, GenericProgress, InstanceSelection, IntoIoError, Loader, ModId,
-    StoreBackendType,
+    GenericProgress, InstanceSelection, IntoIoError, Loader, ModId, StoreBackendType,
+    json::VersionDetails,
 };
 
 mod add_file;
@@ -22,16 +22,13 @@ pub use add_file::add_files;
 pub use curseforge::CurseforgeBackend;
 pub use delete::delete_mods;
 pub use error::{GameExpectation, ModError};
-pub use image::{download_image, ImageResult};
+pub use image::{ImageResult, download_image};
 pub use local_json::{ModConfig, ModFile, ModIndex};
-pub use modpack::{install_modpack, PackError};
+pub use modpack::{PackError, install_modpack};
 pub use modrinth::ModrinthBackend;
-pub use recommended::{RecommendedMod, RECOMMENDED_MODS};
+pub use recommended::{RECOMMENDED_MODS, RecommendedMod};
 pub use toggle::{flip_filename, toggle_mods, toggle_mods_local};
 pub use update::{apply_updates, check_for_updates};
-
-pub const SOURCE_ID_MODRINTH: &str = "modrinth";
-pub const SOURCE_ID_CURSEFORGE: &str = "curseforge";
 
 #[allow(async_fn_in_trait)]
 pub trait Backend {

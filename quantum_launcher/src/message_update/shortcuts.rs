@@ -1,9 +1,9 @@
 use ezshortcut::Shortcut;
 use iced::Task;
-use ql_core::{info, IntoStringError, LAUNCHER_DIR};
+use ql_core::{IntoStringError, LAUNCHER_DIR, info};
 
 use crate::state::{
-    Launcher, MenuShortcut, Message, ShortcutMessage, State, NEW_ACCOUNT_NAME, OFFLINE_ACCOUNT_NAME,
+    Launcher, MenuShortcut, Message, NEW_ACCOUNT_NAME, OFFLINE_ACCOUNT_NAME, ShortcutMessage, State,
 };
 
 macro_rules! iflet {
@@ -95,7 +95,6 @@ impl Launcher {
             ShortcutMessage::Done(result) => {
                 result?;
                 info!("Created shortcut");
-                // TODO: keep track of created shortcuts
             }
         }
         Ok(Task::none())
@@ -155,7 +154,14 @@ impl Launcher {
         if menu.account == OFFLINE_ACCOUNT_NAME {
             shortcut.exec_args.push(menu.account_offline.clone());
         } else {
-            shortcut.exec_args.push(menu.account.clone());
+            if let Some(acc) = self.accounts.get(&menu.account) {
+                shortcut.exec_args.push(acc.nice_username.clone());
+                shortcut.exec_args.push("--account-type".to_owned());
+                shortcut.exec_args.push(acc.account_type.to_string());
+            } else {
+                shortcut.exec_args.push(menu.account.clone());
+            }
+
             shortcut.exec_args.push("-u".to_owned());
         }
 
