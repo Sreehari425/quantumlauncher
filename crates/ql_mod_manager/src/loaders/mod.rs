@@ -3,8 +3,9 @@ use std::path::Path;
 
 use crate::loaders::paper::PaperVer;
 use ql_core::{
-    pipe_progress, GenericProgress, InstanceSelection, IntoStringError, JsonFileError, Loader,
+    GenericProgress, InstanceSelection, IntoStringError, JsonFileError, Loader,
     json::{InstanceConfigJson, instance_config::ModTypeInfo},
+    pipe_progress,
 };
 
 pub mod fabric;
@@ -68,7 +69,6 @@ pub async fn install_specified_loader(
         }
 
         Loader::Forge => {
-            // TODO: Java install progress
             pipe_progress(progress, |sender| {
                 forge::install(specified_version, instance, sender)
             })

@@ -14,8 +14,8 @@ use ql_core::{
     },
     no_window, pipe_progress_ext, pt,
 };
-use sipper::Sender;
 use ql_java_handler::{JAVA, JavaInstallError, JavaVersion, get_java_binary};
+use sipper::Sender;
 use thiserror::Error;
 
 use super::change_instance_type;

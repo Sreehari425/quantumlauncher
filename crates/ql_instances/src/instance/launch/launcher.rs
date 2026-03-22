@@ -769,12 +769,8 @@ impl GameLauncher {
             JavaVersion::Java8
         };
 
-        let program = get_java_binary(
-            version,
-            which_java,
-            self.java_install_progress.take(),
-        )
-        .await?;
+        let program =
+            get_java_binary(version, which_java, self.java_install_progress.take()).await?;
         info!("Java: {program:?}\n");
         Ok((Command::new(&program), program))
     }

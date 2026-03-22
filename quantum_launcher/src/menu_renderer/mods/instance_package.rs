@@ -29,7 +29,7 @@ impl MenuExportInstance {
                 .padding(5)
             } else {
                 let dots = ".".repeat((tick_timer % 3) + 1);
-                column!(widget::text!("Loading{dots}"))
+                column![widget::text!("Loading{dots}")]
             })
             .width(Length::Fill)
             .height(Length::Fill),

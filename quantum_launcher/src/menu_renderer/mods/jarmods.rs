@@ -74,7 +74,7 @@ impl MenuEditJarMods {
 
     fn get_mod_list(&'_ self) -> Element<'_> {
         if self.jarmods.mods.is_empty() {
-            return column!("Add some mods to get started")
+            return column!["Add some mods to get started"]
                 .spacing(10)
                 .padding(10)
                 .width(Length::Fill)
@@ -82,7 +82,7 @@ impl MenuEditJarMods {
         }
 
         widget::container(
-            column!(
+            column![
                 column![
                     widget::text("Select some JarMods to perform actions on them").size(14),
                     widget::row![
@@ -107,7 +107,7 @@ impl MenuEditJarMods {
                 .padding(10)
                 .spacing(5),
                 self.get_mod_list_contents(),
-            )
+            ]
             .spacing(10),
         )
         .style(|n| n.style_container_sharp_box(0.0, Color::ExtraDark))

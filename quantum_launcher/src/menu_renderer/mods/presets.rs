@@ -19,18 +19,18 @@ use crate::{
 impl MenuEditPresets {
     pub fn view(&'_ self) -> Element<'_> {
         if let Some(progress) = &self.progress {
-            return column!(
+            return column![
                 widget::text("Installing mods").size(20),
                 progress.view(),
                 widget::text("Check debug log (at the bottom) for more info").size(12),
-            )
+            ]
             .padding(10)
             .spacing(10)
             .into();
         }
 
         if self.is_building {
-            return column!(widget::text("Building Preset").size(20))
+            return column![widget::text("Building Preset").size(20)]
                 .padding(10)
                 .spacing(10)
                 .into();
@@ -149,7 +149,7 @@ impl MenuRecommendedMods {
             }
             MenuRecommendedMods::Loaded { mods, .. } => {
                 let content: Element =
-                    column!(
+                    column![
                         back_button,
                         button_with_icon(icons::download(), "Download Recommended Mods", 16)
                             .on_press(crate::state::RecommendedModMessage::Download.into()),
@@ -167,7 +167,7 @@ impl MenuRecommendedMods {
                             .into()
                         }))
                         .spacing(10)
-                    )
+                    ]
                     .spacing(10)
                     .into();
 

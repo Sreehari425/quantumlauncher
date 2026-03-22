@@ -1,7 +1,7 @@
 use frostmark::MarkWidget;
 use iced::{
-    widget::{self, column, row},
     Alignment, Length,
+    widget::{self, column, row},
 };
 use ql_core::{Loader, ModId, StoreBackendType};
 use ql_mod_manager::store::{QueryType, SearchMod};
@@ -9,7 +9,7 @@ use ql_mod_manager::store::{QueryType, SearchMod};
 use crate::{
     icons,
     menu_renderer::{
-        back_button, button_with_icon, tooltip, tsubtitle, Element, FONT_DEFAULT, FONT_MONO,
+        Element, FONT_DEFAULT, FONT_MONO, back_button, button_with_icon, tooltip, tsubtitle,
     },
     state::{
         ImageState, InstallModsMessage, ManageModsMessage, MenuModsDownload, Message, ModOperation,
@@ -25,11 +25,11 @@ impl MenuModsDownload {
 
         row![
             widget::scrollable(
-                column!(
+                column![
                     widget::text_input("Search...", &self.query)
                         .on_input(|n| InstallModsMessage::SearchInput(n).into()),
                     self.get_side_panel(),
-                )
+                ]
                 .padding(10)
                 .spacing(10)
                 .width(200)
@@ -84,7 +84,7 @@ impl MenuModsDownload {
     }
 
     fn get_side_panel(&'_ self) -> Element<'_> {
-        let normal_controls = column!(
+        let normal_controls = column![
             back_button().on_press(ManageModsMessage::Open.into()),
             widget::space().height(5),
             widget::text("Select store:").size(18),
@@ -115,7 +115,7 @@ impl MenuModsDownload {
                 .into()
             }))
             .spacing(5)
-        )
+        ]
         .spacing(5);
 
         if self.mods_download_in_progress.is_empty() || self.results.is_none() {
@@ -123,7 +123,7 @@ impl MenuModsDownload {
         } else {
             // Mod operations (installing/uninstalling) are in progress.
             // Can't back out. Show list of operations in progress.
-            column!("In progress:", {
+            column!["In progress:", {
                 widget::column(
                     self.mods_download_in_progress
                         .values()
@@ -144,7 +144,7 @@ impl MenuModsDownload {
                         }),
                 )
                 .spacing(5)
-            })
+            }]
             .spacing(5)
             .into()
         }
@@ -171,7 +171,7 @@ impl MenuModsDownload {
             .push(widget::space().width(Length::Fill))
         } else {
             let dots = ".".repeat((tick_timer % 3) + 1);
-            column!(widget::text!("Loading{dots}"))
+            column![widget::text!("Loading{dots}")]
         }
         .padding(10)
     }
@@ -188,7 +188,7 @@ impl MenuModsDownload {
             &hit.icon_url,
             Some(32.0),
             Some(32.0),
-            column!(widget::text("...")).into(),
+            column![widget::text("...")].into(),
         );
 
         row!(
@@ -196,7 +196,7 @@ impl MenuModsDownload {
             widget::button(
                 row!(
                     icon,
-                    column!(
+                    column![
                         widget::text(&hit.title)
                             .wrapping(widget::text::Wrapping::None)
                             .shaping(widget::text::Shaping::Advanced)
@@ -206,7 +206,7 @@ impl MenuModsDownload {
                             .shaping(widget::text::Shaping::Advanced)
                             .size(12)
                             .style(tsubtitle)
-                    )
+                    ]
                     .spacing(2),
                 )
                 .padding(5)
@@ -298,15 +298,17 @@ impl MenuModsDownload {
     ) -> Element<'a> {
         // Parses the Markdown description of the mod.
         let markdown_description = if let Some(desc) = &self.description {
-            column![MarkWidget::new(desc)
-                .on_clicking_link(Message::CoreOpenLink)
-                .on_drawing_image(|img| images.view(img.url, img.width, img.height, "".into()))
-                .on_updating_state(|n| InstallModsMessage::TickDesc(n).into())
-                .font(FONT_DEFAULT)
-                .font_mono(FONT_MONO)]
+            column![
+                MarkWidget::new(desc)
+                    .on_clicking_link(Message::CoreOpenLink)
+                    .on_drawing_image(|img| images.view(img.url, img.width, img.height, "".into()))
+                    .on_updating_state(|n| InstallModsMessage::TickDesc(n).into())
+                    .font(FONT_DEFAULT)
+                    .font_mono(FONT_MONO)
+            ]
         } else {
             let dots = ".".repeat((tick_timer % 3) + 1);
-            column!(widget::text!("Loading{dots}"))
+            column![widget::text!("Loading{dots}")]
         };
 
         let url = format!(

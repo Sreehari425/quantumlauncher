@@ -178,7 +178,7 @@ impl MenuLoginMS {
             }),
             widget::row!(
                 widget::space().width(Length::Fill),
-                column!(
+                column![
                     widget::space().height(Length::Fill),
                     widget::text("Login to Microsoft").size(20),
                     "Open this link and enter the code:",
@@ -187,7 +187,7 @@ impl MenuLoginMS {
                     widget::text!("Link: {}", self.url),
                     widget::button("Open").on_press(Message::CoreOpenLink(self.url.clone())),
                     widget::space().height(Length::Fill),
-                )
+                ]
                 .spacing(5)
                 .align_x(Alignment::Center),
                 widget::space().width(Length::Fill)

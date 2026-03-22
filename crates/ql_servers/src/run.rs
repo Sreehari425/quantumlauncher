@@ -1,17 +1,17 @@
-use sipper::Sender;
-use std::{
-    path::{Path, PathBuf},
-    process::Stdio,
-    sync::{Arc},
-};
-use ql_java_handler::{get_java_binary, JavaVersion};
-use tokio::{process::Command, sync::Mutex};
 use ql_core::{
     GenericProgress, InstanceSelection, IntoIoError, LAUNCHER_DIR, LaunchedProcess, Loader,
     find_forge_shim_file, info,
     json::{InstanceConfigJson, VersionDetails},
     no_window, pt,
 };
+use ql_java_handler::{JavaVersion, get_java_binary};
+use sipper::Sender;
+use std::{
+    path::{Path, PathBuf},
+    process::Stdio,
+    sync::Arc,
+};
+use tokio::{process::Command, sync::Mutex};
 
 use crate::ServerError;
 

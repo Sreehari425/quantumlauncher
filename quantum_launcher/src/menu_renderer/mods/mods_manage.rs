@@ -37,7 +37,7 @@ impl MenuEditMods {
         window_height: f32,
     ) -> Element<'a> {
         if let Some(progress) = &self.mod_update_progress {
-            return column!(widget::text("Updating mods").size(20), progress.view())
+            return column![widget::text("Updating mods").size(20), progress.view()]
                 .padding(10)
                 .spacing(10)
                 .into();
@@ -61,7 +61,7 @@ impl MenuEditMods {
                 menu_main,
                 widget::pin(
                     ctxbox(
-                        widget::column![
+                        column![
                             ctx_button(icons::toggleon_s(CTXI_SIZE), "Toggle")
                                 .on_press(ManageModsMessage::ToggleSelected.into()),
                             ctx_button(icons::bin_s(CTXI_SIZE), "Delete")
@@ -98,7 +98,7 @@ impl MenuEditMods {
         tick_timer: usize,
     ) -> widget::Scrollable<'a, Message, LauncherTheme> {
         widget::scrollable(
-            column!(
+            column![
                 widget::row![
                     back_button().on_press(back_to_launch_screen(
                         Some(selected_instance.is_server()),
@@ -116,7 +116,7 @@ impl MenuEditMods {
                 ]
                 .spacing(5),
                 self.get_mod_installer_buttons(selected_instance),
-                column!(
+                column![
                     button_with_icon(icons::download_s(15), "Download Content...", 14)
                         .on_press(InstallModsMessage::Open.into()),
                     button_with_icon(icons::file_jar(), "Jarmod Patches", 14)
@@ -127,10 +127,10 @@ impl MenuEditMods {
                         widget::text("Includes mods and modpacks").size(12),
                         Position::Bottom
                     ),
-                )
+                ]
                 .spacing(5),
                 self.get_mod_update_pane(tick_timer),
-            )
+            ]
             .padding(10)
             .spacing(10),
         )
@@ -144,10 +144,10 @@ impl MenuEditMods {
                 .size(12)
                 .into()
         } else if self.available_updates.is_empty() {
-            column!().into()
+            widget::Column::new().into()
         } else {
             widget::container(
-                column!(
+                column![
                     widget::text("Mod Updates Available!").size(15),
                     widget::column(self.available_updates.iter().enumerate().map(
                         |(i, (id, update_name, is_enabled))| {
@@ -180,7 +180,7 @@ impl MenuEditMods {
                     .spacing(10),
                     button_with_icon(icons::version_download(), "Update", 16)
                         .on_press(ManageModsMessage::UpdatePerform.into()),
-                )
+                ]
                 .padding(10)
                 .spacing(10)
                 .width(MODS_SIDEBAR_WIDTH),
@@ -211,7 +211,7 @@ impl MenuEditMods {
                 ]
                 .spacing(5)
                 .into(),
-                InstanceSelection::Server(_) => column!(
+                InstanceSelection::Server(_) => column![
                     "Install:",
                     widget::row!(
                         install_ldr("Fabric")
@@ -233,7 +233,7 @@ impl MenuEditMods {
                     .spacing(5),
                     install_ldr("Paper")
                         .on_press(Message::InstallPaper(InstallPaperMessage::ScreenOpen)),
-                )
+                ]
                 .spacing(5)
                 .into(),
             },
@@ -245,11 +245,11 @@ impl MenuEditMods {
             ]
             .spacing(5)
             .into(),
-            Loader::OptiFine => column!(
+            Loader::OptiFine => column![
                 widget::button(widget::text("Install Forge with OptiFine").size(14))
                     .on_press(Message::InstallForge(ForgeKind::OptiFine)),
                 Self::get_uninstall_panel(self.config.mod_type),
-            )
+            ]
             .spacing(5)
             .into(),
 
@@ -257,7 +257,7 @@ impl MenuEditMods {
                 Self::get_uninstall_panel(self.config.mod_type).into()
             }
 
-            _ => column!(widget::text!("Unknown mod type: {}", self.config.mod_type)).into(),
+            _ => column![widget::text!("Unknown mod type: {}", self.config.mod_type)].into(),
         }
     }
 
@@ -306,11 +306,11 @@ impl MenuEditMods {
 
     fn get_mod_list<'a>(&'a self, images: &'a ImageState) -> Element<'a> {
         if self.sorted_mods_list.is_empty() {
-            return column!(
+            return column![
                 "Download some mods to get started",
                 widget::button(widget::text("View Recommended Mods").size(14))
                     .on_press(crate::state::RecommendedModMessage::Open.into())
-            )
+            ]
             .spacing(10)
             .padding(10)
             .width(Length::Fill)

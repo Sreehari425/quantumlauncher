@@ -1,7 +1,8 @@
 use crate::auth::AccountData;
 use error::GameLaunchError;
 use ql_core::{
-    json::GlobalSettings, GenericProgress, InstanceSelection, LaunchedProcess, REDACT_SENSITIVE_INFO, err, info,
+    GenericProgress, InstanceSelection, LaunchedProcess, REDACT_SENSITIVE_INFO, err, info,
+    json::GlobalSettings,
 };
 use sipper::Sender;
 use std::sync::Arc;

@@ -232,7 +232,7 @@ fn sidebar_button<'a, A: PartialEq>(
         .width(Length::Fill);
 
     if !is_selected {
-        widget::column![
+        column![
             button,
             widget::rule::horizontal(1).style(move |t: &LauncherTheme| t.style_rule(Color::Dark))
         ]
@@ -619,11 +619,11 @@ pub fn view_changelog() -> Element<'static> {
         is_server: None,
     };
     widget::scrollable(
-        widget::column!(
+        column![
             button_with_icon(icons::back(), "Skip", 16).on_press(back_msg.clone()),
             changelog(),
             button_with_icon(icons::back(), "Continue", 16).on_press(back_msg),
-        )
+        ]
         .padding(10)
         .spacing(10),
     )

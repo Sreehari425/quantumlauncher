@@ -80,7 +80,7 @@ impl MenuWelcome {
                     clear_selection: true,
                     is_server: Some(false),
                 };
-                widget::column![
+                column![
                     widget::space().height(Length::Fill),
                     center_x(
                         widget::button("Login to Microsoft").on_press(Message::Account(

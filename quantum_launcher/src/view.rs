@@ -159,7 +159,7 @@ impl Launcher {
             State::CurseforgeManualDownload(menu) => menu.view(),
             State::License(menu) => menu.view(),
             State::ExportMods(menu) => menu.view(),
-            State::InstallForge(menu, is_neoforge) => widget::column![
+            State::InstallForge(menu, is_neoforge) => column![
                 widget::text(if *is_neoforge {
                     "Installing NeoForge"
                 } else {

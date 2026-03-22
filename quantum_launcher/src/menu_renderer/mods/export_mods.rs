@@ -1,6 +1,6 @@
 use iced::{
-    widget::{self, column},
     Length,
+    widget::{self, column},
 };
 use ql_core::{ModId, SelectedMod};
 

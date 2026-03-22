@@ -115,7 +115,7 @@ impl Launcher {
             .into()
         };
 
-        widget::column![
+        column![
             menu.get_tab_selector(decor),
             view_info_message(menu),
             widget::container(tab_body)
@@ -176,7 +176,7 @@ impl Launcher {
 
         let mmc_import = EXPERIMENTAL_MMC_IMPORT.read().unwrap();
 
-        let instance_options = widget::column![
+        let instance_options = column![
             // Not ready for production yet
             ctx_button(icons::file_zip_s(CTXI_SIZE), "Export Instance")
                 .on_press(Message::ExportInstanceOpen),

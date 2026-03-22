@@ -214,6 +214,7 @@ fn main() {
     let (width, height) = c.c_window_size();
     let antialiasing = c.ui_antialiasing.unwrap_or(true);
 
+    // https://discourse.iced.rs/t/solved-new-boot-trait-no-longer-able-to-use-a-capturing-closure-to-initialize-application-state/1012/6
     type MaybeData = Option<(Result<LauncherConfig, String>, bool)>;
     let once_boot: RefCell<MaybeData> = RefCell::new(Some((config, is_new_user)));
 

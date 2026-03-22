@@ -1,6 +1,6 @@
 use chrono::DateTime;
-use sipper::Sender;
 use ql_core::{GenericProgress, InstanceSelection, Loader, do_jobs, info, json::VersionDetails};
+use sipper::Sender;
 
 use crate::store::{get_latest_version_date, toggle_mods};
 
