@@ -1,7 +1,7 @@
 use ql_core::{
-    file_utils, info,
+    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, ListEntry, file_utils, info,
     json::{InstanceConfigJson, VersionDetails},
-    pipe_progress, pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, ListEntry,
+    pipe_progress, pt,
 };
 use sipper::Sender;
 use std::path::{Path, PathBuf};

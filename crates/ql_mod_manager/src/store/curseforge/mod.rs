@@ -7,7 +7,7 @@ use std::{
 use chrono::DateTime;
 use download::ModDownloader;
 use ql_core::{
-    err, pt, GenericProgress, IntoJsonError, JsonDownloadError, Loader, ModId, RequestError, CLIENT,
+    CLIENT, GenericProgress, IntoJsonError, JsonDownloadError, Loader, ModId, RequestError, err, pt,
 };
 use reqwest::header::HeaderValue;
 use serde::Deserialize;
@@ -17,7 +17,7 @@ use crate::{rate_limiter::RATE_LIMITER, store::SearchMod};
 
 use super::{Backend, CurseforgeNotAllowed, ModError, QueryType, SearchResult};
 use categories::get_categories;
-use ql_core::file_utils::check_for_success;
+use ql_core::request::check_for_success;
 
 mod categories;
 mod download;

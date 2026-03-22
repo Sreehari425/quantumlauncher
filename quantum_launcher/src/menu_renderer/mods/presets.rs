@@ -1,14 +1,14 @@
 use std::collections::HashSet;
 
 use iced::{
-    widget::{self, column},
     Length,
+    widget::{self, column},
 };
 use ql_core::SelectedMod;
 
 use crate::{
     icons,
-    menu_renderer::{back_button, button_with_icon, tsubtitle, ui::checkbox, Element},
+    menu_renderer::{Element, back_button, button_with_icon, tsubtitle},
     state::{
         EditPresetsMessage, ManageModsMessage, MenuEditPresets, MenuRecommendedMods, Message,
         ModListEntry, SelectedState,
@@ -38,9 +38,7 @@ impl MenuEditPresets {
 
         let p_main = widget::row![
             column![
-                back_button().on_press(Message::ManageMods(
-                    ManageModsMessage::ScreenOpenWithoutUpdate
-                )),
+                back_button().on_press(ManageModsMessage::Open.into()),
                 widget::text(
                     r"Mod Presets (.qmp files) are a
 simple way to share
@@ -56,13 +54,13 @@ Modrinth/Curseforge modpack"
                 )
                 .style(tsubtitle)
                 .size(12),
-                checkbox(
-                    widget::text("Include mod settings/configuration\n(config folder)").size(12),
-                    self.include_config,
-                    |t| Message::EditPresets(EditPresetsMessage::ToggleIncludeConfig(t))
-                ),
+                widget::checkbox(self.include_config)
+                    .label("Include mod settings/configuration\n(config folder)")
+                    .on_toggle(|t| EditPresetsMessage::ToggleIncludeConfig(t).into())
+                    .size(12)
+                    .text_size(12),
                 button_with_icon(icons::floppydisk(), "Build Preset", 16)
-                    .on_press(Message::EditPresets(EditPresetsMessage::BuildYourOwn)),
+                    .on_press(EditPresetsMessage::BuildYourOwn.into()),
             ]
             .padding(10)
             .spacing(10),
@@ -74,7 +72,7 @@ Modrinth/Curseforge modpack"
                         } else {
                             "Select All"
                         })
-                        .on_press(Message::EditPresets(EditPresetsMessage::SelectAll)),
+                        .on_press(EditPresetsMessage::SelectAll.into())
                     ]
                     .padding({
                         let p: iced::Padding = 10.into();
@@ -108,21 +106,18 @@ Modrinth/Curseforge modpack"
     ) -> widget::Column<'a, Message, LauncherTheme, iced::Renderer> {
         widget::column(self.sorted_mods_list.iter().map(|entry| {
             if entry.is_manually_installed() {
-                checkbox(
-                    entry.name(),
-                    selected_mods.contains(&entry.clone().into()),
-                    move |t| match entry {
+                widget::checkbox(selected_mods.contains(&entry.clone().into()))
+                    .label(entry.name())
+                    .on_toggle(move |t| match entry {
                         ModListEntry::Downloaded { id, config } => {
-                            Message::EditPresets(EditPresetsMessage::ToggleCheckbox(
-                                (config.name.clone(), id.clone()),
-                                t,
-                            ))
+                            EditPresetsMessage::ToggleCheckbox((config.name.clone(), id.clone()), t)
+                                .into()
                         }
-                        ModListEntry::Local { file_name } => Message::EditPresets(
-                            EditPresetsMessage::ToggleCheckboxLocal(file_name.clone(), t),
-                        ),
-                    },
-                )
+                        ModListEntry::Local { file_name } => {
+                            EditPresetsMessage::ToggleCheckboxLocal(file_name.clone(), t).into()
+                        }
+                    })
+                    .into()
             } else {
                 widget::text!(" - (DEPENDENCY) {}", entry.name())
                     .shaping(widget::text::Shaping::Advanced)
@@ -135,9 +130,7 @@ Modrinth/Curseforge modpack"
 
 impl MenuRecommendedMods {
     pub fn view(&'_ self) -> Element<'_> {
-        let back_button = back_button().on_press(Message::ManageMods(
-            ManageModsMessage::ScreenOpenWithoutUpdate,
-        ));
+        let back_button = back_button().on_press(ManageModsMessage::Open.into());
 
         match self {
             MenuRecommendedMods::Loading { progress, .. } => progress.view().padding(10).into(),
@@ -159,14 +152,10 @@ impl MenuRecommendedMods {
                     column!(
                         back_button,
                         button_with_icon(icons::download(), "Download Recommended Mods", 16)
-                            .on_press(Message::RecommendedMods(
-                                crate::state::RecommendedModMessage::Download
-                            )),
+                            .on_press(crate::state::RecommendedModMessage::Download.into()),
                         widget::column(mods.iter().enumerate().map(|(i, (e, n))| {
-                            let elem = checkbox(n.name, *e, move |n| {
-                                Message::RecommendedMods(crate::state::RecommendedModMessage::Toggle(
-                                    i, n,
-                                ))
+                            let elem = widget::checkbox(*e).label(n.name).on_toggle(move |n| {
+                                crate::state::RecommendedModMessage::Toggle(i, n).into()
                             });
                             column![
                                 elem,

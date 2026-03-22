@@ -1,11 +1,11 @@
 use iced::{
-    widget::{self, column},
     Length,
+    widget::{self, column},
 };
 
 use crate::{
     icons,
-    menu_renderer::{back_button, back_to_launch_screen, button_with_icon, ui::checkbox, Element},
+    menu_renderer::{Element, back_button, back_to_launch_screen, button_with_icon},
     state::{MenuExportInstance, Message},
 };
 
@@ -21,9 +21,10 @@ impl MenuExportInstance {
                     } else {
                         format!("{}/", entry.name)
                     };
-                    checkbox(widget::text(name), *enabled, move |t| {
-                        Message::ExportInstanceToggleItem(i, t)
-                    })
+                    widget::checkbox(*enabled)
+                        .on_toggle(move |t| Message::ExportInstanceToggleItem(i, t))
+                        .label(name)
+                        .into()
                 }))
                 .padding(5)
             } else {

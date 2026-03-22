@@ -1,5 +1,6 @@
-use ql_core::{file_utils, GenericProgress};
-use ql_core::{info, pt, InstanceSelection, IntoIoError, IntoJsonError};
+use ql_core::{
+    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, file_utils, info, pt,
+};
 use sipper::Sender;
 use std::collections::HashSet;
 use std::path::PathBuf;

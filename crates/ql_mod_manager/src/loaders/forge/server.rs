@@ -1,8 +1,8 @@
-use ql_core::{json::instance_config::ModTypeInfo, InstanceSelection, IntoIoError, Loader};
+use ql_core::{InstanceSelection, IntoIoError, Loader, json::instance_config::ModTypeInfo};
 
 use crate::loaders::{change_instance_type, forge::ForgeInstaller};
 
-use super::{error::ForgeInstallError, ForgeProgress};
+use super::{ForgeProgress, error::ForgeInstallError};
 
 pub async fn install_server(
     forge_version: Option<String>, // example: "11.15.1.2318" for 1.8.9
@@ -41,11 +41,7 @@ pub async fn install_server(
     change_instance_type(
         &installer.instance_dir,
         Loader::Forge,
-        Some(ModTypeInfo {
-            version: Some(installer.version.clone()),
-            backend_implementation: None,
-            optifine_jar: None,
-        }),
+        Some(ModTypeInfo::new_regular(installer.version)),
     )
     .await?;
 

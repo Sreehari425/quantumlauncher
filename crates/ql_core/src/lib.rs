@@ -16,21 +16,19 @@
 
 use crate::{
     json::manifest::Version,
-    read_log::{read_logs, Diagnostic, LogLine, ReadError},
+    read_log::{Diagnostic, LogLine, ReadError, read_logs},
 };
 use futures::StreamExt;
 use json::VersionDetails;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use sipper::FutureExt;
 use std::{
     ffi::OsStr,
     fmt::{Debug, Display},
     future::Future,
     path::{Path, PathBuf},
-    pin::Pin,
     process::ExitStatus,
-    sync::{mpsc::Sender, Arc, LazyLock, Mutex},
+    sync::{Arc, LazyLock, mpsc::Sender},
 };
 use tokio::process::Child;
 
@@ -42,11 +40,12 @@ pub mod file_utils;
 pub mod jarmod;
 /// JSON structs for version, instance config, Fabric, Forge, Optifine, Quilt, Neoforge, etc.
 pub mod json;
-mod loader;
 /// Logging macros.
 pub mod print;
 mod progress;
 pub mod read_log;
+pub mod request;
+mod structs;
 mod urlcache;
 
 pub use crate::json::InstanceConfigJson;
@@ -55,11 +54,14 @@ pub use error::{
     DownloadFileError, IntoIoError, IntoJsonError, IntoStringError, IoError, JsonDownloadError,
     JsonError, JsonFileError,
 };
-pub use file_utils::{RequestError, LAUNCHER_DIR};
-pub use loader::Loader;
-pub use print::{logger_finish, LogType, LoggingState, LOGGER};
-pub use progress::{pipe_progress, pipe_progress_ext, DownloadProgress, GenericProgress, Progress};
+pub use file_utils::{LAUNCHER_DIR, RequestError};
+pub use print::{LOGGER, LogType, LoggingState, logger_finish};
+pub use progress::{DownloadProgress, GenericProgress, Progress, pipe_progress, pipe_progress_ext};
+pub use request::download;
+pub use structs::{JavaVersion, Loader};
 pub use urlcache::url_cache_get;
+
+pub const LAUNCHER_VERSION_NAME: &str = "0.5.1";
 
 pub static REGEX_SNAPSHOT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\d{2}w\d*[a-zA-Z]+").unwrap());
@@ -69,7 +71,8 @@ pub const CLASSPATH_SEPARATOR: char = if cfg!(unix) { ':' } else { ';' };
 /// Redact sensitive info like username, UUID, session ID, etc.
 ///
 /// Default: `true`. Use `--no-redact-info` in CLI to set `false`.
-pub static REDACT_SENSITIVE_INFO: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(true));
+pub static REDACT_SENSITIVE_INFO: LazyLock<std::sync::Mutex<bool>> =
+    LazyLock::new(|| std::sync::Mutex::new(true));
 
 pub const WEBSITE: &str = "https://mrmayman.github.io/quantumlauncher";
 
@@ -290,9 +293,9 @@ impl InstanceSelection {
         matches!(self, Self::Server(_))
     }
 
-    pub fn set_name(&mut self, name: &str) {
+    pub fn set_name(&mut self, name: String) {
         match self {
-            Self::Instance(ref mut n) | Self::Server(ref mut n) => name.clone_into(n),
+            Self::Instance(n) | Self::Server(n) => *n = name,
         }
     }
 
@@ -357,7 +360,7 @@ pub enum ListEntryKind {
     Special,
 }
 
-impl std::fmt::Display for ListEntryKind {
+impl Display for ListEntryKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ListEntryKind::Release => write!(f, "Release"),
@@ -445,7 +448,7 @@ impl ListEntryKind {
         }
     }
 
-    /// Returns true if this is a "old" version category
+    /// Returns true if this is an "old" version category
     #[must_use]
     pub const fn is_old(&self) -> bool {
         matches!(
@@ -459,8 +462,6 @@ impl ListEntryKind {
         )
     }
 }
-
-pub const LAUNCHER_VERSION_NAME: &str = "0.5.0";
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ModId {
@@ -521,9 +522,11 @@ impl ModId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoreBackendType {
+    #[serde(rename = "modrinth")]
     Modrinth,
+    #[serde(rename = "curseforge")]
     Curseforge,
 }
 
@@ -623,11 +626,25 @@ impl OptifineUniqueVersion {
     #[must_use]
     pub fn get_url(&self) -> (&'static str, bool) {
         match self {
-            OptifineUniqueVersion::V1_5_2 => ("https://optifine.net/adloadx?f=OptiFine_1.5.2_HD_U_D5.zip", false),
-            OptifineUniqueVersion::V1_2_5 => ("https://optifine.net/adloadx?f=OptiFine_1.5.2_HD_U_D2.zip", false),
-            OptifineUniqueVersion::B1_7_3 => ("https://b2.mcarchive.net/file/mcarchive/47df260a369eb2f79750ec24e4cfd9da93b9aac076f97a1332302974f19e6024/OptiFine_1_7_3_HD_G.zip", true),
-            OptifineUniqueVersion::B1_6_6 => ("https://optifine.net/adloadx?f=beta_OptiFog_Optimine_1.6.6.zip", false),
-            OptifineUniqueVersion::Forge => unreachable!("There isn't a direct URL for Optifine+Forge"),
+            OptifineUniqueVersion::V1_5_2 => (
+                "https://optifine.net/adloadx?f=OptiFine_1.5.2_HD_U_D5.zip",
+                false,
+            ),
+            OptifineUniqueVersion::V1_2_5 => (
+                "https://optifine.net/adloadx?f=OptiFine_1.5.2_HD_U_D2.zip",
+                false,
+            ),
+            OptifineUniqueVersion::B1_7_3 => (
+                "https://b2.mcarchive.net/file/mcarchive/47df260a369eb2f79750ec24e4cfd9da93b9aac076f97a1332302974f19e6024/OptiFine_1_7_3_HD_G.zip",
+                true,
+            ),
+            OptifineUniqueVersion::B1_6_6 => (
+                "https://optifine.net/adloadx?f=beta_OptiFog_Optimine_1.6.6.zip",
+                false,
+            ),
+            OptifineUniqueVersion::Forge => {
+                unreachable!("There isn't a direct URL for Optifine+Forge")
+            }
         }
     }
 }
@@ -682,49 +699,42 @@ pub async fn find_forge_shim_file(dir: &Path) -> Option<PathBuf> {
 
 #[derive(Debug, Clone)]
 pub struct LaunchedProcess {
-    pub child: Arc<Mutex<Child>>,
+    pub child: Arc<tokio::sync::Mutex<Child>>,
     pub instance: InstanceSelection,
+    /// Present because Minecraft classic servers
+    /// have some special properties
+    ///
+    /// - Launched differently
+    /// - Downloaded and extracted from zip
+    /// - Don't have a stop command (?), need to be killed
     pub is_classic_server: bool,
 }
 
-type ReadLogOut = Result<(ExitStatus, InstanceSelection, Option<Diagnostic>), String>;
+type ReadLogOut = Result<(ExitStatus, InstanceSelection, Option<Diagnostic>), ReadError>;
 
 impl LaunchedProcess {
     /// Reads log output from a launched game/server
     /// process until it closes
     ///
     /// Returns an exit code, the instance identifier,
-    /// and optionally a diagnostic if any fix was
+    /// and optionally a [`Diagnostic`] if any fix was
     /// detected for a crash
     #[must_use]
-    pub fn read_logs(
-        &self,
+    pub async fn read_logs(
+        self,
         censors: Vec<String>,
         sender: Option<Sender<LogLine>>,
-    ) -> Option<Pin<Box<dyn Future<Output = ReadLogOut> + Send>>> {
-        let mut c = self.child.lock().ok()?;
-        let (Some(stdout), Some(stderr)) = (c.stdout.take(), c.stderr.take()) else {
-            return None;
-        };
-
-        let instance = self.instance.clone();
-        Some(Box::pin(
-            read_logs(
-                stdout,
-                stderr,
-                self.child.clone(),
-                sender,
-                instance.clone(),
-                censors,
-            )
-            .map(|n| match n {
-                Err(ReadError::Io(io)) if io.kind() == std::io::ErrorKind::InvalidData => {
-                    err!("Minecraft log contains invalid unicode! Stopping logs");
-                    pt!("The game will continue to run");
-                    Ok((ExitStatus::default(), instance, None))
-                }
-                _ => n.strerr(),
-            }),
-        ))
+    ) -> ReadLogOut {
+        read_logs(self.child, sender, self.instance, censors).await
     }
+}
+
+#[must_use]
+pub fn sanitize_instance_name(mut name: String) -> String {
+    let mut disallowed = vec![
+        '/', '\\', ':', '*', '?', '"', '<', '>', '|', '\'', '\0', '\u{7F}',
+    ];
+    disallowed.extend('\u{1}'..='\u{1F}');
+    name.retain(|c| !disallowed.contains(&c));
+    name.trim().to_owned()
 }

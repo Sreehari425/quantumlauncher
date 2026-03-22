@@ -1,17 +1,17 @@
-use ql_core::{
-    find_forge_shim_file, info,
-    json::{InstanceConfigJson, VersionDetails},
-    no_window, pt, GenericProgress, InstanceSelection, IntoIoError, LaunchedProcess, Loader,
-    LAUNCHER_DIR,
-};
-use ql_java_handler::{get_java_binary, JavaVersion};
 use sipper::Sender;
 use std::{
     path::{Path, PathBuf},
     process::Stdio,
-    sync::{Arc, Mutex},
+    sync::{Arc},
 };
-use tokio::process::Command;
+use ql_java_handler::{get_java_binary, JavaVersion};
+use tokio::{process::Command, sync::Mutex};
+use ql_core::{
+    GenericProgress, InstanceSelection, IntoIoError, LAUNCHER_DIR, LaunchedProcess, Loader,
+    find_forge_shim_file, info,
+    json::{InstanceConfigJson, VersionDetails},
+    no_window, pt,
+};
 
 use crate::ServerError;
 
@@ -122,7 +122,7 @@ impl ServerLauncher {
 
     pub async fn get_server_jar(&self) -> Result<PathBuf, ServerError> {
         Ok(if let Some(custom_jar) = &self.config.custom_jar {
-            // Should I prioritise Fabric/Forge/Paper over a custom JAR?
+            // Should I prioritize Fabric/Forge/Paper over a custom JAR?
             PathBuf::from(&custom_jar.name)
         } else {
             let regular = self.dir.join("server.jar");

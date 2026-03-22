@@ -1,8 +1,8 @@
 use sipper::Sender;
 
 use ql_core::{
-    info, json::VersionDetails, DownloadProgress, InstanceSelection, IntoIoError, IntoStringError,
-    ListEntry, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
+    DownloadProgress, InstanceSelection, IntoIoError, IntoStringError, LAUNCHER_DIR,
+    LAUNCHER_VERSION_NAME, ListEntry, info, json::VersionDetails, sanitize_instance_name,
 };
 
 mod downloader;
@@ -34,8 +34,13 @@ pub async fn create_instance(
     progress_sender: Option<Sender<DownloadProgress>>,
     download_assets: bool,
 ) -> Result<String, DownloadError> {
+    let instance_name = sanitize_instance_name(instance_name);
+    if instance_name.is_empty() {
+        return Err(DownloadError::InvalidName);
+    }
+
     info!(
-        "Started creating instance: {} (kind: {})",
+        "Started creating instance: {instance_name} (version: {}, kind: {})",
         version.name, version.kind
     );
 

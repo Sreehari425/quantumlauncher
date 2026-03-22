@@ -3,16 +3,16 @@ use ini::Ini;
 use sipper::Sender;
 use std::path::Path;
 
-use crate::{import::OUT_OF, InstancePackageError};
+use crate::{InstancePackageError, import::OUT_OF};
 use ql_core::{
-    do_jobs, err, file_utils, info,
+    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, LAUNCHER_DIR, ListEntry,
+    Loader, do_jobs, download, err, file_utils, info,
     jarmod::{JarMod, JarMods},
     json::{
-        FabricJSON, InstanceConfigJson, Manifest, VersionDetails, V_1_12_2,
-        V_OFFICIAL_FABRIC_SUPPORT,
+        FabricJSON, InstanceConfigJson, Manifest, V_1_12_2, V_OFFICIAL_FABRIC_SUPPORT,
+        VersionDetails,
     },
-    pipe_progress, pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, ListEntry,
-    Loader, LAUNCHER_DIR,
+    pipe_progress, pt,
 };
 use ql_mod_manager::loaders::fabric::{self, get_list_of_versions_from_backend};
 use serde::{Deserialize, Serialize};
@@ -314,13 +314,7 @@ async fn install_fabric(
 
     let version_json = VersionDetails::load(instance_selection).await?;
     if !version_json.is_before_or_eq(V_OFFICIAL_FABRIC_SUPPORT) {
-        ql_mod_manager::loaders::fabric::install(
-            version,
-            instance_selection.clone(),
-            sender.clone(),
-            backend,
-        )
-        .await?;
+        fabric::install(version, instance_selection.clone(), sender.clone(), backend).await?;
         return Ok(());
     }
 
@@ -339,8 +333,10 @@ async fn install_fabric(
             get_list_of_versions_from_backend("1.14.4", backend, false)
                 .await?
                 .first()
-                .map(|n| n.loader.version.clone())
-                .unwrap_or_else(|| " No versions found! ".to_owned())
+                .map_or_else(
+                    || " No versions found! ".to_owned(),
+                    |n| n.loader.version.clone(),
+                )
         }
     );
     let fabric_json_text = file_utils::download_file_to_string(&url, false).await?;
@@ -385,6 +381,7 @@ async fn download_library_fabric(
     let Some(url) = library.get_url() else {
         return Ok::<_, InstancePackageError>(());
     };
+
     let path = libraries_dir.join(&path_str);
     let parent_dir = path
         .parent()
@@ -392,7 +389,8 @@ async fn download_library_fabric(
     tokio::fs::create_dir_all(parent_dir)
         .await
         .path(parent_dir)?;
-    file_utils::download_file_to_path(&url, false, &path).await?;
+    download(&url).path(&path).await?;
+
     {
         let mut i = i.lock().await;
         *i += 1;

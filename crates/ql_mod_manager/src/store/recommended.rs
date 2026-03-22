@@ -3,13 +3,13 @@ use std::sync::Arc;
 use futures::StreamExt;
 use owo_colors::colored::OwoColorize;
 use ql_core::{
-    err, info, json::VersionDetails, pt, GenericProgress, InstanceSelection, Loader, ModId,
-    StoreBackendType,
+    GenericProgress, InstanceSelection, Loader, ModId, StoreBackendType, err, info,
+    json::VersionDetails, pt,
 };
 use sipper::Sender;
 use tokio::sync::Mutex;
 
-use crate::store::{get_latest_version_date, ModIndex};
+use crate::store::{ModIndex, get_latest_version_date};
 
 use super::ModError;
 

@@ -2,15 +2,16 @@ use sipper::Sender;
 use std::collections::{HashMap, HashSet};
 
 use ql_core::{
-    err, file_utils, info, json::VersionDetails, pt, GenericProgress, InstanceSelection, ModId,
+    GenericProgress, InstanceSelection, ModId, StoreBackendType, download, err, file_utils, info,
+    json::VersionDetails, pt,
 };
 
 use crate::{
     rate_limiter::lock,
     store::{
-        curseforge::{get_query_type, ModQuery},
-        install_modpack, CurseforgeNotAllowed, DirStructure, ModConfig, ModError, ModFile,
-        ModIndex, QueryType, SOURCE_ID_CURSEFORGE,
+        CurseforgeNotAllowed, DirStructure, ModConfig, ModError, ModFile, ModIndex, QueryType,
+        curseforge::{ModQuery, get_query_type},
+        install_modpack,
     },
 };
 
@@ -141,7 +142,7 @@ impl<'a> ModDownloader<'a> {
         };
 
         let file_dir = dir.join(&file_query.data.fileName);
-        file_utils::download_file_to_path(&url, true, &file_dir).await?;
+        download(&url).user_agent_ql().path(&file_dir).await?;
 
         let id_str = response.id.to_string();
         let id_mod = ModId::Curseforge(id_str.clone());
@@ -193,7 +194,7 @@ impl<'a> ModDownloader<'a> {
                 enabled: true,
                 description: response.summary.clone(),
                 icon_url: response.logo.clone().map(|n| n.url),
-                project_source: SOURCE_ID_CURSEFORGE.to_owned(),
+                project_source: StoreBackendType::Curseforge,
                 project_id: id_index_str.clone(),
                 files: vec![ModFile {
                     url,

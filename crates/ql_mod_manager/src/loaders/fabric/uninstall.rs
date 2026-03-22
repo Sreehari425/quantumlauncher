@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use ql_core::{
-    err, info, json::FabricJSON, InstanceSelection, IntoIoError, IntoJsonError, IoError, Loader,
-    LAUNCHER_DIR,
+    InstanceSelection, IntoIoError, IntoJsonError, IoError, LAUNCHER_DIR, Loader, err, info,
+    json::FabricJSON,
 };
 
 use crate::loaders::change_instance_type;

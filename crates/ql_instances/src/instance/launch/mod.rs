@@ -1,11 +1,11 @@
 use crate::auth::AccountData;
 use error::GameLaunchError;
 use ql_core::{
-    err, info, json::GlobalSettings, GenericProgress, InstanceSelection, LaunchedProcess,
-    REDACT_SENSITIVE_INFO,
+    json::GlobalSettings, GenericProgress, InstanceSelection, LaunchedProcess, REDACT_SENSITIVE_INFO, err, info,
 };
 use sipper::Sender;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 pub(super) mod error;
 mod launcher;
@@ -104,7 +104,7 @@ pub async fn launch(
         err!("No ID found!");
     }
 
-    if game_launcher.config_json.close_on_start.unwrap_or(false) {
+    if game_launcher.config.close_on_start.unwrap_or(false) {
         ql_core::logger_finish();
         std::process::exit(0);
     }

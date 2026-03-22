@@ -1,17 +1,17 @@
 use iced::{
-    widget::{self, column, tooltip::Position},
     Alignment, Length,
+    widget::{self, column, row, tooltip::Position},
 };
 use ql_core::WEBSITE;
 use ql_instances::auth::AccountType;
 use widgets::generic_overlay::OverlayButton;
 
-use crate::stylesheet::styles::{LauncherThemeLightness, BORDER_RADIUS, BORDER_WIDTH};
+use crate::stylesheet::styles::{BORDER_RADIUS, BORDER_WIDTH, LauncherThemeLightness};
 use crate::{
     config::LauncherConfig,
     icons,
     state::{
-        AccountMessage, InstallModsMessage, LauncherSettingsMessage, LicenseTab, ManageModsMessage,
+        AccountMessage, LauncherSettingsMessage, LicenseTab, ManageModsMessage,
         MenuCurseforgeManualDownload, MenuLauncherUpdate, MenuLicense, Message, ProgressBar,
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
@@ -25,6 +25,8 @@ mod login;
 mod mods;
 mod onboarding;
 mod settings;
+mod shortcuts;
+mod sidebar;
 mod ui;
 
 pub use onboarding::changelog;
@@ -44,11 +46,20 @@ const PADDING_NOT_BOTTOM: iced::Padding = iced::Padding {
     right: 10.0,
 };
 
-fn ctx_button(e: &'_ str) -> widget::Button<'_, Message, LauncherTheme> {
-    widget::button(widget::text(e).size(13))
-        .width(Length::Fill)
-        .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatDark))
-        .padding(2)
+const CTXI_SIZE: u32 = 10;
+
+fn ctx_button<'a>(
+    icon: widget::Text<'a, LauncherTheme>,
+    e: &'a str,
+) -> widget::Button<'a, Message, LauncherTheme> {
+    widget::button(
+        row![icon, widget::text(e).size(13)]
+            .align_y(Alignment::Center)
+            .spacing(10),
+    )
+    .width(Length::Fill)
+    .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatDark))
+    .padding(2)
 }
 
 pub fn checkered_list<'a, Item: Into<Element<'a>>>(
@@ -190,7 +201,7 @@ pub fn button_with_icon<'a>(
     size: u32,
 ) -> widget::Button<'a, Message, LauncherTheme> {
     widget::button(
-        widget::row![
+        row![
             icon.into(),
             (!text.is_empty()).then_some(widget::text(text).size(size))
         ]
@@ -261,7 +272,7 @@ fn dots(tick_timer: usize) -> String {
 impl MenuLauncherUpdate {
     pub fn view(&'_ self) -> Element<'_> {
         if let Some(progress) = &self.progress {
-            return column!("Updating QuantumLauncher...", progress.view())
+            return column!["Updating QuantumLauncher...", progress.view()]
                 .padding(10)
                 .into();
         }
@@ -315,11 +326,11 @@ pub fn get_mode_selector(config: &LauncherConfig) -> Element<'static> {
         };
 
         if *n == theme {
-            widget::container(widget::row![icon.style(td), name].spacing(5))
+            widget::container(row![icon.style(td), name].spacing(5))
                 .padding(PADDING)
                 .into()
         } else {
-            widget::button(widget::row![icon, name].spacing(5))
+            widget::button(row![icon, name].spacing(5))
                 .on_press(Message::LauncherSettings(
                     LauncherSettingsMessage::ThemePicked(*n),
                 ))
@@ -343,7 +354,7 @@ impl ProgressBar {
     pub fn view(&'_ self) -> widget::Column<'_, Message, LauncherTheme> {
         column![
             widget::progress_bar(0.0..=self.total, self.num),
-            self.message.as_deref().map(widget::text)
+            self.message.as_deref().map(widget::text),
         ]
         .spacing(10)
     }
@@ -355,7 +366,7 @@ impl MenuCurseforgeManualDownload {
             "Some Curseforge mods have blocked this launcher!\nYou need to manually download the files and add them to your mods",
 
             widget::scrollable(
-                widget::column(self.unsupported.iter().map(|entry| {
+                widget::column(self.not_allowed.iter().map(|entry| {
                     let url = format!(
                         "https://www.curseforge.com/minecraft/{}/{}/download/{}",
                         entry.project_type,
@@ -363,7 +374,7 @@ impl MenuCurseforgeManualDownload {
                         entry.file_id
                     );
 
-                    widget::row![
+                    row![
                         widget::button(widget::text("Open link").size(14)).on_press(Message::CoreOpenLink(url)),
                         widget::text(&entry.name)
                             .shaping(widget::text::Shaping::Advanced)
@@ -378,18 +389,14 @@ impl MenuCurseforgeManualDownload {
             .style(LauncherTheme::style_scrollable_flat_extra_dark),
 
             "Warning: Ignoring this may lead to crashes!",
-            widget::row![
-                widget::button(widget::text("+ Select above downloaded files").size(14)).on_press(Message::ManageMods(ManageModsMessage::AddFile(self.delete_mods))),
-                widget::button(widget::text("Continue").size(14)).on_press(if self.is_store {
-                    Message::InstallMods(InstallModsMessage::Open)
-                } else {
-                    Message::ManageMods(ManageModsMessage::ScreenOpenWithoutUpdate)
-                }),
+            row![
+                widget::button(widget::text("+ Select above downloaded files").size(14)).on_press(ManageModsMessage::AddFile(self.delete_mods).into()),
+                widget::button(widget::text("Continue").size(14)).on_press(ManageModsMessage::Open.into()),
                 widget::checkbox(self.delete_mods)
+                    .label("Delete files when done")
                     .on_toggle(|t|
                         Message::ManageMods(ManageModsMessage::CurseforgeManualToggleDelete(t))
-                    ),
-                widget::text("Delete files when done").size(14),
+                    ).text_size(14),
             ].spacing(5).align_y(Alignment::Center).wrap()
         ]
             .padding(10)
@@ -400,7 +407,7 @@ impl MenuCurseforgeManualDownload {
 
 impl MenuLicense {
     pub fn view(&'_ self) -> Element<'_> {
-        widget::row![
+        row![
             sidebar(
                 "MenuLicense:sidebar",
                 Some(
@@ -473,9 +480,9 @@ pub fn view_account_login<'a>() -> Element<'a> {
 
 pub fn view_error(error: &'_ str) -> Element<'_> {
     widget::scrollable(
-        column!(
+        column![
             widget::text!("Error: {error}"),
-            widget::row![
+            row![
                 widget::button("Back").on_press(back_to_launch_screen(None, None)),
                 widget::button("Copy Error").on_press(Message::CoreCopyError),
                 widget::button("Copy Error + Log").on_press(Message::CoreCopyLog),
@@ -484,7 +491,7 @@ pub fn view_error(error: &'_ str) -> Element<'_> {
             ]
             .spacing(5)
             .wrap()
-        )
+        ]
         .padding(10)
         .spacing(10),
     )
@@ -507,7 +514,7 @@ pub fn view_log_upload_result(url: &'_ str, is_server: bool) -> Element<'_> {
             widget::text("Your log has been uploaded to mclo.gs. You can share the link below:")
                 .size(14),
             widget::container(
-                widget::row![
+                row![
                     widget::text(url).font(FONT_MONO),
                     widget::button("Copy").on_press(Message::CoreCopyText(url.to_string())),
                     widget::button("Open").on_press(Message::CoreOpenLink(url.to_string()))
@@ -541,9 +548,9 @@ pub fn view_confirm<'a>(
         widget::space().height(Length::Fill),
         widget::text!("Are you sure you want to {msg1}?").size(20),
         msg2,
-        widget::row![
+        row![
             widget::button(
-                widget::row![
+                row![
                     icons::cross().style(t_white),
                     widget::text("No").style(t_white)
                 ]
@@ -556,7 +563,7 @@ pub fn view_confirm<'a>(
                 style_button_color(status, (0x72, 0x22, 0x24), (0x9f, 0x2c, 0x2f))
             }),
             widget::button(
-                widget::row![
+                row![
                     icons::deselectall().style(t_white),
                     widget::text("Yes").style(t_white)
                 ]
@@ -603,4 +610,24 @@ fn style_button_color(
         border,
         ..Default::default()
     }
+}
+
+pub fn view_changelog() -> Element<'static> {
+    let back_msg = Message::MScreenOpen {
+        message: None,
+        clear_selection: true,
+        is_server: None,
+    };
+    widget::scrollable(
+        widget::column!(
+            button_with_icon(icons::back(), "Skip", 16).on_press(back_msg.clone()),
+            changelog(),
+            button_with_icon(icons::back(), "Continue", 16).on_press(back_msg),
+        )
+        .padding(10)
+        .spacing(10),
+    )
+    .style(LauncherTheme::style_scrollable_flat_extra_dark)
+    .height(Length::Fill)
+    .into()
 }

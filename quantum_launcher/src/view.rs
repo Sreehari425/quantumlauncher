@@ -1,17 +1,15 @@
-use iced::{
-    widget::{self, column},
-    Length,
-};
-
 use crate::{
-    icons,
+    DEBUG_LOG_BUTTON_HEIGHT,
     menu_renderer::{
-        button_with_icon, changelog, tooltip, view_account_login, view_confirm, view_error,
-        view_log_upload_result, Element, FONT_MONO,
+        Element, FONT_MONO, tooltip, view_account_login, view_changelog, view_confirm, view_error,
+        view_log_upload_result,
     },
     state::{Launcher, Message, State},
     stylesheet::{styles::LauncherTheme, widgets::StyleButton},
-    DEBUG_LOG_BUTTON_HEIGHT,
+};
+use iced::{
+    Length,
+    widget::{self, column},
 };
 
 impl Launcher {
@@ -66,15 +64,18 @@ impl Launcher {
                         Message::CoreLogScrollAbsolute,
                         |(msg, kind)| {
                             widget::row![
-                                widget::rich_text![widget::span::<Message, _>(kind.to_string())
-                                    .color(match kind {
-                                        ql_core::LogType::Info =>
-                                            iced::Color::from_rgb8(0xf9, 0xe2, 0xaf),
-                                        ql_core::LogType::Error =>
-                                            iced::Color::from_rgb8(0xe3, 0x44, 0x59),
-                                        ql_core::LogType::Point =>
-                                            iced::Color::from_rgb8(128, 128, 128),
-                                    })]
+                                widget::rich_text![
+                                    widget::span::<Message, _>(kind.to_string()).color(
+                                        match kind {
+                                            ql_core::LogType::Info =>
+                                                iced::Color::from_rgb8(0xf9, 0xe2, 0xaf),
+                                            ql_core::LogType::Error =>
+                                                iced::Color::from_rgb8(0xe3, 0x44, 0x59),
+                                            ql_core::LogType::Point =>
+                                                iced::Color::from_rgb8(128, 128, 128),
+                                        }
+                                    )
+                                ]
                                 .size(12)
                                 .font(FONT_MONO),
                                 widget::text!(" {msg}").font(FONT_MONO).size(12)
@@ -104,7 +105,7 @@ impl Launcher {
                 .as_millis()
         );
         let menu = match &self.state {
-            State::Launch(menu) => self.view_main_menu(menu),
+            State::Launch(menu) => self.view_main_menu(menu).into(),
             State::AccountLoginProgress(progress) => column![
                 widget::text("Logging into Microsoft account").size(20),
                 progress.view()
@@ -138,25 +139,7 @@ impl Launcher {
             State::ModsDownload(menu) => menu.view(&self.images, self.tick_timer),
             State::LauncherSettings(menu) => menu.view(&self.config),
             State::InstallPaper(menu) => menu.view(self.tick_timer),
-            State::ChangeLog => {
-                let back_msg = Message::MScreenOpen {
-                    message: None,
-                    clear_selection: true,
-                    is_server: None,
-                };
-                widget::scrollable(
-                    column!(
-                        button_with_icon(icons::back(), "Skip", 16).on_press(back_msg.clone()),
-                        changelog(&self.config),
-                        button_with_icon(icons::back(), "Continue", 16).on_press(back_msg),
-                    )
-                    .padding(10)
-                    .spacing(10),
-                )
-                .style(LauncherTheme::style_scrollable_flat_extra_dark)
-                .height(Length::Fill)
-                .into()
-            }
+            State::ChangeLog => view_changelog(),
             State::Welcome(menu) => menu.view(&self.config),
             State::EditJarMods(menu) => menu.view(self.instance()),
             State::ImportModpack(progress) => {
@@ -168,7 +151,7 @@ impl Launcher {
             State::LogUploadResult { url } => {
                 view_log_upload_result(url, self.instance().is_server())
             }
-
+            State::CreateShortcut(menu) => menu.view(&self.accounts_dropdown),
             State::LoginAlternate(menu) => menu.view(self.tick_timer),
             State::ExportInstance(menu) => menu.view(self.tick_timer),
 
@@ -194,7 +177,7 @@ impl Launcher {
             State::RecommendedMods(menu) => menu.view(),
         };
 
-        if let State::Launch(_) = &self.state {
+        widget::mouse_area(if let State::Launch(_) = &self.state {
             menu
         } else {
             // let round = !self.config.uses_system_decorations();
@@ -222,7 +205,9 @@ impl Launcher {
                         .height(Length::Fill),
                 )
                 .into()
-        }
+        })
+        .on_press(Message::CoreHideModal)
+        .into()
     }
 
     /*pub fn view_window_decorations(&self) -> widget::Row<'_, Message, LauncherTheme> {
@@ -230,14 +215,16 @@ impl Launcher {
 
         fn win_button(icon: widget::Text<'_, LauncherTheme>, m: Message) -> Element<'_> {
             widget::mouse_area(
-                widget::row![widget::button(
-                    widget::row![icon.style(|t: &LauncherTheme| t.style_text(Color::Mid))]
-                        .align_y(Alignment::Center)
-                        .padding([4, 10]),
-                )
-                .padding(0)
-                .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
-                .on_press(m.clone())]
+                widget::row![
+                    widget::button(
+                        widget::row![icon.style(|t: &LauncherTheme| t.style_text(Color::Mid))]
+                            .align_y(Alignment::Center)
+                            .padding([4, 10]),
+                    )
+                    .padding(0)
+                    .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
+                    .on_press(m.clone())
+                ]
                 .height(Length::Fill)
                 .align_y(Alignment::Center)
                 .padding([3.0, 1.5]),
@@ -256,18 +243,15 @@ impl Launcher {
         );
 
         let wcls_space = widget::mouse_area(column![].height(Length::Fill).width(6.5))
-            .on_press(Message::Window(WindowMessage::ClickClose));
-        let wcls = win_button(
-            icons::close_s(ICON_SIZE),
-            Message::Window(WindowMessage::ClickClose),
-        );
+            .on_press(WindowMessage::ClickClose.into());
+        let wcls = win_button(icons::close_s(ICON_SIZE), WindowMessage::ClickClose.into());
         let wmax = win_button(
             icons::maximize_s(ICON_SIZE),
-            Message::Window(WindowMessage::ClickMaximize),
+            WindowMessage::ClickMaximize.into(),
         );
         let wmin = win_button(
             icons::minimize_s(ICON_SIZE),
-            Message::Window(WindowMessage::ClickMinimize),
+            WindowMessage::ClickMinimize.into(),
         );
         if right {
             widget::Row::new()
@@ -295,7 +279,7 @@ impl Launcher {
     ) -> widget::MouseArea<'static, Message, LauncherTheme> {
         widget::mouse_area(column![].width(w).height(h))
             .interaction(i)
-            .on_press(Message::Window(WindowMessage::Resized(d)))
+            .on_press(WindowMessage::Resized(d).into())
     }
 
     widget::stack!(

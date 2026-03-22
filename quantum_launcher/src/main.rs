@@ -23,19 +23,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_precision_loss)]
 
-use std::{
-    borrow::Cow,
-    sync::{Arc, LazyLock, RwLock},
-    time::Duration,
-};
+use std::{borrow::Cow, cell::RefCell, sync::Arc, time::Duration};
 
 use config::LauncherConfig;
-use iced::{mouse, window, Settings, Task};
+use iced::{Settings, Task, mouse, window};
 use owo_colors::OwoColorize;
 use sipper::Sipper;
-use state::{get_entries, Launcher, Message};
+use state::{Launcher, Message, get_entries};
 
-use ql_core::{constants::OS_NAME, err, file_utils, info, pt, IntoStringError, JsonFileError};
+use ql_core::{IntoStringError, JsonFileError, constants::OS_NAME, err, file_utils, info, pt};
 
 use crate::{
     menu_renderer::FONT_DEFAULT,
@@ -77,7 +73,7 @@ mod message_handler;
 /// Handlers for "child messages".
 ///
 /// The [`Message`] enum is split into
-/// categories (like `Message::Account(AccountMessage)`).
+/// categories (like `Message::Account(AccountMessage::*)`).
 ///
 /// This module has functions for handling each of
 /// these "child messages".
@@ -147,10 +143,14 @@ impl Launcher {
             );
             needed.then_some(Message::CoreEvent(a, b))
         });
-        let ui = self.config.ui.unwrap_or_default();
-        let idle_fps = ui.get_idle_fps();
+        let idle_enable = self
+            .config
+            .ui
+            .as_ref()
+            .and_then(|n| n.idle_enable)
+            .unwrap_or_default();
 
-        let should_tick = ui.idle_enable.unwrap_or_default()
+        let should_tick = idle_enable
             || matches!(
                 self.state,
                 State::Launch(_)
@@ -161,7 +161,7 @@ impl Launcher {
                     | State::EditJarMods(_)
             );
         if should_tick {
-            let tick = iced::time::every(Duration::from_millis(1000 / idle_fps))
+            let tick = iced::time::every(Duration::from_millis(1000 / self.tick_interval()))
                 .map(|_| Message::CoreTick);
             iced::Subscription::batch([tick, events])
         } else {
@@ -194,8 +194,8 @@ fn main() {
     let is_new_user = file_utils::is_new_user();
     // let is_new_user = true; // Uncomment to test the intro screen.
 
-    let (launcher_dir, is_dir_err) = load_launcher_dir();
-    cli::start_cli(is_dir_err);
+    let (mut launcher_dir, is_dir_err) = load_launcher_dir();
+    cli::start_cli(is_dir_err, &mut launcher_dir);
 
     info!(no_log, "Starting up the launcher... (OS: {OS_NAME})");
     if let Some(dir) = &launcher_dir {
@@ -214,15 +214,15 @@ fn main() {
     let (width, height) = c.c_window_size();
     let antialiasing = c.ui_antialiasing.unwrap_or(true);
 
-    // FIXME: Look at this garbage. Only way I could find to work
-    // around the Fn() trait bounds
     type MaybeData = Option<(Result<LauncherConfig, String>, bool)>;
-    static CONFIG: LazyLock<RwLock<MaybeData>> = LazyLock::new(|| RwLock::new(None));
-    *CONFIG.write().unwrap() = Some((config, is_new_user));
+    let once_boot: RefCell<MaybeData> = RefCell::new(Some((config, is_new_user)));
 
     iced::application(
-        || {
-            let (config, is_new_user) = CONFIG.read().unwrap().clone().unwrap();
+        move || {
+            let (config, is_new_user) = once_boot
+                .borrow_mut()
+                .clone()
+                .expect("state should already be initialized");
             Launcher::new(is_new_user, config)
         },
         Launcher::update,
@@ -306,19 +306,18 @@ fn load_fonts() -> Vec<Cow<'static, [u8]>> {
     ]
 }
 
-/// This is the only `unsafe` Rust code in the entire launcher.
-/// It tweaks Windows terminal behaviour so that:
+/// Tweaks Windows terminal behaviour so that:
 ///
 /// - If launcher is opened from terminal,
 ///   it shows output in terminal
 /// - If it's opened normally from GUI,
 ///   no terminal window pops up
 ///
-/// Basically Linux-default behaviour.
+/// Basically Linux-default behavior.
 #[cfg(windows)]
 fn attach_to_console() {
-    use windows::Win32::System::Console::AttachConsole;
     use windows::Win32::System::Console::ATTACH_PARENT_PROCESS;
+    use windows::Win32::System::Console::AttachConsole;
 
     unsafe {
         // No one cares if it fails. Ignore the `Result<()>`
@@ -369,7 +368,9 @@ fn do_migration() {
         } else if let Err(e) = file_utils::create_symlink(&new_dir, &legacy_dir) {
             eprintln!("Migration successful but couldn't create symlink to the legacy dir: {e}");
         } else {
-            ql_core::info!("Migration successful!\nYour launcher files are now in ~./local/share/QuantumLauncher");
+            println!(
+                "Migration successful!\nYour launcher files are now in ~./local/share/QuantumLauncher"
+            );
         }
     }
 }

@@ -1,5 +1,5 @@
-use crate::{err, file_utils, IntoJsonError, IoError};
 use crate::{InstanceSelection, IntoIoError, JsonFileError};
+use crate::{IntoJsonError, IoError, err, file_utils};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

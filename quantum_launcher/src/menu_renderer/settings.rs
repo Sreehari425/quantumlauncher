@@ -1,17 +1,16 @@
 use std::sync::LazyLock;
 
 use iced::{
-    widget::{self, column},
     Alignment, Length,
+    widget::{self, column, row},
 };
 use ql_core::{LAUNCHER_DIR, WEBSITE};
 
 use super::{
-    back_button, button_with_icon, get_mode_selector, sidebar_button, underline, Element, DISCORD,
-    GITHUB,
+    DISCORD, Element, GITHUB, back_button, button_with_icon, get_mode_selector, sidebar_button,
+    underline,
 };
 use crate::menu_renderer::edit_instance::{args_split_by_space, get_args_list, resolution_dialog};
-use crate::menu_renderer::ui::toggler;
 use crate::menu_renderer::{back_to_launch_screen, checkered_list, sidebar, tsubtitle};
 use crate::{
     config::LauncherConfig,
@@ -31,11 +30,12 @@ pub static IMG_ICED: LazyLock<widget::image::Handle> = LazyLock::new(|| {
 const SETTINGS_SPACING: f32 = 10.0;
 const SETTING_WIDTH: u32 = 180;
 
-pub const PREFIX_EXPLANATION: &str = "Commands to add before the game launch command\nEg: 'prime-run' to force NVIDIA GPU on Linux with Optimus";
+pub const PREFIX_EXPLANATION: &str =
+    "Commands to add before the game launch command\nEg: prime-run/gamemoderun/mangohud";
 
 impl MenuLauncherSettings {
     pub fn view<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {
-        widget::row![
+        row![
             sidebar(
                 "MenuLauncherSettings:sidebar",
                 Some(
@@ -52,7 +52,7 @@ impl MenuLauncherSettings {
                         tab,
                         &self.selected_tab,
                         text,
-                        Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(*tab)),
+                        LauncherSettingsMessage::ChangeTab(*tab).into(),
                     )
                 })
             )
@@ -72,7 +72,7 @@ impl MenuLauncherSettings {
     }
 
     fn get_heading() -> widget::Row<'static, Message, LauncherTheme> {
-        widget::row![icons::gear_s(20), widget::text("Settings").size(20),]
+        row![icons::gear_s(20), widget::text("Settings").size(20)]
             .padding(iced::Padding {
                 top: 5.0,
                 right: 0.0,
@@ -83,7 +83,7 @@ impl MenuLauncherSettings {
     }
 
     fn view_ui_tab<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {
-        let ui_scale_apply = widget::row![
+        let ui_scale_apply = row![
             widget::space().width(Length::Fill),
             widget::button(widget::text("Apply").size(12))
                 .padding([1.8, 5.0])
@@ -92,23 +92,22 @@ impl MenuLauncherSettings {
                 ))
         ];
 
-        let idle_fps = config.ui.unwrap_or_default().get_idle_fps();
+        let idle_fps = config.c_idle_fps();
 
         checkered_list::<Element>([
             column![widget::text("User Interface").size(20)].into(),
 
             column![
-                widget::row!["Mode: ", get_mode_selector(config)]
+                row!["Mode: ", get_mode_selector(config)]
                     .spacing(5)
                     .align_y(Alignment::Center),
                 widget::space().height(5),
-                "Theme:",
-                get_theme_selector().wrap()
+                row!["Theme:", get_theme_selector().wrap()].spacing(5),
             ]
             .spacing(5)
             .into(),
-            widget::row![
-                widget::row![
+            row![
+                row![
                     widget::text!("UI Scale ({:.2}x)  ", self.temp_scale).size(15),
                     ((self.temp_scale - config.ui_scale.unwrap_or(1.0)).abs() > 0.01)
                         .then_some(ui_scale_apply)
@@ -126,39 +125,39 @@ impl MenuLauncherSettings {
 
             column![
                 // TODO: This requires launcher restart
-                // widget::checkbox("Custom Window Decorations", !config.c_window_decorations()).on_toggle(|n| {
-                //     Message::LauncherSettings(LauncherSettingsMessage::ToggleWindowDecorations(n))
+                // widget::checkbox(!config.c_window_decorations())
+                // .label("Custom Window Decorations")
+                // .on_toggle(|n| {
+                //     LauncherSettingsMessage::ToggleWindowDecorations(n).into()
                 // }),
                 // widget::text("Use custom window borders and close/minimize/maximize buttons").size(12),
                 // widget::space().height(5),
 
-                toggler(
-                    "Antialiasing (UI) - Requires Restart",
-                    config.ui_antialiasing.unwrap_or(true),
-                    |n| Message::LauncherSettings(
-                        LauncherSettingsMessage::ToggleAntialiasing(n)
-                    )
-                ),
+                widget::toggler(config.ui_antialiasing.unwrap_or(true))
+                .label("Antialiasing (UI) - Requires Restart")
+                .on_toggle(|n| Message::LauncherSettings(
+                    LauncherSettingsMessage::ToggleAntialiasing(n)
+                )),
                 widget::text("Makes text/menus crisper. Also nudges the launcher into using your dedicated GPU for the User Interface").size(12).style(tsubtitle),
                 widget::space().height(5),
 
-                toggler(
-                    "Remember window size",
-                    config.window.as_ref().is_none_or(|n| n.save_window_size),
-                    |n| Message::LauncherSettings(LauncherSettingsMessage::ToggleWindowSize(n))
-                ),
+                widget::toggler(
+                    config.window.as_ref().is_none_or(|n| n.save_window_size)
+                )
+                .label("Remember window size")
+                .on_toggle(|n| LauncherSettingsMessage::ToggleWindowSize(n).into()),
                 widget::space().height(5),
-                toggler(
-                    "Remember last selected instance",
-                    config.persistent.clone().unwrap_or_default().selected_remembered,
-                    |n| Message::LauncherSettings(LauncherSettingsMessage::ToggleInstanceRemembering(n))
-                ),
+                widget::toggler(
+                    config.persistent.clone().unwrap_or_default().selected_remembered
+                )
+                .label("Remember last selected instance")
+                .on_toggle(|n| LauncherSettingsMessage::ToggleInstanceRemembering(n).into()),
             ]
             .spacing(5)
             .into(),
 
             column![
-                widget::row![
+                row![
                     widget::text!("UI Idle FPS ({idle_fps})")
                         .size(15)
                         .width(SETTING_WIDTH),
@@ -182,7 +181,7 @@ fn get_ui_opacity(config: &LauncherConfig) -> widget::Column<'static, Message, L
     let t = |t| widget::text(t).size(12).style(tsubtitle);
 
     column![
-        widget::row![
+        row![
             widget::text!("Window Opacity ({ui_opacity:.2}x)")
                 .width(SETTING_WIDTH)
                 .size(15),
@@ -201,7 +200,8 @@ fn get_ui_opacity(config: &LauncherConfig) -> widget::Column<'static, Message, L
 
 pub fn get_theme_selector() -> widget::Row<'static, Message, LauncherTheme> {
     widget::row(LauncherThemeColor::ALL.iter().map(|color| {
-        widget::button(widget::text(color.to_string()).size(14))
+        widget::button(widget::text(color.to_string()).size(13))
+            .padding([2, 4])
             .style(|theme: &LauncherTheme, s| {
                 LauncherTheme {
                     color: *color,
@@ -243,7 +243,7 @@ impl LauncherSettingsTab {
                 widget::rule::horizontal(1),
                 "Global Java Arguments:",
                 get_args_list(config.extra_java_args.as_deref(), |msg| {
-                    Message::LauncherSettings(LauncherSettingsMessage::GlobalJavaArgs(msg))
+                    LauncherSettingsMessage::GlobalJavaArgs(msg).into()
                 }),
                 widget::space().height(5),
                 "Global Pre-Launch Prefix:",
@@ -253,16 +253,13 @@ impl LauncherSettingsTab {
                         .global_settings
                         .as_ref()
                         .and_then(|n| n.pre_launch_prefix.as_deref()),
-                    |n| Message::LauncherSettings(LauncherSettingsMessage::GlobalPreLaunchPrefix(
-                        n
-                    )),
+                    |n| LauncherSettingsMessage::GlobalPreLaunchPrefix(n).into(),
                 ),
                 args_split_by_space(menu.arg_split_by_space),
                 widget::rule::horizontal(1),
-                widget::row![
-                    button_with_icon(icons::bin(), "Clear Java installs", 16).on_press(
-                        Message::LauncherSettings(LauncherSettingsMessage::ClearJavaInstalls)
-                    ),
+                row![
+                    button_with_icon(icons::bin(), "Clear Java installs", 16)
+                        .on_press(LauncherSettingsMessage::ClearJavaInstalls.into()),
                     widget::text(
                         "Might fix some Java problems.\nPerfectly safe, will be redownloaded."
                     )
@@ -289,7 +286,7 @@ fn view_about_tab() -> Element<'static> {
     .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatDark))
     .on_press(Message::LicenseChangeTab(crate::state::LicenseTab::Gpl3));
 
-    let links = widget::row![
+    let links = row![
         button_with_icon(icons::globe(), "Website", 16)
             .on_press(Message::CoreOpenLink(WEBSITE.to_owned())),
         button_with_icon(icons::github(), "Github", 16)
@@ -300,7 +297,7 @@ fn view_about_tab() -> Element<'static> {
     .spacing(5)
     .wrap();
 
-    let menus = widget::row![
+    let menus = row![
         widget::button("Changelog").on_press(Message::CoreOpenChangeLog),
         widget::button("Welcome Screen").on_press(Message::CoreOpenIntro),
         widget::button("Licenses").on_press(Message::LicenseOpen),
@@ -322,7 +319,7 @@ fn view_about_tab() -> Element<'static> {
             .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::Flat)),
         widget::rule::horizontal(1),
         column![
-            widget::row![
+            row![
                 widget::text("QuantumLauncher is free and open source software under the ")
                     .size(12),
                 gpl3_button,

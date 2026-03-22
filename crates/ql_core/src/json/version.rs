@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    constants::*, err, pt, InstanceSelection, IntoIoError, IntoJsonError, JsonFileError, OS_NAME,
+    InstanceSelection, IntoIoError, IntoJsonError, JsonFileError, OS_NAME, constants::*, err, pt,
 };
 
 pub const V_PRECLASSIC_LAST: &str = "2009-05-16T11:48:00+00:00";
@@ -280,6 +280,7 @@ pub struct Library {
 
 impl Library {
     #[must_use]
+    #[allow(clippy::missing_panics_doc)] // will never panic
     pub fn get_artifact(&self) -> Option<LibraryDownloadArtifact> {
         match (&self.name, self.downloads.as_ref(), self.url.as_ref()) {
             (
@@ -319,6 +320,7 @@ impl Library {
             allowed = false;
 
             for rule in rules {
+                #[allow(clippy::unnecessary_semicolon)] // cfg_if weirdness
                 if let Some(ref os) = rule.os {
                     cfg_if!(
                         if #[cfg(any(

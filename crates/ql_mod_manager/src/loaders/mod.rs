@@ -3,8 +3,8 @@ use std::path::Path;
 
 use crate::loaders::paper::PaperVer;
 use ql_core::{
-    json::{instance_config::ModTypeInfo, InstanceConfigJson},
     pipe_progress, GenericProgress, InstanceSelection, IntoStringError, JsonFileError, Loader,
+    json::{InstanceConfigJson, instance_config::ModTypeInfo},
 };
 
 pub mod fabric;
@@ -14,9 +14,9 @@ pub mod optifine;
 pub mod paper;
 
 pub(crate) const FORGE_INSTALLER_CLIENT: &[u8] =
-    include_bytes!("../../../../assets/installers/ForgeInstaller.class");
+    include_bytes!("../../../../assets/installers/forge/ForgeInstaller.class");
 pub(crate) const FORGE_INSTALLER_SERVER: &[u8] =
-    include_bytes!("../../../../assets/installers/ForgeInstallerServer.class");
+    include_bytes!("../../../../assets/installers/forge/ForgeInstallerServer.class");
 
 async fn change_instance_type(
     instance_dir: &Path,
@@ -104,11 +104,11 @@ pub async fn install_specified_loader(
                 LoaderInstallResult::Unsupported
             } else {
                 LoaderInstallResult::NeedsOptifine
-            })
+            });
         }
 
         Loader::Liteloader | Loader::Modloader | Loader::Rift => {
-            return Ok(LoaderInstallResult::Unsupported)
+            return Ok(LoaderInstallResult::Unsupported);
         }
     }
     Ok(LoaderInstallResult::Ok)

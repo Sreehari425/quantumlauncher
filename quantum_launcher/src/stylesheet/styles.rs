@@ -244,7 +244,11 @@ impl LauncherTheme {
             background: Some(self.get_bg(Color::ExtraDark)),
             border,
             scroller: widget::scrollable::Scroller {
-                background: self.get_bg(Color::SecondDark),
+                background: iced::Background::Color(mix(
+                    mix(self.get(Color::SecondDark), self.get(Color::Dark)),
+                    // self.get(Color::Dark),
+                    self.get(Color::SecondDark),
+                )),
                 border: self.get_border_style(&style, Color::Mid),
             },
         };
@@ -604,7 +608,9 @@ impl LauncherTheme {
                     | StyleButton::RoundDark
                     | StyleButton::SemiDark(_)
                     | StyleButton::SemiDarkBorder(_) => Color::Dark,
-                    StyleButton::FlatExtraDark | StyleButton::SemiExtraDark(_) => Color::ExtraDark,
+                    StyleButton::FlatExtraDark
+                    | StyleButton::SemiExtraDark(_)
+                    | StyleButton::FlatExtraDarkDead => Color::ExtraDark,
                 };
                 widget::button::Style {
                     background: Some(if let StyleButton::Round = style {
@@ -642,6 +648,7 @@ impl LauncherTheme {
                     | StyleButton::SemiDark(_)
                     | StyleButton::SemiDarkBorder(_) => Color::Mid,
                     StyleButton::FlatExtraDark | StyleButton::SemiExtraDark(_) => Color::Dark,
+                    StyleButton::FlatExtraDarkDead => Color::ExtraDark,
                 };
                 widget::button::Style {
                     background: Some(self.get_bg(color)),
@@ -661,11 +668,15 @@ impl LauncherTheme {
             },
             widget::button::Status::Disabled => {
                 let color = match style {
-                    StyleButton::Flat | StyleButton::Round | StyleButton::RoundDark => Color::Dark,
-                    StyleButton::FlatDark
-                    | StyleButton::SemiDark(_)
+                    StyleButton::Flat
+                    | StyleButton::Round
+                    | StyleButton::RoundDark
+                    | StyleButton::FlatDark => Color::Dark,
+                    StyleButton::SemiDark(_)
                     | StyleButton::SemiDarkBorder(_)
-                    | StyleButton::SemiExtraDark(_) => Color::ExtraDark,
+                    | StyleButton::SemiExtraDark(_)
+                    | StyleButton::FlatExtraDarkDead => Color::ExtraDark,
+                    // Selected button
                     StyleButton::FlatExtraDark => Color::SecondDark,
                 };
                 widget::button::Style {
@@ -673,7 +684,7 @@ impl LauncherTheme {
                     text_color: self.get(Color::ExtraDark),
                     border: if let StyleButton::Round = style {
                         let (palette, color) = self.get_base(Color::SecondDark);
-                        iced::Border {
+                        Border {
                             color: palette.get(color),
                             width: 0.5,
                             radius: BORDER_RADIUS.into(),
@@ -740,7 +751,7 @@ impl LauncherTheme {
                 selection: self.get(Color::Dark),
             },
             widget::text_editor::Status::Focused { .. } => widget::text_editor::Style {
-                background: self.get_bg(Color::Dark),
+                background: self.get_bg(Color::ExtraDark),
                 border: self.get_border(Color::SecondDark),
                 placeholder: self.get(Color::Light),
                 value: self.get(Color::White),
@@ -810,7 +821,7 @@ fn radius(t: bool) -> f32 {
     }
 }
 
-fn mix(color1: iced::Color, color2: iced::Color) -> iced::Color {
+pub fn mix(color1: iced::Color, color2: iced::Color) -> iced::Color {
     // Calculate the average of each RGBA component
     let r = color1.r.midpoint(color2.r);
     let g = color1.g.midpoint(color2.g);

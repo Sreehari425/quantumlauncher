@@ -1,16 +1,16 @@
 use error::Is404NotFound;
 use owo_colors::OwoColorize;
 use ql_core::{
-    do_jobs, err, file_utils, info,
+    CLASSPATH_SEPARATOR, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError,
+    Loader, Progress, do_jobs, download, err, file_utils, info,
     json::{
+        VersionDetails,
         forge::{JsonDetails, JsonDetailsLibrary, JsonInstallProfile, JsonVersions},
         instance_config::ModTypeInfo,
-        VersionDetails,
     },
-    pipe_progress_ext, pt, GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IoError,
-    Loader, Progress, CLASSPATH_SEPARATOR,
+    pipe_progress_ext, pt,
 };
-use ql_java_handler::{get_java_binary, JavaVersion, JAVA};
+use ql_java_handler::{JAVA, JavaVersion, get_java_binary};
 use sipper::Sender;
 use std::{
     fmt::Write,
@@ -20,7 +20,7 @@ use std::{
 };
 use tokio::{fs, sync::Mutex};
 
-use crate::loaders::{change_instance_type, FORGE_INSTALLER_CLIENT, FORGE_INSTALLER_SERVER};
+use crate::loaders::{FORGE_INSTALLER_CLIENT, FORGE_INSTALLER_SERVER, change_instance_type};
 
 mod error;
 mod server;
@@ -189,8 +189,7 @@ impl ForgeInstaller {
                 // 1.12 - 1.18
                 format!(
                     "../forge/libraries/net/minecraftforge/forge/{}/forge-{}.jar{CLASSPATH_SEPARATOR}",
-                    self.short_version,
-                    self.short_version
+                    self.short_version, self.short_version
                 )
             } else {
                 // 1.18.1+
@@ -217,13 +216,12 @@ impl ForgeInstaller {
         self.run_installer_create_garbage_files().await?;
 
         let java_version = if cfg!(target_os = "windows") {
-            // WTF: No clue why this is needed but it won't work without this.
+            // WTF: No clue why this is needed, but it won't work without this.
             // Hey, that's what you get for not using PrismLauncher!
             self.version_json
                 .javaVersion
                 .clone()
-                .map(JavaVersion::from)
-                .unwrap_or(JavaVersion::Java21)
+                .map_or(JavaVersion::Java21, JavaVersion::from)
         } else {
             JavaVersion::Java8
         };
@@ -354,7 +352,7 @@ impl ForgeInstaller {
 
         let dest = lib_dir_path.join(&file);
         if !dest.exists() {
-            let result = file_utils::download_file_to_path(&url, false, &dest).await;
+            let result = download(&url).path(&dest).await;
             if result.is_not_found() {
                 err!("Error 404 not found. Skipping...");
                 return Ok(());
@@ -584,11 +582,7 @@ pub async fn install_client(
     change_instance_type(
         &installer.instance_dir,
         Loader::Forge,
-        Some(ModTypeInfo {
-            version: Some(installer.version.clone()),
-            backend_implementation: None,
-            optifine_jar: None,
-        }),
+        Some(ModTypeInfo::new_regular(installer.version)),
     )
     .await?;
 

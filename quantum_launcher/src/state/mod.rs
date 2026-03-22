@@ -8,10 +8,10 @@ use std::{
 use iced::Task;
 use notify::Watcher;
 use ql_core::{
-    err, file_utils, read_log::LogLine, InstanceSelection, IntoIoError, IntoStringError, IoError,
-    LaunchedProcess, ModId, Progress, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
+    InstanceSelection, IntoIoError, IntoStringError, IoError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
+    LaunchedProcess, Progress, err, file_utils, read_log::LogLine,
 };
-use ql_instances::auth::{ms::CLIENT_ID, AccountData, AccountType};
+use ql_instances::auth::{AccountData, AccountType, ms::CLIENT_ID};
 use tokio::process::ChildStdin;
 
 use crate::{
@@ -55,13 +55,12 @@ pub struct Launcher {
     pub is_launching_game: bool,
 
     pub custom_jar: Option<CustomJarState>,
-    pub mod_updates_checked: HashMap<InstanceSelection, Vec<(ModId, String, bool)>>,
     /// See [`AutoSaveKind`]
     pub autosave: HashSet<AutoSaveKind>,
 
     pub accounts: HashMap<String, AccountData>,
     pub accounts_dropdown: Vec<String>,
-    pub accounts_selected: Option<String>,
+    pub account_selected: String,
 
     pub client_list: Option<Vec<String>>,
     pub server_list: Option<Vec<String>>,
@@ -86,6 +85,7 @@ pub struct Launcher {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum AutoSaveKind {
     LauncherConfig,
+    InstanceConfig,
     Jarmods,
 }
 
@@ -115,7 +115,7 @@ pub struct CustomJarState {
 impl CustomJarState {
     pub fn load() -> Task<Message> {
         Task::perform(load_custom_jars(), |n| {
-            Message::EditInstance(EditInstanceMessage::CustomJarLoaded(n.strerr()))
+            EditInstanceMessage::CustomJarLoaded(n.strerr()).into()
         })
     }
 }
@@ -162,13 +162,13 @@ impl Launcher {
             launch
         } else {
             if let Err(err) = migration(version) {
-                err!(no_log, "{err}")
+                err!(no_log, "{err}");
             }
             config.version = Some(LAUNCHER_VERSION_NAME.to_owned());
             State::ChangeLog
         };
 
-        let (accounts, accounts_dropdown, selected_account) = load_accounts(&mut config);
+        let (accounts, accounts_dropdown, account_selected) = load_accounts(&mut config);
 
         let persistent = config.c_persistent();
 
@@ -185,7 +185,7 @@ impl Launcher {
             accounts_dropdown,
 
             window_state: WindowState::new(window_width, window_height),
-            accounts_selected: Some(selected_account),
+            account_selected,
 
             client_list: None,
             server_list: None,
@@ -195,7 +195,6 @@ impl Launcher {
             processes: HashMap::new(),
 
             keys_pressed: HashSet::new(),
-            mod_updates_checked: HashMap::new(),
 
             is_log_open: false,
             is_launching_game: false,
@@ -256,13 +255,12 @@ impl Launcher {
             processes: HashMap::new(),
             accounts: HashMap::new(),
             keys_pressed: HashSet::new(),
-            mod_updates_checked: HashMap::new(),
 
             images: ImageState::default(),
             window_state: WindowState::new(window_width, window_height),
             autosave: HashSet::new(),
             accounts_dropdown: vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()],
-            accounts_selected: Some(OFFLINE_ACCOUNT_NAME.to_owned()),
+            account_selected: OFFLINE_ACCOUNT_NAME.to_owned(),
             modifiers_pressed: iced::keyboard::Modifiers::empty(),
         }
     }
@@ -293,6 +291,8 @@ impl Launcher {
                     return Task::batch([menu.reload_notes(i.clone()), get_entries]);
                 }
             }
+            // We're going to the *instance* launch screen,
+            // there's a separate function for servers.
             Some(InstanceSelection::Server(_)) => self.selected_instance = None,
             None => {}
         }
@@ -341,74 +341,19 @@ fn load_account(
     username: &str,
     account: &mut crate::config::ConfigAccount,
 ) {
-    fn get_refresh_token_for_account_type(
-        account_type: AccountType,
-        username: &str,
-        keyring_identifier: Option<&str>,
-    ) -> Result<String, String> {
-        let keyring_username = if let Some(keyring_id) = keyring_identifier {
-            keyring_id
-        } else {
-            // Fallback to old behavior for backwards compatibility
-            match account_type {
-                AccountType::ElyBy => username.strip_suffix(" (elyby)").unwrap_or(username),
-                AccountType::LittleSkin => {
-                    username.strip_suffix(" (littleskin)").unwrap_or(username)
-                }
-                AccountType::Microsoft => username,
-            }
-        };
-        ql_instances::auth::read_refresh_token(keyring_username, account_type).strerr()
-    }
-
-    let (account_type, refresh_token) =
-        if account.account_type.as_deref() == Some("ElyBy") || username.ends_with(" (elyby)") {
-            (
-                AccountType::ElyBy,
-                get_refresh_token_for_account_type(
-                    AccountType::ElyBy,
-                    username,
-                    account.keyring_identifier.as_deref(),
-                ),
-            )
-        } else if account.account_type.as_deref() == Some("LittleSkin")
-            || username.ends_with(" (littleskin)")
-        {
-            (
-                AccountType::LittleSkin,
-                get_refresh_token_for_account_type(
-                    AccountType::LittleSkin,
-                    username,
-                    account.keyring_identifier.as_deref(),
-                ),
-            )
-        } else {
-            (
-                AccountType::Microsoft,
-                get_refresh_token_for_account_type(
-                    AccountType::Microsoft,
-                    username,
-                    account.keyring_identifier.as_deref(),
-                ),
-            )
-        };
-
-    let keyring_username = if let Some(keyring_id) = &account.keyring_identifier {
-        keyring_id.clone()
+    let account_type = if username.ends_with(" (elyby)") {
+        AccountType::ElyBy
+    } else if username.ends_with(" (littleskin)") {
+        AccountType::LittleSkin
     } else {
-        // Fallback to old behavior for backwards compatibility
-        match account_type {
-            AccountType::ElyBy => username
-                .strip_suffix(" (elyby)")
-                .unwrap_or(username)
-                .to_owned(),
-            AccountType::LittleSkin => username
-                .strip_suffix(" (littleskin)")
-                .unwrap_or(username)
-                .to_owned(),
-            AccountType::Microsoft => username.to_owned(),
-        }
+        account.account_type.unwrap_or_default()
     };
+
+    let keyring_username = account.get_keyring_identifier(username);
+    let refresh_token =
+        ql_instances::auth::read_refresh_token(keyring_username, account_type).strerr();
+
+    let keyring_username = account.get_keyring_identifier(username);
 
     match refresh_token {
         Ok(refresh_token) => {
@@ -422,11 +367,11 @@ fn load_account(
                     needs_refresh: true,
                     account_type,
 
-                    username: keyring_username.clone(),
+                    username: keyring_username.to_owned(),
                     nice_username: account
                         .username_nice
                         .clone()
-                        .unwrap_or(keyring_username.clone()),
+                        .unwrap_or_else(|| username.to_owned()),
                 },
             );
         }
