@@ -71,7 +71,7 @@ pub async fn install_modpack(
             ))
             .await
             .map(|n| if n.is_empty() { None } else { Some(n) })
-            .map_err(|n| n.into());
+            .map_err(PackError::from);
         }
         return Err(PackError::NoBackendFound);
     }

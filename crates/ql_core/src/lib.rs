@@ -719,7 +719,6 @@ impl LaunchedProcess {
     /// Returns an exit code, the instance identifier,
     /// and optionally a [`Diagnostic`] if any fix was
     /// detected for a crash
-    #[must_use]
     pub async fn read_logs(
         self,
         censors: Vec<String>,

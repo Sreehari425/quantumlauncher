@@ -45,10 +45,9 @@ impl Launcher {
             RecommendedModMessage::Toggle(idx, toggle) => {
                 if let State::RecommendedMods(MenuRecommendedMods::Loaded { mods, .. }) =
                     &mut self.state
+                    && let Some((t, _)) = mods.get_mut(idx)
                 {
-                    if let Some((t, _)) = mods.get_mut(idx) {
-                        *t = toggle;
-                    }
+                    *t = toggle;
                 }
             }
             RecommendedModMessage::Download => {

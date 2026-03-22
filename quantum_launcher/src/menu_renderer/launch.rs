@@ -359,7 +359,7 @@ impl Launcher {
                     })
             )
             .on_right_press(
-                MainMenuMessage::Modal(Some(LaunchModal::SCtxMenu(
+                MainMenuMessage::Modal(Some(LaunchModal::CtxMenu(
                     None,
                     self.window_state.mouse_pos
                 )))

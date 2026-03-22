@@ -231,14 +231,14 @@ fn sidebar_button<'a, A: PartialEq>(
         .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatExtraDark))
         .width(Length::Fill);
 
-    if !is_selected {
+    if is_selected {
+        button.into()
+    } else {
         column![
             button,
             widget::rule::horizontal(1).style(move |t: &LauncherTheme| t.style_rule(Color::Dark))
         ]
         .into()
-    } else {
-        button.into()
     }
 }
 

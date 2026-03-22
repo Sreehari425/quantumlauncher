@@ -438,10 +438,10 @@ impl Launcher {
             .get_dot_minecraft_path()
             .join("mods")
             .join(filename);
-        if *path != new_path {
-            if let Err(err) = std::fs::copy(path, &new_path) {
-                err!("Couldn't drag and drop mod file in: {err}");
-            }
+        if *path != new_path
+            && let Err(err) = std::fs::copy(path, &new_path)
+        {
+            err!("Couldn't drag and drop mod file in: {err}");
         }
     }
 
@@ -594,10 +594,10 @@ impl Launcher {
                 let account_data = self.get_selected_account_data();
                 // If the user is loading an existing login from disk
                 // then first refresh the tokens
-                if let Some(account) = &account_data {
-                    if account.access_token.is_none() || account.needs_refresh {
-                        return self.account_refresh(account);
-                    }
+                if let Some(account) = &account_data
+                    && (account.access_token.is_none() || account.needs_refresh)
+                {
+                    return self.account_refresh(account);
                 }
                 // Or, if the account is already refreshed/freshly added,
                 // directly launch the game

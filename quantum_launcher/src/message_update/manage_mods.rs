@@ -121,14 +121,14 @@ impl Launcher {
                 let mods_dir = self.get_selected_dot_minecraft_dir().unwrap().join("mods");
                 if let State::EditMods(menu) = &mut self.state {
                     menu.locally_installed_mods.remove(&name);
-                    if let Some(mod_info) = &mut menu.config.mod_type_info {
-                        if mod_info.optifine_jar.as_ref().is_some_and(|n| n == &name) {
-                            mod_info.optifine_jar = None;
-                            if let Err(err) =
-                                block_on(menu.config.save(self.selected_instance.as_ref().unwrap()))
-                            {
-                                self.set_error(err);
-                            }
+                    if let Some(mod_info) = &mut menu.config.mod_type_info
+                        && mod_info.optifine_jar.as_ref().is_some_and(|n| n == &name)
+                    {
+                        mod_info.optifine_jar = None;
+                        if let Err(err) =
+                            block_on(menu.config.save(self.selected_instance.as_ref().unwrap()))
+                        {
+                            self.set_error(err);
                         }
                     }
                 }
@@ -182,13 +182,10 @@ impl Launcher {
                 }
             }
             ManageModsMessage::UpdateCheckToggle(idx, t) => {
-                if let State::EditMods(MenuEditMods {
-                    available_updates, ..
-                }) = &mut self.state
+                if let State::EditMods(menu) = &mut self.state
+                    && let Some((_, _, b)) = menu.available_updates.get_mut(idx)
                 {
-                    if let Some((_, _, b)) = available_updates.get_mut(idx) {
-                        *b = t;
-                    }
+                    *b = t;
                 }
             }
             ManageModsMessage::SelectAll => {
@@ -279,10 +276,10 @@ impl Launcher {
             ManageModsMessage::ToggleOne(id) => {
                 let instance_name = self.selected_instance.clone().unwrap();
                 let id = id.get_index_str();
-                if let State::EditMods(menu) = &mut self.state {
-                    if let Some(m) = menu.mods.mods.get_mut(&id) {
-                        m.enabled = !m.enabled;
-                    }
+                if let State::EditMods(menu) = &mut self.state
+                    && let Some(m) = menu.mods.mods.get_mut(&id)
+                {
+                    m.enabled = !m.enabled;
                 }
                 return Task::perform(
                     ql_mod_manager::store::toggle_mods(vec![id], instance_name),
@@ -632,16 +629,15 @@ impl Launcher {
             .add_filter("jar/zip", &["jar", "zip"])
             .set_title("Pick a Jar Mod Patch (.jar/.zip)")
             .pick_file()
+            && let Some(filename) = path.file_name()
         {
-            if let Some(filename) = path.file_name() {
-                let dest = self
-                    .instance()
-                    .get_instance_path()
-                    .join("jarmods")
-                    .join(filename);
-                if let Err(err) = std::fs::copy(&path, dest) {
-                    self.set_error(format!("While picking jar mod to be added: {err}"));
-                }
+            let dest = self
+                .instance()
+                .get_instance_path()
+                .join("jarmods")
+                .join(filename);
+            if let Err(err) = std::fs::copy(&path, dest) {
+                self.set_error(format!("While picking jar mod to be added: {err}"));
             }
         }
     }

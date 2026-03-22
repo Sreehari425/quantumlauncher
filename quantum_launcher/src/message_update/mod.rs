@@ -777,25 +777,24 @@ impl Launcher {
                 if let State::Launch(MenuLaunch {
                     notes: Some(notes), ..
                 }) = &mut self.state
+                    && let InstanceNotes::Editing { text_editor, .. } = notes
                 {
-                    if let InstanceNotes::Editing { text_editor, .. } = notes {
-                        let content = text_editor.text();
+                    let content = text_editor.text();
 
-                        *notes = InstanceNotes::Viewing {
-                            mark_state: MarkState::with_html_and_markdown(&content),
-                            content: content.clone(),
-                        };
+                    *notes = InstanceNotes::Viewing {
+                        mark_state: MarkState::with_html_and_markdown(&content),
+                        content: content.clone(),
+                    };
 
-                        return Task::perform(
-                            ql_instances::notes::write(self.instance().clone(), content),
-                            |r| {
-                                if let Err(err) = r {
-                                    err!(no_log, "While saving instance notes: {err}");
-                                }
-                                Message::Nothing
-                            },
-                        );
-                    }
+                    return Task::perform(
+                        ql_instances::notes::write(self.instance().clone(), content),
+                        |r| {
+                            if let Err(err) = r {
+                                err!(no_log, "While saving instance notes: {err}");
+                            }
+                            Message::Nothing
+                        },
+                    );
                 }
             }
             NotesMessage::CancelEdit => {
@@ -821,10 +820,9 @@ impl Launcher {
                     log_state: Some(logs),
                     ..
                 }) = &mut self.state
+                    && !action.is_edit()
                 {
-                    if !action.is_edit() {
-                        logs.content.perform(action);
-                    }
+                    logs.content.perform(action);
                 }
             }
             GameLogMessage::Copy => {

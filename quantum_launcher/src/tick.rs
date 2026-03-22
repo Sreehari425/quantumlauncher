@@ -78,9 +78,8 @@ impl Launcher {
             State::EditJarMods(_)
             | State::ModsDownload(_)
             | State::LauncherSettings(_)
-            | State::Launch(_) => {}
-
-            State::Error { .. }
+            | State::Launch(_)
+            | State::Error { .. }
             | State::LoginAlternate(_)
             | State::AccountLogin
             | State::ExportInstance(_)
@@ -111,7 +110,8 @@ impl Launcher {
                     true,
                 ) = (
                     &self.state,
-                    self.autosave.insert(AutoSaveKind::InstanceConfig) || self.tick_timer % 5 == 0,
+                    self.autosave.insert(AutoSaveKind::InstanceConfig)
+                        || self.tick_timer.is_multiple_of(5),
                 ) {
                     let config = edit.config.clone();
                     self.tick_edit_instance(config)
@@ -174,12 +174,12 @@ impl Launcher {
     }
 
     pub fn tick_interval(&self) -> u64 {
-        if let State::Launch(menu) = &self.state {
-            if let Some(LaunchModal::SDragging { .. }) = &menu.modal {
-                // Faster tick rate for smoother auto-scrolling
-                // while dragging in the sidebar
-                return 15;
-            }
+        if let State::Launch(menu) = &self.state
+            && let Some(LaunchModal::Dragging { .. }) = &menu.modal
+        {
+            // Faster tick rate for smoother auto-scrolling
+            // while dragging in the sidebar
+            return 15;
         }
 
         self.config.c_idle_fps()
@@ -193,7 +193,7 @@ impl Launcher {
         const FALLBACK_TOP: f32 = 60.0;
         const FALLBACK_BOTTOM: f32 = 80.0;
 
-        let Some(LaunchModal::SDragging { .. }) = menu.modal.as_ref() else {
+        let Some(LaunchModal::Dragging { .. }) = menu.modal.as_ref() else {
             return Task::none();
         };
 

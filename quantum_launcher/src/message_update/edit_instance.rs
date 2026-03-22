@@ -114,12 +114,12 @@ impl Launcher {
                     ..
                 }) = &mut self.state
                 {
-                    if let Ok(mb) = input.parse::<usize>() {
-                        if mb > 0 {
-                            menu.config.ram_in_mb = mb;
-                            menu.slider_value = f32::log2(mb as f32);
-                            menu.slider_text = format_memory(mb);
-                        }
+                    if let Ok(mb) = input.parse::<usize>()
+                        && mb > 0
+                    {
+                        menu.config.ram_in_mb = mb;
+                        menu.slider_value = f32::log2(mb as f32);
+                        menu.slider_text = format_memory(mb);
                     }
                     menu.memory_input = input;
                 }
@@ -302,17 +302,13 @@ impl Launcher {
     fn loaded_custom_jar(&mut self, choices: Vec<String>) -> Task<Message> {
         // If the currently selected jar got deleted/renamed
         // then unselect it
-        if let State::Launch(MenuLaunch {
-            edit_instance: Some(menu),
-            ..
-        }) = &mut self.state
+        if let State::Launch(menu) = &mut self.state
+            && let Some(menu) = &mut menu.edit_instance
+            && let Some(jar) = &menu.config.custom_jar
+            && !choices.contains(&jar.name)
         {
-            if let Some(jar) = &menu.config.custom_jar {
-                if !choices.contains(&jar.name) {
-                    self.autosave.remove(&AutoSaveKind::InstanceConfig);
-                    menu.config.custom_jar = None;
-                }
-            }
+            self.autosave.remove(&AutoSaveKind::InstanceConfig);
+            menu.config.custom_jar = None;
         }
 
         if let Some(cx) = &mut self.custom_jar {
@@ -409,7 +405,7 @@ impl Launcher {
             return Ok(Task::none());
         }
 
-        menu.old_instance_name = sanitized_name.to_owned();
+        menu.old_instance_name.clone_from(&sanitized_name);
         std::fs::rename(&old_path, &new_path)
             .path(&old_path)
             .strerr()?;

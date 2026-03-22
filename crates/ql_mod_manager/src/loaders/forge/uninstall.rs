@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use ql_core::{
-    InstanceSelection, IntoIoError, IntoStringError, LAUNCHER_DIR, Loader, err,
+    InstanceSelection, IntoIoError, IntoStringError, LAUNCHER_DIR, Loader, err, file_utils::exists,
     find_forge_shim_file, json::InstanceConfigJson,
 };
 
@@ -20,14 +20,17 @@ async fn uninstall_client(instance: &str) -> Result<(), String> {
     let instance_dir = LAUNCHER_DIR.join("instances").join(instance);
 
     let forge_dir = instance_dir.join("forge");
-    if forge_dir.is_dir() {
-        if let Err(err) = tokio::fs::remove_dir_all(&forge_dir)
+    let is_forge_dir = tokio::fs::metadata(&forge_dir)
+        .await
+        .is_ok_and(|n| n.is_dir());
+
+    if is_forge_dir
+        && let Err(err) = tokio::fs::remove_dir_all(&forge_dir)
             .await
             .path(forge_dir)
             .strerr()
-        {
-            err!("While uninstalling forge: {err}");
-        }
+    {
+        err!("While uninstalling forge: {err}");
     }
 
     let mut config = InstanceConfigJson::read_from_dir(&instance_dir)
@@ -39,11 +42,7 @@ async fn uninstall_client(instance: &str) -> Result<(), String> {
         .and_then(|n| n.optifine_jar.as_deref())
     {
         let installer_path = instance_dir.join(".minecraft/mods").join(jar);
-        if tokio::fs::try_exists(&installer_path)
-            .await
-            .path(&installer_path)
-            .strerr()?
-        {
+        if exists(&installer_path).await {
             loaders::optifine::install(instance.to_owned(), installer_path.clone(), None, None)
                 .await
                 .strerr()?;

@@ -33,7 +33,7 @@ pub struct ModDownloader<'a> {
     _guard: tokio::sync::MutexGuard<'a, ()>,
 }
 
-impl<'a> ModDownloader<'a> {
+impl ModDownloader<'_> {
     pub async fn new(
         instance: InstanceSelection,
         sender: Option<Sender<GenericProgress>>,

@@ -54,11 +54,9 @@ impl MenuEditInstance {
                     ].spacing(5)),
                     column![
                         widget::space().height(5),
-                        widget::row![
-                            widget::toggler(self.config.enable_logger.unwrap_or(true))
-                                .on_toggle(|t| EditInstanceMessage::LoggingToggle(t).into()),
-                            "DEBUG: Enable log system (recommended)"
-                        ].spacing(5),
+                        widget::toggler(self.config.enable_logger.unwrap_or(true))
+                            .label("DEBUG: Enable log system (recommended)")
+                            .on_toggle(|t| EditInstanceMessage::LoggingToggle(t).into()),
                         widget::text("Once disabled, logs will be printed in launcher STDOUT.\nRun the launcher executable from the terminal/command prompt to see it").size(12).style(tsubtitle),
                         widget::space().width(Length::Fill),
                     ].spacing(5)
@@ -394,7 +392,7 @@ Heavy modpacks / High settings: 4-8 GB+"
                     Some(self.main_class_mode),
                     |t| EditInstanceMessage::SetMainClass(
                         t,
-                        Some("".to_owned())
+                        Some(String::new())
                     ).into(),
                 )
                 .size(14)

@@ -348,18 +348,16 @@ impl Backend for CurseforgeBackend {
 
             let result = downloader.download(id, None).await;
 
-            if let Err(ModError::NoCompatibleVersionFound(name)) = &result {
-                if ignore_incompatible {
-                    pt!("No compatible version found for mod {name} ({id}), skipping...");
-                    continue;
-                }
+            if let Err(ModError::NoCompatibleVersionFound(name)) = &result
+                && ignore_incompatible
+            {
+                pt!("No compatible version found for mod {name} ({id}), skipping...");
+                continue;
             }
             result?;
 
-            if set_manually_installed {
-                if let Some(config) = downloader.index.mods.get_mut(id) {
-                    config.manually_installed = true;
-                }
+            if set_manually_installed && let Some(config) = downloader.index.mods.get_mut(id) {
+                config.manually_installed = true;
             }
         }
 

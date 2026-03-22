@@ -42,14 +42,12 @@ impl Launcher {
 
                     // Clear the "Resize the window to apply changes"
                     // after changing UI scale
-                    if let State::GenericMessage(msg) = &self.state {
-                        if msg == MSG_RESIZE {
-                            return self.update(Message::LauncherSettings(
-                                LauncherSettingsMessage::ChangeTab(
-                                    LauncherSettingsTab::UserInterface,
-                                ),
-                            ));
-                        }
+                    if let State::GenericMessage(msg) = &self.state
+                        && msg == MSG_RESIZE
+                    {
+                        return self.update(Message::LauncherSettings(
+                            LauncherSettingsMessage::ChangeTab(LauncherSettingsTab::UserInterface),
+                        ));
                     }
                 }
                 iced::window::Event::FileHovered(_) => {
@@ -174,7 +172,7 @@ impl Launcher {
                 _ => Message::Nothing,
             };
             return Task::done(msg);
-        } else if let State::LauncherSettings(menu) = &mut self.state {
+        } else if let State::LauncherSettings(menu) = &self.state {
             if let Key::Named(Named::ArrowUp) = key {
                 return Task::done(Message::LauncherSettings(
                     LauncherSettingsMessage::ChangeTab(menu.selected_tab.prev()),
@@ -184,7 +182,7 @@ impl Launcher {
                     LauncherSettingsMessage::ChangeTab(menu.selected_tab.next()),
                 ));
             }
-        } else if let State::License(menu) = &mut self.state {
+        } else if let State::License(menu) = &self.state {
             if let Key::Named(Named::ArrowUp) = key {
                 return Task::done(Message::LicenseChangeTab(menu.selected_tab.prev()));
             } else if let Key::Named(Named::ArrowDown) = key {
@@ -199,35 +197,35 @@ impl Launcher {
                 if modifiers.command() {
                     return self.launch_start();
                 }
-            } else if let Key::Named(Named::Backspace) = key {
-                if modifiers.command() {
-                    return Task::done(Message::LaunchKill);
-                }
+            } else if let Key::Named(Named::Backspace) = key
+                && modifiers.command()
+            {
+                return Task::done(Message::LaunchKill);
             }
         } else if let State::Create(MenuCreateInstance::Choosing(MenuCreateInstanceChoosing {
             list: Some(_),
             ..
         })) = &self.state
         {
-            if let Key::Named(Named::Enter) = key {
-                if modifiers.command() {
-                    return Task::done(CreateInstanceMessage::Start.into());
+            if let Key::Named(Named::Enter) = key
+                && modifiers.command()
+            {
+                return Task::done(CreateInstanceMessage::Start.into());
+            }
+        } else if let State::Welcome(menu) = &mut self.state
+            && let Key::Named(Named::Enter) = key
+        {
+            *menu = match menu {
+                MenuWelcome::P1InitialScreen => MenuWelcome::P2Theme,
+                MenuWelcome::P2Theme => MenuWelcome::P3Auth,
+                MenuWelcome::P3Auth => {
+                    return Task::done(Message::MScreenOpen {
+                        message: Some("Install Minecraft by clicking \"+ New\"".to_owned()),
+                        clear_selection: true,
+                        is_server: Some(false),
+                    });
                 }
-            }
-        } else if let State::Welcome(menu) = &mut self.state {
-            if let Key::Named(Named::Enter) = key {
-                *menu = match menu {
-                    MenuWelcome::P1InitialScreen => MenuWelcome::P2Theme,
-                    MenuWelcome::P2Theme => MenuWelcome::P3Auth,
-                    MenuWelcome::P3Auth => {
-                        return Task::done(Message::MScreenOpen {
-                            message: Some("Install Minecraft by clicking \"+ New\"".to_owned()),
-                            clear_selection: true,
-                            is_server: Some(false),
-                        });
-                    }
-                };
-            }
+            };
         }
         self.keys_pressed.insert(key);
 
@@ -401,18 +399,17 @@ impl Launcher {
             if ret_to_mods {
                 return (true, self.go_to_edit_mods_menu());
             }
-            if ret_to_mod_store {
-                if let State::ModsDownload(menu) = &mut self.state {
-                    menu.opened_mod = None;
-                    menu.description = None;
-                    return (
-                        true,
-                        iced::widget::operation::scroll_to(
-                            iced::widget::Id::new("MenuModsDownload:main:mods_list"),
-                            menu.scroll_offset,
-                        ),
-                    );
-                }
+            if ret_to_mod_store && let State::ModsDownload(menu) = &mut self.state {
+                // Go from description back to main page
+                menu.opened_mod = None;
+                menu.description = None;
+                return (
+                    true,
+                    iced::widget::operation::scroll_to(
+                        iced::widget::Id::new("MenuModsDownload:main:mods_list"),
+                        menu.scroll_offset,
+                    ),
+                );
             }
         }
 
@@ -432,11 +429,11 @@ impl Launcher {
                 menu.search = None;
                 return true;
             }
-        } else if let State::Launch(menu) = &mut self.state {
-            if menu.modal.is_some() {
-                menu.modal = None;
-                return true;
-            }
+        } else if let State::Launch(menu) = &mut self.state
+            && menu.modal.is_some()
+        {
+            menu.modal = None;
+            return true;
         }
         false
     }

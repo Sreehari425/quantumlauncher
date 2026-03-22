@@ -26,13 +26,13 @@ pub async fn do_request(
         vec![format!("versions:{}", query.version)],
     ];
 
-    if let QueryType::Mods | QueryType::ModPacks = query_type {
-        if !query.loader.is_vanilla() {
-            filters.push(vec![format!(
-                "categories:'{}'",
-                query.loader.to_modrinth_str()
-            )]);
-        }
+    if let QueryType::Mods | QueryType::ModPacks = query_type
+        && !query.loader.is_vanilla()
+    {
+        filters.push(vec![format!(
+            "categories:'{}'",
+            query.loader.to_modrinth_str()
+        )]);
     }
 
     let filters = serde_json::to_string(&filters).json_to()?;

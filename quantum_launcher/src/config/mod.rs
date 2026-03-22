@@ -216,10 +216,11 @@ impl LauncherConfig {
         if self.ui_antialiasing.is_none() {
             self.ui_antialiasing = Some(true);
         }
-        if let (Some(accounts), Some(selected)) = (&self.accounts, &self.account_selected) {
-            if !accounts.contains_key(selected) {
-                self.account_selected = None;
-            }
+        if let Some(accounts) = &self.accounts
+            && let Some(selected) = &self.account_selected
+            && !accounts.contains_key(selected)
+        {
+            self.account_selected = None;
         }
 
         #[allow(deprecated)]

@@ -52,10 +52,10 @@ impl RecommendedMod {
                 version,
                 &index,
             ));
-            if tasks.len() > LIMIT {
-                if let Some(task) = tasks.next().await.flatten() {
-                    mods.push(task);
-                }
+            if tasks.len() > LIMIT
+                && let Some(task) = tasks.next().await.flatten()
+            {
+                mods.push(task);
             }
         }
 

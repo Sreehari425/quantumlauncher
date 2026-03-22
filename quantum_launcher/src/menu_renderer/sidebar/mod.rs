@@ -64,7 +64,7 @@ impl Launcher {
 
         let show_drag_handle = !matches!(
             menu.modal,
-            Some(LaunchModal::SDragging { .. } | LaunchModal::SRenamingFolder(_, _, _))
+            Some(LaunchModal::Dragging { .. } | LaunchModal::RenamingFolder(_, _, _))
         );
 
         let button: Element = match &node.kind {
@@ -95,27 +95,23 @@ impl Launcher {
             return widget::Column::new().into();
         };
 
-        let view = self.create_folder_view(node, folder);
+        let view = Self::create_folder_view(node, folder);
 
         match mode {
             NodeMode::InTree(nesting) => {
                 let view = view.push(drag_drop_receiver(menu, selection, node));
 
                 let msg = SidebarMessage::ToggleFolderVisibility(folder.id).into();
-                let inner: Element = if let Some(LaunchModal::SRenamingFolder(
-                    id,
-                    name,
-                    is_creating,
-                )) = &menu.modal
-                {
-                    if folder.id == *id {
-                        renaming_folder(*id, name, *is_creating).into()
+                let inner: Element =
+                    if let Some(LaunchModal::RenamingFolder(id, name, is_creating)) = &menu.modal {
+                        if folder.id == *id {
+                            renaming_folder(*id, name, *is_creating).into()
+                        } else {
+                            mode.get_button(view).on_press(msg).into()
+                        }
                     } else {
                         mode.get_button(view).on_press(msg).into()
-                    }
-                } else {
-                    mode.get_button(view).on_press(msg).into()
-                };
+                    };
 
                 column![
                     inner,
@@ -183,7 +179,7 @@ impl Launcher {
         name: String,
     ) -> widget::MouseArea<'a, Message, LauncherTheme> {
         widget::mouse_area(elem).on_right_press(
-            MainMenuMessage::Modal(Some(LaunchModal::SCtxMenu(
+            MainMenuMessage::Modal(Some(LaunchModal::CtxMenu(
                 Some((selection, name)),
                 self.window_state.mouse_pos,
             )))
@@ -195,7 +191,7 @@ impl Launcher {
         &'a self,
         menu: &'a MenuLaunch,
     ) -> Option<widget::Pin<'a, Message, LauncherTheme>> {
-        if let Some(LaunchModal::SDragging { being_dragged, .. }) = &menu.modal {
+        if let Some(LaunchModal::Dragging { being_dragged, .. }) = &menu.modal {
             if let Some(node) = self
                 .config
                 .sidebar
@@ -221,7 +217,7 @@ impl Launcher {
     pub(super) fn sidebar_context_menu(
         menu: &MenuLaunch,
     ) -> Option<widget::Pin<'_, Message, LauncherTheme>> {
-        let Some(LaunchModal::SCtxMenu(instance, (x, y))) = &menu.modal else {
+        let Some(LaunchModal::CtxMenu(instance, (x, y))) = &menu.modal else {
             return None;
         };
 
@@ -255,7 +251,7 @@ impl Launcher {
                                 EditInstanceMessage::RenameToggle.into(),
                             ]),
                             SidebarSelection::Folder(folder_id) => MainMenuMessage::Modal(Some(
-                                LaunchModal::SRenamingFolder(*folder_id, name.clone(), false),
+                                LaunchModal::RenamingFolder(*folder_id, name.clone(), false),
                             ))
                             .into(),
                         }
@@ -277,7 +273,6 @@ impl Launcher {
     }
 
     fn create_folder_view<'a>(
-        &self,
         node: &'a SidebarNode,
         folder: &SidebarFolder,
     ) -> widget::Stack<'a, Message, LauncherTheme> {
@@ -323,7 +318,7 @@ fn renaming_folder(
     let text_input = widget::text_input("Enter name...", name)
         .id("MenuLaunch:rename_folder")
         .on_input(move |s| {
-            MainMenuMessage::Modal(Some(LaunchModal::SRenamingFolder(id, s, is_creating))).into()
+            MainMenuMessage::Modal(Some(LaunchModal::RenamingFolder(id, s, is_creating))).into()
         })
         .on_submit(SidebarMessage::FolderRenameConfirm.into())
         .size(13)
@@ -404,7 +399,7 @@ fn drag_handle(selection: &SidebarSelection) -> widget::MouseArea<'static, Messa
         .padding([3, 14]),
     )
     .on_press(
-        MainMenuMessage::Modal(Some(LaunchModal::SDragging {
+        MainMenuMessage::Modal(Some(LaunchModal::Dragging {
             being_dragged: selection.clone(),
             dragged_to: None,
         }))

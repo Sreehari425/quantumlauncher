@@ -33,18 +33,15 @@ impl GameDownloader {
         let total_libraries = self.version_json.libraries.len();
         let library_i = Mutex::new(0);
 
-        let results = self.version_json.libraries.iter().cloned().map(|library| {
-            let s = &*self;
-            async {
-                let lib = library;
-                if !lib.is_allowed() {
-                    pt!("{} {lib:?}", "Skipping".underline());
-                    return Ok::<_, DownloadError>(());
-                }
-                s.download_library(&lib, None).await?;
-                s.send_library_progress(&library_i, total_libraries).await;
-                Ok(())
+        let results = self.version_json.libraries.iter().map(async |lib| {
+            if !lib.is_allowed() {
+                pt!("{} {lib:?}", "Skipping".underline());
+                return Ok::<_, DownloadError>(());
             }
+            self.download_library(lib, None).await?;
+            self.send_library_progress(&library_i, total_libraries)
+                .await;
+            Ok(())
         });
 
         // (a) Synchronous downloader. WAY slower,

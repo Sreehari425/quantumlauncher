@@ -16,15 +16,12 @@ impl Launcher {
             MainMenuMessage::ChangeTab(tab) => {
                 // UX tweak: dragging instance to tab will open tab for that instance
                 if let State::Launch(MenuLaunch { modal, .. }) = &mut self.state {
-                    if let Some(LaunchModal::SDragging {
-                        being_dragged: SidebarSelection::Instance(name, kind),
-                        ..
-                    }) = modal
+                    if let Some(LaunchModal::Dragging { being_dragged, .. }) = modal
+                        && let SidebarSelection::Instance(name, kind) = being_dragged
+                        && self.selected_instance.is_none()
                     {
-                        if self.selected_instance.is_none() {
-                            self.selected_instance =
-                                Some(InstanceSelection::new(name, kind.is_server()));
-                        }
+                        self.selected_instance =
+                            Some(InstanceSelection::new(name, kind.is_server()));
                     }
                     *modal = None;
                 }
@@ -36,7 +33,7 @@ impl Launcher {
             }
             MainMenuMessage::Modal(modal) => {
                 if let State::Launch(menu) = &mut self.state {
-                    let t = if let Some(LaunchModal::SRenamingFolder(_, _, _)) = &modal {
+                    let t = if let Some(LaunchModal::RenamingFolder(_, _, _)) = &modal {
                         iced::widget::operation::focus("MenuLaunch:rename_folder")
                     } else {
                         Task::none()
@@ -100,7 +97,7 @@ impl Launcher {
                     .new_folder_at(at_position, "New Folder");
                 self.sidebar_update_state();
                 if let State::Launch(menu) = &mut self.state {
-                    menu.modal = Some(LaunchModal::SRenamingFolder(
+                    menu.modal = Some(LaunchModal::RenamingFolder(
                         folder_id,
                         "New Folder".to_owned(),
                         true,
@@ -119,7 +116,7 @@ impl Launcher {
             }
             SidebarMessage::DragDrop(location) => {
                 if let State::Launch(MenuLaunch {
-                    modal: Some(LaunchModal::SDragging { being_dragged, .. }),
+                    modal: Some(LaunchModal::Dragging { being_dragged, .. }),
                     ..
                 }) = &mut self.state
                 {
@@ -129,7 +126,7 @@ impl Launcher {
             }
             SidebarMessage::DragHover { location, entered } => {
                 if let State::Launch(MenuLaunch {
-                    modal: Some(LaunchModal::SDragging { dragged_to, .. }),
+                    modal: Some(LaunchModal::Dragging { dragged_to, .. }),
                     ..
                 }) = &mut self.state
                 {
@@ -142,7 +139,7 @@ impl Launcher {
             }
             SidebarMessage::FolderRenameConfirm => {
                 if let State::Launch(MenuLaunch {
-                    modal: Some(LaunchModal::SRenamingFolder(id, name, _)),
+                    modal: Some(LaunchModal::RenamingFolder(id, name, _)),
                     ..
                 }) = &self.state
                 {

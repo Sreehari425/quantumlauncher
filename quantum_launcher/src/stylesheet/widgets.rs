@@ -561,10 +561,10 @@ impl widget::toggler::Catalog for LauncherTheme {
             }),
             foreground: self.get_bg(match status {
                 widget::toggler::Status::Active { is_toggled: true } => Color::SecondLight,
-                widget::toggler::Status::Active { is_toggled: false } => Color::SecondDark,
+                widget::toggler::Status::Disabled { .. }
+                | widget::toggler::Status::Active { is_toggled: false } => Color::SecondDark,
                 widget::toggler::Status::Hovered { is_toggled: true } => Color::Light,
                 widget::toggler::Status::Hovered { is_toggled: false } => Color::Mid,
-                widget::toggler::Status::Disabled { .. } => Color::SecondDark,
             }),
             foreground_border_width: BORDER_WIDTH,
             foreground_border_color: self.get(Color::Mid),

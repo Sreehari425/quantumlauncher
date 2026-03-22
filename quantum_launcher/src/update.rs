@@ -342,14 +342,11 @@ impl Launcher {
                 }
             }
             Message::ExportInstanceToggleItem(idx, t) => {
-                if let State::ExportInstance(MenuExportInstance {
-                    entries: Some(entries),
-                    ..
-                }) = &mut self.state
+                if let State::ExportInstance(menu) = &mut self.state
+                    && let Some(entries) = &mut menu.entries
+                    && let Some((_, b)) = entries.get_mut(idx)
                 {
-                    if let Some((_, b)) = entries.get_mut(idx) {
-                        *b = t;
-                    }
+                    *b = t;
                 }
             }
             Message::ExportInstanceStart => {
@@ -422,17 +419,17 @@ impl Launcher {
 
         let persistent = self.config.c_persistent();
         if is_server {
-            if let Some(n) = &persistent.selected_server {
-                if !list.contains(n) {
-                    self.unselect_instance();
-                }
+            if let Some(n) = &persistent.selected_server
+                && !list.contains(n)
+            {
+                self.unselect_instance();
             }
             self.server_list = Some(list);
         } else {
-            if let Some(n) = &persistent.selected_instance {
-                if !list.contains(n) {
-                    self.unselect_instance();
-                }
+            if let Some(n) = &persistent.selected_instance
+                && !list.contains(n)
+            {
+                self.unselect_instance();
             }
             self.client_list = Some(list);
         }

@@ -59,12 +59,12 @@ impl std::fmt::Display for LaunchTab {
 #[derive(Debug, Clone)]
 pub enum LaunchModal {
     // Sidebar
-    SCtxMenu(Option<(SidebarSelection, String)>, (f32, f32)),
-    SDragging {
+    CtxMenu(Option<(SidebarSelection, String)>, (f32, f32)),
+    Dragging {
         being_dragged: SidebarSelection,
         dragged_to: Option<SDragLocation>,
     },
-    SRenamingFolder(FolderId, String, bool),
+    RenamingFolder(FolderId, String, bool),
 }
 
 pub enum InstanceNotes {
@@ -160,7 +160,7 @@ impl MenuLaunch {
     }
 
     pub fn get_modal_drag(&self) -> Option<(&SidebarSelection, Option<&SDragLocation>)> {
-        if let Some(LaunchModal::SDragging {
+        if let Some(LaunchModal::Dragging {
             being_dragged,
             dragged_to,
         }) = &self.modal

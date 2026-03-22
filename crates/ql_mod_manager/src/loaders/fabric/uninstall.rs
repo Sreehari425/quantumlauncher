@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use ql_core::{
-    InstanceSelection, IntoIoError, IntoJsonError, IoError, LAUNCHER_DIR, Loader, err, info,
-    json::FabricJSON,
+    InstanceSelection, IntoIoError, IntoJsonError, IoError, LAUNCHER_DIR, Loader, err,
+    file_utils::exists, info, json::FabricJSON,
 };
 
 use crate::loaders::change_instance_type;
@@ -73,13 +73,12 @@ async fn uninstall_client(instance_name: String) -> Result<(), FabricInstallErro
 
             for library in &libraries {
                 let library_path = libraries_dir.join(library.get_path());
-                if library_path.exists() {
-                    if let Err(err) = tokio::fs::remove_file(&library_path)
+                if exists(&library_path).await
+                    && let Err(err) = tokio::fs::remove_file(&library_path)
                         .await
                         .path(library_path)
-                    {
-                        err!("While uninstalling fabric/quilt: {err}");
-                    }
+                {
+                    err!("While uninstalling fabric/quilt: {err}");
                 }
             }
         }

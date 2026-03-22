@@ -237,8 +237,7 @@ impl Preset {
 
                 if file.is_dir() {
                     tokio::fs::create_dir_all(&path).await.path(&path)?;
-                } else {
-                    let parent = path.parent().unwrap();
+                } else if let Some(parent) = path.parent() {
                     tokio::fs::create_dir_all(parent).await.path(parent)?;
 
                     let mut buf = Vec::new();
