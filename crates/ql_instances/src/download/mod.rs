@@ -26,8 +26,8 @@ pub(crate) use downloader::GameDownloader;
 /// The instance name that you passed in.
 ///
 /// # Errors
-/// Check the [`DownloadError`] documentation (if there is, lol).
-/// This is crap code and you must have standards. (WTF: )
+/// Anything and everything in [`DownloadError`].
+/// Too vast to pin down.
 pub async fn create_instance(
     instance_name: String,
     version: ListEntry,
