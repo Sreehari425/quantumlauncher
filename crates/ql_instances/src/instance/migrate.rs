@@ -4,11 +4,11 @@ use std::{
 };
 
 use ql_core::{
-    CLASSPATH_SEPARATOR, IntoIoError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME, info,
+    CLASSPATH_SEPARATOR, IntoIoError, LAUNCHER_DIR, LAUNCHER_VERSION, LAUNCHER_VERSION_NAME, info,
     json::version::LibraryDownloads,
 };
 
-use crate::{LAUNCHER_VERSION, download::GameDownloader};
+use crate::download::GameDownloader;
 
 use super::launch::{GameLauncher, error::GameLaunchError};
 

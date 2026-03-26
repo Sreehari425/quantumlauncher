@@ -6,6 +6,8 @@ use tokio::io::AsyncWriteExt;
 #[allow(unused)]
 use owo_colors::OwoColorize;
 
+#[cfg(feature = "auto_update")]
+use crate::launcher_update::UpdateCheckInfo;
 use crate::{
     state::{
         AutoSaveKind, CustomJarState, GameProcess, LaunchTab, Launcher, LauncherSettingsMessage,
@@ -35,12 +37,6 @@ impl Launcher {
                 if safe_to_exit {
                     info!(no_log, "CTRL-Q pressed, closing launcher...");
                     std::process::exit(1);
-                }
-            }
-
-            Message::CoreTickConfigSaved(result) | Message::UpdateDownloadEnd(result) => {
-                if let Err(err) = result {
-                    self.set_error(err);
                 }
             }
 
@@ -189,10 +185,10 @@ impl Launcher {
 
             #[cfg(feature = "auto_update")]
             Message::UpdateCheckResult(res) => match res {
-                Ok(ql_instances::UpdateCheckInfo::UpToDate) => {
+                Ok(UpdateCheckInfo::UpToDate) => {
                     ql_core::pt!(no_log, "{}", "Latest version".bright_black());
                 }
-                Ok(ql_instances::UpdateCheckInfo::NewVersion { url }) => {
+                Ok(UpdateCheckInfo::NewVersion { url }) => {
                     self.state = State::UpdateFound(crate::state::MenuLauncherUpdate {
                         url,
                         progress: None,
@@ -204,8 +200,12 @@ impl Launcher {
             },
             #[cfg(feature = "auto_update")]
             Message::UpdateDownloadStart => return self.update_download_start(),
-            #[cfg(not(feature = "auto_update"))]
-            Message::UpdateDownloadStart | Message::UpdateCheckResult(_) => return Task::none(),
+            #[cfg(feature = "auto_update")]
+            Message::UpdateDownloadEnd(result) => {
+                if let Err(err) = result {
+                    self.set_error(format!("Update installation failed! Try going to the website at\nmrmayman.github.io/quantumlauncher\nAnd download from there\n\n{err}"));
+                }
+            }
 
             Message::ServerCommandEdit(command) => {
                 let server = self.selected_instance.as_ref().unwrap();

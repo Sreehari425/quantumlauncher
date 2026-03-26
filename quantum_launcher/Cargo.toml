@@ -59,6 +59,10 @@ tokio.workspace = true
 cfg-if.workspace = true
 semver.workspace = true
 
+# Launcher Update
+thiserror.workspace = true
+zip.workspace = true
+
 # Terminal
 owo-colors.workspace = true
 clap.workspace = true

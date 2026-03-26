@@ -60,15 +60,16 @@ impl Launcher {
                     Self::read_game_logs(process, name, &mut self.logs, log_state);
                 }
 
-                commands.push(self.autosave_config());
                 if let State::Launch(menu) = &self.state {
                     self.tick_sidebar_auto_scroll(menu, &mut commands);
                 }
+                self.autosave_config();
+
                 return Task::batch(commands);
             }
             State::Create(menu) => {
                 menu.tick();
-                return self.autosave_config();
+                self.autosave_config();
             }
             State::EditMods(menu) => {
                 let instance_selection = self.selected_instance.as_ref().unwrap();
@@ -90,6 +91,7 @@ impl Launcher {
                     menu.is_java_getting_installed = true;
                 }
             }
+            #[cfg(feature = "auto_update")]
             State::UpdateFound(menu) => {
                 if let Some(progress) = &mut menu.progress {
                     progress.tick();
@@ -112,10 +114,7 @@ impl Launcher {
             }
             State::LauncherSettings(_) => {
                 let launcher_config = self.config.clone();
-                return Task::perform(
-                    async move { launcher_config.save().await.strerr() },
-                    Message::CoreTickConfigSaved,
-                );
+                tokio::spawn(async move { launcher_config.save().await });
             }
             State::EditJarMods(menu) => {
                 if self.autosave.insert(AutoSaveKind::Jarmods) {
@@ -262,15 +261,10 @@ impl Launcher {
     }
 
     #[allow(clippy::manual_is_multiple_of)] // Maintain Rust MSRV
-    pub fn autosave_config(&mut self) -> Task<Message> {
+    pub fn autosave_config(&mut self) {
         if self.tick_timer % 5 == 0 && self.autosave.insert(AutoSaveKind::LauncherConfig) {
             let launcher_config = self.config.clone();
-            Task::perform(
-                async move { launcher_config.save().await.strerr() },
-                Message::CoreTickConfigSaved,
-            )
-        } else {
-            Task::none()
+            tokio::spawn(async move { launcher_config.save().await });
         }
     }
 
