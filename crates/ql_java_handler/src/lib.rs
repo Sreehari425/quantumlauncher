@@ -69,14 +69,11 @@ use ql_core::{
     RequestError,
     constants::OS_NAME,
     do_jobs_with_limit, err,
-    file_utils::{self, DirItem, canonicalize_a, exists},
+    file_utils::{self, DirItem, canonicalize_a, exists, extract_tar_gz},
     info, pt,
 };
 
-mod compression;
-pub use compression::extract_tar_gz;
 pub use ql_core::JavaVersion;
-
 mod alternate_java;
 mod json;
 

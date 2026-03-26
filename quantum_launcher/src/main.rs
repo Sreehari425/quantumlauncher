@@ -64,6 +64,9 @@ mod view;
 /// (called by [`view`]).
 mod menu_renderer;
 
+/// Checking/installing app updates
+#[cfg(feature = "auto_update")]
+mod launcher_update;
 /// Handles `mclo.gs` log uploads
 mod mclog_upload;
 /// Child functions of the
@@ -77,8 +80,6 @@ mod message_handler;
 /// This module has functions for handling each of
 /// these "child messages".
 mod message_update;
-/// Handles mod store
-mod mods_store;
 /// Stylesheet definitions (launcher themes)
 mod stylesheet;
 /// Code to tick every frame
@@ -93,7 +94,7 @@ impl Launcher {
     ) -> (Self, Task<Message>) {
         #[cfg(feature = "auto_update")]
         let check_for_updates_command = Task::perform(
-            async move { ql_instances::check_for_launcher_updates().await.strerr() },
+            async move { launcher_update::check().await.strerr() },
             Message::UpdateCheckResult,
         );
         #[cfg(not(feature = "auto_update"))]

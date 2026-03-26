@@ -84,7 +84,7 @@ impl Launcher {
                         menu.view(selected, self.custom_jar.as_ref())
                     } else {
                         column![
-                            "Error: This instance is corrupted/invalid!\n(Couldn't read config.json)",
+                            "Error: This instance hadn't finished downloading, or files are missing\n(Couldn't read config.json)",
                             button_with_icon(icons::bin(), "Delete Instance", 16)
                                 .on_press(Message::DeleteInstanceMenu)
                         ]
