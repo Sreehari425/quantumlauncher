@@ -140,6 +140,9 @@ pub enum ManageModsMessage {
 
     ExportMenuOpen,
     CurseforgeManualToggleDelete(bool),
+
+    PinToggle(ModId, bool),
+    PinToggleFinished(Res),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -183,6 +186,10 @@ pub enum InstallModsMessage {
 
     ChangeBackend(StoreBackendType),
     ChangeQueryType(QueryType),
+
+    FetchVersions(ModId),
+    VersionsLoaded(Res<Vec<ql_mod_manager::store::VersionInfo>>),
+    InstallVersion(ModId, String),
 }
 
 #[derive(Debug, Clone)]

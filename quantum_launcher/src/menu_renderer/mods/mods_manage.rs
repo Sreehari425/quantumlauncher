@@ -80,6 +80,15 @@ impl MenuEditMods {
                         widget::column![
                             ctx_button(icons::toggleon_s(CTXI_SIZE), "Toggle")
                                 .on_press(ManageModsMessage::ToggleSelected.into()),
+                            ctx_button(icons::pin_s(CTXI_SIZE), "Pin/Unpin")
+                                .on_press(Message::Multiple(self.selected_mods.iter().filter_map(|m| {
+                                    if let SelectedMod::Downloaded { id, .. } = m {
+                                        let pinned = self.mods.mods.get(&id.get_index_str()).map(|n| n.pinned).unwrap_or_default();
+                                        Some(ManageModsMessage::PinToggle(id.clone(), !pinned).into())
+                                    } else {
+                                        None
+                                    }
+                                }).collect())),
                             ctx_button(icons::bin_s(CTXI_SIZE), "Delete")
                                 .on_press(ManageModsMessage::DeleteSelected.into()),
                             ctx_button(icons::file_info_s(CTXI_SIZE), "Mod Details")
@@ -493,6 +502,23 @@ impl MenuEditMods {
                                     ManageModsMessage::ToggleOne(id.clone()).into()
                                 })
                                 .size(14),
+                            {
+                                let is_pinned = config.pinned;
+                                tooltip(
+                                    widget::button(icons::pin_s(14))
+                                        .on_press(ManageModsMessage::PinToggle(id.clone(), !is_pinned).into())
+                                        .style(move |t: &LauncherTheme, s| {
+                                            t.style_button(s, if is_pinned {
+                                                StyleButton::Round
+                                            } else {
+                                                StyleButton::RoundDark
+                                            })
+                                        })
+                                        .padding(2),
+                                    widget::text(if is_pinned { "Unpin (allows updates)" } else { "Pin (prevents updates)" }).size(12),
+                                    Position::Bottom
+                                )
+                            },
                             image,
                             widget::Space::with_width(1),
                             widget::text(&config.name)

@@ -1,7 +1,6 @@
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
-    sync::mpsc::Sender,
 };
 
 use chrono::DateTime;
@@ -9,6 +8,7 @@ use ql_core::{
     GenericProgress, InstanceSelection, StoreBackendType, download, err, file_utils, info,
     json::VersionDetails, pt,
 };
+use std::sync::mpsc::Sender;
 
 use crate::store::{
     DirStructure, ModError, QueryType, install_modpack,
@@ -60,6 +60,7 @@ impl ModDownloader {
     pub async fn download(
         &mut self,
         id: &str,
+        version_id: Option<&str>,
         dependent: Option<&str>,
         manually_installed: bool,
     ) -> Result<(), ModError> {
@@ -81,20 +82,20 @@ impl ModDownloader {
             ModError::UnknownProjectType(project_info.project_type.clone()),
         )?;
 
-        if let QueryType::Mods | QueryType::ModPacks = query_type {
-            if !self.has_compatible_loader(&project_info) {
-                if let Some(loader) = &self.loader {
-                    pt!("Mod {} doesn't support {loader}", project_info.title);
-                } else {
-                    err!("Mod {} doesn't support unknown loader!", project_info.title);
-                }
-                return Ok(());
+        if let QueryType::Mods | QueryType::ModPacks = query_type
+            && !self.has_compatible_loader(&project_info)
+        {
+            if let Some(loader) = &self.loader {
+                pt!("Mod {} doesn't support {loader}", project_info.title);
+            } else {
+                err!("Mod {} doesn't support unknown loader!", project_info.title);
             }
+            return Ok(());
         }
 
         print_downloading_message(&project_info, dependent);
         let download_version = self
-            .get_download_version(id, project_info.title.clone(), query_type)
+            .get_download_version(id, version_id, project_info.title.clone(), query_type)
             .await?;
 
         let mut dependency_list = HashSet::new();
@@ -146,7 +147,7 @@ impl ModDownloader {
                 continue;
             }
             if dependency_list.insert(dep_id.clone()) {
-                Box::pin(self.download(dep_id, Some(id), false)).await?;
+                Box::pin(self.download(dep_id, None, Some(id), false)).await?;
             }
         }
         Ok(())
@@ -194,11 +195,19 @@ impl ModDownloader {
     async fn get_download_version(
         &self,
         id: &str,
+        version_id: Option<&str>,
         title: String,
         project_type: QueryType,
     ) -> Result<ModVersion, ModError> {
         pt!("Getting download info");
         let download_info = ModVersion::download(id).await?;
+
+        if let Some(version_id) = version_id {
+            return download_info
+                .into_iter()
+                .find(|v| v.id == version_id)
+                .ok_or(ModError::NoCompatibleVersionFound(title));
+        }
 
         let mut download_versions: Vec<ModVersion> = download_info
             .iter()
@@ -227,7 +236,7 @@ impl ModDownloader {
     }
 
     async fn download_file(
-        &self,
+        &mut self,
         project_type: QueryType,
         file: &crate::store::ModFile,
     ) -> Result<(), ModError> {
@@ -276,6 +285,7 @@ impl ModDownloader {
             installed_version: download_version.version_number.clone(),
             version_release_time: download_version.date_published.clone(),
             project_source: StoreBackendType::Modrinth,
+            pinned: false,
         };
 
         if let QueryType::Mods = project_type {

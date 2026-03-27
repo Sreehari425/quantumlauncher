@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::mpsc::Sender,
-};
+use std::collections::{HashMap, HashSet};
 
 use ql_core::{
     GenericProgress, InstanceSelection, IntoIoError, Loader, StoreBackendType, do_jobs, download,
@@ -9,6 +6,7 @@ use ql_core::{
     pt,
 };
 use serde::Deserialize;
+use std::sync::mpsc::Sender;
 use tokio::sync::Mutex;
 
 use crate::store::{
@@ -54,7 +52,7 @@ impl PackFile {
         &self,
         not_allowed: &Mutex<HashSet<CurseforgeNotAllowed>>,
         dirs: &DirStructure,
-        sender: Option<&Sender<GenericProgress>>,
+        mut sender: Option<Sender<GenericProgress>>,
         (i, len): (&Mutex<usize>, usize),
         cache: &HashMap<i32, curseforge::Mod>,
         index: &Mutex<ModIndex>,
@@ -90,7 +88,7 @@ impl PackFile {
         download(&url).user_agent_ql().path(&path).await?;
         add_to_index(index, self.projectID.to_string(), &mod_info, query, url).await;
 
-        send_progress(sender, i, len, &mod_info).await;
+        send_progress(sender.as_mut(), i, len, &mod_info).await;
         Ok(())
     }
 
@@ -146,29 +144,31 @@ async fn add_to_index(
                     .collect(),
                 dependencies: HashSet::new(),
                 dependents: HashSet::new(),
+                pinned: false,
             },
         );
     }
 }
 
 async fn send_progress(
-    sender: Option<&Sender<GenericProgress>>,
+    sender: Option<&mut Sender<GenericProgress>>,
     i: &Mutex<usize>,
     len: usize,
     mod_info: &curseforge::Mod,
 ) {
     if let Some(sender) = sender {
         let mut i = i.lock().await;
-        _ = sender.send(GenericProgress {
-            done: *i,
-            total: len,
-            message: Some(format!(
-                "Modpack: Installed mod (curseforge) ({i}/{len}):\n{}",
-                mod_info.name,
-                i = *i + 1,
-            )),
-            has_finished: false,
-        });
+        let _ = sender
+            .send(GenericProgress {
+                done: *i,
+                total: len,
+                message: Some(format!(
+                    "Modpack: Installed mod (curseforge) ({i}/{len}):\n{}",
+                    mod_info.name,
+                    i = *i + 1,
+                )),
+                has_finished: false,
+            });
         pt!(
             "Installed mod (curseforge) ({i}/{len}): {}",
             mod_info.name,
@@ -234,12 +234,16 @@ pub async fn install(
             .collect()
     };
 
-    do_jobs::<(), PackError>(
-        index
-            .files
-            .iter()
-            .map(|file| file.download(&not_allowed, &dirs, sender, (&i, len), &cache, &mod_index)),
-    )
+    do_jobs::<(), PackError>(index.files.iter().map(|file| {
+        file.download(
+            &not_allowed,
+            &dirs,
+            sender.cloned(),
+            (&i, len),
+            &cache,
+            &mod_index,
+        )
+    }))
     .await?;
 
     mod_index.lock().await.save(instance).await?;

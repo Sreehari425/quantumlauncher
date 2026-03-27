@@ -21,6 +21,7 @@ impl Launcher {
             | InstallModsMessage::DownloadComplete(Err(err))
             | InstallModsMessage::SearchResult(Err(err))
             | InstallModsMessage::IndexUpdated(Err(err))
+            | InstallModsMessage::VersionsLoaded(Err(err))
             | InstallModsMessage::UninstallComplete(Err(err)) => {
                 self.set_error(err);
             }
@@ -93,17 +94,18 @@ impl Launcher {
                     menu.reload_description(&mut self.images);
                     if let Some(results) = &menu.results {
                         let hit = results.mods.get(i).unwrap();
-                        if !menu
-                            .mod_descriptions
-                            .contains_key(&ModId::from_pair(&hit.id, results.backend))
-                        {
-                            let backend = menu.backend;
-                            let id = ModId::from_pair(&hit.id, backend);
+                        let id = ModId::from_pair(&hit.id, results.backend);
 
-                            return Task::perform(get_description(id), |n| {
+                        let mut tasks =
+                            vec![Task::done(InstallModsMessage::FetchVersions(id.clone()).into())];
+
+                        if !menu.mod_descriptions.contains_key(&id) {
+                            tasks.push(Task::perform(get_description(id), |n| {
                                 InstallModsMessage::LoadData(n.strerr()).into()
-                            });
+                            }));
                         }
+
+                        return Task::batch(tasks);
                     }
                 }
             }
@@ -111,6 +113,7 @@ impl Launcher {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.opened_mod = None;
                     menu.description = None;
+                    menu.mod_versions = None;
                     return iced::widget::scrollable::scroll_to(
                         iced::widget::scrollable::Id::new("MenuModsDownload:main:mods_list"),
                         menu.scroll_offset,
@@ -217,6 +220,79 @@ impl Launcher {
                     }
                 }
             }
+            InstallModsMessage::FetchVersions(id) => {
+                use ql_mod_manager::store::Backend;
+                return Task::perform(
+                    async move {
+                        match id {
+                            ModId::Modrinth(n) => {
+                                ql_mod_manager::store::ModrinthBackend::get_versions(&n).await
+                            }
+                            ModId::Curseforge(n) => {
+                                ql_mod_manager::store::CurseforgeBackend::get_versions(&n).await
+                            }
+                        }
+                    },
+                    |n| InstallModsMessage::VersionsLoaded(n.strerr()).into(),
+                );
+            }
+            InstallModsMessage::VersionsLoaded(Ok(versions)) => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    if let Some(opened_idx) = menu.opened_mod {
+                        if let Some(results) = &menu.results {
+                            if let Some(hit) = results.mods.get(opened_idx) {
+                                let id = ModId::from_pair(&hit.id, results.backend);
+                                menu.mod_versions = Some((id, versions));
+                            }
+                        }
+                    }
+                }
+            }
+            InstallModsMessage::InstallVersion(id, version_id) => {
+                let selected_instance = self.instance().clone();
+                let State::ModsDownload(menu) = &mut self.state else {
+                    return Task::none();
+                };
+
+                let title = menu
+                    .mod_versions
+                    .as_ref()
+                    .and_then(|(vid, versions)| (vid == &id).then_some(versions))
+                    .and_then(|versions| versions.iter().find(|v| v.id == version_id))
+                    .map(|v| v.name.clone())
+                    .unwrap_or_else(|| "Mod".to_owned());
+
+                menu.mods_download_in_progress
+                    .insert(id.clone(), (title, ModOperation::Downloading));
+
+                return Task::perform(
+                    async move {
+                        use ql_mod_manager::store::Backend;
+                        let res = match &id {
+                            ModId::Modrinth(n) => {
+                                ql_mod_manager::store::ModrinthBackend::download_version(
+                                    n,
+                                    &version_id,
+                                    &selected_instance,
+                                    None,
+                                )
+                                .await
+                            }
+                            ModId::Curseforge(n) => {
+                                ql_mod_manager::store::CurseforgeBackend::download_version(
+                                    n,
+                                    &version_id,
+                                    &selected_instance,
+                                    None,
+                                )
+                                .await
+                            }
+                        };
+                        res.map(|not_allowed| (id, not_allowed))
+                    },
+                    |n| InstallModsMessage::DownloadComplete(n.strerr()).into(),
+                );
+            }
         }
         Task::none()
     }
@@ -249,6 +325,8 @@ impl Launcher {
 
             backend: StoreBackendType::Modrinth,
             query_type: QueryType::Mods,
+
+            mod_versions: None,
         };
         let command = menu.search_store(
             matches!(&self.selected_instance, Some(InstanceSelection::Server(_))),

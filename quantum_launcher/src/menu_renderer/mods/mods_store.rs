@@ -334,6 +334,34 @@ impl MenuModsDownload {
                 widget::text(&hit.description)
                     .shaping(widget::text::Shaping::Advanced)
                     .size(20),
+                widget::text("Versions:").size(20),
+                if let Some((vid, versions)) = &self.mod_versions {
+                    if vid == &ModId::from_pair(&hit.id, self.backend) {
+                        widget::column(versions.iter().take(20).map(|v| {
+                            let mut row = row!(
+                                widget::text(&v.name).size(14).width(Length::Fill),
+                                widget::text(&v.version_number).size(14).width(100),
+                            )
+                            .spacing(10)
+                            .align_y(iced::Alignment::Center);
+
+                            if !self.mods_download_in_progress.contains_key(vid) {
+                                row = row.push(
+                                    button_with_icon(icons::download(), "Install", 14)
+                                        .on_press(InstallModsMessage::InstallVersion(vid.clone(), v.id.clone()).into())
+                                );
+                            }
+
+                            row.into()
+                        }))
+                        .spacing(10)
+                        .into()
+                    } else {
+                        widget::column![widget::text("Loading versions...")]
+                    }
+                } else {
+                    widget::column![widget::text("Loading versions...")]
+                },
                 markdown_description
             )
             .padding(20)

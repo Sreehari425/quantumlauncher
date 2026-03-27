@@ -461,6 +461,8 @@ pub struct MenuModsDownload {
     /// i.e. when you scroll down and more stuff appears
     pub is_loading_continuation: bool,
     pub has_continuation_ended: bool,
+
+    pub mod_versions: Option<(ModId, Vec<ql_mod_manager::store::VersionInfo>)>,
 }
 
 impl MenuModsDownload {

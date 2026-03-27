@@ -50,6 +50,7 @@ pub async fn check_for_updates(
         index
             .mods
             .into_iter()
+            .filter(|(_, installed_mod)| !installed_mod.pinned)
             .map(|(id, installed_mod)| async move {
                 let mod_id = ModId::from_index_str(&id);
 

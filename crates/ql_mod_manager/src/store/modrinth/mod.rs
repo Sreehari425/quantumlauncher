@@ -106,13 +106,51 @@ impl Backend for ModrinthBackend {
         let _guard = lock().await;
 
         let mut downloader = download::ModDownloader::new(instance, sender).await?;
-        downloader.download(id, None, true).await?;
+        downloader.download(id, None, None, true).await?;
 
         downloader.index.save(instance).await?;
 
         pt!("Finished");
 
         Ok(HashSet::new())
+    }
+
+    async fn download_version(
+        id: &str,
+        version_id: &str,
+        instance: &InstanceSelection,
+        sender: Option<Sender<GenericProgress>>,
+    ) -> Result<HashSet<CurseforgeNotAllowed>, ModError> {
+        let _guard = lock().await;
+
+        let mut downloader = download::ModDownloader::new(instance, sender).await?;
+        downloader.download(id, Some(version_id), None, true).await?;
+
+        downloader.index.save(instance).await?;
+
+        pt!("Finished");
+
+        Ok(HashSet::new())
+    }
+
+    async fn get_versions(id: &str) -> Result<Vec<crate::store::VersionInfo>, ModError> {
+        let download_info = ModVersion::download(id).await?;
+        Ok(download_info
+            .into_iter()
+            .map(|v| crate::store::VersionInfo {
+                name: v.name,
+                version_number: v.version_number,
+                id: v.id,
+                release_time: v.date_published,
+                download_url: v.files.iter().find(|f| f.primary).map(|f| f.url.clone()),
+                filename: v
+                    .files
+                    .iter()
+                    .find(|f| f.primary)
+                    .map(|f| f.filename.clone())
+                    .unwrap_or_default(),
+            })
+            .collect())
     }
 
     async fn download_bulk(
@@ -146,7 +184,7 @@ impl Backend for ModrinthBackend {
                 });
             }
 
-            let result = downloader.download(id, None, true).await;
+            let result = downloader.download(id, None, None, true).await;
             if let Err(ModError::NoCompatibleVersionFound(name)) = &result {
                 if ignore_incompatible {
                     pt!("No compatible version found for mod {name} ({id}), skipping...");

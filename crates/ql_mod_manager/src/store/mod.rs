@@ -60,6 +60,15 @@ pub trait Backend {
         sender: Option<Sender<GenericProgress>>,
     ) -> Result<HashSet<CurseforgeNotAllowed>, ModError>;
 
+    async fn download_version(
+        id: &str,
+        version_id: &str,
+        instance: &InstanceSelection,
+        sender: Option<Sender<GenericProgress>>,
+    ) -> Result<HashSet<CurseforgeNotAllowed>, ModError>;
+
+    async fn get_versions(id: &str) -> Result<Vec<VersionInfo>, ModError>;
+
     async fn download_bulk(
         ids: &[String],
         instance: &InstanceSelection,
@@ -357,4 +366,14 @@ pub struct CurseforgeNotAllowed {
     pub filename: String,
     pub project_type: String,
     pub file_id: usize,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct VersionInfo {
+    pub name: String,
+    pub version_number: String,
+    pub id: String,
+    pub release_time: String,
+    pub download_url: Option<String>,
+    pub filename: String,
 }

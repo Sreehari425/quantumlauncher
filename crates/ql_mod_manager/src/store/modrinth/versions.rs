@@ -9,8 +9,9 @@ use super::ModError;
 pub struct ModVersion {
     pub game_versions: Vec<String>,
     pub loaders: Vec<String>,
-    // pub id: String,
-    // pub project_id: String,
+    pub id: String,
+    #[allow(dead_code)]
+    pub project_id: String,
     // pub author_id: String,
     // pub featured: bool,
     pub name: String,

@@ -12,7 +12,7 @@ use crate::{
     rate_limiter::lock,
     store::{
         CurseforgeNotAllowed, DirStructure, ModConfig, ModError, ModFile, ModIndex, QueryType,
-        curseforge::{ModQuery, get_query_type},
+        curseforge::{ModQuery, get_query_type, CurseforgeFileQuery},
         install_modpack,
     },
 };
@@ -60,7 +60,12 @@ impl<'a> ModDownloader<'a> {
         })
     }
 
-    pub async fn download(&mut self, id: &str, dependent: Option<&str>) -> Result<(), ModError> {
+    pub async fn download(
+        &mut self,
+        id: &str,
+        version_id: Option<i32>,
+        dependent: Option<&str>,
+    ) -> Result<(), ModError> {
         // Mod already installed.
         if !self.already_installed.insert(id.to_owned()) {
             return Ok(());
@@ -101,15 +106,19 @@ impl<'a> ModDownloader<'a> {
 
         let query_type = get_query_type(response.classId).await?;
 
-        let (file_query, file_id) = response
-            .get_file(
-                response.name.clone(),
-                id,
-                self.version.clone(),
-                self.loader,
-                query_type,
-            )
-            .await?;
+        let (file_query, file_id) = if let Some(version_id) = version_id {
+            (CurseforgeFileQuery::load(id, version_id).await?, version_id)
+        } else {
+            response
+                .get_file(
+                    response.name.clone(),
+                    id,
+                    self.version.clone(),
+                    self.loader,
+                    query_type,
+                )
+                .await?
+        };
         let Some(url) = file_query.data.downloadUrl.clone() else {
             self.not_allowed.insert(CurseforgeNotAllowed {
                 name: response.name.clone(),
@@ -151,7 +160,7 @@ impl<'a> ModDownloader<'a> {
 
         for dependency in &file_query.data.dependencies {
             let dep_id = dependency.modId.to_string();
-            Box::pin(self.download(&dep_id, Some(id))).await?;
+            Box::pin(self.download(&dep_id, None, Some(id))).await?;
         }
 
         self.add_to_index(dependent, &response, query_type, file_query, url, &id_mod);
@@ -167,7 +176,7 @@ impl<'a> ModDownloader<'a> {
         if self.loader == Some(FABRIC)
             && !self.index.mods.values_mut().any(|n| n.name == "Fabric API")
         {
-            self.download("306612", None).await?;
+            self.download("306612", None, None).await?;
         }
         Ok(())
     }
@@ -223,6 +232,7 @@ impl<'a> ModDownloader<'a> {
                 } else {
                     HashSet::new()
                 },
+                pinned: false,
             },
         );
     }

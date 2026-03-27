@@ -21,6 +21,7 @@ impl Launcher {
             | ManageModsMessage::DeleteFinished(Err(err))
             | ManageModsMessage::LocalDeleteFinished(Err(err))
             | ManageModsMessage::ToggleFinished(Err(err))
+            | ManageModsMessage::PinToggleFinished(Err(err))
             | ManageModsMessage::UpdatePerformDone(Err(err)) => self.set_error(err),
 
             ManageModsMessage::UpdateCheck => {
@@ -299,6 +300,27 @@ impl Launcher {
                     |n| ManageModsMessage::ToggleFinished(n.strerr()).into(),
                 );
             }
+            ManageModsMessage::PinToggle(id, pinned) => {
+                let id_index = id.get_index_str();
+                if let State::EditMods(menu) = &mut self.state {
+                    if let Some(m) = menu.mods.mods.get_mut(&id_index) {
+                        m.pinned = pinned;
+                    }
+                }
+                let instance = self.selected_instance.clone().unwrap();
+                return Task::perform(
+                    async move {
+                        let mut mods = ModIndex::load(&instance).await.strerr()?;
+                        if let Some(m) = mods.mods.get_mut(&id_index) {
+                            m.pinned = pinned;
+                            mods.save(&instance).await.strerr()?;
+                        }
+                        Ok(())
+                    },
+                    |n: Result<(), String>| ManageModsMessage::PinToggleFinished(n).into(),
+                );
+            }
+            ManageModsMessage::PinToggleFinished(Ok(())) => {}
         }
         Task::none()
     }

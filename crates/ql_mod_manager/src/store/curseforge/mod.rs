@@ -7,7 +7,8 @@ use std::{
 use chrono::DateTime;
 use download::ModDownloader;
 use ql_core::{
-    CLIENT, GenericProgress, IntoJsonError, JsonDownloadError, Loader, ModId, RequestError, err, pt,
+    CLIENT, GenericProgress, InstanceSelection, IntoJsonError, JsonDownloadError, Loader, ModId,
+    RequestError, err, pt,
 };
 use reqwest::header::HeaderValue;
 use serde::Deserialize;
@@ -134,6 +135,7 @@ impl CurseforgeFileQuery {
 #[derive(Deserialize, Clone, Debug)]
 #[allow(non_snake_case)]
 pub struct CurseforgeFile {
+    pub id: i32,
     pub fileName: String,
     pub downloadUrl: Option<String>,
     pub gameVersions: Vec<String>,
@@ -308,10 +310,51 @@ impl Backend for CurseforgeBackend {
 
         downloader.ensure_essential_mods().await?;
 
-        downloader.download(id, None).await?;
+        downloader.download(id, None, None).await?;
         downloader.index.save(instance).await?;
 
         Ok(downloader.not_allowed)
+    }
+
+    async fn download_version(
+        id: &str,
+        version_id: &str,
+        instance: &InstanceSelection,
+        sender: Option<Sender<GenericProgress>>,
+    ) -> Result<HashSet<CurseforgeNotAllowed>, ModError> {
+        let mut downloader = ModDownloader::new(instance.clone(), sender.as_ref()).await?;
+
+        downloader.ensure_essential_mods().await?;
+
+        let version_id = version_id.parse::<i32>()?;
+        downloader.download(id, Some(version_id), None).await?;
+        downloader.index.save(instance).await?;
+
+        Ok(downloader.not_allowed)
+    }
+
+    async fn get_versions(id: &str) -> Result<Vec<super::VersionInfo>, ModError> {
+        #[derive(Deserialize)]
+        struct Resp {
+            data: Vec<CurseforgeFile>,
+        }
+
+        let map = HashMap::new();
+        let response = send_request(&format!("mods/{id}/files"), &map).await?;
+        let response: Resp = serde_json::from_str(&response).json(response)?;
+
+        Ok(response
+            .data
+            .into_iter()
+            .map(|f| super::VersionInfo {
+                name: f.displayName,
+                version_number: f.fileName.clone(),
+                id: f.id.to_string(),
+                release_time: f.fileDate,
+                download_url: f.downloadUrl,
+                filename: f.fileName,
+            })
+            .collect())
     }
 
     async fn download_bulk(
@@ -342,7 +385,7 @@ impl Backend for CurseforgeBackend {
                 });
             }
 
-            let result = downloader.download(id, None).await;
+            let result = downloader.download(id, None, None).await;
 
             if let Err(ModError::NoCompatibleVersionFound(name)) = &result {
                 if ignore_incompatible {

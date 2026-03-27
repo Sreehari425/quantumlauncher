@@ -28,6 +28,8 @@ pub struct ModConfig {
     pub supported_versions: Vec<String>,
     pub dependencies: HashSet<String>,
     pub dependents: HashSet<String>,
+    #[serde(default)]
+    pub pinned: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
