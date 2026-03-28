@@ -7,6 +7,7 @@ use ql_core::{
 };
 
 mod add_file;
+pub mod category;
 mod curseforge;
 mod delete;
 mod error;

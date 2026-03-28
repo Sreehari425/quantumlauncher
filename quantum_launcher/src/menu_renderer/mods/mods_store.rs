@@ -4,11 +4,19 @@ use iced::{
     widget::{self, column, row},
 };
 use ql_core::{Loader, ModId, StoreBackendType};
-use ql_mod_manager::store::{QueryType, SearchMod};
+use ql_mod_manager::store::{
+    QueryType, SearchMod,
+    category::{
+        ModCategoryCommon, ModCategoryCurseforge, ModCategoryCurseforgeTechnology,
+        ModCategoryCurseforgeWorldgen, ModCategoryModrinth,
+    },
+};
 
 use crate::{
     icons,
-    menu_renderer::{Element, FONT_DEFAULT, FONT_MONO, back_button, button_with_icon, tooltip, tsubtitle},
+    menu_renderer::{
+        Element, FONT_DEFAULT, FONT_MONO, back_button, button_with_icon, tooltip, tsubtitle,
+    },
     state::{
         ImageState, InstallModsMessage, ManageModsMessage, MenuModsDownload, Message, ModOperation,
     },
@@ -73,11 +81,25 @@ impl MenuModsDownload {
     ) -> widget::Column<'a, Message, LauncherTheme> {
         let mods_list = self.get_mods_list(images, tick_timer);
 
+        self.mods_view_warnings().push(
+            widget::scrollable(mods_list.spacing(5))
+                .style(|theme: &LauncherTheme, status| theme.style_scrollable_flat_dark(status))
+                .id(widget::scrollable::Id::new(
+                    "MenuModsDownload:main:mods_list",
+                ))
+                .height(Length::Fill)
+                .width(Length::Fill)
+                .spacing(0)
+                .on_scroll(|viewport| InstallModsMessage::Scrolled(viewport).into()),
+        )
+    }
+
+    fn mods_view_warnings(&self) -> widget::Column<'static, Message, LauncherTheme> {
+        // WARN: various mod-related stuff
         widget::Column::new()
             .push_maybe(
                 (self.query_type == QueryType::Shaders
                     && self.config.mod_type != Loader::OptiFine
-
                     // Iris Shaders Mod
                     && !self.mod_index.mods.contains_key("YL57xq9U") // Modrinth ID
                     && !self.mod_index.mods.contains_key("CF:455508")) // CurseForge ID
@@ -95,7 +117,6 @@ impl MenuModsDownload {
                 .then_some(
                     widget::container(
                         widget::text(
-                            // WARN: No loader installed
                             "You haven't installed any mod loader! Install Fabric (recommended), Forge, Quilt or NeoForge"
                         ).size(12)
                     ).padding(10).width(Length::Fill).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),
@@ -104,85 +125,141 @@ impl MenuModsDownload {
                 .then_some(
                     widget::container(
                         widget::text(
-                            // WARN: Store for old versions
                             "Installing Mods for old versions is experimental and may be broken"
                         ).size(12)
                     ).padding(10).width(Length::Fill).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),
                 )
-            ).push(
-                widget::scrollable(mods_list.spacing(5))
-                    .style(|theme: &LauncherTheme, status| theme.style_scrollable_flat_dark(status))
-                    .id(widget::scrollable::Id::new("MenuModsDownload:main:mods_list"))
-                    .height(Length::Fill)
-                    .width(Length::Fill)
-                    .spacing(0)
-                    .on_scroll(|viewport| InstallModsMessage::Scrolled(viewport).into()),
             )
     }
 
     fn get_side_panel(&'_ self) -> widget::Scrollable<'_, Message, LauncherTheme> {
-        let inner =
-            if self.mods_download_in_progress.is_empty() || self.results.is_none() {
-                column![
-                    widget::text("Type:").size(14),
-                    widget::column(QueryType::STORE_QUERIES.iter().map(|n| {
-                        widget::radio(n.to_string(), *n, Some(self.query_type), |v| {
-                            InstallModsMessage::ChangeQueryType(v).into()
-                        })
-                        .spacing(5)
-                        .text_size(12)
-                        .size(10)
-                        .into()
-                    })),
-                    widget::Space::with_height(5),
-                    row![
-                        widget::text("Filters:").size(14),
-                        widget::horizontal_space(),
-                        widget::radio("All", true, Some(false), |_| Message::Nothing)
-                            .spacing(2)
-                            .text_size(12)
-                            .size(10),
-                        widget::radio("Any", false, Some(false), |_| Message::Nothing)
-                            .spacing(2)
-                            .text_size(12)
-                            .size(10),
-                    ]
-                    .spacing(7)
-                    .align_y(Alignment::Center),
-                    "(TODO)"
-                ]
-                .spacing(5)
-            } else {
-                // Mod operations (installing/uninstalling) are in progress.
-                // Can't back out. Show list of operations in progress.
-                column!("In progress:", {
-                    widget::column(self.mods_download_in_progress.values().map(
-                        |(title, operation)| {
-                            const SIZE: u16 = 12;
-                            widget::container(
-                                widget::row![
-                                    match operation {
-                                        ModOperation::Downloading => icons::download_s(SIZE),
-                                        ModOperation::Deleting => icons::bin_s(SIZE),
-                                    },
-                                    widget::text(title).size(SIZE)
-                                ]
-                                .spacing(4),
-                            )
-                            .padding(8)
-                            .into()
-                        },
-                    ))
-                    .spacing(5)
-                })
-                .spacing(5)
-            }
-            .padding(10);
+        if !self.mods_download_in_progress.is_empty() {
+            // Mod operations (installing/uninstalling) are in progress.
+            // Can't back out. Show list of operations in progress.
 
-        widget::scrollable(inner)
-            .width(150)
+            let operations = self
+                .mods_download_in_progress
+                .values()
+                .map(|(title, operation)| {
+                    const SIZE: u16 = 12;
+                    widget::container(
+                        widget::row![
+                            match operation {
+                                ModOperation::Downloading => icons::download_s(SIZE),
+                                ModOperation::Deleting => icons::bin_s(SIZE),
+                            },
+                            widget::text(title).size(SIZE)
+                        ]
+                        .spacing(4),
+                    )
+                    .padding(8)
+                    .into()
+                });
+
+            return widget::scrollable(
+                column!["In progress:"]
+                    .extend(operations)
+                    .spacing(5)
+                    .padding(10),
+            )
+            .width(180)
             .height(Length::Fill)
-            .style(LauncherTheme::style_scrollable_flat_extra_dark)
+            .style(LauncherTheme::style_scrollable_flat_extra_dark);
+        }
+
+        widget::scrollable(
+            column![
+                row![icons::download_s(14), widget::text("Type:").size(18)]
+                    .align_y(Alignment::Center)
+                    .spacing(5),
+                widget::column(QueryType::STORE_QUERIES.iter().map(|n| {
+                    widget::radio(n.to_string(), *n, Some(self.query_type), |v| {
+                        InstallModsMessage::ChangeQueryType(v).into()
+                    })
+                    .spacing(5)
+                    .text_size(14)
+                    .size(12)
+                    .into()
+                })),
+                widget::Space::with_height(5),
+                self.get_filters(),
+            ]
+            .spacing(5)
+            .padding(10),
+        )
+        .width(180)
+        .height(Length::Fill)
+        .style(LauncherTheme::style_scrollable_flat_extra_dark)
+    }
+
+    fn get_filters(&self) -> widget::Column<'static, Message, LauncherTheme> {
+        fn checkbox<'a>(
+            n: impl Into<String>,
+            enabled: bool,
+        ) -> widget::Checkbox<'a, Message, LauncherTheme> {
+            widget::checkbox(n, enabled)
+                .size(12)
+                .text_size(14)
+                .style(|n: &LauncherTheme, s| n.style_checkbox(s, Some(Color::SecondLight)))
+        }
+
+        column![
+            row![
+                icons::filter_s(14),
+                widget::text("Filters:").size(18),
+                widget::radio("All", true, Some(false), |_| Message::Nothing)
+                    .spacing(4)
+                    .text_size(13)
+                    .size(11),
+                widget::radio("Any", false, Some(false), |_| Message::Nothing)
+                    .spacing(4)
+                    .text_size(13)
+                    .size(11),
+            ]
+            .spacing(5)
+            .align_y(Alignment::Center),
+            widget::Space::with_height(5),
+            widget::column(
+                ModCategoryCommon::ALL
+                    .iter()
+                    .map(|n| checkbox(n.to_string(), false).into())
+            ),
+            match self.backend {
+                StoreBackendType::Modrinth => widget::column(
+                    ModCategoryModrinth::ALL
+                        .iter()
+                        .map(|n| checkbox(n.to_string(), false).into())
+                ),
+                StoreBackendType::Curseforge => column![
+                    widget::column(
+                        ModCategoryCurseforge::ALL
+                            .iter()
+                            .map(|n| checkbox(n.to_string(), false).into())
+                    ),
+                    widget::text("Technology:").size(14),
+                    row![
+                        widget::Space::with_width(10),
+                        widget::column(
+                            ModCategoryCurseforgeTechnology::ALL
+                                .iter()
+                                .map(|n| checkbox(n.to_string(), false).into())
+                        ),
+                    ],
+                    widget::text("World Generation:").size(14),
+                    row![
+                        widget::Space::with_width(10),
+                        widget::column(
+                            ModCategoryCurseforgeWorldgen::ALL.iter().map(|n| checkbox(
+                                n.to_string(),
+                                false
+                            )
+                            .into())
+                        ),
+                    ],
+                ]
+                .spacing(5),
+            },
+        ]
     }
 
     fn get_mods_list<'a>(
