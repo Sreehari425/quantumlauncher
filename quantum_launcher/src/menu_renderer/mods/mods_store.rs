@@ -34,7 +34,7 @@ impl MenuModsDownload {
         widget::container(
             row![
                 button_with_icon(icons::back_s(12), "Back", 13)
-                    .padding([4, 8])
+                    .padding([5, 8])
                     .on_press(ManageModsMessage::Open.into()),
                 widget::text_input("Search...", &self.query)
                     .size(14)
@@ -63,7 +63,7 @@ impl MenuModsDownload {
             .spacing(10),
         )
         .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark))
-        .padding(5)
+        .padding([5, 10])
     }
 
     fn mods_display<'a>(

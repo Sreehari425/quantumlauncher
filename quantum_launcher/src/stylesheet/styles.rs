@@ -216,7 +216,7 @@ impl LauncherTheme {
                     // self.get(Color::Dark),
                     self.get(Color::SecondDark),
                 ),
-                border: self.get_border_style(&style, Color::Mid),
+                border: self.get_border(Color::SecondDark),
             },
         };
         widget::scrollable::Style {
@@ -238,8 +238,8 @@ impl LauncherTheme {
     fn style_scrollable_hovered(
         &self,
         style: StyleScrollable,
-        is_vertical_scrollbar_hovered: bool,
-        is_horizontal_scrollbar_hovered: bool,
+        vertical_hovered: bool,
+        horizontal_hovered: bool,
     ) -> widget::scrollable::Style {
         let border = self.get_border_style(
             &style,
@@ -248,9 +248,8 @@ impl LauncherTheme {
                 StyleScrollable::FlatExtraDark => Color::Dark,
             },
         );
-        let vertical_rail = self.s_scrollable_rail(style, border, is_vertical_scrollbar_hovered);
-        let horizontal_rail =
-            self.s_scrollable_rail(style, border, is_horizontal_scrollbar_hovered);
+        let vertical_rail = self.s_scrollable_rail_hovered(border, vertical_hovered);
+        let horizontal_rail = self.s_scrollable_rail_hovered(border, horizontal_hovered);
         widget::scrollable::Style {
             container: self.s_scrollable_get_container(style, border),
             vertical_rail,
@@ -259,7 +258,7 @@ impl LauncherTheme {
         }
     }
 
-    fn s_scrollable_rail(&self, style: StyleScrollable, border: Border, hovered: bool) -> Rail {
+    fn s_scrollable_rail_hovered(&self, border: Border, hovered: bool) -> Rail {
         Rail {
             background: Some(self.get_bg(Color::ExtraDark)),
             border,
@@ -269,7 +268,7 @@ impl LauncherTheme {
                 } else {
                     self.get(Color::SecondDark)
                 },
-                border: self.get_border_style(&style, Color::Light),
+                border: self.get_border(Color::SecondDark),
             },
         }
     }
@@ -288,34 +287,22 @@ impl LauncherTheme {
                 StyleScrollable::FlatExtraDark => Color::Dark,
             },
         );
-        let rail_v = Rail {
+        let rail = |dragged| Rail {
             background: Some(self.get_bg(Color::ExtraDark)),
             border,
             scroller: widget::scrollable::Scroller {
-                color: if is_vertical_scrollbar_dragged {
-                    self.get(Color::White)
+                color: if dragged {
+                    self.get(Color::SecondLight)
                 } else {
                     mix(self.get(Color::Mid), self.get(Color::SecondDark))
                 },
-                border: self.get_border_style(&style, Color::Light),
-            },
-        };
-        let rail_h = Rail {
-            background: Some(self.get_bg(Color::Dark)),
-            border,
-            scroller: widget::scrollable::Scroller {
-                color: self.get(if is_horizontal_scrollbar_dragged {
-                    Color::White
-                } else {
-                    Color::Mid
-                }),
-                border: self.get_border_style(&style, Color::Light),
+                border: self.get_border(Color::SecondDark),
             },
         };
         widget::scrollable::Style {
             container: self.s_scrollable_get_container(style, border),
-            vertical_rail: rail_v,
-            horizontal_rail: rail_h,
+            vertical_rail: rail(is_vertical_scrollbar_dragged),
+            horizontal_rail: rail(is_horizontal_scrollbar_dragged),
             gap: None,
         }
     }
