@@ -44,15 +44,11 @@ pub enum LaunchTab {
 
 impl std::fmt::Display for LaunchTab {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                LaunchTab::Buttons => "Play",
-                LaunchTab::Log => "Logs",
-                LaunchTab::Edit => "Edit",
-            }
-        )
+        f.write_str(match self {
+            LaunchTab::Buttons => "Play",
+            LaunchTab::Log => "Logs",
+            LaunchTab::Edit => "Edit",
+        })
     }
 }
 
@@ -505,15 +501,11 @@ pub enum LauncherSettingsTab {
 
 impl std::fmt::Display for LauncherSettingsTab {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                LauncherSettingsTab::UserInterface => "Appearance",
-                LauncherSettingsTab::Internal => "Game",
-                LauncherSettingsTab::About => "About",
-            }
-        )
+        f.write_str(match self {
+            LauncherSettingsTab::UserInterface => "Appearance",
+            LauncherSettingsTab::Internal => "Game",
+            LauncherSettingsTab::About => "About",
+        })
     }
 }
 

@@ -44,19 +44,15 @@ impl LauncherThemeColor {
 
 impl Display for LauncherThemeColor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                LauncherThemeColor::Brown => "Brown",
-                LauncherThemeColor::Purple => "Purple",
-                LauncherThemeColor::SkyBlue => "Sky Blue",
-                LauncherThemeColor::Catppuccin => "Catppuccin",
-                LauncherThemeColor::Teal => "Teal",
-                LauncherThemeColor::Halloween => "Halloween",
-                LauncherThemeColor::Adwaita => "Adwaita",
-            },
-        )
+        f.write_str(match self {
+            LauncherThemeColor::Brown => "Brown",
+            LauncherThemeColor::Purple => "Purple",
+            LauncherThemeColor::SkyBlue => "Sky Blue",
+            LauncherThemeColor::Catppuccin => "Catppuccin",
+            LauncherThemeColor::Teal => "Teal",
+            LauncherThemeColor::Halloween => "Halloween",
+            LauncherThemeColor::Adwaita => "Adwaita",
+        })
     }
 }
 
@@ -94,15 +90,11 @@ impl LauncherThemeLightness {
 }
 impl Display for LauncherThemeLightness {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                LauncherThemeLightness::Light => "Light",
-                LauncherThemeLightness::Dark => "Dark",
-                LauncherThemeLightness::Auto => "Auto",
-            },
-        )
+        f.write_str(match self {
+            LauncherThemeLightness::Light => "Light",
+            LauncherThemeLightness::Dark => "Dark",
+            LauncherThemeLightness::Auto => "Auto",
+        })
     }
 }
 

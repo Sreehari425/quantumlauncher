@@ -170,17 +170,13 @@ pub enum QueryType {
 
 impl Display for QueryType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                QueryType::Mods => "Mods",
-                QueryType::ResourcePacks => "Resource Packs",
-                QueryType::Shaders => "Shaders",
-                QueryType::ModPacks => "Modpacks",
-                QueryType::DataPacks => "Data Packs",
-            }
-        )
+        f.write_str(match self {
+            QueryType::Mods => "Mods",
+            QueryType::ResourcePacks => "Resource Packs",
+            QueryType::Shaders => "Shaders",
+            QueryType::ModPacks => "Modpacks",
+            QueryType::DataPacks => "Data Packs",
+        })
     }
 }
 
