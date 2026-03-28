@@ -38,11 +38,7 @@ pub trait Backend {
     /// - Query type (Mod/Resource Pack/Shader/...)
     ///
     /// Returns a search result containing a list of matching items
-    async fn search(
-        query: Query,
-        offset: usize,
-        query_type: QueryType,
-    ) -> Result<SearchResult, ModError>;
+    async fn search(query: Query, offset: usize) -> Result<SearchResult, ModError>;
     /// Gets the description of a mod based on its id.
     /// Returns the id and description `String`.
     ///
@@ -80,11 +76,10 @@ pub async fn search(
     query: Query,
     offset: usize,
     backend: StoreBackendType,
-    query_type: QueryType,
 ) -> Result<SearchResult, ModError> {
     match backend {
-        StoreBackendType::Modrinth => ModrinthBackend::search(query, offset, query_type).await,
-        StoreBackendType::Curseforge => CurseforgeBackend::search(query, offset, query_type).await,
+        StoreBackendType::Modrinth => ModrinthBackend::search(query, offset).await,
+        StoreBackendType::Curseforge => CurseforgeBackend::search(query, offset).await,
     }
 }
 
@@ -254,6 +249,7 @@ pub struct Query {
     pub version: String,
     pub loader: Loader,
     pub server_side: bool,
+    pub kind: QueryType,
 }
 
 #[derive(Debug, Clone)]

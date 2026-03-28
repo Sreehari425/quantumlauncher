@@ -310,12 +310,11 @@ impl MenuModsDownload {
             version: self.version_json.get_id().to_owned(),
             loader: self.config.mod_type,
             server_side: is_server,
-            // open_source: false, // TODO: Add Open Source filter
+            kind: self.query_type, // open_source: false, // TODO: Add Open Source filter
         };
         let backend = self.backend;
-        Task::perform(
-            ql_mod_manager::store::search(query, offset, backend, self.query_type),
-            |n| InstallModsMessage::SearchResult(n.strerr()).into(),
-        )
+        Task::perform(ql_mod_manager::store::search(query, offset, backend), |n| {
+            InstallModsMessage::SearchResult(n.strerr()).into()
+        })
     }
 }

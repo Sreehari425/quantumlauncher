@@ -196,11 +196,7 @@ impl CFSearchResult {
 pub struct CurseforgeBackend;
 
 impl Backend for CurseforgeBackend {
-    async fn search(
-        query: super::Query,
-        offset: usize,
-        query_type: QueryType,
-    ) -> Result<SearchResult, ModError> {
+    async fn search(query: super::Query, offset: usize) -> Result<SearchResult, ModError> {
         const TOTAL_DOWNLOADS: &str = "6";
 
         RATE_LIMITER.lock().await;
@@ -213,7 +209,7 @@ impl Backend for CurseforgeBackend {
             ("index", offset.to_string()),
         ]);
 
-        if let QueryType::Mods | QueryType::ModPacks = query_type {
+        if let QueryType::Mods | QueryType::ModPacks = query.kind {
             if !query.loader.is_vanilla() {
                 params.insert("modLoaderType", query.loader.to_curseforge_num().to_owned());
             }
@@ -221,9 +217,9 @@ impl Backend for CurseforgeBackend {
         }
 
         let categories = get_categories().await?;
-        let query_type_str = query_type.to_curseforge_str();
-        if query_type == QueryType::DataPacks {
-            // curseforge returns categories that have the same slug but have different ids
+        let query_type_str = query.kind.to_curseforge_str();
+        if query.kind == QueryType::DataPacks {
+            // Curseforge returns categories that have the same slug but have different ids
             // for example this 2 have the same slug: "data-packs"
             // - path: /data-packs                  id: 6945 (the right one)
             // - path: /texture-packs/data-packs    id: 5139 (actually texture packs)

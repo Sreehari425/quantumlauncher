@@ -5,11 +5,7 @@ use serde::Deserialize;
 
 use crate::store::{ModError, Query, QueryType};
 
-pub async fn do_request(
-    query: &Query,
-    offset: usize,
-    query_type: QueryType,
-) -> Result<Search, ModError> {
+pub async fn do_request(query: &Query, offset: usize) -> Result<Search, ModError> {
     const SEARCH_URL: &str = "https://api.modrinth.com/v2/search";
 
     let mut params = BTreeMap::from([
@@ -22,11 +18,11 @@ pub async fn do_request(
     }
 
     let mut filters = vec![
-        vec![format!("project_type:{}", query_type.to_modrinth_str())],
+        vec![format!("project_type:{}", query.kind.to_modrinth_str())],
         vec![format!("versions:{}", query.version)],
     ];
 
-    if let QueryType::Mods | QueryType::ModPacks = query_type {
+    if let QueryType::Mods | QueryType::ModPacks = query.kind {
         if !query.loader.is_vanilla() {
             filters.push(vec![format!(
                 "categories:'{}'",

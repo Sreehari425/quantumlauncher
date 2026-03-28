@@ -11,7 +11,7 @@ use crate::{
     store::{SearchMod, StoreBackendType},
 };
 
-use super::{Backend, CurseforgeNotAllowed, ModError, Query, QueryType, SearchResult};
+use super::{Backend, CurseforgeNotAllowed, ModError, Query, SearchResult};
 
 mod download;
 mod info;
@@ -21,15 +21,11 @@ mod versions;
 pub struct ModrinthBackend;
 
 impl Backend for ModrinthBackend {
-    async fn search(
-        query: Query,
-        offset: usize,
-        query_type: QueryType,
-    ) -> Result<SearchResult, ModError> {
+    async fn search(query: Query, offset: usize) -> Result<SearchResult, ModError> {
         RATE_LIMITER.lock().await;
         let instant = Instant::now();
 
-        let res = search::do_request(&query, offset, query_type).await?;
+        let res = search::do_request(&query, offset).await?;
         let reached_end = res.hits.len() < res.limit;
 
         let res = SearchResult {
