@@ -30,7 +30,7 @@ impl Launcher {
                     menu.is_loading_continuation = false;
                     menu.has_continuation_ended = search.reached_end;
 
-                    if search.start_time > menu.latest_load {
+                    if search.start_time > menu.latest_load && menu.backend == search.backend {
                         menu.latest_load = search.start_time;
 
                         if let (Some(results), true) = (&mut menu.results, search.offset > 0) {
