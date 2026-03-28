@@ -58,7 +58,7 @@ pub async fn do_request(query: &Query, offset: usize) -> Result<Search, ModError
                 });
             }
 
-            return Err(e).json(text).map_err(|n| n.into());
+            return Err(e).json(text).map_err(ModError::Json);
         }
     };
 

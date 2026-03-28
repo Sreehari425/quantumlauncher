@@ -174,14 +174,15 @@ pub async fn install(url: String, progress: Sender<GenericProgress>) -> Result<(
     let download_zip = file_utils::download_file_to_bytes(&url, false).await?;
 
     send_progress(&progress, 3, "Extracting new launcher");
-    if url.ends_with(".tar.gz") {
+    let url_cmp = url.to_lowercase();
+    if url_cmp.ends_with(".tar.gz") {
         let exe_location = exe_location.to_owned();
         tokio::task::spawn_blocking(move || {
             file_utils::extract_tar_gz(&download_zip, &exe_location)
         })
         .await?
         .map_err(UpdateError::TarGz)?;
-    } else if url.ends_with(".zip") {
+    } else if url_cmp.ends_with(".zip") {
         file_utils::extract_zip_archive(std::io::Cursor::new(download_zip), exe_location, true)
             .await?;
     } else {

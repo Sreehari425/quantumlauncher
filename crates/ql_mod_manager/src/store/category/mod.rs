@@ -136,13 +136,13 @@ impl ModCategory {
         match (self, backend) {
             (Self::Common(common), _) => Some(common.get_id(backend)),
             (Self::Modrinth(modrinth), B::Modrinth) => Some(modrinth.get_id()),
-            (Self::Modrinth(_), _) => None,
             (Self::Curseforge(curseforge), B::Curseforge) => Some(curseforge.get_id()),
-            (Self::Curseforge(_), _) => None,
             (Self::CurseforgeTechnology(ctech), B::Curseforge) => Some(ctech.get_id()),
-            (Self::CurseforgeTechnology(_), _) => None,
             (Self::CurseforgeWorldgen(worldgen), B::Curseforge) => Some(worldgen.get_id()),
-            (Self::CurseforgeWorldgen(_), _) => None,
+            (Self::Modrinth(_), _)
+            | (Self::Curseforge(_), _)
+            | (Self::CurseforgeTechnology(_), _)
+            | (Self::CurseforgeWorldgen(_), _) => None,
         }
     }
 }

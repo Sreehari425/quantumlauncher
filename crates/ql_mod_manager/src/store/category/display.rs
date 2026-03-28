@@ -80,11 +80,11 @@ impl Display for ModCategoryCurseforgeWorldgen {
 impl Display for ModCategory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Common(common) => return common.fmt(f),
-            Self::Modrinth(modrinth) => return modrinth.fmt(f),
-            Self::Curseforge(curseforge) => return curseforge.fmt(f),
-            Self::CurseforgeTechnology(ctech) => return ctech.fmt(f),
-            Self::CurseforgeWorldgen(cworldgen) => return cworldgen.fmt(f),
+            Self::Common(common) => common.fmt(f),
+            Self::Modrinth(modrinth) => modrinth.fmt(f),
+            Self::Curseforge(curseforge) => curseforge.fmt(f),
+            Self::CurseforgeTechnology(ctech) => ctech.fmt(f),
+            Self::CurseforgeWorldgen(cworldgen) => cworldgen.fmt(f),
         }
     }
 }
