@@ -190,6 +190,7 @@ pub enum InstallModsMessage {
     FetchVersions(ModId),
     VersionsLoaded(Res<Vec<ql_mod_manager::store::VersionInfo>>),
     InstallVersion(ModId, String),
+    ModClick(ModId, String),
 }
 
 #[derive(Debug, Clone)]

@@ -13,6 +13,7 @@ use crate::{
 };
 use ezshortcut::Shortcut;
 use frostmark::MarkState;
+use ql_mod_manager::store::SearchMod;
 use iced::{
     Rectangle, Task,
     widget::{self, scrollable::AbsoluteOffset},
@@ -463,23 +464,31 @@ pub struct MenuModsDownload {
     pub has_continuation_ended: bool,
 
     pub mod_versions: Option<(ModId, Vec<ql_mod_manager::store::VersionInfo>)>,
+    pub opened_direct_mod: Option<SearchMod>,
 }
 
 impl MenuModsDownload {
     pub fn reload_description(&mut self, images: &mut ImageState) {
-        let (Some(selection), Some(results)) = (self.opened_mod, &self.results) else {
+        let hit = if let Some(selection) = self.opened_mod {
+            self.results.as_ref().and_then(|r| r.mods.get(selection))
+        } else {
+            self.opened_direct_mod.as_ref()
+        };
+
+        let Some(hit) = hit else {
             return;
         };
-        let Some(hit) = results.mods.get(selection) else {
+
+        let backend = if self.opened_mod.is_some() {
+            self.results.as_ref().unwrap().backend
+        } else {
+            self.backend
+        };
+
+        let Some(info) = self.mod_descriptions.get(&ModId::from_pair(&hit.id, backend)) else {
             return;
         };
-        let Some(info) = self
-            .mod_descriptions
-            .get(&ModId::from_pair(&hit.id, results.backend))
-        else {
-            return;
-        };
-        let description = match results.backend {
+        let description = match backend {
             StoreBackendType::Modrinth => MarkState::with_html_and_markdown(info),
             StoreBackendType::Curseforge => MarkState::with_html(info), // Optimization, curseforge only has HTML
         };

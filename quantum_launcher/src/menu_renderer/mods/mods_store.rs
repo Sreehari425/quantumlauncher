@@ -263,16 +263,17 @@ impl MenuModsDownload {
     }
 
     pub fn view<'a>(&'a self, images: &'a ImageState, tick_timer: usize) -> Element<'a> {
-        // If we opened a mod (`self.opened_mod`) then
-        // render the mod description page.
-        // else render the main store page.
-        let (Some(selection), Some(results)) = (self.opened_mod, &self.results) else {
-            return self.view_main(images, tick_timer);
-        };
-        let Some(hit) = results.mods.get(selection) else {
-            return self.view_main(images, tick_timer);
-        };
-        self.view_project_description(hit, images, tick_timer)
+        if let (Some(selection), Some(results)) = (self.opened_mod, &self.results) {
+            if let Some(hit) = results.mods.get(selection) {
+                return self.view_project_description(hit, images, tick_timer);
+            }
+        }
+
+        if let Some(hit) = &self.opened_direct_mod {
+            return self.view_project_description(hit, images, tick_timer);
+        }
+
+        self.view_main(images, tick_timer)
     }
 
     /// Renders the mod description page.

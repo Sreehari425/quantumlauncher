@@ -1,6 +1,6 @@
 use iced::widget::tooltip::Position;
 use iced::{Alignment, Length, widget};
-use ql_core::{InstanceSelection, Loader, SelectedMod};
+use ql_core::{InstanceSelection, Loader, ModId, SelectedMod};
 
 use crate::menu_renderer::{
     CTXI_SIZE, FONT_MONO, ctx_button, ctxbox, dots, offset, select_box, subbutton_with_icon,
@@ -91,6 +91,19 @@ impl MenuEditMods {
                                 }).collect())),
                             ctx_button(icons::bin_s(CTXI_SIZE), "Delete")
                                 .on_press(ManageModsMessage::DeleteSelected.into()),
+                            ctx_button(icons::refresh_s(CTXI_SIZE), "Change Version")
+                                .on_press_maybe(self.mods.mods.get(&id.get_index_str()).map(
+                                    |info| {
+                                        Message::Multiple(vec![
+                                            InstallModsMessage::Open.into(),
+                                            InstallModsMessage::ModClick(
+                                                ModId::from_pair(&id.get_index_str(), id.get_backend()),
+                                                info.name.clone(),
+                                            )
+                                            .into(),
+                                        ])
+                                    }
+                                )),
                             ctx_button(icons::file_info_s(CTXI_SIZE), "Mod Details")
                                 .on_press_maybe(self.mods.mods.get(&id.get_index_str()).map(
                                     |info| {

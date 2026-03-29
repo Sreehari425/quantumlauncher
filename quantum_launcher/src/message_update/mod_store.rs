@@ -5,7 +5,7 @@ use ql_core::{
     InstanceConfigJson, InstanceSelection, IntoStringError, JsonFileError, ModId, StoreBackendType,
     err, json::VersionDetails,
 };
-use ql_mod_manager::store::{ModIndex, Query, QueryType, get_description};
+use ql_mod_manager::store::{ModIndex, Query, QueryType, SearchMod, get_description};
 
 use crate::state::{
     InstallModsMessage, Launcher, MenuCurseforgeManualDownload, MenuModsDownload, Message,
@@ -96,8 +96,9 @@ impl Launcher {
                         let hit = results.mods.get(i).unwrap();
                         let id = ModId::from_pair(&hit.id, results.backend);
 
-                        let mut tasks =
-                            vec![Task::done(InstallModsMessage::FetchVersions(id.clone()).into())];
+                        let mut tasks = vec![Task::done(
+                            InstallModsMessage::FetchVersions(id.clone()).into(),
+                        )];
 
                         if !menu.mod_descriptions.contains_key(&id) {
                             tasks.push(Task::perform(get_description(id), |n| {
@@ -112,6 +113,7 @@ impl Launcher {
             InstallModsMessage::BackToMainScreen => {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.opened_mod = None;
+                    menu.opened_direct_mod = None;
                     menu.description = None;
                     menu.mod_versions = None;
                     return iced::widget::scrollable::scroll_to(
@@ -245,6 +247,9 @@ impl Launcher {
                                 menu.mod_versions = Some((id, versions));
                             }
                         }
+                    } else if let Some(hit) = &menu.opened_direct_mod {
+                        let id = ModId::from_pair(&hit.id, menu.backend);
+                        menu.mod_versions = Some((id, versions));
                     }
                 }
             }
@@ -293,6 +298,36 @@ impl Launcher {
                     |n| InstallModsMessage::DownloadComplete(n.strerr()).into(),
                 );
             }
+            InstallModsMessage::ModClick(id, name) => {
+                let backend = id.get_backend();
+                if let State::ModsDownload(menu) = &mut self.state {
+                    menu.backend = backend;
+                    menu.opened_mod = None;
+                    menu.opened_direct_mod = Some(SearchMod {
+                        title: name.clone(),
+                        description: String::new(),
+                        downloads: 0,
+                        internal_name: String::new(),
+                        id: id.get_index_str(),
+                        project_type: "mc-mods".to_string(), // Default
+                        icon_url: String::new(),
+                    });
+                    menu.description = None;
+                    menu.mod_versions = None;
+
+                    let mut tasks = vec![Task::done(
+                        InstallModsMessage::FetchVersions(id.clone()).into(),
+                    )];
+
+                    if !menu.mod_descriptions.contains_key(&id) {
+                        tasks.push(Task::perform(get_description(id), |n| {
+                            InstallModsMessage::LoadData(n.strerr()).into()
+                        }));
+                    }
+
+                    return Task::batch(tasks);
+                }
+            }
         }
         Task::none()
     }
@@ -322,11 +357,11 @@ impl Launcher {
             is_loading_continuation: false,
             has_continuation_ended: false,
             description: None,
+            mod_versions: None,
+            opened_direct_mod: None,
 
             backend: StoreBackendType::Modrinth,
             query_type: QueryType::Mods,
-
-            mod_versions: None,
         };
         let command = menu.search_store(
             matches!(&self.selected_instance, Some(InstanceSelection::Server(_))),
