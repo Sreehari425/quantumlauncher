@@ -166,10 +166,25 @@ Only increase if progress bars stutter or "not responding" dialogs show"#).size(
     fn view_location_tab<'a>(&'a self, _config: &'a LauncherConfig) -> Element<'a> {
         let t = |s| widget::text(s).size(12).style(tsubtitle);
 
-        let current_dir_text = widget::text(format!("{}", LAUNCHER_DIR.display())).size(14);
+        let current_dir_text = widget::text(format!("{}", LAUNCHER_DIR.display()))
+            .size(14)
+            .font(crate::menu_renderer::FONT_MONO);
 
         checkered_list::<Element>([
-            widget::column![widget::text("Location").size(20)].into(),
+            widget::column![
+                widget::row![
+                    widget::text("Location").size(20),
+                    widget::horizontal_space(),
+                    button_with_icon(icons::folder(), "Open Launcher Folder", 13)
+                        .on_press(Message::CoreOpenPath(
+                            std::env::current_exe()
+                                .unwrap_or_default()
+                                .parent()
+                                .unwrap_or(std::path::Path::new(""))
+                                .to_path_buf()
+                        )),
+                ].align_y(Alignment::Center),
+            ].into(),
             widget::column![
                 widget::text("Current Data Directory").size(16),
                 t("This is the active folder where all your Minecraft instances, mods, and launcher settings are saved."),
@@ -350,6 +365,7 @@ fn view_portable_mode_section(
             )
             .padding(6)
             .size(13)
+            .font(crate::menu_renderer::FONT_MONO)
             .width(Length::FillPortion(3)),
         ]
         .spacing(10)
@@ -469,6 +485,7 @@ fn view_system_redirect_section(
                 ))
                 .padding(6)
                 .size(13)
+                .font(crate::menu_renderer::FONT_MONO)
                 .width(Length::FillPortion(3)),
         ]
         .spacing(10)
