@@ -1,25 +1,21 @@
-use iced::widget::tooltip::Position;
-use iced::{Alignment, Length, widget};
-use ql_core::{InstanceSelection, Loader, SelectedMod};
-
-use crate::menu_renderer::{
-    CTXI_SIZE, FONT_MONO, ctx_button, ctxbox, dots, offset, select_box, subbutton_with_icon,
-    tsubtitle,
-};
-use crate::message_handler::ForgeKind;
-use crate::state::{ImageState, InstallPaperMessage, MenuEditModsModal};
-use crate::stylesheet::widgets::StyleButton;
 use crate::{
     icons,
-    menu_renderer::{Element, back_button, back_to_launch_screen, button_with_icon, tooltip},
-    state::{
-        EditPresetsMessage, InstallFabricMessage, InstallModsMessage, InstallOptifineMessage,
-        ManageJarModsMessage, ManageModsMessage, MenuEditMods, Message, ModListEntry,
-        SelectedState,
+    menu_renderer::{
+        CTXI_SIZE, Element, FONT_MONO, back_button, back_to_launch_screen, button_with_icon,
+        ctx_button, ctxbox, dots, offset, select_box, subbutton_with_icon, tooltip, tsubtitle,
     },
-    stylesheet::{color::Color, styles::LauncherTheme},
+    message_handler::ForgeKind,
+    state::{
+        EditPresetsMessage, ImageState, InstallFabricMessage, InstallModsMessage,
+        InstallOptifineMessage, InstallPaperMessage, ManageJarModsMessage, ManageModsMessage,
+        MenuEditMods, MenuEditModsModal, Message, ModListEntry, SelectedState,
+    },
+    stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
-use ql_core::json::InstanceConfigJson;
+use iced::widget::tooltip::Position;
+use iced::{Alignment, Length, widget};
+use ql_core::{InstanceSelection, Loader, json::InstanceConfigJson};
+use ql_mod_manager::store::SelectedMod;
 
 pub const MODS_SIDEBAR_WIDTH: u16 = 190;
 

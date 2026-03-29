@@ -1,8 +1,8 @@
 use crate::{
     rate_limiter::lock,
-    store::{ModError, ModIndex},
+    store::{ModError, ModId, ModIndex},
 };
-use ql_core::{InstanceSelection, IoError, ModId, err, info, pt};
+use ql_core::{InstanceSelection, IoError, err, info, pt};
 use std::{
     collections::{HashMap, HashSet},
     path::Path,

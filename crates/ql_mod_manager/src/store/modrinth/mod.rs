@@ -1,14 +1,21 @@
-use std::{collections::HashSet, sync::mpsc::Sender, time::Instant};
+use std::{
+    collections::HashSet,
+    sync::{LazyLock, mpsc::Sender},
+    time::Instant,
+};
 
 use chrono::DateTime;
 use download::version_sort;
+use indexmap::IndexMap;
 use info::ProjectInfo;
-use ql_core::{GenericProgress, InstanceSelection, Loader, ModId, pt};
+use ql_core::{GenericProgress, InstanceSelection, Loader, download, pt};
+use serde::Deserialize;
+use tokio::sync::Mutex;
 use versions::ModVersion;
 
 use crate::{
     rate_limiter::{RATE_LIMITER, lock},
-    store::{SearchMod, StoreBackendType},
+    store::{Category, ModId, SearchMod, StoreBackendType},
 };
 
 use super::{Backend, CurseforgeNotAllowed, ModError, Query, SearchResult};
@@ -167,4 +174,72 @@ impl Backend for ModrinthBackend {
 
         Ok(HashSet::new())
     }
+
+    async fn get_categories(kind: super::QueryType) -> Result<Vec<Category>, ModError> {
+        #[derive(Deserialize, Clone)]
+        struct MCategory {
+            name: String,
+            project_type: String,
+            header: String,
+        }
+        static CACHE: LazyLock<Mutex<Option<Vec<MCategory>>>> = LazyLock::new(|| Mutex::new(None));
+
+        let mcategories = CACHE.lock().await.clone();
+        let mcategories = if let Some(c) = mcategories {
+            c
+        } else {
+            let mcategories: Vec<MCategory> = download("https://api.modrinth.com/v2/tag/category")
+                .json()
+                .await?;
+            *CACHE.lock().await = Some(mcategories.clone());
+            mcategories
+        };
+
+        let kind_str = kind.to_modrinth_str();
+
+        let mut map: IndexMap<String, Vec<Category>> = IndexMap::new();
+        for cat in mcategories
+            .into_iter()
+            .filter(|n| n.project_type == kind_str)
+        {
+            let category = Category {
+                name: slug_to_nice_name(&cat.name),
+                slug: cat.name,
+                children: Vec::new(),
+                is_usable: true,
+            };
+            match map.get_mut(&cat.header) {
+                Some(n) => n.push(category),
+                None => {
+                    map.insert(cat.header.clone(), vec![category]);
+                }
+            }
+        }
+
+        Ok(if map.len() == 1 {
+            map.into_iter().next().expect("len should be equal to 1").1
+        } else {
+            map.into_iter()
+                .map(|(header, children)| Category {
+                    name: slug_to_nice_name(&header),
+                    slug: header,
+                    children,
+                    is_usable: false,
+                })
+                .collect()
+        })
+    }
+}
+
+pub fn slug_to_nice_name(slug: &str) -> String {
+    slug.split('-')
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }

@@ -3,6 +3,8 @@ use std::{fmt::Display, num::ParseIntError};
 use ql_core::{IoError, JsonError, RequestError, impl_3_errs_jri};
 use thiserror::Error;
 
+use crate::store::QueryType;
+
 use super::modpack::PackError;
 
 const MOD_ERR_PREFIX: &str = "while managing mods:\n";
@@ -32,6 +34,11 @@ pub enum ModError {
         "curseforge is blocking you from downloading the mod {0}\nGo to the official website at:\nhttps://www.curseforge.com/minecraft/mc-mods/{1}\nand download from there"
     )]
     CurseforgeModNotAllowedForDownload(String, String),
+
+    #[error(
+        "{MOD_ERR_PREFIX}no category {0} found in curseforge API\n\nThis is a bug, please report in discord!"
+    )]
+    CfCategoryNotFound(QueryType),
 
     #[error("{MOD_ERR_PREFIX}couldn't add entry {1} to zip: {0}")]
     ZipIoError(std::io::Error, String),

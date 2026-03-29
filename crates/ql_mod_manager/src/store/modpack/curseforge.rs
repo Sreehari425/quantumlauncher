@@ -4,7 +4,7 @@ use std::{
 };
 
 use ql_core::{
-    GenericProgress, InstanceSelection, IntoIoError, Loader, StoreBackendType, do_jobs, download,
+    GenericProgress, InstanceSelection, IntoIoError, Loader, do_jobs, download,
     json::{InstanceConfigJson, VersionDetails},
     pt,
 };
@@ -12,7 +12,7 @@ use serde::Deserialize;
 use tokio::sync::Mutex;
 
 use crate::store::{
-    CurseforgeNotAllowed, DirStructure, ModConfig, ModFile, ModIndex, QueryType,
+    CurseforgeNotAllowed, DirStructure, ModConfig, ModFile, ModIndex, QueryType, StoreBackendType,
     curseforge::{self, CFSearchResult, CurseforgeFileQuery, ModQuery, get_query_type},
 };
 

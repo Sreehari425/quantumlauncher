@@ -1,9 +1,7 @@
 use iced::{Task, widget};
 use iced::{futures::executor::block_on, keyboard::Modifiers};
-use ql_core::{
-    InstanceSelection, IntoIoError, IntoStringError, ModId, SelectedMod, err, jarmod::JarMods,
-};
-use ql_mod_manager::store::ModIndex;
+use ql_core::{InstanceSelection, IntoIoError, IntoStringError, err, jarmod::JarMods};
+use ql_mod_manager::store::{ModId, ModIndex, SelectedMod};
 use std::{collections::HashSet, path::PathBuf};
 
 use crate::state::{

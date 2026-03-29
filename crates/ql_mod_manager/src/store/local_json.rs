@@ -3,13 +3,11 @@ use std::{
     io::ErrorKind,
 };
 
-use ql_core::{
-    InstanceSelection, IntoIoError, IntoJsonError, JsonFileError, StoreBackendType, info,
-};
+use ql_core::{InstanceSelection, IntoIoError, IntoJsonError, JsonFileError, info};
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 
-use super::ModError;
+use super::{ModError, StoreBackendType};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ModConfig {

@@ -6,12 +6,11 @@ use std::{
 
 use chrono::DateTime;
 use ql_core::{
-    GenericProgress, InstanceSelection, StoreBackendType, download, err, file_utils, info,
-    json::VersionDetails, pt,
+    GenericProgress, InstanceSelection, download, err, file_utils, info, json::VersionDetails, pt,
 };
 
 use crate::store::{
-    DirStructure, ModError, QueryType, install_modpack,
+    DirStructure, ModError, QueryType, StoreBackendType, install_modpack,
     local_json::{ModConfig, ModIndex},
     modrinth::versions::ModVersion,
 };

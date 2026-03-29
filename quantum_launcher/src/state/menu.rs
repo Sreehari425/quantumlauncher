@@ -18,16 +18,19 @@ use iced::{
     widget::{self, scrollable::AbsoluteOffset},
 };
 use ql_core::{
-    DownloadProgress, GenericProgress, InstanceSelection, IntoStringError, ListEntry, ModId,
-    OptifineUniqueVersion, SelectedMod, StoreBackendType,
+    DownloadProgress, GenericProgress, InstanceSelection, IntoStringError, ListEntry,
+    OptifineUniqueVersion,
     file_utils::DirItem,
     jarmod::JarMods,
     json::{InstanceConfigJson, VersionDetails, instance_config::MainClassMode},
 };
-use ql_mod_manager::loaders::paper::PaperVersion;
+use ql_mod_manager::{loaders::paper::PaperVersion, store::Category};
 use ql_mod_manager::{
     loaders::{self, forge::ForgeInstallProgress, optifine::OptifineInstallProgress},
-    store::{CurseforgeNotAllowed, ModConfig, ModIndex, QueryType, RecommendedMod, SearchResult},
+    store::{
+        CurseforgeNotAllowed, ModConfig, ModId, ModIndex, QueryType, RecommendedMod, SearchResult,
+        SelectedMod, StoreBackendType,
+    },
 };
 
 use crate::state::ImageState;
@@ -439,6 +442,7 @@ pub struct MenuModsDownload {
     pub query: String,
     pub results: Option<SearchResult>,
     pub description: Option<MarkState>,
+    pub categories: ModCategoryState,
 
     pub mod_descriptions: HashMap<ModId, String>,
     pub mods_download_in_progress: HashMap<ModId, (String, ModOperation)>,
@@ -482,6 +486,41 @@ impl MenuModsDownload {
 
         for img in imgs {
             images.queue(&img);
+        }
+    }
+}
+
+pub struct ModCategoryState {
+    pub categories: Result<Vec<Category>, String>,
+    pub selected: HashSet<String>,
+    /// Whether to search for mods containing *all*
+    /// the categories, instead of just any of them.
+    ///
+    /// Only works in modrinth, no effect on curseforge
+    pub use_all: bool,
+}
+
+impl Default for ModCategoryState {
+    fn default() -> Self {
+        Self {
+            categories: Ok(Vec::new()),
+            selected: HashSet::new(),
+            use_all: false,
+        }
+    }
+}
+
+impl ModCategoryState {
+    pub fn reset(&mut self) {
+        self.categories = Ok(Vec::new());
+        self.selected.clear();
+    }
+
+    pub fn toggle(&mut self, slug: &str) {
+        if self.selected.contains(slug) {
+            self.selected.remove(slug);
+        } else {
+            self.selected.insert(slug.to_string());
         }
     }
 }

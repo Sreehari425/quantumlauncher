@@ -6,15 +6,14 @@ use std::{
 
 use owo_colors::OwoColorize;
 use ql_core::{
-    InstanceSelection, IntoIoError, IntoJsonError, LAUNCHER_VERSION_NAME, Loader, ModId,
-    SelectedMod, err, info,
+    InstanceSelection, IntoIoError, IntoJsonError, LAUNCHER_VERSION_NAME, Loader, err, info,
     json::{InstanceConfigJson, VersionDetails},
     pt,
 };
 use serde::{Deserialize, Serialize};
 use zip::ZipWriter;
 
-use crate::store::{ModConfig, ModError, ModIndex, install_modpack};
+use crate::store::{ModConfig, ModError, ModId, ModIndex, SelectedMod, install_modpack};
 
 #[must_use]
 #[derive(Debug, Clone, Default)]

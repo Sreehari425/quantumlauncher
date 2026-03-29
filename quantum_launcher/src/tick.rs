@@ -6,10 +6,10 @@ use std::{
 
 use iced::{Rectangle, Task, widget::text_editor};
 use ql_core::{
-    InstanceSelection, IntoIoError, IntoJsonError, IntoStringError, JsonFileError, ModId,
+    InstanceSelection, IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
     constants::OS_NAME, json::InstanceConfigJson,
 };
-use ql_mod_manager::store::{ModConfig, ModIndex};
+use ql_mod_manager::store::{ModConfig, ModId, ModIndex};
 
 use crate::config::SIDEBAR_WIDTH;
 use crate::state::{

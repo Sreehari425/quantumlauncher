@@ -7,12 +7,15 @@ use std::{
 use chrono::DateTime;
 use download::ModDownloader;
 use ql_core::{
-    CLIENT, GenericProgress, IntoJsonError, JsonDownloadError, Loader, ModId, RequestError, err, pt,
+    CLIENT, GenericProgress, IntoJsonError, JsonDownloadError, Loader, RequestError, err, pt,
 };
 use reqwest::header::HeaderValue;
 use serde::Deserialize;
 
-use crate::{rate_limiter::RATE_LIMITER, store::SearchMod};
+use crate::{
+    rate_limiter::RATE_LIMITER,
+    store::{Category, ModId, SearchMod, StoreBackendType, curseforge::categories::CfCategory},
+};
 
 use super::{Backend, CurseforgeNotAllowed, ModError, QueryType, SearchResult};
 use categories::get_categories;
@@ -220,9 +223,8 @@ impl Backend for CurseforgeBackend {
         let query_type_str = query.kind.to_curseforge_str();
         if query.kind == QueryType::DataPacks {
             // Curseforge returns categories that have the same slug but have different ids
-            // for example this 2 have the same slug: "data-packs"
-            // - path: /data-packs                  id: 6945 (the right one)
-            // - path: /texture-packs/data-packs    id: 5139 (actually texture packs)
+            // /data-packs                  id: 6945 (the right one)
+            // /texture-packs/data-packs    id: 5139 (actually texture packs)
             params.insert("classId", 6945.to_string());
         } else if let Some(category) = categories.data.iter().find(|n| n.slug == query_type_str) {
             params.insert("classId", category.id.to_string());
@@ -250,7 +252,7 @@ impl Backend for CurseforgeBackend {
                 })
                 .collect(),
             start_time: instant,
-            backend: ql_core::StoreBackendType::Curseforge,
+            backend: StoreBackendType::Curseforge,
             offset,
             // TODO: Check whether curseforge results have hit bottom
             reached_end: false,
@@ -363,6 +365,57 @@ impl Backend for CurseforgeBackend {
 
         Ok(downloader.not_allowed)
     }
+
+    async fn get_categories(kind: QueryType) -> Result<Vec<Category>, ModError> {
+        let categories = get_categories().await?;
+
+        // TODO:
+        // - mc-addons, customization: addition to existing mods
+        // - bukkit-plugins
+        // - worlds
+
+        let kind_str = kind.to_curseforge_str();
+
+        let Some(project_type_id) = categories
+            .data
+            .iter()
+            .filter(|c| c.parent_category_id.is_none())
+            .filter(|c| c.slug == kind_str)
+            .map(|c| c.id)
+            .next()
+        else {
+            return Err(ModError::CfCategoryNotFound(kind));
+        };
+
+        let root_ids: Vec<i32> = categories
+            .data
+            .iter()
+            .filter(|c| c.parent_category_id == Some(project_type_id))
+            .map(|c| c.id)
+            .collect();
+
+        Ok(root_ids
+            .into_iter()
+            .filter_map(|id| build_node(id, &categories.data))
+            .collect())
+    }
+}
+
+fn build_node(id: i32, list: &[CfCategory]) -> Option<Category> {
+    let cf = list.iter().find(|n| n.id == id)?;
+
+    let children = list
+        .iter()
+        .filter(|c| c.parent_category_id == Some(cf.id))
+        .filter_map(|c| build_node(c.id, list))
+        .collect();
+
+    Some(Category {
+        name: cf.name.clone(),
+        slug: cf.slug.clone(),
+        children,
+        is_usable: true,
+    })
 }
 
 pub async fn send_request(

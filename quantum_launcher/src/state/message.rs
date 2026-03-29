@@ -8,7 +8,7 @@ use crate::{
 };
 use iced::widget::{self, scrollable::AbsoluteOffset};
 use ql_core::{
-    InstanceSelection, LaunchedProcess, ListEntry, Loader, ModId, StoreBackendType,
+    InstanceSelection, LaunchedProcess, ListEntry, Loader,
     file_utils::DirItem,
     jarmod::JarMods,
     json::instance_config::{MainClassMode, PreLaunchPrefixMode},
@@ -20,7 +20,10 @@ use ql_instances::auth::{
 };
 use ql_mod_manager::{
     loaders::{fabric, paper::PaperVersion},
-    store::{CurseforgeNotAllowed, ImageResult, ModIndex, QueryType, RecommendedMod, SearchResult},
+    store::{
+        Category, CurseforgeNotAllowed, ImageResult, ModId, ModIndex, QueryType, RecommendedMod,
+        SearchResult, StoreBackendType,
+    },
 };
 
 use super::{LaunchTab, LauncherSettingsTab, LicenseTab, Res};
@@ -167,19 +170,23 @@ pub enum ManageJarModsMessage {
 pub enum InstallModsMessage {
     Open,
     TickDesc(frostmark::UpdateMsg),
-    SearchInput(String),
-    SearchResult(Res<SearchResult>),
 
-    Click(usize),
     BackToMainScreen,
+    Click(usize),
     LoadData(Res<(ModId, String)>),
-    Download(usize),
-    DownloadComplete(Res<(ModId, HashSet<CurseforgeNotAllowed>)>),
     IndexUpdated(Res<ModIndex>),
     Scrolled(widget::scrollable::Viewport),
+
+    SearchInput(String),
+    SearchResult(Res<SearchResult>),
+    Download(usize),
+    DownloadComplete(Res<(ModId, HashSet<CurseforgeNotAllowed>)>),
     InstallModpack(ModId),
     Uninstall(usize),
     UninstallComplete(Res<Vec<ModId>>),
+
+    CategoriesLoaded(Res<Vec<Category>>),
+    CategoriesToggle(String),
 
     ChangeBackend(StoreBackendType),
     ChangeQueryType(QueryType),

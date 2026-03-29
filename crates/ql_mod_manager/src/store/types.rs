@@ -1,0 +1,242 @@
+use std::{fmt::Display, time::Instant};
+
+use ql_core::Loader;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ModId {
+    Modrinth(String),
+    Curseforge(String),
+}
+
+impl ModId {
+    #[must_use]
+    pub fn get_internal_id(&self) -> &str {
+        match self {
+            ModId::Modrinth(n) | ModId::Curseforge(n) => n,
+        }
+    }
+
+    #[must_use]
+    pub fn get_index_str(&self) -> String {
+        match self {
+            ModId::Modrinth(n) => n.clone(),
+            ModId::Curseforge(n) => format!("CF:{n}"),
+        }
+    }
+
+    #[must_use]
+    pub fn get_backend(&self) -> StoreBackendType {
+        match self {
+            ModId::Modrinth(_) => StoreBackendType::Modrinth,
+            ModId::Curseforge(_) => StoreBackendType::Curseforge,
+        }
+    }
+
+    #[must_use]
+    pub fn from_index_str(n: &str) -> Self {
+        if n.starts_with("CF:") {
+            ModId::Curseforge(n.strip_prefix("CF:").unwrap_or(n).to_owned())
+        } else {
+            ModId::Modrinth(n.to_owned())
+        }
+    }
+
+    #[must_use]
+    pub fn from_pair(n: &str, t: StoreBackendType) -> Self {
+        let n = n.to_owned();
+        match t {
+            StoreBackendType::Modrinth => Self::Modrinth(n),
+            StoreBackendType::Curseforge => Self::Curseforge(n),
+        }
+    }
+
+    #[must_use]
+    pub fn to_pair(self) -> (String, StoreBackendType) {
+        let backend = match self {
+            ModId::Modrinth(_) => StoreBackendType::Modrinth,
+            ModId::Curseforge(_) => StoreBackendType::Curseforge,
+        };
+
+        (self.get_internal_id().to_owned(), backend)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StoreBackendType {
+    #[serde(rename = "modrinth")]
+    Modrinth,
+    #[serde(rename = "curseforge")]
+    Curseforge,
+}
+
+impl StoreBackendType {
+    #[must_use]
+    pub fn can_pick_any_or_all(self) -> bool {
+        matches!(self, StoreBackendType::Modrinth)
+    }
+}
+
+#[derive(Hash, PartialEq, Eq, Clone)]
+pub enum SelectedMod {
+    Downloaded { name: String, id: ModId },
+    Local { file_name: String },
+}
+
+impl SelectedMod {
+    #[must_use]
+    pub fn from_pair(name: String, id: Option<ModId>) -> Self {
+        match id {
+            Some(id) => Self::Downloaded { name, id },
+            None => Self::Local { file_name: name },
+        }
+    }
+}
+
+#[must_use]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct CurseforgeNotAllowed {
+    pub name: String,
+    pub slug: String,
+    pub filename: String,
+    pub project_type: String,
+    pub file_id: usize,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum QueryType {
+    Mods,
+    ResourcePacks,
+    Shaders,
+    ModPacks,
+    DataPacks,
+    // TODO:
+    // Plugins,
+}
+
+impl Display for QueryType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            QueryType::Mods => "Mods",
+            QueryType::ResourcePacks => "Resource Packs",
+            QueryType::Shaders => "Shaders",
+            QueryType::ModPacks => "Modpacks",
+            QueryType::DataPacks => "Data Packs",
+        })
+    }
+}
+
+impl QueryType {
+    /// Use this for the store since datapacks can't be installed globally,
+    /// only per worlds, since you need to copy the datapack file into each world.
+    ///
+    /// Once the launcher has support for installing datapacks properly,
+    /// delete this and use ALL in the store too.
+    pub const STORE_QUERIES: &'static [Self] = &[
+        Self::Mods,
+        Self::ModPacks,
+        Self::ResourcePacks,
+        Self::Shaders,
+    ];
+
+    pub const ALL: &'static [Self] = &[
+        Self::Mods,
+        Self::ModPacks,
+        Self::DataPacks,
+        Self::ResourcePacks,
+        Self::Shaders,
+    ];
+
+    #[must_use]
+    pub fn to_modrinth_str(&self) -> &'static str {
+        match self {
+            QueryType::Mods => "mod",
+            QueryType::ResourcePacks => "resourcepack",
+            QueryType::Shaders => "shader",
+            QueryType::ModPacks => "modpack",
+            QueryType::DataPacks => "datapack",
+        }
+    }
+
+    #[must_use]
+    pub fn from_modrinth_str(s: &str) -> Option<Self> {
+        match s {
+            "mod" => Some(QueryType::Mods),
+            "resourcepack" => Some(QueryType::ResourcePacks),
+            "shader" => Some(QueryType::Shaders),
+            "modpack" => Some(QueryType::ModPacks),
+            "datapack" => Some(QueryType::DataPacks),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn to_curseforge_str(&self) -> &'static str {
+        match self {
+            QueryType::Mods => "mc-mods",
+            QueryType::ResourcePacks => "texture-packs",
+            QueryType::Shaders => "shaders",
+            QueryType::ModPacks => "modpacks",
+            QueryType::DataPacks => "data-packs",
+        }
+    }
+
+    #[must_use]
+    pub fn from_curseforge_str(s: &str) -> Option<Self> {
+        match s {
+            "mc-mods" => Some(QueryType::Mods),
+            "texture-packs" => Some(QueryType::ResourcePacks),
+            "shaders" => Some(QueryType::Shaders),
+            "modpacks" => Some(QueryType::ModPacks),
+            "data-packs" => Some(QueryType::DataPacks),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Category {
+    pub name: String,
+    pub slug: String,
+    pub children: Vec<Category>,
+    /// If `true`, can be toggled and serves a purpose.
+    ///
+    /// Else purely for organization (use its [`Self::children`] instead)
+    pub is_usable: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct Query {
+    pub name: String,
+    pub version: String,
+    pub loader: Loader,
+    pub server_side: bool,
+    pub kind: QueryType,
+}
+
+#[derive(Debug, Clone)]
+pub struct SearchResult {
+    pub mods: Vec<SearchMod>,
+    pub backend: StoreBackendType,
+    pub start_time: Instant,
+    pub offset: usize,
+    pub reached_end: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct SearchMod {
+    pub title: String,
+    pub description: String,
+    pub downloads: usize,
+    pub internal_name: String,
+    pub project_type: String,
+    pub id: String,
+    pub icon_url: String,
+}
+
+impl SearchMod {
+    #[must_use]
+    pub fn get_id(&self, backend: StoreBackendType) -> ModId {
+        ModId::from_pair(&self.id, backend)
+    }
+}

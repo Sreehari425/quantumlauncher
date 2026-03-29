@@ -1,10 +1,7 @@
-use std::{collections::HashSet, fmt::Display, path::PathBuf, sync::mpsc::Sender, time::Instant};
+use std::{collections::HashSet, path::PathBuf, sync::mpsc::Sender};
 
 use chrono::DateTime;
-use ql_core::{
-    GenericProgress, InstanceSelection, IntoIoError, Loader, ModId, StoreBackendType,
-    json::VersionDetails,
-};
+use ql_core::{GenericProgress, InstanceSelection, IntoIoError, Loader, json::VersionDetails};
 
 mod add_file;
 pub mod category;
@@ -17,6 +14,7 @@ mod modpack;
 mod modrinth;
 mod recommended;
 mod toggle;
+mod types;
 mod update;
 
 pub use add_file::add_files;
@@ -29,6 +27,10 @@ pub use modpack::{PackError, install_modpack};
 pub use modrinth::ModrinthBackend;
 pub use recommended::{RECOMMENDED_MODS, RecommendedMod};
 pub use toggle::{flip_filename, toggle_mods, toggle_mods_local};
+pub use types::{
+    Category, CurseforgeNotAllowed, ModId, Query, QueryType, SearchMod, SearchResult, SelectedMod,
+    StoreBackendType,
+};
 pub use update::{apply_updates, check_for_updates};
 
 #[allow(async_fn_in_trait)]
@@ -64,6 +66,8 @@ pub trait Backend {
         set_manually_installed: bool,
         sender: Option<&Sender<GenericProgress>>,
     ) -> Result<HashSet<CurseforgeNotAllowed>, ModError>;
+
+    async fn get_categories(kind: QueryType) -> Result<Vec<Category>, ModError>;
 }
 
 pub async fn get_description(id: ModId) -> Result<(ModId, String), ModError> {
@@ -153,130 +157,15 @@ pub async fn get_latest_version_date(
     })
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum QueryType {
-    Mods,
-    ResourcePacks,
-    Shaders,
-    ModPacks,
-    DataPacks,
-    // TODO:
-    // Plugins,
-}
-
-impl Display for QueryType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            QueryType::Mods => "Mods",
-            QueryType::ResourcePacks => "Resource Packs",
-            QueryType::Shaders => "Shaders",
-            QueryType::ModPacks => "Modpacks",
-            QueryType::DataPacks => "Data Packs",
-        })
-    }
-}
-
-impl QueryType {
-    /// Use this for the store since datapacks can't be installed globally,
-    /// only per worlds, since you need to copy the datapack file into each world.
-    ///
-    /// Once the launcher has support for installing datapacks properly,
-    /// delete this and use ALL in the store too.
-    pub const STORE_QUERIES: &'static [Self] = &[
-        Self::Mods,
-        Self::ModPacks,
-        Self::ResourcePacks,
-        Self::Shaders,
-    ];
-
-    pub const ALL: &'static [Self] = &[
-        Self::Mods,
-        Self::ModPacks,
-        Self::DataPacks,
-        Self::ResourcePacks,
-        Self::Shaders,
-    ];
-
-    #[must_use]
-    pub fn to_modrinth_str(&self) -> &'static str {
-        match self {
-            QueryType::Mods => "mod",
-            QueryType::ResourcePacks => "resourcepack",
-            QueryType::Shaders => "shader",
-            QueryType::ModPacks => "modpack",
-            QueryType::DataPacks => "datapack",
-        }
-    }
-
-    #[must_use]
-    pub fn from_modrinth_str(s: &str) -> Option<Self> {
-        match s {
-            "mod" => Some(QueryType::Mods),
-            "resourcepack" => Some(QueryType::ResourcePacks),
-            "shader" => Some(QueryType::Shaders),
-            "modpack" => Some(QueryType::ModPacks),
-            "datapack" => Some(QueryType::DataPacks),
-            _ => None,
-        }
-    }
-
-    #[must_use]
-    pub fn to_curseforge_str(&self) -> &'static str {
-        match self {
-            QueryType::Mods => "mc-mods",
-            QueryType::ResourcePacks => "texture-packs",
-            QueryType::Shaders => "shaders",
-            QueryType::ModPacks => "modpacks",
-            QueryType::DataPacks => "data-packs",
-        }
-    }
-
-    #[must_use]
-    pub fn from_curseforge_str(s: &str) -> Option<Self> {
-        match s {
-            "mc-mods" => Some(QueryType::Mods),
-            "texture-packs" => Some(QueryType::ResourcePacks),
-            "shaders" => Some(QueryType::Shaders),
-            "modpacks" => Some(QueryType::ModPacks),
-            "data-packs" => Some(QueryType::DataPacks),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Query {
-    pub name: String,
-    pub version: String,
-    pub loader: Loader,
-    pub server_side: bool,
-    pub kind: QueryType,
-}
-
-#[derive(Debug, Clone)]
-pub struct SearchResult {
-    pub mods: Vec<SearchMod>,
-    pub backend: StoreBackendType,
-    pub start_time: Instant,
-    pub offset: usize,
-    pub reached_end: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct SearchMod {
-    pub title: String,
-    pub description: String,
-    pub downloads: usize,
-    pub internal_name: String,
-    pub project_type: String,
-    pub id: String,
-    pub icon_url: String,
-}
-
-impl SearchMod {
-    #[must_use]
-    pub fn get_id(&self, backend: StoreBackendType) -> ModId {
-        ModId::from_pair(&self.id, backend)
+/// Gets categories of content (Adventure, Redstone, QOL, etc)
+/// for a given query type (Mod/Resource Pack/Shader/...) from the backend.
+pub async fn get_categories(
+    query_type: QueryType,
+    backend: StoreBackendType,
+) -> Result<Vec<Category>, ModError> {
+    match backend {
+        StoreBackendType::Modrinth => ModrinthBackend::get_categories(query_type).await,
+        StoreBackendType::Curseforge => CurseforgeBackend::get_categories(query_type).await,
     }
 }
 
@@ -340,14 +229,4 @@ impl DirStructure {
             QueryType::ModPacks => return Err(PackError::ModpackInModpack),
         })
     }
-}
-
-#[must_use]
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct CurseforgeNotAllowed {
-    pub name: String,
-    pub slug: String,
-    pub filename: String,
-    pub project_type: String,
-    pub file_id: usize,
 }

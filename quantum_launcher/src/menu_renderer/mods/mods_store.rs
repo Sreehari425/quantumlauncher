@@ -3,14 +3,8 @@ use iced::{
     Alignment, Length,
     widget::{self, column, row},
 };
-use ql_core::{Loader, ModId, StoreBackendType};
-use ql_mod_manager::store::{
-    QueryType, SearchMod,
-    category::{
-        ModCategoryCommon, ModCategoryCurseforge, ModCategoryCurseforgeTechnology,
-        ModCategoryCurseforgeWorldgen, ModCategoryModrinth,
-    },
-};
+use ql_core::Loader;
+use ql_mod_manager::store::{Category, ModId, QueryType, SearchMod, StoreBackendType};
 
 use crate::{
     icons,
@@ -18,7 +12,8 @@ use crate::{
         Element, FONT_DEFAULT, FONT_MONO, back_button, button_with_icon, tooltip, tsubtitle,
     },
     state::{
-        ImageState, InstallModsMessage, ManageModsMessage, MenuModsDownload, Message, ModOperation,
+        ImageState, InstallModsMessage, ManageModsMessage, MenuModsDownload, Message,
+        ModCategoryState, ModOperation,
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
@@ -33,7 +28,10 @@ impl MenuModsDownload {
             self.get_top_bar(),
             widget::horizontal_rule(1)
                 .style(|t: &LauncherTheme| t.style_rule(Color::SecondDark, 1)),
-            row![self.get_side_panel(), self.mods_display(images, tick_timer)]
+            row![
+                self.get_side_panel(tick_timer),
+                self.mods_display(images, tick_timer)
+            ]
         ]
         .into()
     }
@@ -132,7 +130,10 @@ impl MenuModsDownload {
             )
     }
 
-    fn get_side_panel(&'_ self) -> widget::Scrollable<'_, Message, LauncherTheme> {
+    fn get_side_panel(
+        &'_ self,
+        tick_timer: usize,
+    ) -> widget::Scrollable<'_, Message, LauncherTheme> {
         if !self.mods_download_in_progress.is_empty() {
             // Mod operations (installing/uninstalling) are in progress.
             // Can't back out. Show list of operations in progress.
@@ -182,7 +183,7 @@ impl MenuModsDownload {
                     .into()
                 })),
                 widget::Space::with_height(5),
-                self.get_filters(),
+                self.categories.view(self.backend, tick_timer),
             ]
             .spacing(5)
             .padding(10),
@@ -190,76 +191,6 @@ impl MenuModsDownload {
         .width(180)
         .height(Length::Fill)
         .style(LauncherTheme::style_scrollable_flat_extra_dark)
-    }
-
-    fn get_filters(&self) -> widget::Column<'static, Message, LauncherTheme> {
-        fn checkbox<'a>(
-            n: impl Into<String>,
-            enabled: bool,
-        ) -> widget::Checkbox<'a, Message, LauncherTheme> {
-            widget::checkbox(n, enabled)
-                .size(12)
-                .text_size(14)
-                .style(|n: &LauncherTheme, s| n.style_checkbox(s, Some(Color::SecondLight)))
-        }
-
-        column![
-            row![
-                icons::filter_s(14),
-                widget::text("Filters:").size(18),
-                widget::radio("All", true, Some(false), |_| Message::Nothing)
-                    .spacing(4)
-                    .text_size(13)
-                    .size(11),
-                widget::radio("Any", false, Some(false), |_| Message::Nothing)
-                    .spacing(4)
-                    .text_size(13)
-                    .size(11),
-            ]
-            .spacing(5)
-            .align_y(Alignment::Center),
-            widget::Space::with_height(5),
-            widget::column(
-                ModCategoryCommon::ALL
-                    .iter()
-                    .map(|n| checkbox(n.to_string(), false).into())
-            ),
-            match self.backend {
-                StoreBackendType::Modrinth => widget::column(
-                    ModCategoryModrinth::ALL
-                        .iter()
-                        .map(|n| checkbox(n.to_string(), false).into())
-                ),
-                StoreBackendType::Curseforge => column![
-                    widget::column(
-                        ModCategoryCurseforge::ALL
-                            .iter()
-                            .map(|n| checkbox(n.to_string(), false).into())
-                    ),
-                    widget::text("Technology:").size(14),
-                    row![
-                        widget::Space::with_width(10),
-                        widget::column(
-                            ModCategoryCurseforgeTechnology::ALL
-                                .iter()
-                                .map(|n| checkbox(n.to_string(), false).into())
-                        ),
-                    ],
-                    widget::text("World Generation:").size(14),
-                    row![
-                        widget::Space::with_width(10),
-                        widget::column(
-                            ModCategoryCurseforgeWorldgen::ALL.iter().map(|n| checkbox(
-                                n.to_string(),
-                                false
-                            )
-                            .into())
-                        ),
-                    ],
-                ]
-                .spacing(5),
-            },
-        ]
     }
 
     fn get_mods_list<'a>(
@@ -426,6 +357,76 @@ impl MenuModsDownload {
         .width(Length::Fill)
         .height(Length::Fill)
         .into()
+    }
+}
+
+impl ModCategoryState {
+    fn view(
+        &self,
+        backend: StoreBackendType,
+        tick_timer: usize,
+    ) -> widget::Column<'_, Message, LauncherTheme> {
+        let category_view: Element = match &self.categories {
+            Ok(n) if n.is_empty() => {
+                let dots = ".".repeat((tick_timer % 3) + 1);
+                widget::text!("Loading{dots}").into()
+            }
+            Ok(n) => widget::column(n.iter().map(|n| self.view_category(n).into())).into(),
+            Err(err) => widget::text(err).size(12).style(tsubtitle).into(),
+        };
+
+        let show_any_all = backend.can_pick_any_or_all();
+
+        column![
+            row![icons::filter_s(14), widget::text("Filters:").size(18)]
+                // TODO
+                .push_maybe(show_any_all.then(|| {
+                    widget::radio("All", true, Some(self.use_all), |_| Message::Nothing)
+                        .spacing(4)
+                        .text_size(13)
+                        .size(11)
+                }))
+                .push_maybe(show_any_all.then(|| {
+                    widget::radio("Any", false, Some(self.use_all), |_| Message::Nothing)
+                        .spacing(4)
+                        .text_size(13)
+                        .size(11)
+                }))
+                .spacing(5)
+                .align_y(Alignment::Center),
+            widget::Space::with_height(5),
+            category_view,
+        ]
+    }
+
+    fn view_category<'a>(
+        &'a self,
+        category: &'a Category,
+    ) -> widget::Column<'a, Message, LauncherTheme> {
+        widget::Column::new()
+            .push_maybe(category.is_usable.then(|| {
+                widget::checkbox(&category.name, self.selected.contains(&category.slug))
+                    .on_toggle(|_| {
+                        InstallModsMessage::CategoriesToggle(category.slug.clone()).into()
+                    })
+                    .size(12)
+                    .text_size(14)
+                    .style(|n: &LauncherTheme, s| n.style_checkbox(s, Some(Color::SecondLight)))
+            }))
+            .push_maybe((!category.is_usable).then(|| widget::text(&category.name).size(14)))
+            .push(widget::stack!(
+                row![
+                    widget::Space::with_width(10),
+                    widget::column(
+                        category
+                            .children
+                            .iter()
+                            .map(|n| self.view_category(n).into())
+                    )
+                ],
+                widget::vertical_rule(1)
+                    .style(|t: &LauncherTheme| t.style_rule(Color::SecondDark, 1))
+            ))
     }
 }
 

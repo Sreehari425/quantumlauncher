@@ -2,14 +2,16 @@ use std::{collections::HashMap, time::Instant};
 
 use iced::{Task, futures::executor::block_on, widget::scrollable::AbsoluteOffset};
 use ql_core::{
-    InstanceConfigJson, InstanceSelection, IntoStringError, JsonFileError, ModId, StoreBackendType,
-    err, json::VersionDetails,
+    InstanceConfigJson, InstanceSelection, IntoStringError, JsonFileError, err,
+    json::VersionDetails,
 };
-use ql_mod_manager::store::{ModIndex, Query, QueryType, get_description};
+use ql_mod_manager::store::{
+    self, ModId, ModIndex, Query, QueryType, StoreBackendType, get_description,
+};
 
 use crate::state::{
     InstallModsMessage, Launcher, MenuCurseforgeManualDownload, MenuModsDownload, Message,
-    ModOperation, ProgressBar, State,
+    ModCategoryState, ModOperation, ProgressBar, State,
 };
 
 impl Launcher {
@@ -37,6 +39,12 @@ impl Launcher {
                             results.mods.extend(search.mods);
                         } else {
                             menu.results = Some(search);
+                            return iced::widget::scrollable::scroll_to(
+                                iced::widget::scrollable::Id::new(
+                                    "MenuModsDownload:main:mods_list",
+                                ),
+                                AbsoluteOffset::default(),
+                            );
                         }
                     }
                 }
@@ -159,7 +167,9 @@ impl Launcher {
                     menu.backend = backend;
                     menu.results = None;
                     menu.scroll_offset = AbsoluteOffset::default();
-                    return menu.search_store(is_server, 0);
+                    menu.categories.reset();
+
+                    return Task::batch([menu.search_store(is_server, 0), menu.load_categories()]);
                 }
             }
             InstallModsMessage::ChangeQueryType(query) => {
@@ -170,6 +180,19 @@ impl Launcher {
                     return menu.search_store(is_server, 0);
                 }
             }
+
+            InstallModsMessage::CategoriesLoaded(res) => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    menu.categories.categories = res;
+                }
+            }
+            InstallModsMessage::CategoriesToggle(slug) => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    menu.categories.toggle(&slug);
+                    return menu.search_store(is_server, 0);
+                }
+            }
+
             InstallModsMessage::InstallModpack(id) => {
                 let (sender, receiver) = std::sync::mpsc::channel();
                 self.state = State::ImportModpack(ProgressBar::with_recv(receiver));
@@ -178,7 +201,7 @@ impl Launcher {
 
                 return Task::perform(
                     async move {
-                        ql_mod_manager::store::download_mod(&id, &selected_instance, Some(sender))
+                        store::download_mod(&id, &selected_instance, Some(sender))
                             .await
                             .map(|not_allowed| (id, not_allowed))
                     },
@@ -204,10 +227,9 @@ impl Launcher {
                     .insert(mod_id.clone(), (hit.title.clone(), ModOperation::Deleting));
                 let selected_instance = self.instance().clone();
 
-                return Task::perform(
-                    ql_mod_manager::store::delete_mods(vec![mod_id], selected_instance),
-                    |n| InstallModsMessage::UninstallComplete(n.strerr()).into(),
-                );
+                return Task::perform(store::delete_mods(vec![mod_id], selected_instance), |n| {
+                    InstallModsMessage::UninstallComplete(n.strerr()).into()
+                });
             }
             InstallModsMessage::UninstallComplete(Ok(ids)) => {
                 if let State::ModsDownload(menu) = &mut self.state {
@@ -232,7 +254,7 @@ impl Launcher {
         };
         let mod_index = ModIndex::load(selection).await?;
 
-        let mut menu = MenuModsDownload {
+        let menu = MenuModsDownload {
             scroll_offset: AbsoluteOffset::default(),
             config,
             version_json,
@@ -246,14 +268,18 @@ impl Launcher {
             is_loading_continuation: false,
             has_continuation_ended: false,
             description: None,
+            categories: ModCategoryState::default(),
 
             backend: StoreBackendType::Modrinth,
             query_type: QueryType::Mods,
         };
-        let command = menu.search_store(
-            matches!(&self.selected_instance, Some(InstanceSelection::Server(_))),
-            0,
-        );
+        let command = Task::batch([
+            menu.search_store(
+                matches!(&self.selected_instance, Some(InstanceSelection::Server(_))),
+                0,
+            ),
+            menu.load_categories(),
+        ]);
         self.state = State::ModsDownload(menu);
         Ok(command)
     }
@@ -293,7 +319,7 @@ impl Launcher {
         } else {
             Task::perform(
                 async move {
-                    ql_mod_manager::store::download_mod(&id, &selected_instance, None)
+                    store::download_mod(&id, &selected_instance, None)
                         .await
                         .map(|not_allowed| (id, not_allowed))
                 },
@@ -304,7 +330,7 @@ impl Launcher {
 }
 
 impl MenuModsDownload {
-    pub fn search_store(&mut self, is_server: bool, offset: usize) -> Task<Message> {
+    pub fn search_store(&self, is_server: bool, offset: usize) -> Task<Message> {
         let query = Query {
             name: self.query.clone(),
             version: self.version_json.get_id().to_owned(),
@@ -312,9 +338,14 @@ impl MenuModsDownload {
             server_side: is_server,
             kind: self.query_type, // open_source: false, // TODO: Add Open Source filter
         };
-        let backend = self.backend;
-        Task::perform(ql_mod_manager::store::search(query, offset, backend), |n| {
+        Task::perform(store::search(query, offset, self.backend), |n| {
             InstallModsMessage::SearchResult(n.strerr()).into()
+        })
+    }
+
+    pub fn load_categories(&self) -> Task<Message> {
+        Task::perform(store::get_categories(self.query_type, self.backend), |n| {
+            InstallModsMessage::CategoriesLoaded(n.strerr()).into()
         })
     }
 }
