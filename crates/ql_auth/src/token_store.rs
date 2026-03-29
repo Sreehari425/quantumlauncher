@@ -53,6 +53,28 @@ pub fn get_storage_method() -> TokenStorageMethod {
     TokenStorageMethod::from_u8(STORAGE_METHOD.load(Ordering::Relaxed))
 }
 
+/// Check if the system keyring is available and functional.
+/// Especially useful on Linux to detect missing secret-service.
+#[must_use]
+pub fn is_keyring_available() -> bool {
+    let entry = match keyring::Entry::new("QuantumLauncher", "availability_test") {
+        Ok(e) => e,
+        Err(_) => return false,
+    };
+
+    // To accurately check if the keyring is functional and unlocked (or unlockable),
+    // we attempt to set a dummy password. This forces a check of the underlying 
+    // storage subsystem and will trigger an unlock prompt if necessary.
+    // Since this result is usually cached by the caller, it's safe to do once.
+    if entry.set_password("availability_test").is_err() {
+        return false;
+    }
+
+    // Clean up the test entry
+    _ = entry.delete_credential();
+    true
+}
+
 /// Errors from the token store abstraction layer.
 #[derive(Debug, thiserror::Error)]
 pub enum TokenStoreError {

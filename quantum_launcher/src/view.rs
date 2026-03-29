@@ -8,7 +8,7 @@ use crate::{
         Element, FONT_MONO, tooltip, view_account_login, view_changelog, view_confirm, view_error,
         view_log_upload_result,
     },
-    state::{Launcher, Message, State, TokenStoreMessage, WindowMessage},
+    state::{Launcher, Message, State, WindowMessage},
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
 
@@ -119,7 +119,7 @@ impl Launcher {
                 .spacing(10)
                 .into(),
             State::ModsDownload(menu) => menu.view(&self.images, self.tick_timer),
-            State::LauncherSettings(menu) => menu.view(&self.config),
+            State::LauncherSettings(menu) => menu.view(&self.config, self.keyring_available),
             State::InstallPaper(menu) => menu.view(self.tick_timer),
             State::ChangeLog => view_changelog(),
             State::Welcome(menu) => menu.view(&self.config),

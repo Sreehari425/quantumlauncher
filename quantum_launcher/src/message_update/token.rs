@@ -127,10 +127,16 @@ impl Launcher {
                 self.config.token_storage = Some(method);
                 ql_auth::token_store::set_storage_method(method);
                 // Reload the account list so the dropdown immediately reflects the new backend
-                let (accounts, dropdown, selected) = load_accounts(&mut self.config);
+                let (accounts, dropdown, selected, keyring_failed) = load_accounts(&mut self.config);
                 self.accounts = accounts;
                 self.accounts_dropdown = dropdown;
                 self.account_selected = selected;
+
+                if keyring_failed {
+                    self.keyring_available = false;
+                } else if method == ql_auth::TokenStorageMethod::Keyring {
+                    self.keyring_available = ql_auth::token_store::is_keyring_available();
+                }
             }
             TokenStoreMessage::SetupEncryptedStore => {
                 self.state = State::TokenPasswordPrompt(MenuTokenPassword {

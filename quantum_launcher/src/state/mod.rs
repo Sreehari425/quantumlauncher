@@ -7,7 +7,7 @@ use std::{
 
 use iced::Task;
 use notify::Watcher;
-use ql_auth::{encrypted_store, ms::CLIENT_ID, AccountData, AccountType, TokenStorageMethod};
+use ql_auth::{AccountData, AccountType, TokenStorageMethod, encrypted_store, ms::CLIENT_ID};
 use ql_core::{
     GenericProgress, InstanceSelection, IntoIoError, IntoStringError, IoError, JsonFileError,
     LAUNCHER_DIR, LAUNCHER_VERSION_NAME, LaunchedProcess, Progress, err, file_utils,
@@ -73,6 +73,8 @@ pub struct Launcher {
     pub window_state: WindowState,
     pub keys_pressed: HashSet<iced::keyboard::Key>,
     pub modifiers_pressed: iced::keyboard::Modifiers,
+
+    pub keyring_available: bool,
 }
 
 /// Used to temporarily "block" auto-saving something,
@@ -140,11 +142,24 @@ impl Launcher {
             MenuLaunch::default()
         };
 
+        let mut is_keyring_available = ql_auth::token_store::is_keyring_available();
+
+        if config.c_token_storage() == TokenStorageMethod::Keyring && !is_keyring_available {
+            launch.message = "SYSTEM keyring is unavailable, sessions might not persist".to_owned();
+        }
+
         launch.resize_sidebar(SIDEBAR_WIDTH);
 
-        let launch = State::Launch(launch);
+        let (accounts, accounts_dropdown, account_selected, keyring_failed) =
+            load_accounts(&mut config);
 
-        let (accounts, accounts_dropdown, account_selected) = load_accounts(&mut config);
+        if keyring_failed {
+            launch.message = "SYSTEM keyring is unavailable, sessions might not persist".to_owned();
+            // Also update the cached availability
+            is_keyring_available = false;
+        }
+
+        let launch = State::Launch(launch);
 
         let version = config.version.as_deref().unwrap_or("0.3.0"); // field added in 0.3
 
@@ -214,6 +229,8 @@ impl Launcher {
             autosave: HashSet::new(),
             images: ImageState::default(),
             modifiers_pressed: iced::keyboard::Modifiers::empty(),
+
+            keyring_available: is_keyring_available,
         })
     }
 
@@ -276,6 +293,8 @@ impl Launcher {
             accounts_dropdown: vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()],
             account_selected: OFFLINE_ACCOUNT_NAME.to_owned(),
             modifiers_pressed: iced::keyboard::Modifiers::empty(),
+
+            keyring_available: ql_auth::token_store::is_keyring_available(),
         }
     }
 
@@ -347,7 +366,7 @@ pub fn reload_encrypted_accounts(
 
 pub fn load_accounts(
     config: &mut LauncherConfig,
-) -> (HashMap<String, AccountData>, Vec<String>, String) {
+) -> (HashMap<String, AccountData>, Vec<String>, String, bool) {
     // Set global storage method from config before loading accounts
     ql_auth::token_store::set_storage_method(config.c_token_storage());
 
@@ -356,15 +375,18 @@ pub fn load_accounts(
     let mut accounts_dropdown = vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()];
 
     let mut accounts_to_remove = Vec::new();
+    let mut keyring_failed = false;
 
     for (username, account) in config.accounts.iter_mut().flatten() {
-        load_account(
+        if load_account(
             &mut accounts,
             &mut accounts_dropdown,
             &mut accounts_to_remove,
             username,
             account,
-        );
+        ) {
+            keyring_failed = true;
+        }
     }
 
     if let Some(accounts) = &mut config.accounts {
@@ -382,7 +404,12 @@ pub fn load_accounts(
                 .cloned()
                 .unwrap_or_else(|| OFFLINE_ACCOUNT_NAME.to_owned())
         });
-    (accounts, accounts_dropdown, selected_account)
+    (
+        accounts,
+        accounts_dropdown,
+        selected_account,
+        keyring_failed,
+    )
 }
 
 fn load_account(
@@ -391,7 +418,7 @@ fn load_account(
     accounts_to_remove: &mut Vec<String>,
     username: &str,
     account: &mut crate::config::ConfigAccount,
-) {
+) -> bool {
     fn get_refresh_token_for_account_type(
         account_type: AccountType,
         username: &str,
@@ -409,33 +436,26 @@ fn load_account(
     // Only show accounts that belong to the currently active storage backend.
     // Keyring accounts are hidden in file mode and vice versa.
     if per_account_method != current_method {
-        return;
+        return false;
     }
     // If this account uses the encrypted store and it's locked, skip it
-    if per_account_method == TokenStorageMethod::EncryptedFile
-        && !encrypted_store::is_unlocked()
-    {
-        return;
+    if per_account_method == TokenStorageMethod::EncryptedFile && !encrypted_store::is_unlocked() {
+        return false;
     }
 
-    let account_type = if account.account_type == Some(AccountType::ElyBy)
-        || username.ends_with(" (elyby)")
-    {
-        AccountType::ElyBy
-    } else if account.account_type == Some(AccountType::LittleSkin)
-        || username.ends_with(" (littleskin)")
-    {
-        AccountType::LittleSkin
-    } else {
-        AccountType::Microsoft
-    };
+    let account_type =
+        if account.account_type == Some(AccountType::ElyBy) || username.ends_with(" (elyby)") {
+            AccountType::ElyBy
+        } else if account.account_type == Some(AccountType::LittleSkin)
+            || username.ends_with(" (littleskin)")
+        {
+            AccountType::LittleSkin
+        } else {
+            AccountType::Microsoft
+        };
 
-    let refresh_token = get_refresh_token_for_account_type(
-        account_type,
-        username,
-        account,
-        per_account_method,
-    );
+    let refresh_token =
+        get_refresh_token_for_account_type(account_type, username, account, per_account_method);
 
     let keyring_username = account.get_keyring_identifier(username);
 
@@ -458,6 +478,7 @@ fn load_account(
                         .unwrap_or_else(|| username.to_owned()),
                 },
             );
+            false
         }
         Err(err) => {
             err!(
@@ -465,6 +486,11 @@ fn load_account(
                 account_type.to_string()
             );
             accounts_to_remove.push(username.to_owned());
+            if per_account_method == TokenStorageMethod::Keyring {
+                true
+            } else {
+                false
+            }
         }
     }
 }

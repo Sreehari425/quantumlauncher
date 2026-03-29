@@ -1,7 +1,7 @@
 use std::sync::LazyLock;
 
 use iced::{Alignment, Length, widget};
-use ql_auth::{encrypted_store, TokenStorageMethod};
+use ql_auth::{TokenStorageMethod, encrypted_store};
 use ql_core::{LAUNCHER_DIR, WEBSITE};
 
 use super::{
@@ -33,7 +33,7 @@ pub const PREFIX_EXPLANATION: &str =
     "Commands to add before the game launch command\nEg: prime-run/gamemoderun/mangohud";
 
 impl MenuLauncherSettings {
-    pub fn view<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {
+    pub fn view<'a>(&'a self, config: &'a LauncherConfig, keyring_available: bool) -> Element<'a> {
         widget::row![
             sidebar(
                 "MenuLauncherSettings:sidebar",
@@ -61,7 +61,7 @@ impl MenuLauncherSettings {
                 border: iced::Border::default(),
                 shadow: iced::Shadow::default()
             }),
-            widget::scrollable(self.selected_tab.view(config, self))
+            widget::scrollable(self.selected_tab.view(config, self, keyring_available))
                 .width(Length::Fill)
                 .spacing(0)
                 .style(LauncherTheme::style_scrollable_flat_dark)
@@ -213,6 +213,7 @@ impl LauncherSettingsTab {
         &'a self,
         config: &'a LauncherConfig,
         menu: &'a MenuLauncherSettings,
+        keyring_available: bool,
     ) -> Element<'a> {
         match self {
             LauncherSettingsTab::UserInterface => menu.view_ui_tab(config),
@@ -263,7 +264,7 @@ impl LauncherSettingsTab {
             .padding(16)
             .into(),
             LauncherSettingsTab::About => view_about_tab(),
-            LauncherSettingsTab::Security => view_security_tab(config),
+            LauncherSettingsTab::Security => view_security_tab(config, keyring_available),
         }
     }
 }
@@ -340,7 +341,7 @@ Every new user motivates me to keep working on this :)"
     .into()
 }
 
-fn view_security_tab(config: &LauncherConfig) -> Element<'_> {
+fn view_security_tab(config: &LauncherConfig, keyring_available: bool) -> Element<'_> {
     let current_method = config.c_token_storage();
     let file_exists = encrypted_store::file_exists();
     let is_unlocked = encrypted_store::is_unlocked();
@@ -373,12 +374,25 @@ fn view_security_tab(config: &LauncherConfig) -> Element<'_> {
         widget::horizontal_rule(1),
         method_label,
         widget::row![keyring_btn, encrypted_btn].spacing(8),
-        widget::text("Encrypted File stores tokens in an AES-256-GCM encrypted file\nthat can be moved to other machines.")
-            .size(12),
-        widget::horizontal_rule(1),
-    ]
-    .spacing(8)
-    .padding(16);
+    ];
+
+    if current_method == TokenStorageMethod::Keyring && !keyring_available {
+        col = col.push(
+            widget::text("SYSTEM keyring is unavailable")
+                .size(12)
+                .style(tsubtitle)
+                .color(iced::Color::from_rgb(0.9, 0.3, 0.3)),
+        );
+    }
+
+    col = col
+        .push(
+            widget::text("Encrypted File stores tokens in an AES-256-GCM encrypted file\nthat can be moved to other machines.")
+                .size(12),
+        )
+        .push(widget::horizontal_rule(1))
+        .spacing(8)
+        .padding(16);
 
     if current_method == TokenStorageMethod::EncryptedFile || file_exists {
         if file_exists {
