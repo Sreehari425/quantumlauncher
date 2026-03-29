@@ -379,7 +379,7 @@ impl Launcher {
                 };
                 self.state = State::ConfirmAction {
                     msg1: "enable portable mode".to_owned(),
-                    msg2: "The launcher will store data next to the executable instead.\nYour existing data will NOT be moved automatically.".to_owned(),
+                    msg2: "The launcher will store data next to the executable instead.\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart.".to_owned(),
                     yes: LauncherSettingsMessage::EnablePortableModeConfirm(path).into(),
                     no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
                         .into(),
@@ -388,17 +388,18 @@ impl Launcher {
             LauncherSettingsMessage::EnablePortableModeConfirm(path) => {
                 if let Err(err) = ql_core::create_portable_file(path) {
                     self.set_error(err.to_string());
+                    return Task::none();
                 }
                 
-                return Task::done(
-                    LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location).into()
-                );
+                if let Ok(exe) = std::env::current_exe() {
+                    let _ = std::process::Command::new(exe).spawn();
+                }
+                std::process::exit(0);
             }
             LauncherSettingsMessage::DisablePortableMode => {
                 self.state = State::ConfirmAction {
                     msg1: "disable portable mode".to_owned(),
-                    msg2: "The launcher will store data in the system data directory instead.
-Your existing data will NOT be moved automatically."
+                    msg2: "The launcher will store data in the system data directory instead.\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart."
                         .to_owned(),
                     yes: LauncherSettingsMessage::DisablePortableModeConfirm.into(),
                     no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
@@ -408,10 +409,13 @@ Your existing data will NOT be moved automatically."
             LauncherSettingsMessage::DisablePortableModeConfirm => {
                 if let Err(err) = ql_core::delete_portable_file() {
                     self.set_error(err.to_string());
+                    return Task::none();
                 }
-                return Task::done(
-                    LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location).into(),
-                );
+                
+                if let Ok(exe) = std::env::current_exe() {
+                    let _ = std::process::Command::new(exe).spawn();
+                }
+                std::process::exit(0);
             }
             LauncherSettingsMessage::PortableModeStatusLoaded(status) => {
                 if let State::LauncherSettings(menu) = &mut self.state {
@@ -435,7 +439,7 @@ Your existing data will NOT be moved automatically."
                 }
                 self.state = State::ConfirmAction {
                     msg1: "enable system-wide redirection".to_owned(),
-                    msg2: "The launcher will store data globally in the specified redirected directory.\nYour existing data will NOT be moved automatically.".to_owned(),
+                    msg2: "The launcher will store data globally in the specified redirected directory.\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart.".to_owned(),
                     yes: LauncherSettingsMessage::EnableSystemRedirectConfirm(path).into(),
                     no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
                         .into(),
@@ -444,16 +448,18 @@ Your existing data will NOT be moved automatically."
             LauncherSettingsMessage::EnableSystemRedirectConfirm(path) => {
                 if let Err(err) = ql_core::create_system_redirect_file(path) {
                     self.set_error(err.to_string());
+                    return Task::none();
                 }
                 
-                return Task::done(
-                    LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location).into()
-                );
+                if let Ok(exe) = std::env::current_exe() {
+                    let _ = std::process::Command::new(exe).spawn();
+                }
+                std::process::exit(0);
             }
             LauncherSettingsMessage::DisableSystemRedirect => {
                 self.state = State::ConfirmAction {
                     msg1: "disable system-wide redirection".to_owned(),
-                    msg2: "The launcher will stop reading data globally from the system data directory. Your existing data will NOT be moved.".to_owned(),
+                    msg2: "The launcher will stop reading data globally from the system data directory. Your existing data will NOT be moved.\n\nThe launcher will automatically restart.".to_owned(),
                     yes: LauncherSettingsMessage::DisableSystemRedirectConfirm.into(),
                     no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
                         .into(),
@@ -462,10 +468,13 @@ Your existing data will NOT be moved automatically."
             LauncherSettingsMessage::DisableSystemRedirectConfirm => {
                 if let Err(err) = ql_core::delete_system_redirect_file() {
                     self.set_error(err.to_string());
+                    return Task::none();
                 }
-                return Task::done(
-                    LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location).into(),
-                );
+                
+                if let Ok(exe) = std::env::current_exe() {
+                    let _ = std::process::Command::new(exe).spawn();
+                }
+                std::process::exit(0);
             }
             LauncherSettingsMessage::SetTempPath(kind, path) => {
                 if let State::LauncherSettings(menu) = &mut self.state {
