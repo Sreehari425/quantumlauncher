@@ -134,6 +134,16 @@ pub async fn download_mods_bulk(
     Ok(not_allowed)
 }
 
+/// Gets the latest compatible mod version, based on provided Minecraft version and mod loader.
+///
+/// Returns the release date and version name (eg: `v2.0.1`).
+///
+/// Useful for checking for updates, or checking compatibility.
+///
+/// # Errors
+///
+/// - `NoCompatibleVersionFound` if mod doesn't support version
+/// - Many other errors depending on backend
 pub async fn get_latest_version_date(
     loader: Loader,
     mod_id: &ModId,

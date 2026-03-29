@@ -12,6 +12,7 @@ use ql_core::{
 use ql_java_handler::{JavaVersion, get_java_binary};
 use std::{
     collections::HashSet,
+    io::ErrorKind,
     path::{Path, PathBuf},
     process::Stdio,
     sync::mpsc::Sender,
@@ -59,7 +60,14 @@ impl GameLauncher {
             .await
             .path(&minecraft_dir)?;
 
-        let config = InstanceConfigJson::read_from_dir(&instance_dir).await?;
+        let config = match InstanceConfigJson::read_from_dir(&instance_dir).await {
+            Err(JsonFileError::Io(IoError::Io { error, .. }))
+                if error.kind() == ErrorKind::NotFound =>
+            {
+                return Err(GameLaunchError::InstanceIncomplete);
+            }
+            c => c?,
+        };
 
         let instance = InstanceSelection::Instance(instance_name.clone());
         let mut version_json = VersionDetails::load(&instance).await?;

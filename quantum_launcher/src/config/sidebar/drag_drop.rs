@@ -40,7 +40,7 @@ impl SidebarConfig {
 
         // Inserting inside folder
         for item in &mut self.list {
-            if item.insert_at(&yoinked, &location) {
+            if item.insert_at(&yoinked, location) {
                 return;
             }
         }

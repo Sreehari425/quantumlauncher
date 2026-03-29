@@ -63,6 +63,14 @@ pub use urlcache::url_cache_get;
 
 pub const LAUNCHER_VERSION_NAME: &str = "0.5.1";
 
+pub const LAUNCHER_VERSION: semver::Version = semver::Version {
+    major: 0,
+    minor: 5,
+    patch: 1,
+    pre: semver::Prerelease::EMPTY,
+    build: semver::BuildMetadata::EMPTY,
+};
+
 pub static REGEX_SNAPSHOT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\d{2}w\d*[a-zA-Z]+").unwrap());
 

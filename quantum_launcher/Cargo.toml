@@ -60,6 +60,10 @@ tokio.workspace = true
 cfg-if.workspace = true
 semver.workspace = true
 
+# Launcher Update
+thiserror.workspace = true
+zip.workspace = true
+
 # Terminal
 owo-colors.workspace = true
 clap.workspace = true
@@ -69,7 +73,7 @@ rpassword = "7"
 # OS APIs
 notify = "8"
 open = "5.3.2"
-dark-light = "2"
+dark-light.git = "https://github.com/rust-dark-light/dark-light" # Less dependencies than the stable one
 dirs.workspace = true
 
 paste = "1" # icon widget macro

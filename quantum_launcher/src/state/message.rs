@@ -18,7 +18,6 @@ use ql_core::{
     json::instance_config::{MainClassMode, PreLaunchPrefixMode},
     read_log::Diagnostic,
 };
-use ql_instances::UpdateCheckInfo;
 use ql_mod_manager::{
     loaders::{fabric, paper::PaperVersion},
     store::{CurseforgeNotAllowed, ImageResult, ModIndex, QueryType, RecommendedMod, SearchResult},
@@ -483,7 +482,6 @@ pub enum Message {
     CoreOpenPath(PathBuf),
     CoreCopyText(String),
     CoreTick,
-    CoreTickConfigSaved(Res),
     CoreListLoaded(Res<(Vec<String>, bool)>),
     CoreOpenChangeLog,
     CoreOpenIntro,
@@ -499,10 +497,11 @@ pub enum Message {
     CoreLogScroll(isize),
     CoreLogScrollAbsolute(isize),
 
-    #[allow(unused)]
-    UpdateCheckResult(Res<UpdateCheckInfo>),
+    #[cfg(feature = "auto_update")]
+    UpdateCheckResult(Res<crate::launcher_update::UpdateCheckInfo>),
+    #[cfg(feature = "auto_update")]
     UpdateDownloadStart,
-    #[allow(unused)]
+    #[cfg(feature = "auto_update")]
     UpdateDownloadEnd(Res),
 
     ServerCommandEdit(String),

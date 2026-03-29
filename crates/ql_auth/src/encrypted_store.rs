@@ -267,11 +267,7 @@ fn read_json_file() -> Result<EncryptedTokensFile, EncryptedStoreError> {
             return Err(EncryptedStoreError::FileNotFound);
         }
         Err(err) => {
-            return Err(IoError::Io {
-                error: err.to_string(),
-                path,
-            }
-            .into())
+            return Err(IoError::Io { error: err, path }.into());
         }
     };
     let file: EncryptedTokensFile = serde_json::from_str(&content).json(content)?;
