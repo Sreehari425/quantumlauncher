@@ -233,6 +233,15 @@ impl Backend for CurseforgeBackend {
         if !query.name.is_empty() {
             params.insert("searchFilter", query.name.clone());
         }
+        if !query.categories.is_empty() {
+            let categories: Vec<i32> = query
+                .categories
+                .iter()
+                .take(10) // Curseforge only allows up to 10 category ids
+                .filter_map(|n| n.internal_id)
+                .collect();
+            params.insert("categoryIds", serde_json::to_string(&categories).json_to()?);
+        }
 
         let response = send_request("mods/search", &params).await?;
         let response: CFSearchResult = serde_json::from_str(&response).json(response)?;
@@ -414,6 +423,7 @@ fn build_node(id: i32, list: &[CfCategory]) -> Option<Category> {
         name: cf.name.clone(),
         slug: cf.slug.clone(),
         children,
+        internal_id: Some(cf.id),
         is_usable: true,
     })
 }

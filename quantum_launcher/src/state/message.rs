@@ -187,7 +187,9 @@ pub enum InstallModsMessage {
 
     CategoriesLoaded(Res<Vec<Category>>),
     CategoriesToggle(String),
+    CategoriesUseAll(bool),
 
+    ForceOpenSource(bool),
     ChangeBackend(StoreBackendType),
     ChangeQueryType(QueryType),
 }

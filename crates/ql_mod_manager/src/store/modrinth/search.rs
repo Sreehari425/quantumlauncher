@@ -30,6 +30,22 @@ pub async fn do_request(query: &Query, offset: usize) -> Result<Search, ModError
             )]);
         }
     }
+    if query.open_source {
+        filters.push(vec!["open_source:true".to_owned()]);
+    }
+    if !query.categories.is_empty() {
+        let iter = query
+            .categories
+            .iter()
+            .map(|c| format!("categories:{}", c.slug));
+        if query.categories_use_all {
+            // Each element has their own vec![]
+            filters.extend(iter.map(|n| vec![n]));
+        } else {
+            // All in single vec![] inside filters
+            filters.push(iter.collect());
+        }
+    }
 
     let filters = serde_json::to_string(&filters).json_to()?;
     params.insert("facets", filters);

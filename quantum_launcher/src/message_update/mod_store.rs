@@ -177,7 +177,9 @@ impl Launcher {
                     menu.query_type = query;
                     menu.results = None;
                     menu.scroll_offset = AbsoluteOffset::default();
-                    return menu.search_store(is_server, 0);
+                    menu.categories.reset();
+
+                    return Task::batch([menu.search_store(is_server, 0), menu.load_categories()]);
                 }
             }
 
@@ -189,6 +191,19 @@ impl Launcher {
             InstallModsMessage::CategoriesToggle(slug) => {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.categories.toggle(&slug);
+                    return menu.search_store(is_server, 0);
+                }
+            }
+
+            InstallModsMessage::CategoriesUseAll(b) => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    menu.categories.use_all = b;
+                    return menu.search_store(is_server, 0);
+                }
+            }
+            InstallModsMessage::ForceOpenSource(b) => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    menu.force_open_source = b;
                     return menu.search_store(is_server, 0);
                 }
             }
@@ -269,6 +284,7 @@ impl Launcher {
             has_continuation_ended: false,
             description: None,
             categories: ModCategoryState::default(),
+            force_open_source: false,
 
             backend: StoreBackendType::Modrinth,
             query_type: QueryType::Mods,
@@ -331,12 +347,34 @@ impl Launcher {
 
 impl MenuModsDownload {
     pub fn search_store(&self, is_server: bool, offset: usize) -> Task<Message> {
+        let categories = self
+            .categories
+            .selected
+            .iter()
+            .filter_map(|slug| {
+                self.categories
+                    .categories
+                    .as_ref()
+                    .ok()
+                    .and_then(|categories| {
+                        categories
+                            .iter()
+                            .filter_map(|n| n.search_for_slug(slug))
+                            .next()
+                    })
+                    .cloned()
+            })
+            .collect();
+
         let query = Query {
             name: self.query.clone(),
             version: self.version_json.get_id().to_owned(),
             loader: self.config.mod_type,
             server_side: is_server,
-            kind: self.query_type, // open_source: false, // TODO: Add Open Source filter
+            kind: self.query_type,
+            open_source: self.force_open_source,
+            categories,
+            categories_use_all: self.categories.use_all,
         };
         Task::perform(store::search(query, offset, self.backend), |n| {
             InstallModsMessage::SearchResult(n.strerr()).into()

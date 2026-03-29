@@ -206,6 +206,7 @@ impl Backend for ModrinthBackend {
                 name: slug_to_nice_name(&cat.name),
                 slug: cat.name,
                 children: Vec::new(),
+                internal_id: None,
                 is_usable: true,
             };
             match map.get_mut(&cat.header) {
@@ -224,6 +225,7 @@ impl Backend for ModrinthBackend {
                     name: slug_to_nice_name(&header),
                     slug: header,
                     children,
+                    internal_id: None,
                     is_usable: false,
                 })
                 .collect()

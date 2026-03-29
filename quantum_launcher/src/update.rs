@@ -138,7 +138,7 @@ impl Launcher {
                     self.images.insert_image(image);
                 }
                 Err(err) => {
-                    err!("Could not download image: {err}");
+                    err!(no_log, "Could not download image: {err}");
                 }
             },
             Message::CoreTick => {

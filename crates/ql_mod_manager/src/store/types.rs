@@ -75,6 +75,11 @@ impl StoreBackendType {
     pub fn can_pick_any_or_all(self) -> bool {
         matches!(self, StoreBackendType::Modrinth)
     }
+
+    #[must_use]
+    pub fn can_filter_open_source(self) -> bool {
+        matches!(self, StoreBackendType::Modrinth)
+    }
 }
 
 #[derive(Hash, PartialEq, Eq, Clone)]
@@ -199,10 +204,27 @@ pub struct Category {
     pub name: String,
     pub slug: String,
     pub children: Vec<Category>,
+    pub internal_id: Option<i32>,
     /// If `true`, can be toggled and serves a purpose.
     ///
     /// Else purely for organization (use its [`Self::children`] instead)
     pub is_usable: bool,
+}
+
+impl Category {
+    pub fn search_for_slug(&self, slug: &str) -> Option<&Self> {
+        if self.slug == slug {
+            return Some(self);
+        }
+
+        for child in &self.children {
+            if let Some(found) = child.search_for_slug(slug) {
+                return Some(found);
+            }
+        }
+
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -210,8 +232,19 @@ pub struct Query {
     pub name: String,
     pub version: String,
     pub loader: Loader,
+
     pub server_side: bool,
     pub kind: QueryType,
+    /// Used if supported (modrinth supports it, curseforge doesn't).
+    /// Use [`StoreBackendType::can_filter_open_source`] for checking this.
+    pub open_source: bool,
+    pub categories: Vec<Category>,
+    /// Whether to search mods with *all* of the categories,
+    /// or just any of them.
+    ///
+    /// Used if supported (modrinth supports it, curseforge doesn't).
+    /// Use [`StoreBackendType::can_pick_any_or_all`] for checking this.
+    pub categories_use_all: bool,
 }
 
 #[derive(Debug, Clone)]

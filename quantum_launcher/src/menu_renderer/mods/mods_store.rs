@@ -183,7 +183,8 @@ impl MenuModsDownload {
                     .into()
                 })),
                 widget::Space::with_height(5),
-                self.categories.view(self.backend, tick_timer),
+                self.categories
+                    .view(self.backend, self.force_open_source, tick_timer),
             ]
             .spacing(5)
             .padding(10),
@@ -364,6 +365,7 @@ impl ModCategoryState {
     fn view(
         &self,
         backend: StoreBackendType,
+        open_source: bool,
         tick_timer: usize,
     ) -> widget::Column<'_, Message, LauncherTheme> {
         let category_view: Element = match &self.categories {
@@ -376,27 +378,35 @@ impl ModCategoryState {
         };
 
         let show_any_all = backend.can_pick_any_or_all();
+        let m = |n| InstallModsMessage::CategoriesUseAll(n).into();
 
         column![
             row![icons::filter_s(14), widget::text("Filters:").size(18)]
                 // TODO
                 .push_maybe(show_any_all.then(|| {
-                    widget::radio("All", true, Some(self.use_all), |_| Message::Nothing)
+                    widget::radio("All", true, Some(self.use_all), m)
                         .spacing(4)
                         .text_size(13)
                         .size(11)
                 }))
                 .push_maybe(show_any_all.then(|| {
-                    widget::radio("Any", false, Some(self.use_all), |_| Message::Nothing)
+                    widget::radio("Any", false, Some(self.use_all), m)
                         .spacing(4)
                         .text_size(13)
                         .size(11)
                 }))
                 .spacing(5)
                 .align_y(Alignment::Center),
-            widget::Space::with_height(5),
-            category_view,
         ]
+        .push_maybe(backend.can_filter_open_source().then(|| {
+            widget::checkbox("Open-source only", open_source)
+                .size(12)
+                .text_size(12)
+                .style(|n: &LauncherTheme, s| n.style_checkbox(s, Some(Color::SecondLight)))
+                .on_toggle(|n| InstallModsMessage::ForceOpenSource(n).into())
+        }))
+        .push(category_view)
+        .spacing(5)
     }
 
     fn view_category<'a>(

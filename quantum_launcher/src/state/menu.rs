@@ -456,6 +456,7 @@ pub struct MenuModsDownload {
 
     pub backend: StoreBackendType,
     pub query_type: QueryType,
+    pub force_open_source: bool,
 
     /// This is for the loading of continuation of the search,
     /// i.e. when you scroll down and more stuff appears
@@ -505,7 +506,7 @@ impl Default for ModCategoryState {
         Self {
             categories: Ok(Vec::new()),
             selected: HashSet::new(),
-            use_all: false,
+            use_all: true,
         }
     }
 }
