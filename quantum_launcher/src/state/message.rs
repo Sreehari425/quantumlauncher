@@ -286,6 +286,11 @@ pub enum LauncherSettingsMessage {
 
     GlobalJavaArgs(ListMessage),
     GlobalPreLaunchPrefix(ListMessage),
+
+    EnablePortableMode,
+    DisablePortableMode,
+    DisablePortableModeConfirm,
+    PortableModeStatusLoaded(Option<ql_core::PortableModeKind>),
 }
 
 #[derive(Debug, Clone)]

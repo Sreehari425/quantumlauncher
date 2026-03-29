@@ -259,7 +259,7 @@ impl Launcher {
                 self.theme.lightness = theme;
             }
             LauncherSettingsMessage::Open => {
-                self.go_to_launcher_settings();
+                return self.go_to_launcher_settings();
             }
             LauncherSettingsMessage::ColorSchemePicked(color) => {
                 self.config.ui_theme = Some(color);
@@ -301,10 +301,11 @@ impl Launcher {
                 });
             }
             LauncherSettingsMessage::ChangeTab(tab) => {
-                self.go_to_launcher_settings();
+                let task = self.go_to_launcher_settings();
                 if let State::LauncherSettings(menu) = &mut self.state {
                     menu.selected_tab = tab;
                 }
+                return task;
             }
             LauncherSettingsMessage::ToggleAntialiasing(t) => {
                 self.config.ui_antialiasing = Some(t);
@@ -370,6 +371,38 @@ impl Launcher {
                     err!(no_log, "while loading system theme: {err}");
                 }
             },
+            LauncherSettingsMessage::EnablePortableMode => {
+                if let Err(err) = ql_core::create_portable_file() {
+                    self.set_error(err.to_string());
+                } else if let State::LauncherSettings(menu) = &mut self.state {
+                    menu.portable_mode_status = Some(ql_core::PortableModeKind::NextToExe);
+                }
+            }
+            LauncherSettingsMessage::DisablePortableMode => {
+                self.state = State::ConfirmAction {
+                    msg1: "disable portable mode".to_owned(),
+                    msg2: "The launcher will store data in the system data directory instead.
+Your existing data will NOT be moved automatically.".to_owned(),
+                    yes: LauncherSettingsMessage::DisablePortableModeConfirm.into(),
+                    no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Internal)
+                        .into(),
+                };
+            }
+            LauncherSettingsMessage::DisablePortableModeConfirm => {
+                if let Err(err) = ql_core::delete_portable_file() {
+                    self.set_error(err.to_string());
+                } else if let State::LauncherSettings(menu) = &mut self.state {
+                    menu.portable_mode_status = None;
+                }
+                return Task::done(
+                    LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Internal).into(),
+                );
+            }
+            LauncherSettingsMessage::PortableModeStatusLoaded(status) => {
+                if let State::LauncherSettings(menu) = &mut self.state {
+                    menu.portable_mode_status = status;
+                }
+            }
         }
         Task::none()
     }
@@ -397,15 +430,21 @@ impl Launcher {
         }
     }
 
-    pub fn go_to_launcher_settings(&mut self) {
+    pub fn go_to_launcher_settings(&mut self) -> Task<Message> {
         if let State::LauncherSettings(_) = &self.state {
-            return;
+            return Task::none();
         }
         self.state = State::LauncherSettings(state::MenuLauncherSettings {
             temp_scale: self.config.ui_scale.unwrap_or(1.0),
             selected_tab: state::LauncherSettingsTab::UserInterface,
             arg_split_by_space: true,
+            portable_mode_status: None,
         });
+        // Load portable mode status asynchronously
+        Task::perform(
+            async { ql_core::portable_mode_status() },
+            |status| LauncherSettingsMessage::PortableModeStatusLoaded(status).into(),
+        )
     }
 
     pub fn update_install_paper(&mut self, msg: InstallPaperMessage) -> Task<Message> {

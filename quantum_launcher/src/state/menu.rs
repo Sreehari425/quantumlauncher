@@ -494,6 +494,8 @@ pub struct MenuLauncherSettings {
     pub temp_scale: f64,
     pub selected_tab: LauncherSettingsTab,
     pub arg_split_by_space: bool,
+    /// Current portable mode status, loaded asynchronously when settings opens.
+    pub portable_mode_status: Option<ql_core::PortableModeKind>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

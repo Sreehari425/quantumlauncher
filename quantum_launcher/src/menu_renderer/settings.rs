@@ -245,6 +245,8 @@ impl LauncherSettingsTab {
                 ),
                 args_split_by_space(menu.arg_split_by_space),
                 widget::horizontal_rule(1),
+                view_portable_mode_section(&menu.portable_mode_status),
+                widget::horizontal_rule(1),
                 widget::row![
                     button_with_icon(icons::bin(), "Clear Java installs", 16)
                         .on_press(LauncherSettingsMessage::ClearJavaInstalls.into()),
@@ -263,6 +265,45 @@ impl LauncherSettingsTab {
             LauncherSettingsTab::About => view_about_tab(),
         }
     }
+}
+
+fn view_portable_mode_section(
+    status: &Option<ql_core::PortableModeKind>,
+) -> iced::Element<'static, Message, super::LauncherTheme> {
+    let t = |s| widget::text(s).size(12).style(tsubtitle);
+
+    let (status_text, status_note, button_label, button_msg) = match status {
+        None => (
+            "Portable Mode: Inactive",
+            "Data is stored in the system directory (e.g. ~/.local/share/QuantumLauncher).",
+            "Enable Portable Mode",
+            LauncherSettingsMessage::EnablePortableMode,
+        ),
+        Some(ql_core::PortableModeKind::NextToExe) => (
+            "Portable Mode: Active (next to executable)",
+            "Data is stored in a QuantumLauncher/ folder next to the launcher executable.",
+            "Disable Portable Mode",
+            LauncherSettingsMessage::DisablePortableMode,
+        ),
+        Some(ql_core::PortableModeKind::CustomPath(_)) => (
+            "Portable Mode: Active (custom path)",
+            "Data is stored at a custom path set in qldir.txt. Edit the file to change the path.",
+            "Disable Portable Mode",
+            LauncherSettingsMessage::DisablePortableMode,
+        ),
+    };
+
+    widget::column![
+        widget::text("Portable Mode").size(16),
+        t(status_text),
+        t(status_note),
+        t("Enabling creates a qldir.txt file next to the executable.\nDisabling removes it. Existing data won't be moved."),
+        widget::button(widget::text(button_label).size(13))
+            .padding([4, 10])
+            .on_press(Message::LauncherSettings(button_msg)),
+    ]
+    .spacing(5)
+    .into()
 }
 
 fn view_about_tab() -> Element<'static> {

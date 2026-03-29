@@ -64,6 +64,79 @@ struct QlDirInfo {
     path: PathBuf,
 }
 
+/// The filename of the portable mode marker file.
+pub const PORTABLE_FILENAME: &str = "qldir.txt";
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum PortableModeKind {
+    /// `qldir.txt` is empty or contains `.` — data lives next to the exe.
+    NextToExe,
+    /// `qldir.txt` contains a custom path.
+    CustomPath(PathBuf),
+}
+
+/// Returns the current portable-mode state, or `None` if it is not active.
+///
+/// Reads `qldir.txt` from beside the executable (if it exists).
+#[must_use]
+pub fn portable_mode_status() -> Option<PortableModeKind> {
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(Path::to_owned))?;
+    let qldir_path = exe_dir.join(PORTABLE_FILENAME);
+    let contents = std::fs::read_to_string(&qldir_path).ok()?;
+    let (path, _) = line_and_body(&contents);
+    if path.is_empty() || path == "." {
+        Some(PortableModeKind::NextToExe)
+    } else {
+        Some(PortableModeKind::CustomPath(PathBuf::from(path)))
+    }
+}
+
+/// Creates a `qldir.txt` file next to the executable to enable portable mode.
+///
+/// Writes an empty file, which makes the launcher store data in a
+/// `QuantumLauncher/` folder next to the executable.
+///
+/// # Errors
+/// - The executable path cannot be determined
+/// - The file cannot be written (permissions, disk full, etc.)
+pub fn create_portable_file() -> Result<(), IoError> {
+    let exe_dir = std::env::current_exe()
+        .map_err(|e| IoError::Io {
+            error: e,
+            path: PathBuf::from("<current_exe>"),
+        })?
+        .parent()
+        .map(Path::to_owned)
+        .ok_or_else(|| IoError::Io {
+            error: std::io::Error::other("Could not determine executable directory"),
+            path: PathBuf::from("<exe parent>"),
+        })?;
+    let qldir_path = exe_dir.join(PORTABLE_FILENAME);
+    std::fs::write(&qldir_path, "").path(&qldir_path)
+}
+
+/// Deletes the `qldir.txt` file next to the executable, disabling portable mode.
+///
+/// # Errors
+/// - The file cannot be deleted (e.g. it does not exist, permissions issue)
+pub fn delete_portable_file() -> Result<(), IoError> {
+    let exe_dir = std::env::current_exe()
+        .map_err(|e| IoError::Io {
+            error: e,
+            path: PathBuf::from("<current_exe>"),
+        })?
+        .parent()
+        .map(Path::to_owned)
+        .ok_or_else(|| IoError::Io {
+            error: std::io::Error::other("Could not determine executable directory"),
+            path: PathBuf::from("<exe parent>"),
+        })?;
+    let qldir_path = exe_dir.join(PORTABLE_FILENAME);
+    std::fs::remove_file(&qldir_path).path(&qldir_path)
+}
+
 fn line_and_body(input: &str) -> (String, String) {
     let mut lines = input.trim().lines();
 
@@ -77,8 +150,6 @@ fn line_and_body(input: &str) -> (String, String) {
 }
 
 fn check_qlportable_file() -> Option<QlDirInfo> {
-    const PORTABLE_FILENAME: &str = "qldir.txt";
-
     let places = [
         std::env::current_exe()
             .ok()

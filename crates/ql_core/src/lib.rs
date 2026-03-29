@@ -54,7 +54,10 @@ pub use error::{
     DownloadFileError, IntoIoError, IntoJsonError, IntoStringError, IoError, JsonDownloadError,
     JsonError, JsonFileError,
 };
-pub use file_utils::{LAUNCHER_DIR, RequestError};
+pub use file_utils::{
+    LAUNCHER_DIR, PortableModeKind, RequestError, create_portable_file, delete_portable_file,
+    portable_mode_status,
+};
 pub use print::{LOGGER, LogType, LoggingState, logger_finish};
 pub use progress::{DownloadProgress, GenericProgress, Progress};
 pub use request::download;

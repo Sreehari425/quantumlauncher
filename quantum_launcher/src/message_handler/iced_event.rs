@@ -337,11 +337,11 @@ impl Launcher {
                 if affect {
                     if let State::LauncherSettings(_) = &self.state {
                     } else {
-                        self.state = State::LauncherSettings(MenuLauncherSettings {
-                            temp_scale: self.config.ui_scale.unwrap_or(1.0),
-                            selected_tab: LauncherSettingsTab::About,
-                            arg_split_by_space: true,
-                        });
+                        let task = self.go_to_launcher_settings();
+                        if let State::LauncherSettings(menu) = &mut self.state {
+                            menu.selected_tab = LauncherSettingsTab::About;
+                        }
+                        return (true, task);
                     }
                 }
                 return (true, Task::none());
