@@ -288,10 +288,12 @@ pub enum LauncherSettingsMessage {
     GlobalPreLaunchPrefix(ListMessage),
 
     EnablePortableMode,
+    EnablePortableModeConfirm(String),
     DisablePortableMode,
     DisablePortableModeConfirm,
     PortableModeStatusLoaded(ql_core::FullPortableStatus),
     EnableSystemRedirect,
+    EnableSystemRedirectConfirm(String),
     DisableSystemRedirect,
     DisableSystemRedirectConfirm,
     SetTempPath(PathKind, String),

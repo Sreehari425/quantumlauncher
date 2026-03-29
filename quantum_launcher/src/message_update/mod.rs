@@ -377,14 +377,22 @@ impl Launcher {
                 } else {
                     String::new()
                 };
-
+                self.state = State::ConfirmAction {
+                    msg1: "enable portable mode".to_owned(),
+                    msg2: "The launcher will store data next to the executable instead.\nYour existing data will NOT be moved automatically.".to_owned(),
+                    yes: LauncherSettingsMessage::EnablePortableModeConfirm(path).into(),
+                    no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
+                        .into(),
+                };
+            }
+            LauncherSettingsMessage::EnablePortableModeConfirm(path) => {
                 if let Err(err) = ql_core::create_portable_file(path) {
                     self.set_error(err.to_string());
-                } else if let State::LauncherSettings(_menu) = &mut self.state {
-                    return Task::perform(async { ql_core::portable_mode_status() }, |status| {
-                        LauncherSettingsMessage::PortableModeStatusLoaded(status).into()
-                    });
                 }
+                
+                return Task::done(
+                    LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location).into()
+                );
             }
             LauncherSettingsMessage::DisablePortableMode => {
                 self.state = State::ConfirmAction {
@@ -425,14 +433,22 @@ Your existing data will NOT be moved automatically."
                 if let State::LauncherSettings(menu) = &self.state {
                     path = menu.temp_paths.system_redirect.clone();
                 }
-
+                self.state = State::ConfirmAction {
+                    msg1: "enable system-wide redirection".to_owned(),
+                    msg2: "The launcher will store data globally in the specified redirected directory.\nYour existing data will NOT be moved automatically.".to_owned(),
+                    yes: LauncherSettingsMessage::EnableSystemRedirectConfirm(path).into(),
+                    no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
+                        .into(),
+                };
+            }
+            LauncherSettingsMessage::EnableSystemRedirectConfirm(path) => {
                 if let Err(err) = ql_core::create_system_redirect_file(path) {
                     self.set_error(err.to_string());
-                } else if let State::LauncherSettings(_) = &mut self.state {
-                    return Task::perform(async { ql_core::portable_mode_status() }, |status| {
-                        LauncherSettingsMessage::PortableModeStatusLoaded(status).into()
-                    });
                 }
+                
+                return Task::done(
+                    LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location).into()
+                );
             }
             LauncherSettingsMessage::DisableSystemRedirect => {
                 self.state = State::ConfirmAction {
