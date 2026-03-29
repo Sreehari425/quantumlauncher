@@ -163,19 +163,26 @@ Only increase if progress bars stutter or "not responding" dialogs show"#).size(
         .into()
     }
 
-    fn view_location_tab<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {
+    fn view_location_tab<'a>(&'a self, _config: &'a LauncherConfig) -> Element<'a> {
+        let t = |s| widget::text(s).size(12).style(tsubtitle);
+
+        let current_dir_text = widget::text(format!("{}", LAUNCHER_DIR.display())).size(14);
+
         checkered_list::<Element>([
             widget::column![widget::text("Location").size(20)].into(),
             widget::column![
-                button_with_icon(icons::folder(), "Open Launcher Folder", 16)
-                    .on_press(Message::CoreOpenPath(LAUNCHER_DIR.clone())),
-                widget::text("Opens the folder where all launcher data is stored.")
-                    .size(12)
-                    .style(tsubtitle),
+                widget::text("Current Data Directory").size(16),
+                t("This is the active folder where all your Minecraft instances, mods, and launcher settings are saved."),
+                widget::Space::with_height(5),
+                widget::row![
+                    current_dir_text.width(Length::Fill),
+                    button_with_icon(icons::folder(), "Open Folder", 13)
+                        .on_press(Message::CoreOpenPath(LAUNCHER_DIR.clone())),
+                ].align_y(Alignment::Center).spacing(10),
             ]
             .spacing(5)
             .into(),
-            view_portable_mode_section(&self.portable_mode_status).into(),
+            view_portable_mode_section(self).into(),
         ])
         .into()
     }
@@ -281,48 +288,103 @@ impl LauncherSettingsTab {
 }
 
 fn view_portable_mode_section(
-    status: &Option<ql_core::PortableModeKind>,
+    menu: &MenuLauncherSettings,
 ) -> iced::Element<'static, Message, super::LauncherTheme> {
+    let status = &menu.portable_mode_status;
+    let temp_path = &menu.temp_portable_path;
+
     let t = |s| widget::text(s).size(12).style(tsubtitle);
 
-    let (status_text, status_note, button_label, button_msg) = match status {
-        None => (
-            "Portable Mode: Inactive",
-            "Data is stored in the system directory (e.g. ~/.local/share/QuantumLauncher).",
-            "Enable Portable Mode",
-            LauncherSettingsMessage::EnablePortableMode,
-        ),
-        Some(ql_core::PortableModeKind::NextToExe) => (
-            "Portable Mode: Active (next to executable)",
-            "Data is stored in a QuantumLauncher/ folder next to the launcher executable.",
-            "Disable Portable Mode",
-            LauncherSettingsMessage::DisablePortableMode,
-        ),
-        Some(ql_core::PortableModeKind::PortableCustom(_)) => (
-            "Portable Mode: Active (custom path)",
-            "Data is stored at a custom path set in qldir.txt next to the executable.",
-            "Disable Portable Mode",
-            LauncherSettingsMessage::DisablePortableMode,
-        ),
-        Some(ql_core::PortableModeKind::SystemRedirect(_)) => (
-            "Redirected Mode: Active",
-            "Data is redirected via a qldir.txt file in the system data directory.",
-            "Disable Redirection",
-            LauncherSettingsMessage::DisablePortableMode,
-        ),
+    let is_portable = status.is_some() && !matches!(status, Some(ql_core::PortableModeKind::SystemRedirect(_)));
+    let is_system_redirect = matches!(status, Some(ql_core::PortableModeKind::SystemRedirect(_)));
+
+    let toggle_msg = if is_portable {
+        LauncherSettingsMessage::DisablePortableMode
+    } else {
+        LauncherSettingsMessage::EnablePortableMode
     };
 
-    widget::column![
+    let portable_checkbox = widget::checkbox("Enable Portable Mode", is_portable)
+        .size(16)
+        .text_size(15)
+        .on_toggle(move |_| Message::LauncherSettings(toggle_msg.clone()));
+
+    let mut col = widget::column![
         widget::text("Portable Mode").size(16),
-        t(status_text),
-        t(status_note),
-        t("Enabling creates a qldir.txt file next to the executable.\nDisabling removes it. Existing data won't be moved."),
-        widget::button(widget::text(button_label).size(13))
-            .padding([4, 10])
-            .on_press(Message::LauncherSettings(button_msg)),
+        t("Store launcher data alongside the executable instead of the default system data directory."),
+        widget::Space::with_height(5),
+        portable_checkbox,
     ]
-    .spacing(5)
-    .into()
+    .spacing(5);
+
+    if is_portable {
+        let current_path = match status {
+            Some(ql_core::PortableModeKind::Portable(Some(p))) => p.to_string_lossy().into_owned(),
+            _ => String::new(),
+        };
+
+        let has_changes = temp_path != &current_path;
+
+        let mut path_row = widget::row![
+            widget::text_input("Leave blank to store right next to the executable.", temp_path)
+                .on_input(|s| Message::LauncherSettings(LauncherSettingsMessage::SetTempPortablePath(s)))
+                .padding(6)
+                .size(13)
+                .width(Length::FillPortion(3)),
+        ]
+        .spacing(10)
+        .align_y(Alignment::Center);
+
+        if has_changes {
+            path_row = path_row.push(
+                widget::button(widget::text("Apply Path").size(13))
+                    .padding([5, 15])
+                    .on_press(Message::LauncherSettings(
+                        LauncherSettingsMessage::EnablePortableMode,
+                    )),
+            );
+        }
+
+        let custom_path_section = widget::column![
+            widget::text("Custom Storage Path (Optional)").size(14),
+            t("You can specify a custom sub-directory path relative to the executable, or an absolute path on another drive."),
+            widget::Space::with_height(2),
+            path_row,
+        ]
+        .spacing(5)
+        .padding(iced::Padding {
+            top: 10.0,
+            right: 0.0,
+            bottom: 0.0,
+            left: 25.0,
+        });
+
+        col = col.push(custom_path_section);
+    }
+
+    if is_system_redirect {
+        let redirect_section = widget::column![
+            widget::text("System Redirect Active").size(14),
+            t("Data is currently being redirected via a system-level qldir.txt file. This overrides standard portable behavior."),
+            widget::Space::with_height(5),
+            widget::button(widget::text("Disable System Redirection").size(13))
+                .padding([5, 15])
+                .on_press(Message::LauncherSettings(
+                    LauncherSettingsMessage::DisablePortableMode,
+                )),
+        ]
+        .spacing(5)
+        .padding(iced::Padding {
+            top: 10.0,
+            right: 0.0,
+            bottom: 0.0,
+            left: 25.0,
+        });
+
+        col = col.push(redirect_section);
+    }
+
+    col.into()
 }
 
 fn view_about_tab() -> Element<'static> {

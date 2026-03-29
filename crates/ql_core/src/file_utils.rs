@@ -69,12 +69,10 @@ pub const PORTABLE_FILENAME: &str = "qldir.txt";
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum PortableModeKind {
-    /// `qldir.txt` is beside the executable and is empty or contains `.`
-    NextToExe,
-    /// `qldir.txt` is beside the executable and contains a custom path.
-    PortableCustom(PathBuf),
-    /// `qldir.txt` is in the system data/config directory.
-    SystemRedirect(PathBuf),
+    /// `qldir.txt` is beside the executable. Contained path is from the file (None if empty).
+    Portable(Option<PathBuf>),
+    /// `qldir.txt` is in the system data/config directory. Contained path is from the file.
+    SystemRedirect(Option<PathBuf>),
 }
 
 /// Returns the current portable-mode state, or `None` if it is not active.
@@ -88,12 +86,9 @@ pub fn portable_mode_status() -> Option<PortableModeKind> {
     {
         let qldir_path = exe_dir.join(PORTABLE_FILENAME);
         if let Ok(contents) = std::fs::read_to_string(&qldir_path) {
-            let (path, _) = line_and_body(&contents);
-            return if path.is_empty() || path == "." {
-                Some(PortableModeKind::NextToExe)
-            } else {
-                Some(PortableModeKind::PortableCustom(PathBuf::from(path)))
-            };
+            let (path_str, _) = line_and_body(&contents);
+            let path = if path_str.is_empty() { None } else { Some(PathBuf::from(path_str)) };
+            return Some(PortableModeKind::Portable(path));
         }
     }
 
@@ -101,8 +96,9 @@ pub fn portable_mode_status() -> Option<PortableModeKind> {
     if let Some(data_dir) = dirs::data_dir().map(|d| d.join("QuantumLauncher")) {
         let qldir_path = data_dir.join(PORTABLE_FILENAME);
         if let Ok(contents) = std::fs::read_to_string(&qldir_path) {
-            let (path, _) = line_and_body(&contents);
-            return Some(PortableModeKind::SystemRedirect(PathBuf::from(path)));
+            let (path_str, _) = line_and_body(&contents);
+            let path = if path_str.is_empty() { None } else { Some(PathBuf::from(path_str)) };
+            return Some(PortableModeKind::SystemRedirect(path));
         }
     }
 
@@ -111,13 +107,13 @@ pub fn portable_mode_status() -> Option<PortableModeKind> {
 
 /// Creates a `qldir.txt` file next to the executable to enable portable mode.
 ///
-/// Writes an empty file, which makes the launcher store data in a
+/// If `path` is empty or `.`, the launcher stores data in a
 /// `QuantumLauncher/` folder next to the executable.
 ///
 /// # Errors
 /// - The executable path cannot be determined
 /// - The file cannot be written (permissions, disk full, etc.)
-pub fn create_portable_file() -> Result<(), IoError> {
+pub fn create_portable_file(path: String) -> Result<(), IoError> {
     let exe_dir = std::env::current_exe()
         .map_err(|e| IoError::Io {
             error: e,
@@ -130,7 +126,7 @@ pub fn create_portable_file() -> Result<(), IoError> {
             path: PathBuf::from("<exe parent>"),
         })?;
     let qldir_path = exe_dir.join(PORTABLE_FILENAME);
-    std::fs::write(&qldir_path, "").path(&qldir_path)
+    std::fs::write(&qldir_path, path).path(&qldir_path)
 }
 
 /// Deletes the `qldir.txt` file, disabling portable or redirected mode.

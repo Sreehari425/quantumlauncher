@@ -291,6 +291,7 @@ pub enum LauncherSettingsMessage {
     DisablePortableMode,
     DisablePortableModeConfirm,
     PortableModeStatusLoaded(Option<ql_core::PortableModeKind>),
+    SetTempPortablePath(String),
 }
 
 #[derive(Debug, Clone)]

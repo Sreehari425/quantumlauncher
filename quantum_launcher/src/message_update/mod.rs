@@ -372,10 +372,19 @@ impl Launcher {
                 }
             },
             LauncherSettingsMessage::EnablePortableMode => {
-                if let Err(err) = ql_core::create_portable_file() {
+                let path = if let State::LauncherSettings(menu) = &self.state {
+                    menu.temp_portable_path.clone()
+                } else {
+                    String::new()
+                };
+
+                if let Err(err) = ql_core::create_portable_file(path) {
                     self.set_error(err.to_string());
-                } else if let State::LauncherSettings(menu) = &mut self.state {
-                    menu.portable_mode_status = Some(ql_core::PortableModeKind::NextToExe);
+                } else if let State::LauncherSettings(_menu) = &mut self.state {
+                    return Task::perform(
+                        async { ql_core::portable_mode_status() },
+                        |status| LauncherSettingsMessage::PortableModeStatusLoaded(status).into(),
+                    );
                 }
             }
             LauncherSettingsMessage::DisablePortableMode => {
@@ -400,7 +409,21 @@ Your existing data will NOT be moved automatically.".to_owned(),
             }
             LauncherSettingsMessage::PortableModeStatusLoaded(status) => {
                 if let State::LauncherSettings(menu) = &mut self.state {
-                    menu.portable_mode_status = status;
+                    menu.portable_mode_status = status.clone();
+                    if let Some(status) = status {
+                        menu.temp_portable_path = match status {
+                            ql_core::PortableModeKind::Portable(Some(p))
+                            | ql_core::PortableModeKind::SystemRedirect(Some(p)) => {
+                                p.to_string_lossy().into_owned()
+                            }
+                            _ => String::new(),
+                        };
+                    }
+                }
+            }
+            LauncherSettingsMessage::SetTempPortablePath(path) => {
+                if let State::LauncherSettings(menu) = &mut self.state {
+                    menu.temp_portable_path = path;
                 }
             }
         }
@@ -439,6 +462,7 @@ Your existing data will NOT be moved automatically.".to_owned(),
             selected_tab: state::LauncherSettingsTab::UserInterface,
             arg_split_by_space: true,
             portable_mode_status: None,
+            temp_portable_path: String::new(),
         });
         // Load portable mode status asynchronously
         Task::perform(
