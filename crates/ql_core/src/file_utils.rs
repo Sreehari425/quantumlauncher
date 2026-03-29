@@ -69,10 +69,12 @@ pub const PORTABLE_FILENAME: &str = "qldir.txt";
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum PortableModeKind {
-    /// `qldir.txt` is empty or contains `.` — data lives next to the exe.
+    /// `qldir.txt` is beside the executable and is empty or contains `.`
     NextToExe,
-    /// `qldir.txt` contains a custom path.
-    CustomPath(PathBuf),
+    /// `qldir.txt` is beside the executable and contains a custom path.
+    PortableCustom(PathBuf),
+    /// `qldir.txt` is in the system data/config directory.
+    SystemRedirect(PathBuf),
 }
 
 /// Returns the current portable-mode state, or `None` if it is not active.
@@ -80,17 +82,31 @@ pub enum PortableModeKind {
 /// Reads `qldir.txt` from beside the executable (if it exists).
 #[must_use]
 pub fn portable_mode_status() -> Option<PortableModeKind> {
-    let exe_dir = std::env::current_exe()
+    if let Some(exe_dir) = std::env::current_exe()
         .ok()
-        .and_then(|p| p.parent().map(Path::to_owned))?;
-    let qldir_path = exe_dir.join(PORTABLE_FILENAME);
-    let contents = std::fs::read_to_string(&qldir_path).ok()?;
-    let (path, _) = line_and_body(&contents);
-    if path.is_empty() || path == "." {
-        Some(PortableModeKind::NextToExe)
-    } else {
-        Some(PortableModeKind::CustomPath(PathBuf::from(path)))
+        .and_then(|p| p.parent().map(Path::to_owned))
+    {
+        let qldir_path = exe_dir.join(PORTABLE_FILENAME);
+        if let Ok(contents) = std::fs::read_to_string(&qldir_path) {
+            let (path, _) = line_and_body(&contents);
+            return if path.is_empty() || path == "." {
+                Some(PortableModeKind::NextToExe)
+            } else {
+                Some(PortableModeKind::PortableCustom(PathBuf::from(path)))
+            };
+        }
     }
+
+    // Check system data dir (redirection)
+    if let Some(data_dir) = dirs::data_dir().map(|d| d.join("QuantumLauncher")) {
+        let qldir_path = data_dir.join(PORTABLE_FILENAME);
+        if let Ok(contents) = std::fs::read_to_string(&qldir_path) {
+            let (path, _) = line_and_body(&contents);
+            return Some(PortableModeKind::SystemRedirect(PathBuf::from(path)));
+        }
+    }
+
+    None
 }
 
 /// Creates a `qldir.txt` file next to the executable to enable portable mode.
@@ -117,24 +133,37 @@ pub fn create_portable_file() -> Result<(), IoError> {
     std::fs::write(&qldir_path, "").path(&qldir_path)
 }
 
-/// Deletes the `qldir.txt` file next to the executable, disabling portable mode.
+/// Deletes the `qldir.txt` file, disabling portable or redirected mode.
+///
+/// Searches for the file in the executable directory first, then in the
+/// system data directory.
 ///
 /// # Errors
 /// - The file cannot be deleted (e.g. it does not exist, permissions issue)
 pub fn delete_portable_file() -> Result<(), IoError> {
-    let exe_dir = std::env::current_exe()
-        .map_err(|e| IoError::Io {
-            error: e,
-            path: PathBuf::from("<current_exe>"),
-        })?
-        .parent()
-        .map(Path::to_owned)
-        .ok_or_else(|| IoError::Io {
-            error: std::io::Error::other("Could not determine executable directory"),
-            path: PathBuf::from("<exe parent>"),
-        })?;
-    let qldir_path = exe_dir.join(PORTABLE_FILENAME);
-    std::fs::remove_file(&qldir_path).path(&qldir_path)
+    // Try to delete from exe dir first
+    if let Some(exe_dir) = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(Path::to_owned))
+    {
+        let qldir_path = exe_dir.join(PORTABLE_FILENAME);
+        if qldir_path.exists() {
+            return std::fs::remove_file(&qldir_path).path(&qldir_path);
+        }
+    }
+
+    // Then try system data dir
+    if let Some(data_dir) = dirs::data_dir().map(|d| d.join("QuantumLauncher")) {
+        let qldir_path = data_dir.join(PORTABLE_FILENAME);
+        if qldir_path.exists() {
+            return std::fs::remove_file(&qldir_path).path(&qldir_path);
+        }
+    }
+
+    Err(IoError::Io {
+        error: std::io::Error::new(std::io::ErrorKind::NotFound, "qldir.txt not found"),
+        path: PathBuf::from("qldir.txt"),
+    })
 }
 
 fn line_and_body(input: &str) -> (String, String) {

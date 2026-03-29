@@ -298,10 +298,16 @@ fn view_portable_mode_section(
             "Disable Portable Mode",
             LauncherSettingsMessage::DisablePortableMode,
         ),
-        Some(ql_core::PortableModeKind::CustomPath(_)) => (
+        Some(ql_core::PortableModeKind::PortableCustom(_)) => (
             "Portable Mode: Active (custom path)",
-            "Data is stored at a custom path set in qldir.txt. Edit the file to change the path.",
+            "Data is stored at a custom path set in qldir.txt next to the executable.",
             "Disable Portable Mode",
+            LauncherSettingsMessage::DisablePortableMode,
+        ),
+        Some(ql_core::PortableModeKind::SystemRedirect(_)) => (
+            "Redirected Mode: Active",
+            "Data is redirected via a qldir.txt file in the system data directory.",
+            "Disable Redirection",
             LauncherSettingsMessage::DisablePortableMode,
         ),
     };
