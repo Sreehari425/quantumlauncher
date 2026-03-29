@@ -4,8 +4,7 @@ use crate::state::{
     LauncherSettingsTab, MainMenuMessage, ManageModsMessage, MenuCreateInstance,
     MenuCreateInstanceChoosing, MenuEditMods, MenuEditPresets, MenuExportInstance,
     MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLauncherSettings,
-    MenuLauncherUpdate, MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, MenuWelcome, Message,
-    State,
+    MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, MenuWelcome, Message, State,
 };
 use iced::{
     Task,
@@ -318,7 +317,6 @@ impl Launcher {
             })
             | State::Create(MenuCreateInstance::Choosing { .. })
             | State::Error { .. }
-            | State::UpdateFound(MenuLauncherUpdate { progress: None, .. })
             | State::LauncherSettings(_)
             | State::LoginMS(MenuLoginMS { .. })
             | State::AccountLogin
@@ -330,6 +328,11 @@ impl Launcher {
             | State::Welcome(_) => {
                 ret_to_main_screen = true;
             }
+            #[cfg(feature = "auto_update")]
+            State::UpdateFound(crate::state::MenuLauncherUpdate { progress: None, .. }) => {
+                ret_to_main_screen = true;
+            }
+
             State::License(_) => {
                 if affect {
                     if let State::LauncherSettings(_) = &self.state {
@@ -376,12 +379,13 @@ impl Launcher {
             State::ModsDownload(menu) if menu.mods_download_in_progress.is_empty() => {
                 ret_to_mods = true;
             }
+            #[cfg(feature = "auto_update")]
+            State::UpdateFound(_) => {}
             State::InstallPaper(_)
             | State::ExportInstance(_)
             | State::InstallForge(_)
             | State::InstallJava
             | State::InstallOptifine(_)
-            | State::UpdateFound(_)
             | State::InstallFabric(_)
             | State::EditMods(_)
             | State::Create(_)
@@ -458,7 +462,7 @@ impl Launcher {
             let State::Launch(menu) = &self.state else {
                 return Task::none();
             };
-            (menu.is_viewing_server, menu.sidebar_scrolled)
+            (menu.is_viewing_server, menu.sidebar_scroll_total)
         };
         let list = if is_viewing_server {
             self.server_list.clone()

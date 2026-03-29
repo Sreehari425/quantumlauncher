@@ -1,9 +1,8 @@
 use iced::widget::{self, column, text};
 
-use crate::{config::LauncherConfig, menu_renderer::Element};
+use crate::menu_renderer::Element;
 
-#[allow(unused)]
-pub fn changelog<'a>(config: &LauncherConfig) -> Element<'a> {
+pub fn changelog() -> Element<'static> {
     column![
         text("Welcome to QuantumLauncher v0.5.1!").size(40),
 

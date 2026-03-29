@@ -128,7 +128,7 @@ impl AccountType {
             AccountType::ElyBy => " (elyby)",
             AccountType::LittleSkin => " (littleskin)",
         };
-        format!("{}{suffix}", name)
+        format!("{name}{suffix}")
     }
 }
 

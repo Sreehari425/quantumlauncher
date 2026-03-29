@@ -14,12 +14,9 @@ use ql_core::{
     json::instance_config::{MainClassMode, PreLaunchPrefixMode},
     read_log::Diagnostic,
 };
-use ql_instances::{
-    UpdateCheckInfo,
-    auth::{
-        AccountData, AccountType,
-        ms::{AuthCodeResponse, AuthTokenResponse},
-    },
+use ql_instances::auth::{
+    AccountData, AccountType,
+    ms::{AuthCodeResponse, AuthTokenResponse},
 };
 use ql_mod_manager::{
     loaders::{fabric, paper::PaperVersion},
@@ -358,7 +355,11 @@ pub enum GameLogMessage {
 #[derive(Debug, Clone)]
 pub enum SidebarMessage {
     Resize(f32),
-    Scroll(f32),
+    Scroll {
+        total: f32,
+        offset: f32,
+        bounds: iced::Rectangle,
+    },
     FolderRenameConfirm,
 
     NewFolder(Option<SidebarSelection>),
@@ -461,7 +462,6 @@ pub enum Message {
     CoreOpenPath(PathBuf),
     CoreCopyText(String),
     CoreTick,
-    CoreTickConfigSaved(Res),
     CoreListLoaded(Res<(Vec<String>, bool)>),
     CoreOpenChangeLog,
     CoreOpenIntro,
@@ -477,10 +477,11 @@ pub enum Message {
     CoreLogScroll(isize),
     CoreLogScrollAbsolute(isize),
 
-    #[allow(unused)]
-    UpdateCheckResult(Res<UpdateCheckInfo>),
+    #[cfg(feature = "auto_update")]
+    UpdateCheckResult(Res<crate::launcher_update::UpdateCheckInfo>),
+    #[cfg(feature = "auto_update")]
     UpdateDownloadStart,
-    #[allow(unused)]
+    #[cfg(feature = "auto_update")]
     UpdateDownloadEnd(Res),
 
     ServerCommandEdit(String),

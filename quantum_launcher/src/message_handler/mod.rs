@@ -618,11 +618,7 @@ impl Launcher {
             let url = url.clone();
 
             Task::perform(
-                async move {
-                    ql_instances::install_launcher_update(url, sender)
-                        .await
-                        .strerr()
-                },
+                async move { crate::launcher_update::install(url, sender).await.strerr() },
                 Message::UpdateDownloadEnd,
             )
         } else {
