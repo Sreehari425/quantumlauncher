@@ -3,7 +3,7 @@ use crate::state::{
     AutoSaveKind, CreateInstanceMessage, LaunchTab, Launcher, LauncherSettingsMessage,
     LauncherSettingsTab, MainMenuMessage, ManageModsMessage, MenuCreateInstance,
     MenuCreateInstanceChoosing, MenuEditMods, MenuEditPresets, MenuExportInstance,
-    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLauncherSettings,
+    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper,
     MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, MenuWelcome, Message, State,
 };
 use iced::{

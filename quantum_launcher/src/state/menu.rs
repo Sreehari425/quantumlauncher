@@ -502,6 +502,7 @@ pub struct MenuLauncherSettings {
 pub enum LauncherSettingsTab {
     UserInterface,
     Internal,
+    Location,
     About,
 }
 
@@ -513,6 +514,7 @@ impl std::fmt::Display for LauncherSettingsTab {
             match self {
                 LauncherSettingsTab::UserInterface => "Appearance",
                 LauncherSettingsTab::Internal => "Game",
+                LauncherSettingsTab::Location => "Location",
                 LauncherSettingsTab::About => "About",
             }
         )
@@ -520,19 +522,26 @@ impl std::fmt::Display for LauncherSettingsTab {
 }
 
 impl LauncherSettingsTab {
-    pub const ALL: &'static [Self] = &[Self::UserInterface, Self::Internal, Self::About];
+    pub const ALL: &'static [Self] = &[
+        Self::UserInterface,
+        Self::Internal,
+        Self::Location,
+        Self::About,
+    ];
 
     pub const fn next(self) -> Self {
         match self {
             Self::UserInterface => Self::Internal,
-            Self::Internal | Self::About => Self::About,
+            Self::Internal => Self::Location,
+            Self::Location | Self::About => Self::About,
         }
     }
 
     pub const fn prev(self) -> Self {
         match self {
             Self::UserInterface | Self::Internal => Self::UserInterface,
-            Self::About => Self::Internal,
+            Self::Location => Self::Internal,
+            Self::About => Self::Location,
         }
     }
 }

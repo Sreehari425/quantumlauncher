@@ -162,6 +162,23 @@ Only increase if progress bars stutter or "not responding" dialogs show"#).size(
         ])
         .into()
     }
+
+    fn view_location_tab<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {
+        checkered_list::<Element>([
+            widget::column![widget::text("Location").size(20)].into(),
+            widget::column![
+                button_with_icon(icons::folder(), "Open Launcher Folder", 16)
+                    .on_press(Message::CoreOpenPath(LAUNCHER_DIR.clone())),
+                widget::text("Opens the folder where all launcher data is stored.")
+                    .size(12)
+                    .style(tsubtitle),
+            ]
+            .spacing(5)
+            .into(),
+            view_portable_mode_section(&self.portable_mode_status).into(),
+        ])
+        .into()
+    }
 }
 
 fn get_ui_opacity(config: &LauncherConfig) -> widget::Column<'static, Message, LauncherTheme> {
@@ -214,11 +231,9 @@ impl LauncherSettingsTab {
     ) -> Element<'a> {
         match self {
             LauncherSettingsTab::UserInterface => menu.view_ui_tab(config),
+            LauncherSettingsTab::Location => menu.view_location_tab(config),
             LauncherSettingsTab::Internal => widget::column![
                 widget::text("Game").size(20),
-                button_with_icon(icons::folder(), "Open Launcher Folder", 16)
-                    .on_press(Message::CoreOpenPath(LAUNCHER_DIR.clone())),
-                widget::horizontal_rule(1),
                 resolution_dialog(
                     config.global_settings.as_ref(),
                     |n| Message::LauncherSettings(
@@ -244,8 +259,6 @@ impl LauncherSettingsTab {
                     |n| LauncherSettingsMessage::GlobalPreLaunchPrefix(n).into(),
                 ),
                 args_split_by_space(menu.arg_split_by_space),
-                widget::horizontal_rule(1),
-                view_portable_mode_section(&menu.portable_mode_status),
                 widget::horizontal_rule(1),
                 widget::row![
                     button_with_icon(icons::bin(), "Clear Java installs", 16)
