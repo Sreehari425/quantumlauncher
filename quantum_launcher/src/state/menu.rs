@@ -495,8 +495,9 @@ pub struct MenuLauncherSettings {
     pub selected_tab: LauncherSettingsTab,
     pub arg_split_by_space: bool,
     /// Current portable mode status, loaded asynchronously when settings opens.
-    pub portable_mode_status: Option<ql_core::PortableModeKind>,
+    pub portable_mode_status: ql_core::FullPortableStatus,
     pub temp_portable_path: String,
+    pub temp_system_redirect_path: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

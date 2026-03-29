@@ -78,8 +78,9 @@ pub enum PortableModeKind {
 /// Returns the current portable-mode state, or `None` if it is not active.
 ///
 /// Reads `qldir.txt` from beside the executable (if it exists).
+/// Returns the current portable-mode state for the executable directory.
 #[must_use]
-pub fn portable_mode_status() -> Option<PortableModeKind> {
+pub fn get_portable_status() -> Option<Option<PathBuf>> {
     if let Some(exe_dir) = std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(Path::to_owned))
@@ -87,22 +88,38 @@ pub fn portable_mode_status() -> Option<PortableModeKind> {
         let qldir_path = exe_dir.join(PORTABLE_FILENAME);
         if let Ok(contents) = std::fs::read_to_string(&qldir_path) {
             let (path_str, _) = line_and_body(&contents);
-            let path = if path_str.is_empty() { None } else { Some(PathBuf::from(path_str)) };
-            return Some(PortableModeKind::Portable(path));
+            return Some(if path_str.is_empty() { None } else { Some(PathBuf::from(path_str)) });
         }
     }
+    None
+}
 
-    // Check system data dir (redirection)
+/// Returns the current portable-mode state for the system data directory.
+#[must_use]
+pub fn get_system_redirect_status() -> Option<Option<PathBuf>> {
     if let Some(data_dir) = dirs::data_dir().map(|d| d.join("QuantumLauncher")) {
         let qldir_path = data_dir.join(PORTABLE_FILENAME);
         if let Ok(contents) = std::fs::read_to_string(&qldir_path) {
             let (path_str, _) = line_and_body(&contents);
-            let path = if path_str.is_empty() { None } else { Some(PathBuf::from(path_str)) };
-            return Some(PortableModeKind::SystemRedirect(path));
+            return Some(if path_str.is_empty() { None } else { Some(PathBuf::from(path_str)) });
         }
     }
-
     None
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FullPortableStatus {
+    pub portable: Option<Option<PathBuf>>,
+    pub system_redirect: Option<Option<PathBuf>>,
+}
+
+/// Returns the current portable-mode state, checking both locations.
+#[must_use]
+pub fn portable_mode_status() -> FullPortableStatus {
+    FullPortableStatus {
+        portable: get_portable_status(),
+        system_redirect: get_system_redirect_status(),
+    }
 }
 
 /// Creates a `qldir.txt` file next to the executable to enable portable mode.
@@ -129,15 +146,30 @@ pub fn create_portable_file(path: String) -> Result<(), IoError> {
     std::fs::write(&qldir_path, path).path(&qldir_path)
 }
 
-/// Deletes the `qldir.txt` file, disabling portable or redirected mode.
-///
-/// Searches for the file in the executable directory first, then in the
-/// system data directory.
+/// Creates a `qldir.txt` file in the system data directory to enable system-level redirection.
 ///
 /// # Errors
-/// - The file cannot be deleted (e.g. it does not exist, permissions issue)
+/// - The system data directory cannot be determined
+/// - The file cannot be written (permissions, disk full, etc.)
+pub fn create_system_redirect_file(path: String) -> Result<(), IoError> {
+    let data_dir = dirs::data_dir()
+        .map(|d| d.join("QuantumLauncher"))
+        .ok_or_else(|| IoError::Io {
+            error: std::io::Error::other("Could not determine system data directory"),
+            path: PathBuf::from("<system data dir>"),
+        })?;
+
+    // Ensure the directory exists
+    if !data_dir.exists() {
+        std::fs::create_dir_all(&data_dir).path(&data_dir)?;
+    }
+
+    let qldir_path = data_dir.join(PORTABLE_FILENAME);
+    std::fs::write(&qldir_path, path).path(&qldir_path)
+}
+
+/// Deletes the `qldir.txt` file from beside the executable.
 pub fn delete_portable_file() -> Result<(), IoError> {
-    // Try to delete from exe dir first
     if let Some(exe_dir) = std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(Path::to_owned))
@@ -148,7 +180,14 @@ pub fn delete_portable_file() -> Result<(), IoError> {
         }
     }
 
-    // Then try system data dir
+    Err(IoError::Io {
+        error: std::io::Error::new(std::io::ErrorKind::NotFound, "Portable qldir.txt not found"),
+        path: PathBuf::from("qldir.txt"),
+    })
+}
+
+/// Deletes the `qldir.txt` file from the system data directory.
+pub fn delete_system_redirect_file() -> Result<(), IoError> {
     if let Some(data_dir) = dirs::data_dir().map(|d| d.join("QuantumLauncher")) {
         let qldir_path = data_dir.join(PORTABLE_FILENAME);
         if qldir_path.exists() {
@@ -157,7 +196,7 @@ pub fn delete_portable_file() -> Result<(), IoError> {
     }
 
     Err(IoError::Io {
-        error: std::io::Error::new(std::io::ErrorKind::NotFound, "qldir.txt not found"),
+        error: std::io::Error::new(std::io::ErrorKind::NotFound, "System redirect qldir.txt not found"),
         path: PathBuf::from("qldir.txt"),
     })
 }

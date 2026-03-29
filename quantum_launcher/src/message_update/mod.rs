@@ -393,32 +393,68 @@ impl Launcher {
                     msg2: "The launcher will store data in the system data directory instead.
 Your existing data will NOT be moved automatically.".to_owned(),
                     yes: LauncherSettingsMessage::DisablePortableModeConfirm.into(),
-                    no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Internal)
+                    no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
                         .into(),
                 };
             }
             LauncherSettingsMessage::DisablePortableModeConfirm => {
                 if let Err(err) = ql_core::delete_portable_file() {
                     self.set_error(err.to_string());
-                } else if let State::LauncherSettings(menu) = &mut self.state {
-                    menu.portable_mode_status = None;
                 }
                 return Task::done(
-                    LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Internal).into(),
+                    LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location).into(),
                 );
             }
             LauncherSettingsMessage::PortableModeStatusLoaded(status) => {
                 if let State::LauncherSettings(menu) = &mut self.state {
                     menu.portable_mode_status = status.clone();
-                    if let Some(status) = status {
-                        menu.temp_portable_path = match status {
-                            ql_core::PortableModeKind::Portable(Some(p))
-                            | ql_core::PortableModeKind::SystemRedirect(Some(p)) => {
-                                p.to_string_lossy().into_owned()
-                            }
-                            _ => String::new(),
-                        };
-                    }
+
+                    menu.temp_portable_path = match status.portable {
+                        Some(Some(p)) => p.to_string_lossy().into_owned(),
+                        _ => String::new(),
+                    };
+
+                    menu.temp_system_redirect_path = match status.system_redirect {
+                        Some(Some(p)) => p.to_string_lossy().into_owned(),
+                        _ => String::new(),
+                    };
+                }
+            }
+            LauncherSettingsMessage::EnableSystemRedirect => {
+                let mut path = String::new();
+                if let State::LauncherSettings(menu) = &self.state {
+                    path = menu.temp_system_redirect_path.clone();
+                }
+
+                if let Err(err) = ql_core::create_system_redirect_file(path) {
+                    self.set_error(err.to_string());
+                } else if let State::LauncherSettings(_) = &mut self.state {
+                    return Task::perform(
+                        async { ql_core::portable_mode_status() },
+                        |status| LauncherSettingsMessage::PortableModeStatusLoaded(status).into(),
+                    );
+                }
+            }
+            LauncherSettingsMessage::DisableSystemRedirect => {
+                self.state = State::ConfirmAction {
+                    msg1: "disable system-wide redirection".to_owned(),
+                    msg2: "The launcher will stop reading data globally from the system data directory. Your existing data will NOT be moved.".to_owned(),
+                    yes: LauncherSettingsMessage::DisableSystemRedirectConfirm.into(),
+                    no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
+                        .into(),
+                };
+            }
+            LauncherSettingsMessage::DisableSystemRedirectConfirm => {
+                if let Err(err) = ql_core::delete_system_redirect_file() {
+                    self.set_error(err.to_string());
+                }
+                return Task::done(
+                    LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location).into(),
+                );
+            }
+            LauncherSettingsMessage::SetTempSystemRedirectPath(path) => {
+                if let State::LauncherSettings(menu) = &mut self.state {
+                    menu.temp_system_redirect_path = path;
                 }
             }
             LauncherSettingsMessage::SetTempPortablePath(path) => {
@@ -461,8 +497,12 @@ Your existing data will NOT be moved automatically.".to_owned(),
             temp_scale: self.config.ui_scale.unwrap_or(1.0),
             selected_tab: state::LauncherSettingsTab::UserInterface,
             arg_split_by_space: true,
-            portable_mode_status: None,
+            portable_mode_status: ql_core::FullPortableStatus {
+                portable: None,
+                system_redirect: None,
+            },
             temp_portable_path: String::new(),
+            temp_system_redirect_path: String::new(),
         });
         // Load portable mode status asynchronously
         Task::perform(

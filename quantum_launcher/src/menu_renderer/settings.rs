@@ -183,6 +183,7 @@ Only increase if progress bars stutter or "not responding" dialogs show"#).size(
             .spacing(5)
             .into(),
             view_portable_mode_section(self).into(),
+            view_system_redirect_section(self).into(),
         ])
         .into()
     }
@@ -290,36 +291,45 @@ impl LauncherSettingsTab {
 fn view_portable_mode_section(
     menu: &MenuLauncherSettings,
 ) -> iced::Element<'static, Message, super::LauncherTheme> {
-    let status = &menu.portable_mode_status;
+    let status = &menu.portable_mode_status.portable;
     let temp_path = &menu.temp_portable_path;
 
     let t = |s| widget::text(s).size(12).style(tsubtitle);
 
-    let is_portable = status.is_some() && !matches!(status, Some(ql_core::PortableModeKind::SystemRedirect(_)));
-    let is_system_redirect = matches!(status, Some(ql_core::PortableModeKind::SystemRedirect(_)));
+    let is_active = status.is_some();
 
-    let toggle_msg = if is_portable {
+    let toggle_msg = if is_active {
         LauncherSettingsMessage::DisablePortableMode
     } else {
         LauncherSettingsMessage::EnablePortableMode
     };
 
-    let portable_checkbox = widget::checkbox("Enable Portable Mode", is_portable)
+    let portable_checkbox = widget::checkbox("Enable Portable Mode", is_active)
         .size(16)
         .text_size(15)
         .on_toggle(move |_| Message::LauncherSettings(toggle_msg.clone()));
 
     let mut col = widget::column![
-        widget::text("Portable Mode").size(16),
-        t("Store launcher data alongside the executable instead of the default system data directory."),
+        widget::row![
+            widget::text("Portable Mode").size(16),
+            widget::horizontal_space(),
+            widget::text(if is_active { "ACTIVE" } else { "INACTIVE" })
+                .size(12)
+                .style(if is_active {
+                    |t: &super::LauncherTheme| widget::text::Style { color: Some(iced::Color::from_rgb8(0x94, 0xe2, 0xd5)) }
+                } else {
+                    |t: &super::LauncherTheme| widget::text::Style { color: Some(iced::Color::from_rgb8(0xf3, 0x8b, 0xa8)) }
+                }),
+        ].align_y(Alignment::Center),
+        t("Store launcher data alongside the executable. (Highest Priority)"),
         widget::Space::with_height(5),
         portable_checkbox,
     ]
     .spacing(5);
 
-    if is_portable {
+    if is_active {
         let current_path = match status {
-            Some(ql_core::PortableModeKind::Portable(Some(p))) => p.to_string_lossy().into_owned(),
+            Some(Some(p)) => p.to_string_lossy().into_owned(),
             _ => String::new(),
         };
 
@@ -347,7 +357,7 @@ fn view_portable_mode_section(
 
         let custom_path_section = widget::column![
             widget::text("Custom Storage Path (Optional)").size(14),
-            t("You can specify a custom sub-directory path relative to the executable, or an absolute path on another drive."),
+            t("Specify a sub-directory path relative to the executable, or an absolute path."),
             widget::Space::with_height(2),
             path_row,
         ]
@@ -362,16 +372,100 @@ fn view_portable_mode_section(
         col = col.push(custom_path_section);
     }
 
-    if is_system_redirect {
-        let redirect_section = widget::column![
-            widget::text("System Redirect Active").size(14),
-            t("Data is currently being redirected via a system-level qldir.txt file. This overrides standard portable behavior."),
-            widget::Space::with_height(5),
-            widget::button(widget::text("Disable System Redirection").size(13))
-                .padding([5, 15])
-                .on_press(Message::LauncherSettings(
-                    LauncherSettingsMessage::DisablePortableMode,
-                )),
+    col.into()
+}
+
+fn view_system_redirect_section(
+    menu: &MenuLauncherSettings,
+) -> iced::Element<'static, Message, super::LauncherTheme> {
+    let status = &menu.portable_mode_status.system_redirect;
+    let portable_active = menu.portable_mode_status.portable.is_some();
+    let temp_path = &menu.temp_system_redirect_path;
+
+    let t = |s| widget::text(s).size(12).style(tsubtitle);
+
+    let is_active = status.is_some();
+
+    let toggle_msg = if is_active {
+        LauncherSettingsMessage::DisableSystemRedirect
+    } else {
+        LauncherSettingsMessage::EnableSystemRedirect
+    };
+
+    let redirect_checkbox = widget::checkbox("Enable System-Wide Redirection", is_active)
+        .size(16)
+        .text_size(15)
+        .on_toggle(move |_| Message::LauncherSettings(toggle_msg.clone()));
+
+    let mut status_row = widget::row![
+        widget::text("System Redirection").size(16),
+        widget::horizontal_space(),
+    ].align_y(Alignment::Center).spacing(10);
+
+    if is_active && portable_active {
+        status_row = status_row.push(
+            widget::text("OVERRIDDEN")
+                .size(12)
+                .style(|_: &super::LauncherTheme| widget::text::Style { color: Some(iced::Color::from_rgb8(0xfa, 0xa3, 0x56)) })
+        );
+    }
+
+    status_row = status_row.push(
+        widget::text(if is_active { "ACTIVE" } else { "INACTIVE" })
+            .size(12)
+            .style(if is_active {
+                |t: &super::LauncherTheme| widget::text::Style { color: Some(iced::Color::from_rgb8(0x94, 0xe2, 0xd5)) }
+            } else {
+                |t: &super::LauncherTheme| widget::text::Style { color: Some(iced::Color::from_rgb8(0xf3, 0x8b, 0xa8)) }
+            }),
+    );
+
+    let mut col = widget::column![
+        status_row,
+        t("Redirect data globally via the system data directory (~/.local/share/QuantumLauncher)."),
+    ]
+    .spacing(5);
+
+    if is_active && portable_active {
+        col = col.push(t("Warning: Portable Mode is currently active and takes priority over this setting.").style(|_: &super::LauncherTheme| widget::text::Style { color: Some(iced::Color::from_rgb8(0xfa, 0xa3, 0x56)) }));
+    }
+
+    col = col.push(widget::Space::with_height(5));
+    col = col.push(redirect_checkbox);
+
+    if is_active {
+        let current_path = match status {
+            Some(Some(p)) => p.to_string_lossy().into_owned(),
+            _ => String::new(),
+        };
+
+        let has_changes = temp_path != &current_path;
+
+        let mut path_row = widget::row![
+            widget::text_input("Enter redirection path...", temp_path)
+                .on_input(|s| Message::LauncherSettings(LauncherSettingsMessage::SetTempSystemRedirectPath(s)))
+                .padding(6)
+                .size(13)
+                .width(Length::FillPortion(3)),
+        ]
+        .spacing(10)
+        .align_y(Alignment::Center);
+
+        if has_changes {
+            path_row = path_row.push(
+                widget::button(widget::text("Apply Path").size(13))
+                    .padding([5, 15])
+                    .on_press(Message::LauncherSettings(
+                        LauncherSettingsMessage::EnableSystemRedirect,
+                    )),
+            );
+        }
+
+        let custom_path_section = widget::column![
+            widget::text("Global Redirect Path").size(14),
+            t("All instances will be redirected to this location unless a local portable override exists."),
+            widget::Space::with_height(2),
+            path_row,
         ]
         .spacing(5)
         .padding(iced::Padding {
@@ -381,7 +475,7 @@ fn view_portable_mode_section(
             left: 25.0,
         });
 
-        col = col.push(redirect_section);
+        col = col.push(custom_path_section);
     }
 
     col.into()

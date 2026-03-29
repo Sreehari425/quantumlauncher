@@ -290,7 +290,11 @@ pub enum LauncherSettingsMessage {
     EnablePortableMode,
     DisablePortableMode,
     DisablePortableModeConfirm,
-    PortableModeStatusLoaded(Option<ql_core::PortableModeKind>),
+    PortableModeStatusLoaded(ql_core::FullPortableStatus),
+    EnableSystemRedirect,
+    DisableSystemRedirect,
+    DisableSystemRedirectConfirm,
+    SetTempSystemRedirectPath(String),
     SetTempPortablePath(String),
 }
 

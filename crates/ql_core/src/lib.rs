@@ -55,8 +55,9 @@ pub use error::{
     JsonError, JsonFileError,
 };
 pub use file_utils::{
-    LAUNCHER_DIR, PortableModeKind, RequestError, create_portable_file, delete_portable_file,
-    portable_mode_status,
+    LAUNCHER_DIR, FullPortableStatus, RequestError, create_portable_file, delete_portable_file,
+    portable_mode_status, create_system_redirect_file, delete_system_redirect_file, 
+    get_portable_status, get_system_redirect_status
 };
 pub use print::{LOGGER, LogType, LoggingState, logger_finish};
 pub use progress::{DownloadProgress, GenericProgress, Progress};
