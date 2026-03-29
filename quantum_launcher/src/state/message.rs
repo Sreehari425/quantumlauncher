@@ -294,8 +294,13 @@ pub enum LauncherSettingsMessage {
     EnableSystemRedirect,
     DisableSystemRedirect,
     DisableSystemRedirectConfirm,
-    SetTempSystemRedirectPath(String),
-    SetTempPortablePath(String),
+    SetTempPath(PathKind, String),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PathKind {
+    Portable,
+    SystemRedirect,
 }
 
 #[derive(Debug, Clone)]

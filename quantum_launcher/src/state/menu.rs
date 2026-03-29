@@ -496,8 +496,13 @@ pub struct MenuLauncherSettings {
     pub arg_split_by_space: bool,
     /// Current portable mode status, loaded asynchronously when settings opens.
     pub portable_mode_status: ql_core::FullPortableStatus,
-    pub temp_portable_path: String,
-    pub temp_system_redirect_path: String,
+    pub temp_paths: TempPaths,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct TempPaths {
+    pub portable: String,
+    pub system_redirect: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

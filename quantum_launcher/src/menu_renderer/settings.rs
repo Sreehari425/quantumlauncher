@@ -292,7 +292,7 @@ fn view_portable_mode_section(
     menu: &MenuLauncherSettings,
 ) -> iced::Element<'static, Message, super::LauncherTheme> {
     let status = &menu.portable_mode_status.portable;
-    let temp_path = &menu.temp_portable_path;
+    let temp_path = &menu.temp_paths.portable;
 
     let t = |s| widget::text(s).size(12).style(tsubtitle);
 
@@ -316,11 +316,16 @@ fn view_portable_mode_section(
             widget::text(if is_active { "ACTIVE" } else { "INACTIVE" })
                 .size(12)
                 .style(if is_active {
-                    |t: &super::LauncherTheme| widget::text::Style { color: Some(iced::Color::from_rgb8(0x94, 0xe2, 0xd5)) }
+                    |t: &super::LauncherTheme| widget::text::Style {
+                        color: Some(iced::Color::from_rgb8(0x94, 0xe2, 0xd5)),
+                    }
                 } else {
-                    |t: &super::LauncherTheme| widget::text::Style { color: Some(iced::Color::from_rgb8(0xf3, 0x8b, 0xa8)) }
+                    |t: &super::LauncherTheme| widget::text::Style {
+                        color: Some(iced::Color::from_rgb8(0xf3, 0x8b, 0xa8)),
+                    }
                 }),
-        ].align_y(Alignment::Center),
+        ]
+        .align_y(Alignment::Center),
         t("Store launcher data alongside the executable. (Highest Priority)"),
         widget::Space::with_height(5),
         portable_checkbox,
@@ -336,11 +341,16 @@ fn view_portable_mode_section(
         let has_changes = temp_path != &current_path;
 
         let mut path_row = widget::row![
-            widget::text_input("Leave blank to store right next to the executable.", temp_path)
-                .on_input(|s| Message::LauncherSettings(LauncherSettingsMessage::SetTempPortablePath(s)))
-                .padding(6)
-                .size(13)
-                .width(Length::FillPortion(3)),
+            widget::text_input(
+                "Leave blank to store right next to the executable.",
+                temp_path
+            )
+            .on_input(
+                |s| Message::LauncherSettings(LauncherSettingsMessage::SetTempPath(crate::state::PathKind::Portable, s))
+            )
+            .padding(6)
+            .size(13)
+            .width(Length::FillPortion(3)),
         ]
         .spacing(10)
         .align_y(Alignment::Center);
@@ -380,7 +390,7 @@ fn view_system_redirect_section(
 ) -> iced::Element<'static, Message, super::LauncherTheme> {
     let status = &menu.portable_mode_status.system_redirect;
     let portable_active = menu.portable_mode_status.portable.is_some();
-    let temp_path = &menu.temp_system_redirect_path;
+    let temp_path = &menu.temp_paths.system_redirect;
 
     let t = |s| widget::text(s).size(12).style(tsubtitle);
 
@@ -400,23 +410,29 @@ fn view_system_redirect_section(
     let mut status_row = widget::row![
         widget::text("System Redirection").size(16),
         widget::horizontal_space(),
-    ].align_y(Alignment::Center).spacing(10);
+    ]
+    .align_y(Alignment::Center)
+    .spacing(10);
 
     if is_active && portable_active {
-        status_row = status_row.push(
-            widget::text("OVERRIDDEN")
-                .size(12)
-                .style(|_: &super::LauncherTheme| widget::text::Style { color: Some(iced::Color::from_rgb8(0xfa, 0xa3, 0x56)) })
-        );
+        status_row = status_row.push(widget::text("OVERRIDDEN").size(12).style(
+            |_: &super::LauncherTheme| widget::text::Style {
+                color: Some(iced::Color::from_rgb8(0xfa, 0xa3, 0x56)),
+            },
+        ));
     }
 
     status_row = status_row.push(
         widget::text(if is_active { "ACTIVE" } else { "INACTIVE" })
             .size(12)
             .style(if is_active {
-                |t: &super::LauncherTheme| widget::text::Style { color: Some(iced::Color::from_rgb8(0x94, 0xe2, 0xd5)) }
+                |t: &super::LauncherTheme| widget::text::Style {
+                    color: Some(iced::Color::from_rgb8(0x94, 0xe2, 0xd5)),
+                }
             } else {
-                |t: &super::LauncherTheme| widget::text::Style { color: Some(iced::Color::from_rgb8(0xf3, 0x8b, 0xa8)) }
+                |t: &super::LauncherTheme| widget::text::Style {
+                    color: Some(iced::Color::from_rgb8(0xf3, 0x8b, 0xa8)),
+                }
             }),
     );
 
@@ -427,7 +443,12 @@ fn view_system_redirect_section(
     .spacing(5);
 
     if is_active && portable_active {
-        col = col.push(t("Warning: Portable Mode is currently active and takes priority over this setting.").style(|_: &super::LauncherTheme| widget::text::Style { color: Some(iced::Color::from_rgb8(0xfa, 0xa3, 0x56)) }));
+        col = col.push(
+            t("Warning: Portable Mode is currently active and takes priority over this setting.")
+                .style(|_: &super::LauncherTheme| widget::text::Style {
+                    color: Some(iced::Color::from_rgb8(0xfa, 0xa3, 0x56)),
+                }),
+        );
     }
 
     col = col.push(widget::Space::with_height(5));
@@ -443,7 +464,9 @@ fn view_system_redirect_section(
 
         let mut path_row = widget::row![
             widget::text_input("Enter redirection path...", temp_path)
-                .on_input(|s| Message::LauncherSettings(LauncherSettingsMessage::SetTempSystemRedirectPath(s)))
+                .on_input(|s| Message::LauncherSettings(
+                    LauncherSettingsMessage::SetTempPath(crate::state::PathKind::SystemRedirect, s)
+                ))
                 .padding(6)
                 .size(13)
                 .width(Length::FillPortion(3)),
