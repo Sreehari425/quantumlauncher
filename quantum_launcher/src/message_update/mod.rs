@@ -460,14 +460,28 @@ impl Launcher {
                 }
             }
             LauncherSettingsMessage::EnableSystemRedirect => {
-                let (path, flags) = if let State::LauncherSettings(menu) = &self.state {
-                    (menu.temp_paths.system_redirect.clone(), menu.temp_paths.system_redirect_flags.clone())
+                let (mut path, flags) = if let State::LauncherSettings(menu) = &self.state {
+                    (
+                        menu.temp_paths.system_redirect.clone(),
+                        menu.temp_paths.system_redirect_flags.clone(),
+                    )
                 } else {
                     (String::new(), HashSet::new())
                 };
+
+                // Case: user didn't specify a path, but enabled it.
+                // We default to "." which means "store precisely in the system data directory"
+                // rather than nesting it further inside "QuantumLauncher/QuantumLauncher"
+                if path.is_empty() {
+                    path = ".".to_owned();
+                }
+
                 self.state = State::ConfirmAction {
                     msg1: "enable system-wide redirection".to_owned(),
-                    msg2: "The launcher will store data globally in the specified redirected directory.\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart.".to_owned(),
+                    msg2: format!(
+                        "The launcher will store data globally in: {}\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart.",
+                        if path == "." { "system data directory" } else { &path }
+                    ),
                     yes: LauncherSettingsMessage::EnableSystemRedirectConfirm(path, flags).into(),
                     no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
                         .into(),
