@@ -68,11 +68,17 @@ struct QlDirInfo {
 pub const PORTABLE_FILENAME: &str = "qldir.txt";
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct QlDirStatus {
+    pub path: Option<PathBuf>,
+    pub flags: HashSet<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum PortableModeKind {
-    /// `qldir.txt` is beside the executable. Contained path is from the file (None if empty).
-    Portable(Option<PathBuf>),
-    /// `qldir.txt` is in the system data/config directory. Contained path is from the file.
-    SystemRedirect(Option<PathBuf>),
+    /// `qldir.txt` is beside the executable. Contained path and flags are from the file.
+    Portable(QlDirStatus),
+    /// `qldir.txt` is in the system data/config directory. Contained path and flags are from the file.
+    SystemRedirect(QlDirStatus),
 }
 
 /// Returns the current portable-mode state, or `None` if it is not active.
@@ -80,15 +86,17 @@ pub enum PortableModeKind {
 /// Reads `qldir.txt` from beside the executable (if it exists).
 /// Returns the current portable-mode state for the executable directory.
 #[must_use]
-pub fn get_portable_status() -> Option<Option<PathBuf>> {
+pub fn get_portable_status() -> Option<QlDirStatus> {
     if let Some(exe_dir) = std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(Path::to_owned))
     {
         let qldir_path = exe_dir.join(PORTABLE_FILENAME);
         if let Ok(contents) = std::fs::read_to_string(&qldir_path) {
-            let (path_str, _) = line_and_body(&contents);
-            return Some(if path_str.is_empty() { None } else { Some(PathBuf::from(path_str)) });
+            let (path_str, flags_str) = line_and_body(&contents);
+            let path = if path_str.is_empty() { None } else { Some(PathBuf::from(path_str)) };
+            let flags = flags_str.split(',').map(|s| s.trim().to_lowercase()).filter(|n| !n.is_empty()).collect();
+            return Some(QlDirStatus { path, flags });
         }
     }
     None
@@ -96,12 +104,14 @@ pub fn get_portable_status() -> Option<Option<PathBuf>> {
 
 /// Returns the current portable-mode state for the system data directory.
 #[must_use]
-pub fn get_system_redirect_status() -> Option<Option<PathBuf>> {
+pub fn get_system_redirect_status() -> Option<QlDirStatus> {
     if let Some(data_dir) = dirs::data_dir().map(|d| d.join("QuantumLauncher")) {
         let qldir_path = data_dir.join(PORTABLE_FILENAME);
         if let Ok(contents) = std::fs::read_to_string(&qldir_path) {
-            let (path_str, _) = line_and_body(&contents);
-            return Some(if path_str.is_empty() { None } else { Some(PathBuf::from(path_str)) });
+            let (path_str, flags_str) = line_and_body(&contents);
+            let path = if path_str.is_empty() { None } else { Some(PathBuf::from(path_str)) };
+            let flags = flags_str.split(',').map(|s| s.trim().to_lowercase()).filter(|n| !n.is_empty()).collect();
+            return Some(QlDirStatus { path, flags });
         }
     }
     None
@@ -109,8 +119,8 @@ pub fn get_system_redirect_status() -> Option<Option<PathBuf>> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FullPortableStatus {
-    pub portable: Option<Option<PathBuf>>,
-    pub system_redirect: Option<Option<PathBuf>>,
+    pub portable: Option<QlDirStatus>,
+    pub system_redirect: Option<QlDirStatus>,
 }
 
 /// Returns the current portable-mode state, checking both locations.
@@ -130,7 +140,7 @@ pub fn portable_mode_status() -> FullPortableStatus {
 /// # Errors
 /// - The executable path cannot be determined
 /// - The file cannot be written (permissions, disk full, etc.)
-pub fn create_portable_file(path: String) -> Result<(), IoError> {
+pub fn create_portable_file(path: String, flags: HashSet<String>) -> Result<(), IoError> {
     let exe_dir = std::env::current_exe()
         .map_err(|e| IoError::Io {
             error: e,
@@ -143,7 +153,12 @@ pub fn create_portable_file(path: String) -> Result<(), IoError> {
             path: PathBuf::from("<exe parent>"),
         })?;
     let qldir_path = exe_dir.join(PORTABLE_FILENAME);
-    std::fs::write(&qldir_path, path).path(&qldir_path)
+    let mut contents = path;
+    if !flags.is_empty() {
+        contents.push('\n');
+        contents.push_str(&flags.into_iter().collect::<Vec<_>>().join(","));
+    }
+    std::fs::write(&qldir_path, contents).path(&qldir_path)
 }
 
 /// Creates a `qldir.txt` file in the system data directory to enable system-level redirection.
@@ -151,7 +166,7 @@ pub fn create_portable_file(path: String) -> Result<(), IoError> {
 /// # Errors
 /// - The system data directory cannot be determined
 /// - The file cannot be written (permissions, disk full, etc.)
-pub fn create_system_redirect_file(path: String) -> Result<(), IoError> {
+pub fn create_system_redirect_file(path: String, flags: HashSet<String>) -> Result<(), IoError> {
     let data_dir = dirs::data_dir()
         .map(|d| d.join("QuantumLauncher"))
         .ok_or_else(|| IoError::Io {
@@ -165,7 +180,12 @@ pub fn create_system_redirect_file(path: String) -> Result<(), IoError> {
     }
 
     let qldir_path = data_dir.join(PORTABLE_FILENAME);
-    std::fs::write(&qldir_path, path).path(&qldir_path)
+    let mut contents = path;
+    if !flags.is_empty() {
+        contents.push('\n');
+        contents.push_str(&flags.into_iter().collect::<Vec<_>>().join(","));
+    }
+    std::fs::write(&qldir_path, contents).path(&qldir_path)
 }
 
 /// Deletes the `qldir.txt` file from beside the executable.
@@ -251,6 +271,10 @@ fn check_qlportable_file() -> Option<QlDirInfo> {
                 std::env::set_var("WGPU_BACKEND", "dx12");
             } else if flags.contains("i_metal") {
                 std::env::set_var("WGPU_BACKEND", "metal");
+            }
+
+            if flags.contains("i_tiny_skia") || flags.contains("i_tiny-skia") {
+                std::env::set_var("ICED_BACKEND", "tiny-skia");
             }
         }
 

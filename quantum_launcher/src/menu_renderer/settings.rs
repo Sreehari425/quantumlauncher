@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::LazyLock;
 
 use iced::{Alignment, Length, widget};
@@ -12,7 +13,10 @@ use crate::menu_renderer::{back_to_launch_screen, checkered_list, sidebar, tsubt
 use crate::{
     config::LauncherConfig,
     icons,
-    state::{LauncherSettingsMessage, LauncherSettingsTab, MenuLauncherSettings, Message},
+    state::{
+        GraphicsBackend, LauncherSettingsMessage, LauncherSettingsTab, MenuLauncherSettings,
+        Message,
+    },
     stylesheet::{
         color::Color,
         styles::{LauncherTheme, LauncherThemeColor},
@@ -331,11 +335,11 @@ fn view_portable_mode_section(
             widget::text(if is_active { "ACTIVE" } else { "INACTIVE" })
                 .size(12)
                 .style(if is_active {
-                    |t: &super::LauncherTheme| widget::text::Style {
+                    |_: &super::LauncherTheme| widget::text::Style {
                         color: Some(iced::Color::from_rgb8(0x94, 0xe2, 0xd5)),
                     }
                 } else {
-                    |t: &super::LauncherTheme| widget::text::Style {
+                    |_: &super::LauncherTheme| widget::text::Style {
                         color: Some(iced::Color::from_rgb8(0xf3, 0x8b, 0xa8)),
                     }
                 }),
@@ -348,32 +352,38 @@ fn view_portable_mode_section(
     .spacing(5);
 
     if is_active {
-        let current_path = match status {
-            Some(Some(p)) => p.to_string_lossy().into_owned(),
-            _ => String::new(),
+        let (current_path, current_flags) = match status {
+            Some(s) => (
+                s.path
+                    .as_ref()
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .unwrap_or_default(),
+                &s.flags,
+            ),
+            _ => (String::new(), &HashSet::new()),
         };
 
-        let has_changes = temp_path != &current_path;
+        let has_changes =
+            temp_path != &current_path || &menu.temp_paths.portable_flags != current_flags;
 
-        let mut path_row = widget::row![
-            widget::text_input(
-                "Leave blank to store right next to the executable.",
-                temp_path
-            )
-            .on_input(
-                |s| Message::LauncherSettings(LauncherSettingsMessage::SetTempPath(crate::state::PathKind::Portable, s))
-            )
-            .padding(6)
-            .size(13)
-            .font(crate::menu_renderer::FONT_MONO)
-            .width(Length::FillPortion(3)),
-        ]
+        let mut path_row = widget::row![widget::text_input(
+            "Leave blank to store right next to the executable.",
+            temp_path
+        )
+        .on_input(|s| Message::LauncherSettings(LauncherSettingsMessage::SetTempPath(
+            crate::state::PathKind::Portable,
+            s
+        )))
+        .padding(6)
+        .size(13)
+        .font(crate::menu_renderer::FONT_MONO)
+        .width(Length::FillPortion(3)),]
         .spacing(10)
         .align_y(Alignment::Center);
 
         if has_changes {
             path_row = path_row.push(
-                widget::button(widget::text("Apply Path").size(13))
+                widget::button(widget::text("Apply Changes").size(13))
                     .padding([5, 15])
                     .on_press(Message::LauncherSettings(
                         LauncherSettingsMessage::EnablePortableMode,
@@ -396,9 +406,78 @@ fn view_portable_mode_section(
         });
 
         col = col.push(custom_path_section);
+
+        col = col.push(
+            widget::container(view_portable_flags(
+                crate::state::PathKind::Portable,
+                &menu.temp_paths.portable_flags,
+            ))
+            .padding([15, 20])
+            .style(|n: &super::LauncherTheme| widget::container::Style {
+                background: Some(n.get_bg(Color::ExtraDark)),
+                border: iced::Border {
+                    color: n.get(Color::SecondDark),
+                    width: 1.0,
+                    radius: 12.0.into(),
+                },
+                ..Default::default()
+            }),
+        );
     }
 
     col.into()
+}
+
+fn view_portable_flags(
+    kind: crate::state::PathKind,
+    flags: &HashSet<String>,
+) -> iced::Element<'static, Message, super::LauncherTheme> {
+    let t = |s| widget::text(s).size(12).style(crate::menu_renderer::tsubtitle);
+    let current_backend = GraphicsBackend::from_flags(flags);
+
+    let backend_radio = |label: &'static str, backend: GraphicsBackend| {
+        widget::radio(label, backend, Some(current_backend), move |b| {
+            Message::LauncherSettings(LauncherSettingsMessage::SetGraphicsBackend(
+                kind, b,
+            ))
+        })
+        .size(18)
+        .text_size(14)
+    };
+
+    let mut radios = widget::row![backend_radio("Default", GraphicsBackend::Default)].spacing(20);
+
+    #[cfg(any(target_os = "windows", target_os = "linux"))]
+    {
+        radios = radios.push(backend_radio("Vulkan", GraphicsBackend::Vulkan));
+    }
+
+    radios = radios.push(backend_radio("OpenGL", GraphicsBackend::OpenGL));
+
+    #[cfg(target_os = "windows")]
+    {
+        radios = radios.push(backend_radio("DirectX", GraphicsBackend::DirectX));
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        radios = radios.push(backend_radio("Metal", GraphicsBackend::Metal));
+    }
+
+    radios = radios.push(backend_radio("Software", GraphicsBackend::TinySkia));
+
+    widget::column![
+        widget::row![
+            icons::tweak_s(16),
+            widget::text("Graphics Backend Options").size(14),
+        ]
+        .spacing(8)
+        .align_y(Alignment::Center),
+        t("Select the rendering backend for the launcher itself. Requires Restart."),
+        radios.wrap(),
+    ]
+    .spacing(10)
+    .into()
 }
 
 fn view_system_redirect_section(
@@ -442,11 +521,11 @@ fn view_system_redirect_section(
         widget::text(if is_active { "ACTIVE" } else { "INACTIVE" })
             .size(12)
             .style(if is_active {
-                |t: &super::LauncherTheme| widget::text::Style {
+                |_: &super::LauncherTheme| widget::text::Style {
                     color: Some(iced::Color::from_rgb8(0x94, 0xe2, 0xd5)),
                 }
             } else {
-                |t: &super::LauncherTheme| widget::text::Style {
+                |_: &super::LauncherTheme| widget::text::Style {
                     color: Some(iced::Color::from_rgb8(0xf3, 0x8b, 0xa8)),
                 }
             }),
@@ -471,12 +550,19 @@ fn view_system_redirect_section(
     col = col.push(redirect_checkbox);
 
     if is_active {
-        let current_path = match status {
-            Some(Some(p)) => p.to_string_lossy().into_owned(),
-            _ => String::new(),
+        let (current_path, current_flags) = match status {
+            Some(s) => (
+                s.path
+                    .as_ref()
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .unwrap_or_default(),
+                &s.flags,
+            ),
+            _ => (String::new(), &HashSet::new()),
         };
 
-        let has_changes = temp_path != &current_path;
+        let has_changes =
+            temp_path != &current_path || &menu.temp_paths.system_redirect_flags != current_flags;
 
         let mut path_row = widget::row![
             widget::text_input("Enter redirection path...", temp_path)
@@ -493,7 +579,7 @@ fn view_system_redirect_section(
 
         if has_changes {
             path_row = path_row.push(
-                widget::button(widget::text("Apply Path").size(13))
+                widget::button(widget::text("Apply Changes").size(13))
                     .padding([5, 15])
                     .on_press(Message::LauncherSettings(
                         LauncherSettingsMessage::EnableSystemRedirect,
@@ -516,6 +602,23 @@ fn view_system_redirect_section(
         });
 
         col = col.push(custom_path_section);
+
+        col = col.push(
+            widget::container(view_portable_flags(
+                crate::state::PathKind::SystemRedirect,
+                &menu.temp_paths.system_redirect_flags,
+            ))
+            .padding([15, 20])
+            .style(|n: &super::LauncherTheme| widget::container::Style {
+                background: Some(n.get_bg(Color::ExtraDark)),
+                border: iced::Border {
+                    color: n.get(Color::SecondDark),
+                    width: 1.0,
+                    radius: 12.0.into(),
+                },
+                ..Default::default()
+            }),
+        );
     }
 
     col.into()

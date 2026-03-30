@@ -288,15 +288,58 @@ pub enum LauncherSettingsMessage {
     GlobalPreLaunchPrefix(ListMessage),
 
     EnablePortableMode,
-    EnablePortableModeConfirm(String),
+    EnablePortableModeConfirm(String, HashSet<String>),
     DisablePortableMode,
     DisablePortableModeConfirm,
     PortableModeStatusLoaded(ql_core::FullPortableStatus),
     EnableSystemRedirect,
-    EnableSystemRedirectConfirm(String),
+    EnableSystemRedirectConfirm(String, HashSet<String>),
     DisableSystemRedirect,
     DisableSystemRedirectConfirm,
     SetTempPath(PathKind, String),
+    TogglePortableFlag(PathKind, String, bool),
+    SetGraphicsBackend(PathKind, GraphicsBackend),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GraphicsBackend {
+    Default,
+    Vulkan,
+    OpenGL,
+    DirectX,
+    Metal,
+    TinySkia,
+}
+
+impl GraphicsBackend {
+    pub const ALL: &'static [Self] = &[
+        Self::Default,
+        Self::Vulkan,
+        Self::OpenGL,
+        Self::DirectX,
+        Self::Metal,
+        Self::TinySkia,
+    ];
+
+    pub fn to_flag(self) -> Option<&'static str> {
+        match self {
+            GraphicsBackend::Default => None,
+            GraphicsBackend::Vulkan => Some("i_vulkan"),
+            GraphicsBackend::OpenGL => Some("i_opengl"),
+            GraphicsBackend::DirectX => Some("i_directx"),
+            GraphicsBackend::Metal => Some("i_metal"),
+            GraphicsBackend::TinySkia => Some("i_tiny_skia"),
+        }
+    }
+
+    pub fn from_flags(flags: &HashSet<String>) -> Self {
+        if flags.contains("i_vulkan") { Self::Vulkan }
+        else if flags.contains("i_opengl") { Self::OpenGL }
+        else if flags.contains("i_directx") { Self::DirectX }
+        else if flags.contains("i_metal") { Self::Metal }
+        else if flags.contains("i_tiny_skia") { Self::TinySkia }
+        else { Self::Default }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

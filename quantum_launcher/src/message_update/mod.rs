@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::Path;
 
 use frostmark::MarkState;
@@ -19,9 +20,9 @@ use crate::state::{GameLogMessage, InstanceNotes, MenuLaunch, NotesMessage};
 use crate::{
     config::UiSettings,
     state::{
-        self, InstallFabricMessage, InstallOptifineMessage, InstallPaperMessage, Launcher,
-        LauncherSettingsMessage, MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, Message,
-        ProgressBar, State, WindowMessage,
+        self, GraphicsBackend, InstallFabricMessage, InstallOptifineMessage, InstallPaperMessage,
+        Launcher, LauncherSettingsMessage, MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper,
+        Message, ProgressBar, State, WindowMessage,
     },
 };
 
@@ -372,21 +373,21 @@ impl Launcher {
                 }
             },
             LauncherSettingsMessage::EnablePortableMode => {
-                let path = if let State::LauncherSettings(menu) = &self.state {
-                    menu.temp_paths.portable.clone()
+                let (path, flags) = if let State::LauncherSettings(menu) = &self.state {
+                    (menu.temp_paths.portable.clone(), menu.temp_paths.portable_flags.clone())
                 } else {
-                    String::new()
+                    (String::new(), HashSet::new())
                 };
                 self.state = State::ConfirmAction {
                     msg1: "enable portable mode".to_owned(),
                     msg2: "The launcher will store data next to the executable instead.\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart.".to_owned(),
-                    yes: LauncherSettingsMessage::EnablePortableModeConfirm(path).into(),
+                    yes: LauncherSettingsMessage::EnablePortableModeConfirm(path, flags).into(),
                     no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
                         .into(),
                 };
             }
-            LauncherSettingsMessage::EnablePortableModeConfirm(path) => {
-                if let Err(err) = ql_core::create_portable_file(path) {
+            LauncherSettingsMessage::EnablePortableModeConfirm(path, flags) => {
+                if let Err(err) = ql_core::create_portable_file(path, flags) {
                     self.set_error(err.to_string());
                     return Task::none();
                 }
@@ -421,32 +422,59 @@ impl Launcher {
                 if let State::LauncherSettings(menu) = &mut self.state {
                     menu.portable_mode_status = status.clone();
 
-                    menu.temp_paths.portable = match status.portable {
-                        Some(Some(p)) => p.to_string_lossy().into_owned(),
-                        _ => String::new(),
-                    };
+                    if let Some(portable) = &status.portable {
+                        menu.temp_paths.portable = portable.path.as_ref().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
+                        menu.temp_paths.portable_flags = portable.flags.clone();
+                    } else {
+                        menu.temp_paths.portable = String::new();
+                        menu.temp_paths.portable_flags = HashSet::new();
+                    }
 
-                    menu.temp_paths.system_redirect = match status.system_redirect {
-                        Some(Some(p)) => p.to_string_lossy().into_owned(),
-                        _ => String::new(),
+                    if let Some(system_redirect) = &status.system_redirect {
+                        menu.temp_paths.system_redirect = system_redirect.path.as_ref().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
+                        menu.temp_paths.system_redirect_flags = system_redirect.flags.clone();
+                    } else {
+                        menu.temp_paths.system_redirect = String::new();
+                        menu.temp_paths.system_redirect_flags = HashSet::new();
+                    }
+                }
+            }
+            LauncherSettingsMessage::SetGraphicsBackend(kind, backend) => {
+                if let State::LauncherSettings(menu) = &mut self.state {
+                    let flags = match kind {
+                        state::PathKind::Portable => &mut menu.temp_paths.portable_flags,
+                        state::PathKind::SystemRedirect => &mut menu.temp_paths.system_redirect_flags,
                     };
+                    
+                    // Clear all graphics flags
+                    for &flag in GraphicsBackend::ALL {
+                        if let Some(f) = flag.to_flag() {
+                            flags.remove(f);
+                        }
+                    }
+                    
+                    // Add selected one
+                    if let Some(flag) = backend.to_flag() {
+                        flags.insert(flag.to_owned());
+                    }
                 }
             }
             LauncherSettingsMessage::EnableSystemRedirect => {
-                let mut path = String::new();
-                if let State::LauncherSettings(menu) = &self.state {
-                    path = menu.temp_paths.system_redirect.clone();
-                }
+                let (path, flags) = if let State::LauncherSettings(menu) = &self.state {
+                    (menu.temp_paths.system_redirect.clone(), menu.temp_paths.system_redirect_flags.clone())
+                } else {
+                    (String::new(), HashSet::new())
+                };
                 self.state = State::ConfirmAction {
                     msg1: "enable system-wide redirection".to_owned(),
                     msg2: "The launcher will store data globally in the specified redirected directory.\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart.".to_owned(),
-                    yes: LauncherSettingsMessage::EnableSystemRedirectConfirm(path).into(),
+                    yes: LauncherSettingsMessage::EnableSystemRedirectConfirm(path, flags).into(),
                     no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
                         .into(),
                 };
             }
-            LauncherSettingsMessage::EnableSystemRedirectConfirm(path) => {
-                if let Err(err) = ql_core::create_system_redirect_file(path) {
+            LauncherSettingsMessage::EnableSystemRedirectConfirm(path, flags) => {
+                if let Err(err) = ql_core::create_system_redirect_file(path, flags) {
                     self.set_error(err.to_string());
                     return Task::none();
                 }
@@ -481,6 +509,19 @@ impl Launcher {
                     match kind {
                         crate::state::PathKind::Portable => menu.temp_paths.portable = path,
                         crate::state::PathKind::SystemRedirect => menu.temp_paths.system_redirect = path,
+                    }
+                }
+            }
+            LauncherSettingsMessage::TogglePortableFlag(kind, flag, value) => {
+                if let State::LauncherSettings(menu) = &mut self.state {
+                    let flags = match kind {
+                        crate::state::PathKind::Portable => &mut menu.temp_paths.portable_flags,
+                        crate::state::PathKind::SystemRedirect => &mut menu.temp_paths.system_redirect_flags,
+                    };
+                    if value {
+                        flags.insert(flag);
+                    } else {
+                        flags.remove(&flag);
                     }
                 }
             }

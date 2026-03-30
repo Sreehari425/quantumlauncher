@@ -502,7 +502,9 @@ pub struct MenuLauncherSettings {
 #[derive(Debug, Clone, Default)]
 pub struct TempPaths {
     pub portable: String,
+    pub portable_flags: HashSet<String>,
     pub system_redirect: String,
+    pub system_redirect_flags: HashSet<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
