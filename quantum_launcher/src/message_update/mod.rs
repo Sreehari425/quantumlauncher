@@ -440,7 +440,9 @@ impl Launcher {
                         |n| Message::InstallPaper(InstallPaperMessage::VersionsLoaded(n.strerr())),
                     )
                     .abortable();
-                    self.state = State::InstallPaper(MenuInstallPaper::Loading { _handle: handle });
+                    self.state = State::InstallPaper(MenuInstallPaper::Loading {
+                        _handle: handle.abort_on_drop(),
+                    });
                     return task;
                 }
             }

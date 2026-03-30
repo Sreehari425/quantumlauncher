@@ -30,7 +30,7 @@ impl Launcher {
                 )
                 .abortable();
                 if let State::EditMods(menu) = &mut self.state {
-                    menu.update_check_handle = Some(handle);
+                    menu.update_check_handle = Some(handle.abort_on_drop());
                     menu.modal = None;
                 }
                 return task;
