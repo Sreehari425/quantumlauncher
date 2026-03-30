@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::path::Path;
 use std::sync::LazyLock;
 
 use iced::{Alignment, Length, widget};
@@ -205,7 +206,7 @@ Only increase if progress bars stutter or "not responding" dialogs show"#
     fn view_location_tab<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {
         let t = |s| widget::text(s).size(12).style(tsubtitle);
 
-        let current_dir_text = widget::text(format!("{}", LAUNCHER_DIR.display()))
+        let current_dir_text = widget::text(format!("{}", redact_path(&LAUNCHER_DIR)))
             .size(14)
             .font(crate::menu_renderer::FONT_MONO);
 
@@ -648,4 +649,15 @@ Every new user motivates me to keep working on this :)"
     .padding(16)
     .spacing(SETTINGS_SPACING)
     .into()
+}
+
+fn redact_path(path: &Path) -> String {
+    let path_str = path.to_string_lossy();
+    if let Some(home) = dirs::home_dir() {
+        let home_str = home.to_string_lossy();
+        if path_str.starts_with(&*home_str) {
+            return path_str.replacen(&*home_str, "~", 1);
+        }
+    }
+    path_str.into_owned()
 }
