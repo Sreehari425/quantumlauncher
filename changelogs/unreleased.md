@@ -1,6 +1,15 @@
 # unreleased changelog
 
-- Redesigned Mod Store, with category filters and quick uninstall!
+# Mod Store
+
+- Redesigned, now with many features
+- Added category filters:
+  - Filter mods, resource packs and shaders by various search categories!
+- Mod Descriptions: now with cleaner UI and gallery viewer (TODO)
+
+# UX
+
+- Mods menu: Right click -> Mod Details now takes you directly to description page
 
 # Fixes
 
