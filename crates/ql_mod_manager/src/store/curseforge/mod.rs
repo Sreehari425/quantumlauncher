@@ -7,8 +7,7 @@ use std::{
 use chrono::DateTime;
 use download::ModDownloader;
 use ql_core::{
-    CLIENT, GenericProgress, IntoJsonError, JsonDownloadError, Loader, ModId, RequestError,
-    StoreBackendType, err, pt,
+    CLIENT, GenericProgress, IntoJsonError, JsonDownloadError, Loader, RequestError, err, pt,
 };
 use reqwest::header::HeaderValue;
 use serde::Deserialize;

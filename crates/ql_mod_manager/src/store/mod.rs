@@ -2,8 +2,7 @@ use std::{collections::HashSet, path::PathBuf, sync::mpsc::Sender};
 
 use chrono::DateTime;
 use ql_core::{
-    GenericProgress, InstanceSelection, IntoIoError, Loader, ModId, StoreBackendType, do_jobs,
-    json::VersionDetails, pt,
+    GenericProgress, InstanceSelection, IntoIoError, Loader, do_jobs, json::VersionDetails, pt,
 };
 
 mod add_file;
