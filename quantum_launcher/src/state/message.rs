@@ -299,6 +299,7 @@ pub enum LauncherSettingsMessage {
     SetTempPath(PathKind, String),
     TogglePortableFlag(PathKind, String, bool),
     SetGraphicsBackend(PathKind, GraphicsBackend),
+    AppearanceGraphicsBackend(GraphicsBackend),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -339,6 +340,36 @@ impl GraphicsBackend {
         else if flags.contains("i_metal") { Self::Metal }
         else if flags.contains("i_tiny_skia") { Self::TinySkia }
         else { Self::Default }
+    }
+
+    pub fn available_backends() -> Vec<Self> {
+        let mut list = vec![Self::Default];
+        #[cfg(any(target_os = "windows", target_os = "linux"))]
+        list.push(Self::Vulkan);
+        list.push(Self::OpenGL);
+        #[cfg(target_os = "windows")]
+        list.push(Self::DirectX);
+        #[cfg(target_os = "macos")]
+        list.push(Self::Metal);
+        list.push(Self::TinySkia);
+        list
+    }
+}
+
+impl std::fmt::Display for GraphicsBackend {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Default => "Default (Auto)",
+                Self::Vulkan => "Vulkan",
+                Self::OpenGL => "OpenGL",
+                Self::DirectX => "DirectX",
+                Self::Metal => "Metal",
+                Self::TinySkia => "Software (Tiny-Skia)",
+            }
+        )
     }
 }
 

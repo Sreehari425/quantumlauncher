@@ -96,7 +96,6 @@ impl MenuLauncherSettings {
 
         checkered_list::<Element>([
             widget::column![widget::text("User Interface").size(20)].into(),
-
             widget::column![
                 widget::row!["Mode: ", get_mode_selector(config)]
                     .spacing(5)
@@ -121,9 +120,7 @@ impl MenuLauncherSettings {
             .align_y(Alignment::Center)
             .spacing(5)
             .into(),
-
             get_ui_opacity(config).into(),
-
             widget::column![
                 // TODO: This requires launcher restart
                 // widget::checkbox("Custom Window Decorations", !config.c_window_decorations()).on_toggle(|n| {
@@ -131,23 +128,62 @@ impl MenuLauncherSettings {
                 // }),
                 // widget::text("Use custom window borders and close/minimize/maximize buttons").size(12),
                 // widget::Space::with_height(5),
-
-                widget::checkbox("Antialiasing (UI) - Requires Restart", config.ui_antialiasing.unwrap_or(true))
-                    .on_toggle(|n| Message::LauncherSettings(
-                        LauncherSettingsMessage::ToggleAntialiasing(n)
-                    )),
+                widget::checkbox(
+                    "Antialiasing (UI) - Requires Restart",
+                    config.ui_antialiasing.unwrap_or(true),
+                )
+                .on_toggle(|n| Message::LauncherSettings(
+                    LauncherSettingsMessage::ToggleAntialiasing(n),
+                )),
                 widget::text("Makes text/menus crisper. Also nudges the launcher into using your dedicated GPU for the User Interface").size(12).style(tsubtitle),
                 widget::Space::with_height(5),
-
-                widget::checkbox("Remember window size", config.window.as_ref().is_none_or(|n| n.save_window_size))
-                    .on_toggle(|n| LauncherSettingsMessage::ToggleWindowSize(n).into()),
+                widget::checkbox(
+                    "Remember window size",
+                    config.window.as_ref().is_none_or(|n| n.save_window_size),
+                )
+                .on_toggle(|n| LauncherSettingsMessage::ToggleWindowSize(n).into()),
                 widget::Space::with_height(5),
-                widget::checkbox("Remember last selected instance", config.persistent.clone().unwrap_or_default().selected_remembered)
-                    .on_toggle(|n| LauncherSettingsMessage::ToggleInstanceRemembering(n).into()),
+                widget::checkbox(
+                    "Remember last selected instance",
+                    config
+                        .persistent
+                        .clone()
+                        .unwrap_or_default()
+                        .selected_remembered,
+                )
+                .on_toggle(|n| LauncherSettingsMessage::ToggleInstanceRemembering(n).into()),
             ]
             .spacing(5)
             .into(),
-
+            widget::column![
+                widget::row![
+                    widget::text("Launcher Render:").size(15).width(SETTING_WIDTH),
+                    widget::pick_list(
+                        GraphicsBackend::available_backends(),
+                        Some(if let Some(portable) = &self.portable_mode_status.portable {
+                            GraphicsBackend::from_flags(&portable.flags)
+                        } else if let Some(system) = &self.portable_mode_status.system_redirect {
+                            GraphicsBackend::from_flags(&system.flags)
+                        } else {
+                            GraphicsBackend::Default
+                        }),
+                        |backend| Message::LauncherSettings(
+                            LauncherSettingsMessage::AppearanceGraphicsBackend(backend)
+                        )
+                    )
+                    .text_size(14)
+                    .width(Length::Fill)
+                ]
+                .spacing(5)
+                .align_y(Alignment::Center),
+                widget::text(
+                    "Changes the graphics engine used by the launcher. Requires Restart. Automatically enables redirection."
+                )
+                .size(12)
+                .style(tsubtitle),
+            ]
+            .spacing(5)
+            .into(),
             widget::column![
                 widget::row![
                     widget::text!("UI Idle FPS ({idle_fps})")
@@ -156,13 +192,20 @@ impl MenuLauncherSettings {
                     widget::slider(2.0..=20.0, idle_fps as f64, |n| Message::LauncherSettings(
                         LauncherSettingsMessage::UiIdleFps(n)
                     ))
-                    .step(1.0).shift_step(1.0),
+                    .step(1.0)
+                    .shift_step(1.0),
                 ]
                 .align_y(Alignment::Center)
                 .spacing(5),
-                widget::text(r#"(Default: 6) Reduces resource usage when launcher is idle.
-Only increase if progress bars stutter or "not responding" dialogs show"#).size(12).style(tsubtitle),
-            ].spacing(5).into()
+                widget::text(
+                    r#"(Default: 6) Reduces resource usage when launcher is idle.
+Only increase if progress bars stutter or "not responding" dialogs show"#
+                )
+                .size(12)
+                .style(tsubtitle),
+            ]
+            .spacing(5)
+            .into()
         ])
         .into()
     }

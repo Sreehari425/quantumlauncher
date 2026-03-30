@@ -488,6 +488,72 @@ impl Launcher {
                     }
                 }
             }
+            LauncherSettingsMessage::AppearanceGraphicsBackend(backend) => {
+                let (is_portable, is_system) = if let State::LauncherSettings(menu) = &self.state {
+                    (
+                        menu.portable_mode_status.portable.is_some(),
+                        menu.portable_mode_status.system_redirect.is_some(),
+                    )
+                } else {
+                    (false, false)
+                };
+
+                if is_portable {
+                    let _ = self.update_launcher_settings(
+                        LauncherSettingsMessage::SetGraphicsBackend(
+                            state::PathKind::Portable,
+                            backend,
+                        ),
+                    );
+                    return self.update_launcher_settings(LauncherSettingsMessage::EnablePortableMode);
+                } else if is_system {
+                    let _ = self.update_launcher_settings(
+                        LauncherSettingsMessage::SetGraphicsBackend(
+                            state::PathKind::SystemRedirect,
+                            backend,
+                        ),
+                    );
+                    return self
+                        .update_launcher_settings(LauncherSettingsMessage::EnableSystemRedirect);
+                } else {
+                    let path = if let State::LauncherSettings(menu) = &mut self.state {
+                        if menu.temp_paths.system_redirect.is_empty() {
+                            menu.temp_paths.system_redirect = ".".to_owned();
+                        }
+                        menu.temp_paths.system_redirect.clone()
+                    } else {
+                        ".".to_owned()
+                    };
+
+                    let _ = self.update_launcher_settings(
+                        LauncherSettingsMessage::SetGraphicsBackend(
+                            state::PathKind::SystemRedirect,
+                            backend,
+                        ),
+                    );
+
+                    let flags = if let State::LauncherSettings(menu) = &self.state {
+                        menu.temp_paths.system_redirect_flags.clone()
+                    } else {
+                        let mut flags = HashSet::new();
+                        if let Some(f) = backend.to_flag() {
+                            flags.insert(f.to_owned());
+                        }
+                        flags
+                    };
+
+                    self.state = State::ConfirmAction {
+                        msg1: "enable graphics backend redirection".to_owned(),
+                        msg2: "To change the launcher rendering engine, system-wide redirection will be enabled.\nThis will store launcher data in the system data directory.\n\nThe launcher will automatically restart.".to_owned(),
+                        yes: LauncherSettingsMessage::EnableSystemRedirectConfirm(path, flags)
+                                .into(),
+                        no: LauncherSettingsMessage::ChangeTab(
+                            state::LauncherSettingsTab::UserInterface,
+                        )
+                        .into(),
+                    };
+                }
+            }
             LauncherSettingsMessage::EnableSystemRedirect => {
                 let (mut path, flags, current_status) = if let State::LauncherSettings(menu) =
                     &self.state
