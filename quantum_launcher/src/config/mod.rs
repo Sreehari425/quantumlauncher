@@ -1,4 +1,5 @@
 use crate::config::sidebar::{InstanceKind, SidebarConfig, SidebarNode, SidebarNodeKind};
+use crate::state::GraphicsBackend;
 use crate::stylesheet::styles::{LauncherTheme, LauncherThemeColor, LauncherThemeLightness};
 use crate::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use ql_core::ListEntryKind;
@@ -100,6 +101,9 @@ pub struct LauncherConfig {
     pub persistent: Option<PersistentSettings>,
     // Since: v0.5.1
     pub sidebar: Option<SidebarConfig>,
+    // Since: v0.5.1
+    pub launcher_render: Option<GraphicsBackend>,
+    pub ignore_backend_qldir: Option<bool>,
 
     /// Preserve fields when downgrading
     #[serde(flatten)]
@@ -125,6 +129,8 @@ impl Default for LauncherConfig {
             ui: None,
             persistent: None,
             sidebar: None,
+            launcher_render: None,
+            ignore_backend_qldir: None,
             _extra: HashMap::new(),
         }
     }
@@ -302,6 +308,51 @@ impl LauncherConfig {
             debug_assert!(false, "idle FPS shouldn't be zero");
             IDLE_FPS
         }
+    }
+
+    pub fn set_backend_env_vars(&self) {
+        let backend = self.launcher_render.unwrap_or(GraphicsBackend::Default);
+        match backend {
+            GraphicsBackend::Default => {
+                // Do nothing, let WGPU/Iced decide
+            }
+            GraphicsBackend::Vulkan => unsafe {
+                std::env::set_var("WGPU_BACKEND", "vulkan");
+            },
+            GraphicsBackend::OpenGL => unsafe {
+                std::env::set_var("WGPU_BACKEND", "opengl");
+            },
+            GraphicsBackend::DirectX => unsafe {
+                std::env::set_var("WGPU_BACKEND", "dx12");
+            },
+            GraphicsBackend::Metal => unsafe {
+                std::env::set_var("WGPU_BACKEND", "metal");
+            },
+            GraphicsBackend::TinySkia => unsafe {
+                std::env::set_var("ICED_BACKEND", "tiny-skia");
+            },
+        }
+    }
+
+    pub fn migrate_from_qldir(&mut self, status: &ql_core::file_utils::FullPortableStatus) -> bool {
+        if self.ignore_backend_qldir.unwrap_or(false) {
+            return false;
+        }
+
+        let mut flags = HashSet::new();
+        if let Some(p) = &status.portable {
+            flags.extend(p.flags.clone());
+        }
+        if let Some(s) = &status.system_redirect {
+            flags.extend(s.flags.clone());
+        }
+
+        let backend = GraphicsBackend::from_flags(&flags);
+        if backend != GraphicsBackend::Default {
+            self.launcher_render = Some(backend);
+        }
+        self.ignore_backend_qldir = Some(true);
+        true
     }
 }
 

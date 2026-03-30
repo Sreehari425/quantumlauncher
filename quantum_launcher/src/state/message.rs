@@ -3,7 +3,7 @@ use std::{collections::HashSet, path::PathBuf, process::ExitStatus};
 use crate::{
     config::sidebar::{FolderId, SDragLocation, SidebarSelection},
     message_handler::ForgeKind,
-    state::{LaunchModal, MenuEditModsModal},
+    state::{GraphicsBackend, LaunchModal, MenuEditModsModal},
     stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
 };
 use iced::widget::{self, scrollable::AbsoluteOffset};
@@ -274,6 +274,7 @@ pub enum LauncherSettingsMessage {
     UiIdleFps(f64),
     ClearJavaInstalls,
     ClearJavaInstallsConfirm,
+    ApplyRestart,
     ChangeTab(LauncherSettingsTab),
     DefaultMinecraftWidthChanged(String),
     DefaultMinecraftHeightChanged(String),
@@ -297,80 +298,7 @@ pub enum LauncherSettingsMessage {
     DisableSystemRedirect,
     DisableSystemRedirectConfirm,
     SetTempPath(PathKind, String),
-    TogglePortableFlag(PathKind, String, bool),
-    SetGraphicsBackend(PathKind, GraphicsBackend),
     AppearanceGraphicsBackend(GraphicsBackend),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GraphicsBackend {
-    Default,
-    Vulkan,
-    OpenGL,
-    DirectX,
-    Metal,
-    TinySkia,
-}
-
-impl GraphicsBackend {
-    pub const ALL: &'static [Self] = &[
-        Self::Default,
-        Self::Vulkan,
-        Self::OpenGL,
-        Self::DirectX,
-        Self::Metal,
-        Self::TinySkia,
-    ];
-
-    pub fn to_flag(self) -> Option<&'static str> {
-        match self {
-            GraphicsBackend::Default => None,
-            GraphicsBackend::Vulkan => Some("i_vulkan"),
-            GraphicsBackend::OpenGL => Some("i_opengl"),
-            GraphicsBackend::DirectX => Some("i_directx"),
-            GraphicsBackend::Metal => Some("i_metal"),
-            GraphicsBackend::TinySkia => Some("i_tiny_skia"),
-        }
-    }
-
-    pub fn from_flags(flags: &HashSet<String>) -> Self {
-        if flags.contains("i_vulkan") { Self::Vulkan }
-        else if flags.contains("i_opengl") { Self::OpenGL }
-        else if flags.contains("i_directx") { Self::DirectX }
-        else if flags.contains("i_metal") { Self::Metal }
-        else if flags.contains("i_tiny_skia") { Self::TinySkia }
-        else { Self::Default }
-    }
-
-    pub fn available_backends() -> Vec<Self> {
-        let mut list = vec![Self::Default];
-        #[cfg(any(target_os = "windows", target_os = "linux"))]
-        list.push(Self::Vulkan);
-        list.push(Self::OpenGL);
-        #[cfg(target_os = "windows")]
-        list.push(Self::DirectX);
-        #[cfg(target_os = "macos")]
-        list.push(Self::Metal);
-        list.push(Self::TinySkia);
-        list
-    }
-}
-
-impl std::fmt::Display for GraphicsBackend {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Default => "Default (Auto)",
-                Self::Vulkan => "Vulkan",
-                Self::OpenGL => "OpenGL",
-                Self::DirectX => "DirectX",
-                Self::Metal => "Metal",
-                Self::TinySkia => "Software (Tiny-Skia)",
-            }
-        )
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

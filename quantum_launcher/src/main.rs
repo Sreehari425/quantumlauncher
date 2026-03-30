@@ -229,11 +229,21 @@ fn load_launcher_dir() -> (Option<std::path::PathBuf>, bool) {
 }
 
 fn load_config(dir_is_ok: bool) -> Result<LauncherConfig, JsonFileError> {
-    if let Some(cfg) = dir_is_ok.then(LauncherConfig::load_s) {
-        cfg
-    } else {
-        Err(JsonFileError::Io(ql_core::IoError::LauncherDirNotFound))
+    if !dir_is_ok {
+        return Err(JsonFileError::Io(ql_core::IoError::LauncherDirNotFound));
     }
+
+    let mut config = LauncherConfig::load_s()?;
+
+    let status = file_utils::portable_mode_status();
+    if config.migrate_from_qldir(&status) {
+        if let Ok(runtime) = tokio::runtime::Runtime::new() {
+            _ = runtime.block_on(config.save());
+        }
+    }
+
+    config.set_backend_env_vars();
+    Ok(config)
 }
 
 fn load_icon() -> Option<iced::window::Icon> {

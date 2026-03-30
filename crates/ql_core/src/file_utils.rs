@@ -60,8 +60,10 @@ pub fn get_launcher_dir() -> Result<PathBuf, IoError> {
     Ok(launcher_directory)
 }
 
-struct QlDirInfo {
-    path: PathBuf,
+pub(crate) struct QlDirInfo {
+    pub path: PathBuf,
+    #[allow(dead_code)]
+    pub flags: HashSet<String>,
 }
 
 /// The filename of the portable mode marker file.
@@ -257,26 +259,8 @@ fn check_qlportable_file() -> Option<QlDirInfo> {
         let flags: HashSet<_> = qldir_options
             .split(',')
             .map(|s| s.trim().to_lowercase())
+            .filter(|n| !n.is_empty())
             .collect();
-
-        // Safety: At this specific moment, nothing else
-        // would read/write these env vars. This function
-        // is called at launcher startup on the main thread.
-        unsafe {
-            if flags.contains("i_vulkan") {
-                std::env::set_var("WGPU_BACKEND", "vulkan");
-            } else if flags.contains("i_opengl") {
-                std::env::set_var("WGPU_BACKEND", "opengl");
-            } else if flags.contains("i_directx") {
-                std::env::set_var("WGPU_BACKEND", "dx12");
-            } else if flags.contains("i_metal") {
-                std::env::set_var("WGPU_BACKEND", "metal");
-            }
-
-            if flags.contains("i_tiny_skia") || flags.contains("i_tiny-skia") {
-                std::env::set_var("ICED_BACKEND", "tiny-skia");
-            }
-        }
 
         let mut join_dir = !flags.contains("top");
 
@@ -295,12 +279,12 @@ fn check_qlportable_file() -> Option<QlDirInfo> {
         return Some(if join_dir {
             QlDirInfo {
                 path: path.join("QuantumLauncher"),
+                flags,
             }
         } else {
-            QlDirInfo { path }
+            QlDirInfo { path, flags }
         });
     }
-
     None
 }
 

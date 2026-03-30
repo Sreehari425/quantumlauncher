@@ -20,9 +20,71 @@ use crate::{
     stylesheet::styles::LauncherTheme,
 };
 
+use serde::{Deserialize, Serialize};
+
 mod images;
 mod menu;
 mod message;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GraphicsBackend {
+    Default,
+    Vulkan,
+    OpenGL,
+    DirectX,
+    Metal,
+    TinySkia,
+}
+
+impl GraphicsBackend {
+
+    pub fn from_flags(flags: &HashSet<String>) -> Self {
+        if flags.contains("i_vulkan") {
+            Self::Vulkan
+        } else if flags.contains("i_opengl") {
+            Self::OpenGL
+        } else if flags.contains("i_directx") {
+            Self::DirectX
+        } else if flags.contains("i_metal") {
+            Self::Metal
+        } else if flags.contains("i_tiny_skia") {
+            Self::TinySkia
+        } else {
+            Self::Default
+        }
+    }
+
+    pub fn available_backends() -> Vec<Self> {
+        let mut list = vec![Self::Default];
+        #[cfg(any(target_os = "windows", target_os = "linux"))]
+        list.push(Self::Vulkan);
+        list.push(Self::OpenGL);
+        #[cfg(target_os = "windows")]
+        list.push(Self::DirectX);
+        #[cfg(target_os = "macos")]
+        list.push(Self::Metal);
+        list.push(Self::TinySkia);
+        list
+    }
+}
+
+impl std::fmt::Display for GraphicsBackend {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Default => "Default (Auto)",
+                Self::Vulkan => "Vulkan",
+                Self::OpenGL => "OpenGL",
+                Self::DirectX => "DirectX",
+                Self::Metal => "Metal",
+                Self::TinySkia => "Software (Tiny-Skia)",
+            }
+        )
+    }
+}
 pub use images::ImageState;
 pub use menu::*;
 pub use message::*;

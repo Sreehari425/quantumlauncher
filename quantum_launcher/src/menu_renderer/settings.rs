@@ -15,7 +15,7 @@ use crate::{
     icons,
     state::{
         GraphicsBackend, LauncherSettingsMessage, LauncherSettingsTab, MenuLauncherSettings,
-        Message,
+        PathKind, Message,
     },
     stylesheet::{
         color::Color,
@@ -160,27 +160,19 @@ impl MenuLauncherSettings {
                     widget::text("Launcher Render:").size(15).width(SETTING_WIDTH),
                     widget::pick_list(
                         GraphicsBackend::available_backends(),
-                        Some(if let Some(portable) = &self.portable_mode_status.portable {
-                            GraphicsBackend::from_flags(&portable.flags)
-                        } else if let Some(system) = &self.portable_mode_status.system_redirect {
-                            GraphicsBackend::from_flags(&system.flags)
-                        } else {
-                            GraphicsBackend::Default
-                        }),
-                        |backend| Message::LauncherSettings(
-                            LauncherSettingsMessage::AppearanceGraphicsBackend(backend)
-                        )
-                    )
-                    .text_size(14)
-                    .width(Length::Fill)
+                        Some(config.launcher_render.unwrap_or(GraphicsBackend::Default)),
+                        |backend| {
+                            Message::LauncherSettings(
+                                LauncherSettingsMessage::AppearanceGraphicsBackend(backend),
+                            )
+                        },
+                    ),
                 ]
                 .spacing(5)
                 .align_y(Alignment::Center),
-                widget::text(
-                    "Changes the graphics engine used by the launcher. Requires Restart. Automatically enables redirection."
-                )
-                .size(12)
-                .style(tsubtitle),
+                widget::text("Restart is required to apply the new rendering engine. Selecting an option will automatically enable system-wide redirection if not yet active.")
+                    .size(12)
+                    .style(tsubtitle),
             ]
             .spacing(5)
             .into(),
@@ -210,7 +202,7 @@ Only increase if progress bars stutter or "not responding" dialogs show"#
         .into()
     }
 
-    fn view_location_tab<'a>(&'a self, _config: &'a LauncherConfig) -> Element<'a> {
+    fn view_location_tab<'a>(&'a self, config: &'a LauncherConfig) -> Element<'a> {
         let t = |s| widget::text(s).size(12).style(tsubtitle);
 
         let current_dir_text = widget::text(format!("{}", LAUNCHER_DIR.display()))
@@ -244,8 +236,8 @@ Only increase if progress bars stutter or "not responding" dialogs show"#
             ]
             .spacing(5)
             .into(),
-            view_portable_mode_section(self).into(),
-            view_system_redirect_section(self).into(),
+            view_portable_mode_section(self, config).into(),
+            view_system_redirect_section(self, config).into(),
         ])
         .into()
     }
@@ -352,6 +344,7 @@ impl LauncherSettingsTab {
 
 fn view_portable_mode_section(
     menu: &MenuLauncherSettings,
+    config: &LauncherConfig,
 ) -> iced::Element<'static, Message, super::LauncherTheme> {
     let status = &menu.portable_mode_status.portable;
     let temp_path = &menu.temp_paths.portable;
@@ -450,81 +443,15 @@ fn view_portable_mode_section(
 
         col = col.push(custom_path_section);
 
-        col = col.push(
-            widget::container(view_portable_flags(
-                crate::state::PathKind::Portable,
-                &menu.temp_paths.portable_flags,
-            ))
-            .padding([15, 20])
-            .style(|n: &super::LauncherTheme| widget::container::Style {
-                background: Some(n.get_bg(Color::ExtraDark)),
-                border: iced::Border {
-                    color: n.get(Color::SecondDark),
-                    width: 1.0,
-                    radius: 12.0.into(),
-                },
-                ..Default::default()
-            }),
-        );
     }
 
     col.into()
 }
 
-fn view_portable_flags(
-    kind: crate::state::PathKind,
-    flags: &HashSet<String>,
-) -> iced::Element<'static, Message, super::LauncherTheme> {
-    let t = |s| widget::text(s).size(12).style(crate::menu_renderer::tsubtitle);
-    let current_backend = GraphicsBackend::from_flags(flags);
-
-    let backend_radio = |label: &'static str, backend: GraphicsBackend| {
-        widget::radio(label, backend, Some(current_backend), move |b| {
-            Message::LauncherSettings(LauncherSettingsMessage::SetGraphicsBackend(
-                kind, b,
-            ))
-        })
-        .size(18)
-        .text_size(14)
-    };
-
-    let mut radios = widget::row![backend_radio("Default", GraphicsBackend::Default)].spacing(20);
-
-    #[cfg(any(target_os = "windows", target_os = "linux"))]
-    {
-        radios = radios.push(backend_radio("Vulkan", GraphicsBackend::Vulkan));
-    }
-
-    radios = radios.push(backend_radio("OpenGL", GraphicsBackend::OpenGL));
-
-    #[cfg(target_os = "windows")]
-    {
-        radios = radios.push(backend_radio("DirectX", GraphicsBackend::DirectX));
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        radios = radios.push(backend_radio("Metal", GraphicsBackend::Metal));
-    }
-
-    radios = radios.push(backend_radio("Software", GraphicsBackend::TinySkia));
-
-    widget::column![
-        widget::row![
-            icons::tweak_s(16),
-            widget::text("Graphics Backend Options").size(14),
-        ]
-        .spacing(8)
-        .align_y(Alignment::Center),
-        t("Select the rendering backend for the launcher itself. Requires Restart."),
-        radios.wrap(),
-    ]
-    .spacing(10)
-    .into()
-}
 
 fn view_system_redirect_section(
     menu: &MenuLauncherSettings,
+    config: &LauncherConfig,
 ) -> iced::Element<'static, Message, super::LauncherTheme> {
     let status = &menu.portable_mode_status.system_redirect;
     let portable_active = menu.portable_mode_status.portable.is_some();
@@ -646,22 +573,6 @@ fn view_system_redirect_section(
 
         col = col.push(custom_path_section);
 
-        col = col.push(
-            widget::container(view_portable_flags(
-                crate::state::PathKind::SystemRedirect,
-                &menu.temp_paths.system_redirect_flags,
-            ))
-            .padding([15, 20])
-            .style(|n: &super::LauncherTheme| widget::container::Style {
-                background: Some(n.get_bg(Color::ExtraDark)),
-                border: iced::Border {
-                    color: n.get(Color::SecondDark),
-                    width: 1.0,
-                    radius: 12.0.into(),
-                },
-                ..Default::default()
-            }),
-        );
     }
 
     col.into()

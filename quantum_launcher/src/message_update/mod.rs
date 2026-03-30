@@ -20,7 +20,7 @@ use crate::state::{GameLogMessage, InstanceNotes, MenuLaunch, NotesMessage};
 use crate::{
     config::UiSettings,
     state::{
-        self, GraphicsBackend, InstallFabricMessage, InstallOptifineMessage, InstallPaperMessage,
+        self, InstallFabricMessage, InstallOptifineMessage, InstallPaperMessage,
         Launcher, LauncherSettingsMessage, MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper,
         Message, ProgressBar, State, WindowMessage,
     },
@@ -253,6 +253,7 @@ impl Launcher {
         ))
     }
 
+
     pub fn update_launcher_settings(&mut self, msg: LauncherSettingsMessage) -> Task<Message> {
         match msg {
             LauncherSettingsMessage::ThemePicked(theme) => {
@@ -293,6 +294,15 @@ impl Launcher {
             }
             LauncherSettingsMessage::ClearJavaInstalls => {
                 self.confirm_clear_java_installs();
+            }
+            LauncherSettingsMessage::ApplyRestart => {
+                if let Ok(runtime) = tokio::runtime::Runtime::new() {
+                    _ = runtime.block_on(self.config.save());
+                }
+                if let Ok(exe) = std::env::current_exe() {
+                    let _ = std::process::Command::new(exe).spawn();
+                }
+                std::process::exit(0);
             }
             LauncherSettingsMessage::ClearJavaInstallsConfirm => {
                 return Task::perform(ql_instances::delete_java_installs(), |()| {
@@ -468,27 +478,10 @@ impl Launcher {
                     }
                 }
             }
-            LauncherSettingsMessage::SetGraphicsBackend(kind, backend) => {
-                if let State::LauncherSettings(menu) = &mut self.state {
-                    let flags = match kind {
-                        state::PathKind::Portable => &mut menu.temp_paths.portable_flags,
-                        state::PathKind::SystemRedirect => &mut menu.temp_paths.system_redirect_flags,
-                    };
-                    
-                    // Clear all graphics flags
-                    for &flag in GraphicsBackend::ALL {
-                        if let Some(f) = flag.to_flag() {
-                            flags.remove(f);
-                        }
-                    }
-                    
-                    // Add selected one
-                    if let Some(flag) = backend.to_flag() {
-                        flags.insert(flag.to_owned());
-                    }
-                }
-            }
             LauncherSettingsMessage::AppearanceGraphicsBackend(backend) => {
+                self.config.launcher_render = Some(backend);
+                self.autosave.remove(&state::AutoSaveKind::LauncherConfig);
+
                 let (is_portable, is_system) = if let State::LauncherSettings(menu) = &self.state {
                     (
                         menu.portable_mode_status.portable.is_some(),
@@ -498,23 +491,17 @@ impl Launcher {
                     (false, false)
                 };
 
-                if is_portable {
-                    let _ = self.update_launcher_settings(
-                        LauncherSettingsMessage::SetGraphicsBackend(
-                            state::PathKind::Portable,
-                            backend,
-                        ),
-                    );
-                    return self.update_launcher_settings(LauncherSettingsMessage::EnablePortableMode);
-                } else if is_system {
-                    let _ = self.update_launcher_settings(
-                        LauncherSettingsMessage::SetGraphicsBackend(
-                            state::PathKind::SystemRedirect,
-                            backend,
-                        ),
-                    );
-                    return self
-                        .update_launcher_settings(LauncherSettingsMessage::EnableSystemRedirect);
+                if is_portable || is_system {
+                    self.state = State::ConfirmAction {
+                        msg1: "restart to apply rendering backend".to_owned(),
+                        msg2: "The launcher will restart to apply the new rendering backend."
+                            .to_owned(),
+                        yes: LauncherSettingsMessage::ApplyRestart.into(),
+                        no: LauncherSettingsMessage::ChangeTab(
+                            state::LauncherSettingsTab::UserInterface,
+                        )
+                        .into(),
+                    };
                 } else {
                     let path = if let State::LauncherSettings(menu) = &mut self.state {
                         if menu.temp_paths.system_redirect.is_empty() {
@@ -525,28 +512,14 @@ impl Launcher {
                         ".".to_owned()
                     };
 
-                    let _ = self.update_launcher_settings(
-                        LauncherSettingsMessage::SetGraphicsBackend(
-                            state::PathKind::SystemRedirect,
-                            backend,
-                        ),
-                    );
-
-                    let flags = if let State::LauncherSettings(menu) = &self.state {
-                        menu.temp_paths.system_redirect_flags.clone()
-                    } else {
-                        let mut flags = HashSet::new();
-                        if let Some(f) = backend.to_flag() {
-                            flags.insert(f.to_owned());
-                        }
-                        flags
-                    };
-
                     self.state = State::ConfirmAction {
                         msg1: "enable graphics backend redirection".to_owned(),
                         msg2: "To change the launcher rendering engine, system-wide redirection will be enabled.\nThis will store launcher data in the system data directory.\n\nThe launcher will automatically restart.".to_owned(),
-                        yes: LauncherSettingsMessage::EnableSystemRedirectConfirm(path, flags)
-                                .into(),
+                        yes: LauncherSettingsMessage::EnableSystemRedirectConfirm(
+                            path,
+                            HashSet::new(),
+                        )
+                        .into(),
                         no: LauncherSettingsMessage::ChangeTab(
                             state::LauncherSettingsTab::UserInterface,
                         )
@@ -654,19 +627,6 @@ impl Launcher {
                     match kind {
                         crate::state::PathKind::Portable => menu.temp_paths.portable = path,
                         crate::state::PathKind::SystemRedirect => menu.temp_paths.system_redirect = path,
-                    }
-                }
-            }
-            LauncherSettingsMessage::TogglePortableFlag(kind, flag, value) => {
-                if let State::LauncherSettings(menu) = &mut self.state {
-                    let flags = match kind {
-                        crate::state::PathKind::Portable => &mut menu.temp_paths.portable_flags,
-                        crate::state::PathKind::SystemRedirect => &mut menu.temp_paths.system_redirect_flags,
-                    };
-                    if value {
-                        flags.insert(flag);
-                    } else {
-                        flags.remove(&flag);
                     }
                 }
             }
