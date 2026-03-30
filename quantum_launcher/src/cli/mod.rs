@@ -41,6 +41,9 @@ struct Cli {
     #[arg(hide = true)]
     server: bool,
     #[arg(long)]
+    #[arg(help = "Open the UI in safe mode (software rendering)")]
+    safe_mode: bool,
+    #[arg(long)]
     dir: Option<PathBuf>,
 }
 
@@ -201,7 +204,7 @@ fn get_right_text() -> String {
     message
 }
 
-pub fn start_cli(is_dir_err: bool, launcher_dir: &mut Option<PathBuf>) {
+pub fn start_cli(is_dir_err: bool, launcher_dir: &mut Option<PathBuf>) -> (bool, bool) {
     let cli = Cli::parse();
     *REDACT_SENSITIVE_INFO.lock().unwrap() = !cli.no_redact_info;
     *EXPERIMENTAL_SERVERS.write().unwrap() = cli.enable_server_manager;
@@ -279,7 +282,9 @@ pub fn start_cli(is_dir_err: bool, launcher_dir: &mut Option<PathBuf>) {
         }
     } else {
         print_intro();
+        return (true, cli.safe_mode);
     }
+    (false, cli.safe_mode)
 }
 
 fn show_notification(title: &str, body: &str) {

@@ -60,6 +60,13 @@ pub fn get_launcher_dir() -> Result<PathBuf, IoError> {
     Ok(launcher_directory)
 }
 
+/// Deletes the `running` sentinel file if it exists.
+pub fn cleanup_running_file() {
+    if let Ok(dir) = get_launcher_dir() {
+        _ = std::fs::remove_file(dir.join("running"));
+    }
+}
+
 pub(crate) struct QlDirInfo {
     pub path: PathBuf,
     #[allow(dead_code)]

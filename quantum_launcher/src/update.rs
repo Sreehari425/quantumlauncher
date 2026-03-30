@@ -36,6 +36,7 @@ impl Launcher {
 
                 if safe_to_exit {
                     info!(no_log, "CTRL-Q pressed, closing launcher...");
+                    ql_core::file_utils::cleanup_running_file();
                     std::process::exit(1);
                 }
             }

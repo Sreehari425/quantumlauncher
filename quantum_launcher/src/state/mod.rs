@@ -135,6 +135,8 @@ pub struct Launcher {
     pub window_state: WindowState,
     pub keys_pressed: HashSet<iced::keyboard::Key>,
     pub modifiers_pressed: iced::keyboard::Modifiers,
+
+    pub is_safe_mode: bool,
 }
 
 /// Used to temporarily "block" auto-saving something,
@@ -184,6 +186,7 @@ impl Launcher {
         message: Option<String>,
         is_new_user: bool,
         config: Result<LauncherConfig, JsonFileError>,
+        is_safe_mode: bool,
     ) -> Result<Self, JsonFileError> {
         if let Err(err) = file_utils::get_launcher_dir() {
             err!("Could not get launcher dir (This is a bug):");
@@ -263,6 +266,7 @@ impl Launcher {
             autosave: HashSet::new(),
             images: ImageState::default(),
             modifiers_pressed: iced::keyboard::Modifiers::empty(),
+            is_safe_mode,
         })
     }
 
@@ -325,6 +329,7 @@ impl Launcher {
             accounts_dropdown: vec![OFFLINE_ACCOUNT_NAME.to_owned(), NEW_ACCOUNT_NAME.to_owned()],
             account_selected: OFFLINE_ACCOUNT_NAME.to_owned(),
             modifiers_pressed: iced::keyboard::Modifiers::empty(),
+            is_safe_mode: false,
         }
     }
 

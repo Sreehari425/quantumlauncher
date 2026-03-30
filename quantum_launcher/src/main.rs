@@ -91,6 +91,7 @@ impl Launcher {
     fn new(
         is_new_user: bool,
         config: Result<LauncherConfig, JsonFileError>,
+        is_safe_mode: bool,
     ) -> (Self, Task<Message>) {
         #[cfg(feature = "auto_update")]
         let check_for_updates_command = Task::perform(
@@ -99,10 +100,10 @@ impl Launcher {
         );
         #[cfg(not(feature = "auto_update"))]
         let check_for_updates_command = Task::none();
-
+ 
         let get_entries_command = Task::perform(get_entries(false), Message::CoreListLoaded);
         let mut launcher =
-            Launcher::load_new(None, is_new_user, config).unwrap_or_else(Launcher::with_error);
+            Launcher::load_new(None, is_new_user, config, is_safe_mode).unwrap_or_else(Launcher::with_error);
 
         let load_notes_command = if let (Some(instance), State::Launch(menu)) =
             (launcher.selected_instance.clone(), &mut launcher.state)
@@ -164,8 +165,23 @@ fn main() {
     // let is_new_user = true; // Uncomment to test the intro screen.
 
     let (mut launcher_dir, is_dir_err) = load_launcher_dir();
-    cli::start_cli(is_dir_err, &mut launcher_dir);
+    let (is_ui, safe_mode_requested) = cli::start_cli(is_dir_err, &mut launcher_dir);
 
+    if !is_ui {
+        return;
+    }
+
+    let running_file = launcher_dir.as_ref().map(|d| d.join("running"));
+    let mut is_safe_mode = safe_mode_requested;
+
+    if let Some(f) = &running_file {
+        if f.exists() {
+            is_safe_mode = true;
+            info!(no_log, "{}", "Last launch crashed; entering Safe Mode".red());
+        }
+        _ = std::fs::File::create(f);
+    }
+ 
     info!(no_log, "Starting up the launcher... (OS: {OS_NAME})");
     if let Some(dir) = &launcher_dir {
         pt!(
@@ -176,7 +192,7 @@ fn main() {
     }
 
     let icon = load_icon();
-    let config = load_config(launcher_dir.is_some());
+    let config = load_config(launcher_dir.is_some(), is_safe_mode);
 
     let c = config.as_ref().cloned().unwrap_or_default();
     let decorations = c.uses_system_decorations();
@@ -198,7 +214,7 @@ fn main() {
         })
         .window(iced::window::Settings {
             icon,
-            exit_on_close_request: false,
+            exit_on_close_request: true,
             size: iced::Size { width, height },
             min_size: Some(iced::Size {
                 width: 420.0,
@@ -208,8 +224,10 @@ fn main() {
             transparent: true,
             ..Default::default()
         })
-        .run_with(move || Launcher::new(is_new_user, config))
+        .run_with(move || Launcher::new(is_new_user, config, is_safe_mode))
         .unwrap();
+
+    file_utils::cleanup_running_file();
 }
 
 fn load_launcher_dir() -> (Option<std::path::PathBuf>, bool) {
@@ -228,7 +246,7 @@ fn load_launcher_dir() -> (Option<std::path::PathBuf>, bool) {
     (launcher_dir, is_dir_err)
 }
 
-fn load_config(dir_is_ok: bool) -> Result<LauncherConfig, JsonFileError> {
+fn load_config(dir_is_ok: bool, is_safe_mode: bool) -> Result<LauncherConfig, JsonFileError> {
     if !dir_is_ok {
         return Err(JsonFileError::Io(ql_core::IoError::LauncherDirNotFound));
     }
@@ -242,7 +260,7 @@ fn load_config(dir_is_ok: bool) -> Result<LauncherConfig, JsonFileError> {
         }
     }
 
-    config.set_backend_env_vars();
+    config.set_backend_env_vars(is_safe_mode);
     Ok(config)
 }
 

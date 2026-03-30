@@ -200,6 +200,7 @@ pub async fn install(url: String, progress: Sender<GenericProgress>) -> Result<(
     let new_path = exe_location.join(extract_name);
     _ = Command::new(&new_path).spawn().path(new_path)?;
 
+    file_utils::cleanup_running_file();
     std::process::exit(0);
 }
 

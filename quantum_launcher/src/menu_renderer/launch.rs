@@ -121,6 +121,7 @@ impl Launcher {
 
         widget::stack!(
             column![menu.get_tab_selector(decor)]
+                .push_maybe(self.view_safe_mode_banner())
                 .push_maybe(view_info_message(menu))
                 .push(
                     widget::container(tab_body)
@@ -751,4 +752,31 @@ fn view_info_message(
         .padding(10)
         .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark)),
     )
+}
+
+impl Launcher {
+    fn view_safe_mode_banner(&self) -> Option<widget::Container<'_, Message, LauncherTheme>> {
+        let red = iced::Color::from_rgb8(0xe3, 0x44, 0x59);
+        self.is_safe_mode.then(|| {
+            widget::container(
+                row![
+                    horizontal_space(),
+                    icons::warn_s(14).style(move |_| iced::widget::text::Style {
+                        color: Some(red),
+                    }),
+                    widget::text("Safe Mode: Software Rendering Enabled")
+                        .size(12)
+                        .style(move |_| iced::widget::text::Style {
+                            color: Some(red),
+                        }),
+                    horizontal_space(),
+                ]
+                .spacing(10)
+                .align_y(Alignment::Center),
+            )
+            .width(Length::Fill)
+            .padding(6)
+            .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark))
+        })
+    }
 }

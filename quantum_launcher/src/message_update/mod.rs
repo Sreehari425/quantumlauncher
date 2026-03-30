@@ -302,6 +302,7 @@ impl Launcher {
                 if let Ok(exe) = std::env::current_exe() {
                     let _ = std::process::Command::new(exe).spawn();
                 }
+                ql_core::file_utils::cleanup_running_file();
                 std::process::exit(0);
             }
             LauncherSettingsMessage::ClearJavaInstallsConfirm => {
@@ -434,6 +435,7 @@ impl Launcher {
                 if let Ok(exe) = std::env::current_exe() {
                     let _ = std::process::Command::new(exe).spawn();
                 }
+                ql_core::file_utils::cleanup_running_file();
                 std::process::exit(0);
             }
             LauncherSettingsMessage::DisablePortableMode => {
@@ -455,6 +457,7 @@ impl Launcher {
                 if let Ok(exe) = std::env::current_exe() {
                     let _ = std::process::Command::new(exe).spawn();
                 }
+                ql_core::file_utils::cleanup_running_file();
                 std::process::exit(0);
             }
             LauncherSettingsMessage::PortableModeStatusLoaded(status) => {
@@ -566,6 +569,7 @@ impl Launcher {
                 if let Ok(exe) = std::env::current_exe() {
                     let _ = std::process::Command::new(exe).spawn();
                 }
+                ql_core::file_utils::cleanup_running_file();
                 std::process::exit(0);
             }
             LauncherSettingsMessage::DisableSystemRedirect => {
@@ -586,6 +590,7 @@ impl Launcher {
                 if let Ok(exe) = std::env::current_exe() {
                     let _ = std::process::Command::new(exe).spawn();
                 }
+                ql_core::file_utils::cleanup_running_file();
                 std::process::exit(0);
             }
             LauncherSettingsMessage::SetTempPath(kind, path) => {
@@ -718,7 +723,10 @@ impl Launcher {
                     .map(Some)
                     .and_then(move |max| iced::window::maximize(id, !max))
             }),
-            WindowMessage::ClickClose => std::process::exit(0),
+            WindowMessage::ClickClose => {
+                ql_core::file_utils::cleanup_running_file();
+                std::process::exit(0)
+            }
             // WindowMessage::IsMaximized(n) => {
             //     self.window_state.is_maximized = n;
             //     Task::none()

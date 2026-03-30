@@ -24,6 +24,7 @@ impl Launcher {
             iced::Event::Window(event) => match event {
                 iced::window::Event::CloseRequested => {
                     pt!(no_log, "Closing...");
+                    ql_core::file_utils::cleanup_running_file();
                     std::process::exit(0);
                 }
                 iced::window::Event::Resized(size) => {

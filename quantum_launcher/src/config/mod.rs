@@ -310,8 +310,13 @@ impl LauncherConfig {
         }
     }
 
-    pub fn set_backend_env_vars(&self) {
-        let backend = self.launcher_render.unwrap_or(GraphicsBackend::Default);
+    pub fn set_backend_env_vars(&self, safe_mode: bool) {
+        let backend = if safe_mode {
+            GraphicsBackend::TinySkia
+        } else {
+            self.launcher_render.unwrap_or(GraphicsBackend::Default)
+        };
+
         match backend {
             GraphicsBackend::Default => {
                 // Do nothing, let WGPU/Iced decide
