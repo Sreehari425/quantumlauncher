@@ -482,50 +482,16 @@ impl Launcher {
                 self.config.launcher_render = Some(backend);
                 self.autosave.remove(&state::AutoSaveKind::LauncherConfig);
 
-                let (is_portable, is_system) = if let State::LauncherSettings(menu) = &self.state {
-                    (
-                        menu.portable_mode_status.portable.is_some(),
-                        menu.portable_mode_status.system_redirect.is_some(),
+                self.state = State::ConfirmAction {
+                    msg1: "restart to apply rendering backend".to_owned(),
+                    msg2: "The launcher will restart to apply the new rendering backend."
+                        .to_owned(),
+                    yes: LauncherSettingsMessage::ApplyRestart.into(),
+                    no: LauncherSettingsMessage::ChangeTab(
+                        state::LauncherSettingsTab::UserInterface,
                     )
-                } else {
-                    (false, false)
+                    .into(),
                 };
-
-                if is_portable || is_system {
-                    self.state = State::ConfirmAction {
-                        msg1: "restart to apply rendering backend".to_owned(),
-                        msg2: "The launcher will restart to apply the new rendering backend."
-                            .to_owned(),
-                        yes: LauncherSettingsMessage::ApplyRestart.into(),
-                        no: LauncherSettingsMessage::ChangeTab(
-                            state::LauncherSettingsTab::UserInterface,
-                        )
-                        .into(),
-                    };
-                } else {
-                    let path = if let State::LauncherSettings(menu) = &mut self.state {
-                        if menu.temp_paths.system_redirect.is_empty() {
-                            menu.temp_paths.system_redirect = ".".to_owned();
-                        }
-                        menu.temp_paths.system_redirect.clone()
-                    } else {
-                        ".".to_owned()
-                    };
-
-                    self.state = State::ConfirmAction {
-                        msg1: "enable graphics backend redirection".to_owned(),
-                        msg2: "To change the launcher rendering engine, system-wide redirection will be enabled.\nThis will store launcher data in the system data directory.\n\nThe launcher will automatically restart.".to_owned(),
-                        yes: LauncherSettingsMessage::EnableSystemRedirectConfirm(
-                            path,
-                            HashSet::new(),
-                        )
-                        .into(),
-                        no: LauncherSettingsMessage::ChangeTab(
-                            state::LauncherSettingsTab::UserInterface,
-                        )
-                        .into(),
-                    };
-                }
             }
             LauncherSettingsMessage::EnableSystemRedirect => {
                 let (mut path, flags, current_status) = if let State::LauncherSettings(menu) =

@@ -15,7 +15,7 @@ use crate::{
     icons,
     state::{
         GraphicsBackend, LauncherSettingsMessage, LauncherSettingsTab, MenuLauncherSettings,
-        PathKind, Message,
+        Message,
     },
     stylesheet::{
         color::Color,
@@ -170,7 +170,7 @@ impl MenuLauncherSettings {
                 ]
                 .spacing(5)
                 .align_y(Alignment::Center),
-                widget::text("Restart is required to apply the new rendering engine. Selecting an option will automatically enable system-wide redirection if not yet active.")
+                widget::text("Restart is required to apply the new rendering engine.")
                     .size(12)
                     .style(tsubtitle),
             ]
@@ -344,7 +344,7 @@ impl LauncherSettingsTab {
 
 fn view_portable_mode_section(
     menu: &MenuLauncherSettings,
-    config: &LauncherConfig,
+    _config: &LauncherConfig,
 ) -> iced::Element<'static, Message, super::LauncherTheme> {
     let status = &menu.portable_mode_status.portable;
     let temp_path = &menu.temp_paths.portable;
@@ -451,7 +451,7 @@ fn view_portable_mode_section(
 
 fn view_system_redirect_section(
     menu: &MenuLauncherSettings,
-    config: &LauncherConfig,
+    _config: &LauncherConfig,
 ) -> iced::Element<'static, Message, super::LauncherTheme> {
     let status = &menu.portable_mode_status.system_redirect;
     let portable_active = menu.portable_mode_status.portable.is_some();
