@@ -373,14 +373,43 @@ impl Launcher {
                 }
             },
             LauncherSettingsMessage::EnablePortableMode => {
-                let (path, flags) = if let State::LauncherSettings(menu) = &self.state {
-                    (menu.temp_paths.portable.clone(), menu.temp_paths.portable_flags.clone())
+                let (path, flags, current_status) = if let State::LauncherSettings(menu) = &self.state {
+                    (
+                        menu.temp_paths.portable.clone(),
+                        menu.temp_paths.portable_flags.clone(),
+                        menu.portable_mode_status.portable.clone(),
+                    )
                 } else {
-                    (String::new(), HashSet::new())
+                    (String::new(), HashSet::new(), None)
                 };
+
+                let (msg1, msg2) = if let Some(current) = current_status {
+                    let current_path = current
+                        .path
+                        .as_ref()
+                        .map(|p| p.to_string_lossy().into_owned())
+                        .unwrap_or_default();
+                    if path != current_path {
+                        (
+                            "change portable storage path".to_owned(),
+                            "The launcher will change its portable storage directory.\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart.".to_owned(),
+                        )
+                    } else {
+                        (
+                            "change graphics backend".to_owned(),
+                            "The launcher will restart to apply the new rendering backend.".to_owned(),
+                        )
+                    }
+                } else {
+                    (
+                        "enable portable mode".to_owned(),
+                        "The launcher will store data next to the executable instead.\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart.".to_owned(),
+                    )
+                };
+
                 self.state = State::ConfirmAction {
-                    msg1: "enable portable mode".to_owned(),
-                    msg2: "The launcher will store data next to the executable instead.\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart.".to_owned(),
+                    msg1,
+                    msg2,
                     yes: LauncherSettingsMessage::EnablePortableModeConfirm(path, flags).into(),
                     no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
                         .into(),
@@ -460,13 +489,16 @@ impl Launcher {
                 }
             }
             LauncherSettingsMessage::EnableSystemRedirect => {
-                let (mut path, flags) = if let State::LauncherSettings(menu) = &self.state {
+                let (mut path, flags, current_status) = if let State::LauncherSettings(menu) =
+                    &self.state
+                {
                     (
                         menu.temp_paths.system_redirect.clone(),
                         menu.temp_paths.system_redirect_flags.clone(),
+                        menu.portable_mode_status.system_redirect.clone(),
                     )
                 } else {
-                    (String::new(), HashSet::new())
+                    (String::new(), HashSet::new(), None)
                 };
 
                 // Case: user didn't specify a path, but enabled it.
@@ -476,12 +508,45 @@ impl Launcher {
                     path = ".".to_owned();
                 }
 
+                let (msg1, msg2) = if let Some(current) = current_status {
+                    let current_path = current
+                        .path
+                        .as_ref()
+                        .map(|p| p.to_string_lossy().into_owned())
+                        .unwrap_or_default();
+                    let current_path = if current_path.is_empty() {
+                        ".".to_owned()
+                    } else {
+                        current_path
+                    };
+
+                    if path != current_path {
+                        (
+                            "change system-wide redirection path".to_owned(),
+                            format!(
+                                "The launcher will change its global redirection directory to: {}\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart.",
+                                if path == "." { "system data directory" } else { &path }
+                            ),
+                        )
+                    } else {
+                        (
+                            "change graphics backend".to_owned(),
+                            "The launcher will restart to apply the new rendering backend.".to_owned(),
+                        )
+                    }
+                } else {
+                    (
+                        "enable system-wide redirection".to_owned(),
+                        format!(
+                            "The launcher will store data globally in: {}\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart.",
+                            if path == "." { "system data directory" } else { &path }
+                        ),
+                    )
+                };
+
                 self.state = State::ConfirmAction {
-                    msg1: "enable system-wide redirection".to_owned(),
-                    msg2: format!(
-                        "The launcher will store data globally in: {}\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart.",
-                        if path == "." { "system data directory" } else { &path }
-                    ),
+                    msg1,
+                    msg2,
                     yes: LauncherSettingsMessage::EnableSystemRedirectConfirm(path, flags).into(),
                     no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
                         .into(),
