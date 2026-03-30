@@ -408,7 +408,7 @@ impl Launcher {
             return Ok(Task::none());
         }
 
-        menu.old_instance_name = sanitized_name.to_owned();
+        menu.old_instance_name.clone_from(&sanitized_name);
         std::fs::rename(&old_path, &new_path)
             .path(&old_path)
             .strerr()?;
