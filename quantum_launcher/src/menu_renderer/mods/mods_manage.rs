@@ -8,7 +8,8 @@ use crate::{
     state::{
         EditPresetsMessage, ImageState, InstallFabricMessage, InstallModsMessage,
         InstallOptifineMessage, InstallPaperMessage, ManageJarModsMessage, ManageModsMessage,
-        MenuEditMods, MenuEditModsModal, Message, ModListEntry, SelectedState,
+        MenuEditMods, MenuEditModsModal, Message, ModDescriptionMessage, ModListEntry,
+        SelectedState,
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
@@ -79,17 +80,7 @@ impl MenuEditMods {
                             ctx_button(icons::bin_s(CTXI_SIZE), "Delete")
                                 .on_press(ManageModsMessage::DeleteSelected.into()),
                             ctx_button(icons::file_info_s(CTXI_SIZE), "Mod Details")
-                                .on_press_maybe(self.mods.mods.get(&id.get_index_str()).map(
-                                    |info| {
-                                        Message::Multiple(vec![
-                                            InstallModsMessage::Open.into(),
-                                            InstallModsMessage::ChangeBackend(id.get_backend())
-                                                .into(),
-                                            InstallModsMessage::SearchInput(info.name.clone())
-                                                .into(),
-                                        ])
-                                    }
-                                )),
+                                .on_press_with(|| ModDescriptionMessage::Open(id.clone()).into()),
                         ]
                         .spacing(4)
                     )

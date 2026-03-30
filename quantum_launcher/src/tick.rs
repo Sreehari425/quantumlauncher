@@ -176,6 +176,7 @@ impl Launcher {
             | State::LogUploadResult { .. }
             | State::InstallPaper(_)
             | State::CreateShortcut(_)
+            | State::ModDescription(_)
             | State::ExportMods(_) => {}
         }
 

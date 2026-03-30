@@ -1,4 +1,3 @@
-use frostmark::MarkWidget;
 use iced::{
     Alignment, Length,
     widget::{self, column, row},
@@ -9,7 +8,7 @@ use ql_mod_manager::store::{Category, ModId, QueryType, SearchMod, StoreBackendT
 use crate::{
     icons,
     menu_renderer::{
-        Element, FONT_DEFAULT, FONT_MONO, back_button, button_with_icon, tooltip, tsubtitle,
+        Element, button_with_icon, mods::description::view_project_description, tooltip, tsubtitle,
     },
     state::{
         ImageState, InstallModsMessage, ManageModsMessage, MenuModsDownload, Message,
@@ -246,12 +245,7 @@ impl MenuModsDownload {
             action_button,
             widget::button(
                 row![
-                    images.view(
-                        &hit.icon_url,
-                        Some(32.0),
-                        Some(32.0),
-                        column!(widget::text("...")).into()
-                    ),
+                    images.view(hit.icon_url.as_deref(), Some(32.0), Some(32.0)),
                     column![
                         widget::text(&hit.title)
                             .wrapping(widget::text::Wrapping::None)
@@ -287,77 +281,15 @@ impl MenuModsDownload {
         let Some(hit) = results.mods.get(selection) else {
             return self.view_main(images, tick_timer);
         };
-        self.view_project_description(hit, images, tick_timer)
-    }
-
-    /// Renders the mod description page.
-    fn view_project_description<'a>(
-        &'a self,
-        hit: &'a SearchMod,
-        images: &'a ImageState,
-        tick_timer: usize,
-    ) -> Element<'a> {
-        // Parses the Markdown description of the mod.
-        let markdown_description = if let Some(desc) = &self.description {
-            column!(
-                MarkWidget::new(desc)
-                    .on_clicking_link(Message::CoreOpenLink)
-                    .on_drawing_image(|img| {
-                        images.view(img.url, img.width, img.height, "".into())
-                    })
-                    .on_updating_state(|n| InstallModsMessage::TickDesc(n).into())
-                    .font(FONT_DEFAULT)
-                    .font_mono(FONT_MONO)
-            )
-        } else {
-            let dots = ".".repeat((tick_timer % 3) + 1);
-            column!(widget::text!("Loading...{dots}"))
-        };
-
-        let url = format!(
-            "{}{}/{}",
-            match self.backend {
-                StoreBackendType::Modrinth => "https://modrinth.com/",
-                StoreBackendType::Curseforge => "https://www.curseforge.com/minecraft/",
-            },
-            hit.project_type,
-            hit.internal_name
-        );
-
-        widget::scrollable(
-            column!(
-                row!(
-                    back_button().on_press(InstallModsMessage::BackToMainScreen.into()),
-                    widget::tooltip(
-                        button_with_icon(icons::globe(), "Open Mod Page", 14)
-                            .on_press(Message::CoreOpenLink(url.clone())),
-                        widget::text(url),
-                        widget::tooltip::Position::Bottom
-                    )
-                    .style(|n| n.style_container_sharp_box(0.0, Color::ExtraDark)),
-                    button_with_icon(icons::floppydisk(), "Copy ID", 14)
-                        .on_press(Message::CoreCopyText(hit.id.clone())),
-                )
-                .spacing(5),
-                row!(
-                    images.view(&hit.icon_url, Some(32.0), Some(32.0), "".into()),
-                    widget::text(&hit.title)
-                        .shaping(widget::text::Shaping::Advanced)
-                        .size(24)
-                )
-                .spacing(10),
-                widget::text(&hit.description)
-                    .shaping(widget::text::Shaping::Advanced)
-                    .size(20),
-                markdown_description
-            )
-            .padding(20)
-            .spacing(20),
+        // If a specific mod was selected, show the mod description page
+        view_project_description(
+            Ok::<_, &str>(&self.description),
+            self.backend,
+            InstallModsMessage::BackToMainScreen,
+            hit,
+            images,
+            tick_timer,
         )
-        .style(LauncherTheme::style_scrollable_flat_extra_dark)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .into()
     }
 }
 

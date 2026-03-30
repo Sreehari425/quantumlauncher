@@ -264,7 +264,8 @@ pub struct SearchMod {
     pub internal_name: String,
     pub project_type: String,
     pub id: String,
-    pub icon_url: String,
+    pub icon_url: Option<String>,
+    pub backend: StoreBackendType,
 }
 
 impl SearchMod {

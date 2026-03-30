@@ -24,7 +24,10 @@ use ql_core::{
     jarmod::JarMods,
     json::{InstanceConfigJson, VersionDetails, instance_config::MainClassMode},
 };
-use ql_mod_manager::{loaders::paper::PaperVersion, store::Category};
+use ql_mod_manager::{
+    loaders::paper::PaperVersion,
+    store::{Category, SearchMod},
+};
 use ql_mod_manager::{
     loaders::{self, forge::ForgeInstallProgress, optifine::OptifineInstallProgress},
     store::{
@@ -638,6 +641,13 @@ pub struct MenuLoginMS {
     pub _cancel_handle: iced::task::Handle,
 }
 
+pub struct MenuModDescription {
+    pub description: Result<Option<MarkState>, String>,
+    pub details: Option<SearchMod>,
+    pub mod_id: ModId,
+    pub _handle: [iced::task::Handle; 2],
+}
+
 /// The enum that represents which menu is opened currently.
 pub enum State {
     /// Default home screen
@@ -686,6 +696,7 @@ pub enum State {
     InstallJava,
 
     ModsDownload(MenuModsDownload),
+    ModDescription(MenuModDescription),
     LauncherSettings(MenuLauncherSettings),
     ManagePresets(MenuEditPresets),
     RecommendedMods(MenuRecommendedMods),

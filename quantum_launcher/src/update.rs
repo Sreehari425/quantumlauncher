@@ -57,7 +57,7 @@ impl Launcher {
             }
 
             Message::MainMenu(msg) => return self.update_main_menu(msg),
-            Message::SidebarMessage(msg) => return self.update_sidebar(msg),
+            Message::Sidebar(msg) => return self.update_sidebar(msg),
             Message::Account(msg) => return self.update_account(msg),
             Message::ManageMods(msg) => return self.update_manage_mods(msg),
             Message::ExportMods(msg) => return self.update_export_mods(msg),
@@ -74,6 +74,7 @@ impl Launcher {
             Message::LauncherSettings(msg) => return self.update_launcher_settings(msg),
             Message::InstallOptifine(msg) => return self.update_install_optifine(msg),
             Message::InstallPaper(msg) => return self.update_install_paper(msg),
+            Message::ModDescription(msg) => return self.update_mod_description(msg),
 
             Message::LaunchStart => return self.launch_start(),
             Message::LaunchEnd(result) => return self.finish_launching(result),

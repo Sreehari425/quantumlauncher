@@ -257,7 +257,8 @@ impl Backend for CurseforgeBackend {
                     internal_name: n.slug,
                     id: n.id.to_string(),
                     project_type: query_type_str.to_owned(),
-                    icon_url: n.logo.map(|n| n.url).unwrap_or_default(),
+                    icon_url: n.logo.map(|n| n.url),
+                    backend: StoreBackendType::Curseforge,
                 })
                 .collect(),
             start_time: instant,
@@ -407,6 +408,47 @@ impl Backend for CurseforgeBackend {
             .into_iter()
             .filter_map(|id| build_node(id, &categories.data))
             .collect())
+    }
+
+    async fn get_info(id: &str) -> Result<SearchMod, ModError> {
+        let query = ModQuery::load(id).await?;
+        Ok(SearchMod {
+            title: query.data.name,
+            description: query.data.summary,
+            downloads: query.data.downloadCount,
+            internal_name: query.data.slug,
+            id: query.data.id.to_string(),
+            project_type: get_query_type(query.data.classId)
+                .await
+                .unwrap_or(QueryType::Mods)
+                .to_curseforge_str()
+                .to_owned(),
+            icon_url: query.data.logo.map(|n| n.url),
+            backend: StoreBackendType::Curseforge,
+        })
+    }
+
+    async fn get_info_bulk(ids: &[String]) -> Result<Vec<SearchMod>, ModError> {
+        let queries = CFSearchResult::get_from_ids(ids).await?;
+        let mut out = Vec::with_capacity(queries.data.len());
+        for query in queries.data {
+            out.push(SearchMod {
+                title: query.name,
+                description: query.summary,
+                downloads: query.downloadCount,
+                internal_name: query.slug,
+                id: query.id.to_string(),
+                project_type: get_query_type(query.classId)
+                    .await
+                    .unwrap_or(QueryType::Mods)
+                    .to_curseforge_str()
+                    .to_owned(),
+                icon_url: query.logo.map(|n| n.url),
+                backend: StoreBackendType::Curseforge,
+            });
+        }
+
+        Ok(out)
     }
 }
 

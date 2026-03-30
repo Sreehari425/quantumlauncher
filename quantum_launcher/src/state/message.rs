@@ -22,7 +22,7 @@ use ql_mod_manager::{
     loaders::{fabric, paper::PaperVersion},
     store::{
         Category, CurseforgeNotAllowed, ImageResult, ModId, ModIndex, QueryType, RecommendedMod,
-        SearchResult, StoreBackendType,
+        SearchMod, SearchResult, StoreBackendType,
     },
 };
 
@@ -407,6 +407,13 @@ pub enum ShortcutMessage {
 }
 
 #[derive(Debug, Clone)]
+pub enum ModDescriptionMessage {
+    Open(ModId),
+    LoadedDetails(Res<SearchMod>),
+    LoadedDescription(Res<String>),
+}
+
+#[derive(Debug, Clone)]
 pub enum Message {
     Nothing,
     Error(String),
@@ -434,7 +441,8 @@ pub enum Message {
     ExportMods(ExportModsMessage),
     RecommendedMods(RecommendedModMessage),
     MainMenu(MainMenuMessage),
-    SidebarMessage(SidebarMessage),
+    Sidebar(SidebarMessage),
+    ModDescription(ModDescriptionMessage),
 
     MScreenOpen {
         message: Option<String>,
@@ -511,7 +519,7 @@ macro_rules! from_m {
 }
 
 from_m!(MainMenu, MainMenuMessage);
-from_m!(SidebarMessage, SidebarMessage);
+from_m!(Sidebar, SidebarMessage);
 from_m!(ManageMods, ManageModsMessage);
 from_m!(ManageJarMods, ManageJarModsMessage);
 from_m!(InstallMods, InstallModsMessage);
@@ -520,7 +528,6 @@ from_m!(InstallFabric, InstallFabricMessage);
 from_m!(EditPresets, EditPresetsMessage);
 from_m!(ExportMods, ExportModsMessage);
 from_m!(RecommendedMods, RecommendedModMessage);
-
 from_m!(Account, AccountMessage);
 from_m!(CreateInstance, CreateInstanceMessage);
 from_m!(EditInstance, EditInstanceMessage);
@@ -529,3 +536,4 @@ from_m!(Notes, NotesMessage);
 from_m!(GameLog, GameLogMessage);
 from_m!(Window, WindowMessage);
 from_m!(Shortcut, ShortcutMessage);
+from_m!(ModDescription, ModDescriptionMessage);
