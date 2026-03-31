@@ -104,6 +104,8 @@ pub struct LauncherConfig {
     // Since: v0.5.1
     pub launcher_render: Option<GraphicsBackend>,
     pub ignore_backend_qldir: Option<bool>,
+    /// Whether to enable automatic Safe Mode on crash.
+    pub enable_safe_mode: Option<bool>,
 
     /// Preserve fields when downgrading
     #[serde(flatten)]
@@ -131,6 +133,7 @@ impl Default for LauncherConfig {
             sidebar: None,
             launcher_render: None,
             ignore_backend_qldir: None,
+            enable_safe_mode: Some(true),
             _extra: HashMap::new(),
         }
     }
@@ -221,6 +224,9 @@ impl LauncherConfig {
     fn fix(&mut self) {
         if self.ui_antialiasing.is_none() {
             self.ui_antialiasing = Some(true);
+        }
+        if self.enable_safe_mode.is_none() {
+            self.enable_safe_mode = Some(true);
         }
         if let (Some(accounts), Some(selected)) = (&self.accounts, &self.account_selected) {
             if !accounts.contains_key(selected) {

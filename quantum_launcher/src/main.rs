@@ -34,7 +34,7 @@ use ql_core::{IntoStringError, JsonFileError, constants::OS_NAME, err, file_util
 
 use crate::{
     menu_renderer::FONT_DEFAULT,
-    state::{CustomJarState, GraphicsBackend, State},
+    state::{CustomJarState, State},
 };
 
 /// The CLI interface of the launcher.
@@ -172,6 +172,11 @@ fn main() {
         return;
     }
 
+    let icon = load_icon();
+    let mut config = load_config(launcher_dir.is_some());
+
+    let c = config.as_ref().cloned().unwrap_or_default();
+
     let running_file = launcher_dir.as_ref().map(|d| d.join("running"));
     let mut crash_detected = false;
 
@@ -181,7 +186,9 @@ fn main() {
         }
     }
 
-    let is_safe_mode = (crash_detected || cli_safe_mode) && !override_safety;
+    let is_safe_mode =
+        ((crash_detected && c.enable_safe_mode.unwrap_or(true)) || cli_safe_mode)
+            && !override_safety;
 
     if is_safe_mode && crash_detected {
         info!(no_log, "{}", "Last launch crashed; entering Safe Mode".red());
@@ -190,7 +197,7 @@ fn main() {
     if let Some(f) = &running_file {
         _ = std::fs::File::create(f);
     }
- 
+
     info!(no_log, "Starting up the launcher... (OS: {OS_NAME})");
     if let Some(dir) = &launcher_dir {
         pt!(
@@ -200,10 +207,10 @@ fn main() {
         );
     }
 
-    let icon = load_icon();
-    let config = load_config(launcher_dir.is_some(), is_safe_mode, backend_override);
+    if let Ok(config) = config.as_mut() {
+        config.set_backend_env_vars(is_safe_mode, backend_override);
+    }
 
-    let c = config.as_ref().cloned().unwrap_or_default();
     let decorations = c.uses_system_decorations();
     let (width, height) = c.c_window_size();
 
@@ -214,11 +221,7 @@ fn main() {
         .settings(Settings {
             fonts: load_fonts(),
             default_font: FONT_DEFAULT,
-            antialiasing: config
-                .as_ref()
-                .ok()
-                .and_then(|n| n.ui_antialiasing)
-                .unwrap_or(true),
+            antialiasing: c.ui_antialiasing.unwrap_or(true),
             ..Default::default()
         })
         .window(iced::window::Settings {
@@ -257,8 +260,6 @@ fn load_launcher_dir() -> (Option<std::path::PathBuf>, bool) {
 
 fn load_config(
     dir_is_ok: bool,
-    is_safe_mode: bool,
-    override_backend: Option<GraphicsBackend>,
 ) -> Result<LauncherConfig, JsonFileError> {
     if !dir_is_ok {
         return Err(JsonFileError::Io(ql_core::IoError::LauncherDirNotFound));
@@ -273,7 +274,6 @@ fn load_config(
         }
     }
 
-    config.set_backend_env_vars(is_safe_mode, override_backend);
     Ok(config)
 }
 

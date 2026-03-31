@@ -299,6 +299,8 @@ pub enum LauncherSettingsMessage {
     DisableSystemRedirectConfirm,
     SetTempPath(PathKind, String),
     AppearanceGraphicsBackend(GraphicsBackend),
+    ToggleSafeMode(bool),
+    ToggleSafeModeConfirm(bool),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

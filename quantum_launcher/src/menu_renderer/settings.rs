@@ -179,6 +179,31 @@ impl MenuLauncherSettings {
             .into(),
             widget::column![
                 widget::row![
+                    widget::text("Safe Mode (on crash):")
+                        .size(15)
+                        .width(SETTING_WIDTH),
+                    widget::pick_list(
+                        &["Enabled", "Disabled"][..],
+                        Some(if config.enable_safe_mode.unwrap_or(true) {
+                            "Enabled"
+                        } else {
+                            "Disabled"
+                        }),
+                        |s| Message::LauncherSettings(LauncherSettingsMessage::ToggleSafeMode(
+                            s == "Enabled"
+                        )),
+                    ),
+                ]
+                .spacing(5)
+                .align_y(Alignment::Center),
+                widget::text("Automatically use software rendering if the launcher previously crashed.")
+                    .size(12)
+                    .style(tsubtitle),
+            ]
+            .spacing(5)
+            .into(),
+            widget::column![
+                widget::row![
                     widget::text!("UI Idle FPS ({idle_fps})")
                         .size(15)
                         .width(SETTING_WIDTH),

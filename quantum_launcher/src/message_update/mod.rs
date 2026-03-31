@@ -20,9 +20,9 @@ use crate::state::{GameLogMessage, InstanceNotes, MenuLaunch, NotesMessage};
 use crate::{
     config::UiSettings,
     state::{
-        self, InstallFabricMessage, InstallOptifineMessage, InstallPaperMessage,
-        Launcher, LauncherSettingsMessage, MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper,
-        Message, ProgressBar, State, WindowMessage,
+        self, InstallFabricMessage, InstallOptifineMessage, InstallPaperMessage, Launcher,
+        LauncherSettingsMessage, MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, Message,
+        ProgressBar, State, WindowMessage,
     },
 };
 
@@ -253,7 +253,6 @@ impl Launcher {
         ))
     }
 
-
     pub fn update_launcher_settings(&mut self, msg: LauncherSettingsMessage) -> Task<Message> {
         match msg {
             LauncherSettingsMessage::ThemePicked(theme) => {
@@ -304,6 +303,24 @@ impl Launcher {
                 }
                 ql_core::file_utils::cleanup_running_file();
                 std::process::exit(0);
+            }
+            LauncherSettingsMessage::ToggleSafeMode(t) => {
+                if t {
+                    self.config.enable_safe_mode = Some(true);
+                    self.autosave.remove(&state::AutoSaveKind::LauncherConfig);
+                } else {
+                    self.state = state::State::ConfirmAction {
+                        msg1: "disable automatic Safe Mode".to_owned(),
+                        msg2: "Disabling Safe Mode might cause the launcher to CRASH ON STARTUP. This is highly discouraged.\n\nAre you sure you know what you are doing?".to_owned(),
+                        yes: LauncherSettingsMessage::ToggleSafeModeConfirm(false).into(),
+                        no: LauncherSettingsMessage::ToggleSafeModeConfirm(true).into(),
+                    };
+                }
+            }
+            LauncherSettingsMessage::ToggleSafeModeConfirm(t) => {
+                self.config.enable_safe_mode = Some(t);
+                self.autosave.remove(&state::AutoSaveKind::LauncherConfig);
+                return self.go_to_launcher_settings();
             }
             LauncherSettingsMessage::ClearJavaInstallsConfirm => {
                 return Task::perform(ql_instances::delete_java_installs(), |()| {
@@ -384,15 +401,16 @@ impl Launcher {
                 }
             },
             LauncherSettingsMessage::EnablePortableMode => {
-                let (path, flags, current_status) = if let State::LauncherSettings(menu) = &self.state {
-                    (
-                        menu.temp_paths.portable.clone(),
-                        menu.temp_paths.portable_flags.clone(),
-                        menu.portable_mode_status.portable.clone(),
-                    )
-                } else {
-                    (String::new(), HashSet::new(), None)
-                };
+                let (path, flags, current_status) =
+                    if let State::LauncherSettings(menu) = &self.state {
+                        (
+                            menu.temp_paths.portable.clone(),
+                            menu.temp_paths.portable_flags.clone(),
+                            menu.portable_mode_status.portable.clone(),
+                        )
+                    } else {
+                        (String::new(), HashSet::new(), None)
+                    };
 
                 let (msg1, msg2) = if let Some(current) = current_status {
                     let current_path = current
@@ -408,7 +426,8 @@ impl Launcher {
                     } else {
                         (
                             "change graphics backend".to_owned(),
-                            "The launcher will restart to apply the new rendering backend.".to_owned(),
+                            "The launcher will restart to apply the new rendering backend."
+                                .to_owned(),
                         )
                     }
                 } else {
@@ -431,7 +450,7 @@ impl Launcher {
                     self.set_error(err.to_string());
                     return Task::none();
                 }
-                
+
                 if let Ok(exe) = std::env::current_exe() {
                     let _ = std::process::Command::new(exe).spawn();
                 }
@@ -453,7 +472,7 @@ impl Launcher {
                     self.set_error(err.to_string());
                     return Task::none();
                 }
-                
+
                 if let Ok(exe) = std::env::current_exe() {
                     let _ = std::process::Command::new(exe).spawn();
                 }
@@ -465,7 +484,11 @@ impl Launcher {
                     menu.portable_mode_status = status.clone();
 
                     if let Some(portable) = &status.portable {
-                        menu.temp_paths.portable = portable.path.as_ref().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
+                        menu.temp_paths.portable = portable
+                            .path
+                            .as_ref()
+                            .map(|p| p.to_string_lossy().into_owned())
+                            .unwrap_or_default();
                         menu.temp_paths.portable_flags = portable.flags.clone();
                     } else {
                         menu.temp_paths.portable = String::new();
@@ -473,7 +496,11 @@ impl Launcher {
                     }
 
                     if let Some(system_redirect) = &status.system_redirect {
-                        menu.temp_paths.system_redirect = system_redirect.path.as_ref().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
+                        menu.temp_paths.system_redirect = system_redirect
+                            .path
+                            .as_ref()
+                            .map(|p| p.to_string_lossy().into_owned())
+                            .unwrap_or_default();
                         menu.temp_paths.system_redirect_flags = system_redirect.flags.clone();
                     } else {
                         menu.temp_paths.system_redirect = String::new();
@@ -497,17 +524,16 @@ impl Launcher {
                 };
             }
             LauncherSettingsMessage::EnableSystemRedirect => {
-                let (mut path, flags, current_status) = if let State::LauncherSettings(menu) =
-                    &self.state
-                {
-                    (
-                        menu.temp_paths.system_redirect.clone(),
-                        menu.temp_paths.system_redirect_flags.clone(),
-                        menu.portable_mode_status.system_redirect.clone(),
-                    )
-                } else {
-                    (String::new(), HashSet::new(), None)
-                };
+                let (mut path, flags, current_status) =
+                    if let State::LauncherSettings(menu) = &self.state {
+                        (
+                            menu.temp_paths.system_redirect.clone(),
+                            menu.temp_paths.system_redirect_flags.clone(),
+                            menu.portable_mode_status.system_redirect.clone(),
+                        )
+                    } else {
+                        (String::new(), HashSet::new(), None)
+                    };
 
                 // Case: user didn't specify a path, but enabled it.
                 // We default to "." which means "store precisely in the system data directory"
@@ -533,13 +559,18 @@ impl Launcher {
                             "change system-wide redirection path".to_owned(),
                             format!(
                                 "The launcher will change its global redirection directory to: {}\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart.",
-                                if path == "." { "system data directory" } else { &path }
+                                if path == "." {
+                                    "system data directory"
+                                } else {
+                                    &path
+                                }
                             ),
                         )
                     } else {
                         (
                             "change graphics backend".to_owned(),
-                            "The launcher will restart to apply the new rendering backend.".to_owned(),
+                            "The launcher will restart to apply the new rendering backend."
+                                .to_owned(),
                         )
                     }
                 } else {
@@ -547,7 +578,11 @@ impl Launcher {
                         "enable system-wide redirection".to_owned(),
                         format!(
                             "The launcher will store data globally in: {}\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart.",
-                            if path == "." { "system data directory" } else { &path }
+                            if path == "." {
+                                "system data directory"
+                            } else {
+                                &path
+                            }
                         ),
                     )
                 };
@@ -565,7 +600,7 @@ impl Launcher {
                     self.set_error(err.to_string());
                     return Task::none();
                 }
-                
+
                 if let Ok(exe) = std::env::current_exe() {
                     let _ = std::process::Command::new(exe).spawn();
                 }
@@ -586,7 +621,7 @@ impl Launcher {
                     self.set_error(err.to_string());
                     return Task::none();
                 }
-                
+
                 if let Ok(exe) = std::env::current_exe() {
                     let _ = std::process::Command::new(exe).spawn();
                 }
@@ -597,7 +632,9 @@ impl Launcher {
                 if let State::LauncherSettings(menu) = &mut self.state {
                     match kind {
                         crate::state::PathKind::Portable => menu.temp_paths.portable = path,
-                        crate::state::PathKind::SystemRedirect => menu.temp_paths.system_redirect = path,
+                        crate::state::PathKind::SystemRedirect => {
+                            menu.temp_paths.system_redirect = path
+                        }
                     }
                 }
             }
@@ -726,11 +763,10 @@ impl Launcher {
             WindowMessage::ClickClose => {
                 ql_core::file_utils::cleanup_running_file();
                 std::process::exit(0)
-            }
-            // WindowMessage::IsMaximized(n) => {
-            //     self.window_state.is_maximized = n;
-            //     Task::none()
-            // }
+            } // WindowMessage::IsMaximized(n) => {
+              //     self.window_state.is_maximized = n;
+              //     Task::none()
+              // }
         }
     }
 
