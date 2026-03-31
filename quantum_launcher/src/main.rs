@@ -34,7 +34,7 @@ use ql_core::{IntoStringError, JsonFileError, constants::OS_NAME, err, file_util
 
 use crate::{
     menu_renderer::FONT_DEFAULT,
-    state::{CustomJarState, State},
+    state::{CustomJarState, GraphicsBackend, State},
 };
 
 /// The CLI interface of the launcher.
@@ -165,20 +165,29 @@ fn main() {
     // let is_new_user = true; // Uncomment to test the intro screen.
 
     let (mut launcher_dir, is_dir_err) = load_launcher_dir();
-    let (is_ui, safe_mode_requested) = cli::start_cli(is_dir_err, &mut launcher_dir);
+    let (is_ui, cli_safe_mode, override_safety, backend_override) =
+        cli::start_cli(is_dir_err, &mut launcher_dir);
 
     if !is_ui {
         return;
     }
 
     let running_file = launcher_dir.as_ref().map(|d| d.join("running"));
-    let mut is_safe_mode = safe_mode_requested;
+    let mut crash_detected = false;
 
     if let Some(f) = &running_file {
         if f.exists() {
-            is_safe_mode = true;
-            info!(no_log, "{}", "Last launch crashed; entering Safe Mode".red());
+            crash_detected = true;
         }
+    }
+
+    let is_safe_mode = (crash_detected || cli_safe_mode) && !override_safety;
+
+    if is_safe_mode && crash_detected {
+        info!(no_log, "{}", "Last launch crashed; entering Safe Mode".red());
+    }
+
+    if let Some(f) = &running_file {
         _ = std::fs::File::create(f);
     }
  
@@ -192,7 +201,7 @@ fn main() {
     }
 
     let icon = load_icon();
-    let config = load_config(launcher_dir.is_some(), is_safe_mode);
+    let config = load_config(launcher_dir.is_some(), is_safe_mode, backend_override);
 
     let c = config.as_ref().cloned().unwrap_or_default();
     let decorations = c.uses_system_decorations();
@@ -246,7 +255,11 @@ fn load_launcher_dir() -> (Option<std::path::PathBuf>, bool) {
     (launcher_dir, is_dir_err)
 }
 
-fn load_config(dir_is_ok: bool, is_safe_mode: bool) -> Result<LauncherConfig, JsonFileError> {
+fn load_config(
+    dir_is_ok: bool,
+    is_safe_mode: bool,
+    override_backend: Option<GraphicsBackend>,
+) -> Result<LauncherConfig, JsonFileError> {
     if !dir_is_ok {
         return Err(JsonFileError::Io(ql_core::IoError::LauncherDirNotFound));
     }
@@ -260,7 +273,7 @@ fn load_config(dir_is_ok: bool, is_safe_mode: bool) -> Result<LauncherConfig, Js
         }
     }
 
-    config.set_backend_env_vars(is_safe_mode);
+    config.set_backend_env_vars(is_safe_mode, override_backend);
     Ok(config)
 }
 

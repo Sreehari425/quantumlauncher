@@ -310,8 +310,14 @@ impl LauncherConfig {
         }
     }
 
-    pub fn set_backend_env_vars(&self, safe_mode: bool) {
-        let backend = if safe_mode {
+    pub fn set_backend_env_vars(
+        &self,
+        safe_mode: bool,
+        override_backend: Option<GraphicsBackend>,
+    ) {
+        let backend = if let Some(b) = override_backend {
+            b
+        } else if safe_mode {
             GraphicsBackend::TinySkia
         } else {
             self.launcher_render.unwrap_or(GraphicsBackend::Default)
