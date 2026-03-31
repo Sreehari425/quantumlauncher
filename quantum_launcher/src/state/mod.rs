@@ -38,7 +38,6 @@ pub enum GraphicsBackend {
 }
 
 impl GraphicsBackend {
-
     pub fn from_flags(flags: &HashSet<String>) -> Self {
         if flags.contains("i_vulkan") {
             Self::Vulkan

@@ -103,8 +103,16 @@ pub fn get_portable_status() -> Option<QlDirStatus> {
         let qldir_path = exe_dir.join(PORTABLE_FILENAME);
         if let Ok(contents) = std::fs::read_to_string(&qldir_path) {
             let (path_str, flags_str) = line_and_body(&contents);
-            let path = if path_str.is_empty() { None } else { Some(PathBuf::from(path_str)) };
-            let flags = flags_str.split(',').map(|s| s.trim().to_lowercase()).filter(|n| !n.is_empty()).collect();
+            let path = if path_str.is_empty() {
+                None
+            } else {
+                Some(PathBuf::from(path_str))
+            };
+            let flags = flags_str
+                .split(',')
+                .map(|s| s.trim().to_lowercase())
+                .filter(|n| !n.is_empty())
+                .collect();
             return Some(QlDirStatus { path, flags });
         }
     }
@@ -118,8 +126,16 @@ pub fn get_system_redirect_status() -> Option<QlDirStatus> {
         let qldir_path = data_dir.join(PORTABLE_FILENAME);
         if let Ok(contents) = std::fs::read_to_string(&qldir_path) {
             let (path_str, flags_str) = line_and_body(&contents);
-            let path = if path_str.is_empty() { None } else { Some(PathBuf::from(path_str)) };
-            let flags = flags_str.split(',').map(|s| s.trim().to_lowercase()).filter(|n| !n.is_empty()).collect();
+            let path = if path_str.is_empty() {
+                None
+            } else {
+                Some(PathBuf::from(path_str))
+            };
+            let flags = flags_str
+                .split(',')
+                .map(|s| s.trim().to_lowercase())
+                .filter(|n| !n.is_empty())
+                .collect();
             return Some(QlDirStatus { path, flags });
         }
     }
@@ -225,7 +241,10 @@ pub fn delete_system_redirect_file() -> Result<(), IoError> {
     }
 
     Err(IoError::Io {
-        error: std::io::Error::new(std::io::ErrorKind::NotFound, "System redirect qldir.txt not found"),
+        error: std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "System redirect qldir.txt not found",
+        ),
         path: PathBuf::from("qldir.txt"),
     })
 }

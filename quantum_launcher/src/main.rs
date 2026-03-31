@@ -100,10 +100,10 @@ impl Launcher {
         );
         #[cfg(not(feature = "auto_update"))]
         let check_for_updates_command = Task::none();
- 
+
         let get_entries_command = Task::perform(get_entries(false), Message::CoreListLoaded);
-        let mut launcher =
-            Launcher::load_new(None, is_new_user, config, is_safe_mode).unwrap_or_else(Launcher::with_error);
+        let mut launcher = Launcher::load_new(None, is_new_user, config, is_safe_mode)
+            .unwrap_or_else(Launcher::with_error);
 
         let load_notes_command = if let (Some(instance), State::Launch(menu)) =
             (launcher.selected_instance.clone(), &mut launcher.state)
@@ -186,12 +186,15 @@ fn main() {
         }
     }
 
-    let is_safe_mode =
-        ((crash_detected && c.enable_safe_mode.unwrap_or(true)) || cli_safe_mode)
-            && !override_safety;
+    let is_safe_mode = ((crash_detected && c.enable_safe_mode.unwrap_or(true)) || cli_safe_mode)
+        && !override_safety;
 
     if is_safe_mode && crash_detected {
-        info!(no_log, "{}", "Last launch crashed; entering Safe Mode".red());
+        info!(
+            no_log,
+            "{}",
+            "Last launch crashed; entering Safe Mode".red()
+        );
     }
 
     if let Some(f) = &running_file {
@@ -258,9 +261,7 @@ fn load_launcher_dir() -> (Option<std::path::PathBuf>, bool) {
     (launcher_dir, is_dir_err)
 }
 
-fn load_config(
-    dir_is_ok: bool,
-) -> Result<LauncherConfig, JsonFileError> {
+fn load_config(dir_is_ok: bool) -> Result<LauncherConfig, JsonFileError> {
     if !dir_is_ok {
         return Err(JsonFileError::Io(ql_core::IoError::LauncherDirNotFound));
     }

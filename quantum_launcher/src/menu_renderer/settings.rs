@@ -428,18 +428,22 @@ fn view_portable_mode_section(
         let has_changes =
             temp_path != &current_path || &menu.temp_paths.portable_flags != current_flags;
 
-        let mut path_row = widget::row![widget::text_input(
-            "Leave blank to store right next to the executable.",
-            temp_path
-        )
-        .on_input(|s| Message::LauncherSettings(LauncherSettingsMessage::SetTempPath(
-            crate::state::PathKind::Portable,
-            s
-        )))
-        .padding(6)
-        .size(13)
-        .font(crate::menu_renderer::FONT_MONO)
-        .width(Length::FillPortion(3)),]
+        let mut path_row = widget::row![
+            widget::text_input(
+                "Leave blank to store right next to the executable.",
+                temp_path
+            )
+            .on_input(
+                |s| Message::LauncherSettings(LauncherSettingsMessage::SetTempPath(
+                    crate::state::PathKind::Portable,
+                    s
+                ))
+            )
+            .padding(6)
+            .size(13)
+            .font(crate::menu_renderer::FONT_MONO)
+            .width(Length::FillPortion(3)),
+        ]
         .spacing(10)
         .align_y(Alignment::Center);
 
@@ -468,12 +472,10 @@ fn view_portable_mode_section(
         });
 
         col = col.push(custom_path_section);
-
     }
 
     col.into()
 }
-
 
 fn view_system_redirect_section(
     menu: &MenuLauncherSettings,
@@ -562,9 +564,12 @@ fn view_system_redirect_section(
 
         let mut path_row = widget::row![
             widget::text_input("Enter redirection path...", temp_path)
-                .on_input(|s| Message::LauncherSettings(
-                    LauncherSettingsMessage::SetTempPath(crate::state::PathKind::SystemRedirect, s)
-                ))
+                .on_input(
+                    |s| Message::LauncherSettings(LauncherSettingsMessage::SetTempPath(
+                        crate::state::PathKind::SystemRedirect,
+                        s
+                    ))
+                )
                 .padding(6)
                 .size(13)
                 .font(crate::menu_renderer::FONT_MONO)
@@ -598,7 +603,6 @@ fn view_system_redirect_section(
         });
 
         col = col.push(custom_path_section);
-
     }
 
     col.into()

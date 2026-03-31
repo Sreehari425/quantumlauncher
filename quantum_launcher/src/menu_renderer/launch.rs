@@ -761,14 +761,11 @@ impl Launcher {
             widget::container(
                 row![
                     horizontal_space(),
-                    icons::warn_s(14).style(move |_| iced::widget::text::Style {
-                        color: Some(red),
-                    }),
+                    icons::warn_s(14)
+                        .style(move |_| iced::widget::text::Style { color: Some(red) }),
                     widget::text("Safe Mode: Software Rendering Enabled")
                         .size(12)
-                        .style(move |_| iced::widget::text::Style {
-                            color: Some(red),
-                        }),
+                        .style(move |_| iced::widget::text::Style { color: Some(red) }),
                     horizontal_space(),
                 ]
                 .spacing(10)

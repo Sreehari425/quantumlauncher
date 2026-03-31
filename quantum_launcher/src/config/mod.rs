@@ -316,11 +316,7 @@ impl LauncherConfig {
         }
     }
 
-    pub fn set_backend_env_vars(
-        &self,
-        safe_mode: bool,
-        override_backend: Option<GraphicsBackend>,
-    ) {
+    pub fn set_backend_env_vars(&self, safe_mode: bool, override_backend: Option<GraphicsBackend>) {
         let backend = if let Some(b) = override_backend {
             b
         } else if safe_mode {
