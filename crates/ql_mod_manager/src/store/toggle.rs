@@ -54,15 +54,15 @@ pub async fn toggle_mods(id: Vec<String>, instance: InstanceSelection) -> Result
 }
 
 async fn rename_file(a: &Path, b: &Path) -> Result<(), ModError> {
-    if let Err(err) = tokio::fs::rename(a, b).await {
-        if let std::io::ErrorKind::NotFound = err.kind() {
+    if let Err(error) = tokio::fs::rename(a, b).await {
+        if let std::io::ErrorKind::NotFound = error.kind() {
             err!("Cannot find file for renaming, skipping: {a:?} -> {b:?}");
         } else {
-            let err = IoError::Io {
-                error: err.to_string(),
+            return Err(IoError::Io {
+                error,
                 path: a.to_owned(),
-            };
-            Err(err)?;
+            }
+            .into());
         }
     }
     Ok(())

@@ -2,7 +2,7 @@ use iced::{
     Alignment, Length,
     widget::{self, column, row, tooltip::Position},
 };
-use ql_core::{Progress, WEBSITE};
+use ql_core::Progress;
 use ql_instances::auth::AccountType;
 
 use crate::stylesheet::styles::{BORDER_RADIUS, BORDER_WIDTH, LauncherThemeLightness};
@@ -11,7 +11,7 @@ use crate::{
     icons,
     state::{
         AccountMessage, InstallModsMessage, LauncherSettingsMessage, LicenseTab, ManageModsMessage,
-        MenuCurseforgeManualDownload, MenuLauncherUpdate, MenuLicense, Message, ProgressBar,
+        MenuCurseforgeManualDownload, MenuLicense, Message, ProgressBar,
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
@@ -254,7 +254,8 @@ fn dots(tick_timer: usize) -> String {
     ".".repeat((tick_timer % 3) + 1)
 }
 
-impl MenuLauncherUpdate {
+#[cfg(feature = "auto_update")]
+impl crate::state::MenuLauncherUpdate {
     pub fn view(&'_ self) -> Element<'_> {
         if let Some(progress) = &self.progress {
             return column!["Updating QuantumLauncher...", progress.view()]
@@ -276,7 +277,7 @@ impl MenuLauncherUpdate {
                 }
             ))
             .push(button_with_icon(icons::globe(), "Open Website", 16)
-                .on_press(Message::CoreOpenLink(WEBSITE.to_owned())))
+                .on_press(Message::CoreOpenLink(ql_core::WEBSITE.to_owned())))
             .spacing(5).wrap(),
         ]
         // WARN: Auto update configurations

@@ -112,11 +112,13 @@ impl MenuCreateInstanceChoosing {
                         CreateInstanceMessage::VersionSelected(n.clone()).into(),
                     )
                 })))
+                .spacing(0)
                 .style(LauncherTheme::style_scrollable_flat_extra_dark)
                 .height(Length::Fill)
                 .id(widget::scrollable::Id::new("MenuCreateInstance:sidebar"))
             ]
-            .spacing(10),
+            .spacing(10)
+            .padding(iced::Padding::new(0.0).right(5.0)),
         )
         .width(Length::Fill)
         .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark))
@@ -127,62 +129,62 @@ impl MenuCreateInstanceChoosing {
         let opened_controls = self.show_category_dropdown;
         let hidden = self.selected_categories.len() == ListEntryKind::ALL.len();
 
-        column![
-            row![
-                button_with_icon(icons::back_s(12), "Back", 13)
-                    .padding(pb)
-                    .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
-                    .on_press(Message::MScreenOpen {
-                        message: None,
-                        clear_selection: false,
-                        is_server: Some(self.is_server),
-                    }),
-                button_with_icon(
-                    icons::filter_s(12),
-                    if hidden { "Filters" } else { "Filters •" },
-                    13
-                )
+        let buttons = row![
+            button_with_icon(icons::back_s(12), "Back", 13)
                 .padding(pb)
-                .style(move |t: &LauncherTheme, s| t.style_button(
-                    s,
-                    if opened_controls {
-                        StyleButton::Round
-                    } else {
-                        StyleButton::RoundDark
-                    }
-                ))
-                .on_press(Message::CreateInstance(
-                    CreateInstanceMessage::ContextMenuToggle
-                ))
-            ]
-            .spacing(5)
-            .wrap()
+                .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
+                .on_press(Message::MScreenOpen {
+                    message: None,
+                    clear_selection: false,
+                    is_server: Some(self.is_server),
+                }),
+            button_with_icon(
+                icons::filter_s(12),
+                if hidden { "Filters" } else { "Filters •" },
+                13
+            )
+            .padding(pb)
+            .style(move |t: &LauncherTheme, s| t.style_button(
+                s,
+                if opened_controls {
+                    StyleButton::Round
+                } else {
+                    StyleButton::RoundDark
+                }
+            ))
+            .on_press(Message::CreateInstance(
+                CreateInstanceMessage::ContextMenuToggle
+            ))
         ]
-        .push_maybe(
-            (!hidden).then_some(
-                widget::text!(
-                    "Some versions are hidden {}\n(Click \"Filters\" to show)",
-                    if self.selected_categories.contains(&ListEntryKind::Release) {
-                        ""
-                    } else {
-                        "(!)"
-                    }
-                )
-                .size(10)
-                .style(tsubtitle),
-            ),
-        )
-        .push(
-            widget::text_input("Search...", &self.search_box)
-                .size(14)
-                .on_input(|t| CreateInstanceMessage::SearchInput(t).into())
-                .on_submit(CreateInstanceMessage::SearchSubmit.into()),
-        )
-        .push_maybe(
-            (!self.search_box.trim().is_empty())
-                .then_some(widget::text("Search Results:").style(tsubtitle).size(12)),
-        )
-        .spacing(7)
+        .spacing(5)
+        .wrap();
+
+        column![buttons]
+            .push_maybe(
+                (!hidden).then_some(
+                    widget::text!(
+                        "Some versions are hidden {}\n(Click \"Filters\" to show)",
+                        if self.selected_categories.contains(&ListEntryKind::Release) {
+                            ""
+                        } else {
+                            "(!)"
+                        }
+                    )
+                    .size(10)
+                    .style(tsubtitle),
+                ),
+            )
+            .push(
+                widget::text_input("Search...", &self.search_box)
+                    .size(14)
+                    .on_input(|t| CreateInstanceMessage::SearchInput(t).into())
+                    .on_submit(CreateInstanceMessage::SearchSubmit.into()),
+            )
+            .push_maybe(
+                (!self.search_box.trim().is_empty())
+                    .then_some(widget::text("Search Results:").style(tsubtitle).size(12)),
+            )
+            .spacing(7)
     }
 
     fn get_main_page(&self, existing_instances: Option<&[String]>) -> Element<'_> {

@@ -104,12 +104,12 @@ async fn delete_mod(index: &mut ModIndex, id: &ModId, mods_dir: &Path) -> Result
 
 async fn delete_file(mods_dir: &Path, file: &str) -> Result<(), ModError> {
     let path = mods_dir.join(file);
-    if let Err(err) = tokio::fs::remove_file(&path).await {
-        if let std::io::ErrorKind::NotFound = err.kind() {
+    if let Err(error) = tokio::fs::remove_file(&path).await {
+        if let std::io::ErrorKind::NotFound = error.kind() {
             err!("File does not exist, skipping: {path:?}");
         } else {
             let err = IoError::Io {
-                error: err.to_string(),
+                error,
                 path: path.clone(),
             };
             Err(err)?;

@@ -15,6 +15,7 @@ use ql_core::{
 use ql_java_handler::{JavaVersion, get_java_binary};
 use std::{
     collections::HashSet,
+    io::ErrorKind,
     path::{Path, PathBuf},
     process::Stdio,
     sync::mpsc::Sender,
@@ -62,7 +63,14 @@ impl GameLauncher {
             .await
             .path(&minecraft_dir)?;
 
-        let config = InstanceConfigJson::read_from_dir(&instance_dir).await?;
+        let config = match InstanceConfigJson::read_from_dir(&instance_dir).await {
+            Err(JsonFileError::Io(IoError::Io { error, .. }))
+                if error.kind() == ErrorKind::NotFound =>
+            {
+                return Err(GameLaunchError::InstanceIncomplete);
+            }
+            c => c?,
+        };
 
         let instance = InstanceSelection::Instance(instance_name.clone());
         let mut version_json = VersionDetails::load(&instance).await?;
@@ -839,7 +847,10 @@ impl GameLauncher {
             if let Err(e) = file_utils::extract_zip_archive(file, &natives_dir, true).await {
                 err!("Failed to extract LWJGL natives: {}", e);
                 return Err(IoError::Io {
-                    error: format!("Failed to extract LWJGL natives: {e}"),
+                    error: std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Failed to extract LWJGL natives: {e}"),
+                    ),
                     path: natives_dir.clone(),
                 }
                 .into());

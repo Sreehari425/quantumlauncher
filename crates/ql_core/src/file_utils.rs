@@ -8,6 +8,7 @@ use std::{
 
 use std::sync::mpsc::Sender;
 
+use flate2::read::GzDecoder;
 use futures::StreamExt;
 use reqwest::{Response, header::InvalidHeaderValue};
 use serde::de::DeserializeOwned;
@@ -280,7 +281,7 @@ pub async fn download_file_to_path_with_progress(
 
         while let Some(chunk) = stream.next().await {
             let chunk = chunk.map_err(|e| IoError::Io {
-                error: e.to_string(),
+                error: e,
                 path: path.to_owned(),
             })?;
             file.write_all(&chunk).await.path(path)?;
@@ -704,4 +705,57 @@ pub fn canonicalize_s(p: impl AsRef<Path>) -> PathBuf {
 
 pub async fn exists(p: impl AsRef<Path>) -> bool {
     tokio::fs::try_exists(p).await.is_ok_and(|n| n)
+}
+
+/// Extracts a `.tar.gz` file from a `&[u8]` buffer into the given directory.
+///
+/// Does not create a top-level directory,
+/// extracting files directly into the target directory.
+///
+/// # Arguments
+/// - `data`: A reference to the `.tar.gz` file as a byte slice.
+/// - `output_dir`: Path to the directory where the contents will be extracted.
+///
+/// # Errors
+/// - `std::io::Error` if the `.tar.gz` file was invalid.
+pub fn extract_tar_gz(archive: &[u8], output_dir: &Path) -> std::io::Result<()> {
+    // For extracting the `.gz`
+    let decoder = GzDecoder::new(Cursor::new(archive));
+    // For extracting the `.tar`
+    let mut tar = tar::Archive::new(decoder);
+
+    // Get the first entry path to determine the top-level directory
+    let mut entries = tar.entries()?;
+    let top_level_dir = if let (Some(entry), None) = (entries.next(), entries.next()) {
+        entry?
+            .path()?
+            .components()
+            .next()
+            .map(|c| c.as_os_str().to_os_string())
+    } else {
+        None
+    };
+
+    let decoder = GzDecoder::new(Cursor::new(archive));
+    let mut tar = tar::Archive::new(decoder);
+
+    for entry in tar.entries()? {
+        let mut entry = entry?;
+        let entry_path = entry.path()?;
+
+        let new_path = top_level_dir
+            .as_ref()
+            .and_then(|top_level| entry_path.strip_prefix(top_level).ok())
+            .unwrap_or(&entry_path);
+        let full_path = output_dir.join(new_path);
+
+        if let Some(parent) = full_path.parent() {
+            // Not using async due to some weird thread safety error
+            std::fs::create_dir_all(parent)?;
+        }
+
+        entry.unpack(full_path)?;
+    }
+
+    Ok(())
 }
