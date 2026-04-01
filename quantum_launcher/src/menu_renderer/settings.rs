@@ -140,6 +140,19 @@ impl MenuLauncherSettings {
                 widget::Space::with_height(5),
                 widget::checkbox("Remember last selected instance", config.persistent.clone().unwrap_or_default().selected_remembered)
                     .on_toggle(|n| LauncherSettingsMessage::ToggleInstanceRemembering(n).into()),
+                widget::Space::with_height(5),
+                widget::checkbox(
+                    "Write mod update changelog",
+                    config
+                        .persistent
+                        .clone()
+                        .unwrap_or_default()
+                        .write_mod_update_changelog,
+                )
+                .on_toggle(|n| LauncherSettingsMessage::ToggleModUpdateChangelog(n).into()),
+                widget::text("Writes mod update changes to .minecraft/changelogs")
+                    .size(12)
+                    .style(tsubtitle),
             ]
             .spacing(5)
             .into(),

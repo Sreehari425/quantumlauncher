@@ -1,35 +1,42 @@
+use std::fs::{create_dir_all, write};
 use std::sync::mpsc::Sender;
-use std::fs::create_dir_all;
-use std::fs::write;
 
 use chrono::DateTime;
 use chrono::Local;
-use ql_core::{GenericProgress, InstanceSelection, Loader, do_jobs, info, json::VersionDetails};
+use ql_core::{GenericProgress, InstanceSelection, Loader, do_jobs, err, info, json::VersionDetails};
 
-use crate::store::{get_info_bulk, get_latest_version_date, toggle_mods};
+use crate::store::{get_latest_version_date, toggle_mods};
 
 use super::{ModError, ModId, ModIndex, delete_mods, download_mods_bulk};
 
 pub async fn apply_updates(
     selected_instance: InstanceSelection,
-    updates: Vec<ModId>,
+    updates: Vec<(ModId, String)>,
     progress: Option<Sender<GenericProgress>>,
+    should_write_changelog: bool,
 ) -> Result<(), ModError> {
-    let disabled_mods: Vec<_> = {
-        let mod_index = ModIndex::load(&selected_instance).await?;
-        updates
-            .iter()
-            .filter_map(|n| mod_index.mods.get_key_value(&n.get_index_str()))
-            .filter(|n| !n.1.enabled)
-            .map(|n| n.0.clone())
-            .collect()
+    let mod_index = ModIndex::load(&selected_instance).await?;
+    let update_ids: Vec<ModId> = updates.iter().map(|(id, _)| id.clone()).collect();
+    let disabled_mods: Vec<_> = update_ids
+        .iter()
+        .filter_map(|n| mod_index.mods.get_key_value(&n.get_index_str()))
+        .filter(|n| !n.1.enabled)
+        .map(|n| n.0.clone())
+        .collect();
+
+    let changelog_entries = if should_write_changelog {
+        build_changelog_entries(&mod_index, &updates)
+    } else {
+        Vec::new()
     };
 
     // It's as simple as that!
-    delete_mods(updates.clone(), selected_instance.clone()).await?;
-    download_mods_bulk(updates.clone(), selected_instance.clone(), progress).await?;
+    delete_mods(update_ids.clone(), selected_instance.clone()).await?;
+    download_mods_bulk(update_ids, selected_instance.clone(), progress).await?;
 
-    write_changelog(updates, selected_instance.clone()).await;
+    if should_write_changelog && !changelog_entries.is_empty() {
+        write_changelog(changelog_entries, selected_instance.clone()).await;
+    }
 
     // Ensure disabled mods stay disabled
     toggle_mods(disabled_mods, selected_instance).await?;
@@ -39,25 +46,52 @@ pub async fn apply_updates(
     Ok(())
 }
 
-
-async fn write_changelog(mod_id: Vec<ModId>, selected_instance: InstanceSelection) {
-
-    let titles = get_info_bulk(mod_id).await
-            .unwrap()
-            .into_iter()
-            .map(|n|n.title)
-            .collect::<Vec<_>>()
-            .join("\n");
-
+async fn write_changelog(entries: Vec<String>, selected_instance: InstanceSelection) {
+    let titles = entries.join("\n");
     let now = Local::now();
     let filename = format!("changelog-{}.txt", now.format("%Y-%m-%d-%H-%M"));
     let path = selected_instance.get_dot_minecraft_path().join("changelogs").join(&filename);
 
     if let Some(parent) = path.parent() {
-        create_dir_all(parent).expect("Failed to create parent directories");
+        if let Err(err) = create_dir_all(parent) {
+            err!(no_log, "Failed to create changelog directory: {err}");
+            return;
+        }
+    } else {
+        err!(no_log, "Failed to resolve changelog directory");
+        return;
     }
 
-    write(&path, &titles).expect("Failed to write file");
+    if let Err(err) = write(&path, &titles) {
+        err!(no_log, "Failed to write changelog: {err}");
+    }
+}
+
+fn build_changelog_entries(mod_index: &ModIndex, updates: &[(ModId, String)]) -> Vec<String> {
+    updates
+        .iter()
+        .map(|(mod_id, new_version)| {
+            let (name, old_version) = match mod_index.mods.get(&mod_id.get_index_str()) {
+                Some(mod_cfg) => (mod_cfg.name.clone(), mod_cfg.installed_version.clone()),
+                None => (mod_id.get_index_str(), String::new()),
+            };
+
+            let name = fallback_unknown(&name);
+            let old_version = fallback_unknown(&old_version);
+            let new_version = fallback_unknown(new_version);
+
+            format!("{name}: {old_version} -> {new_version}")
+        })
+        .collect()
+}
+
+fn fallback_unknown(value: &str) -> &str {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        "unknown"
+    } else {
+        trimmed
+    }
 }
 
 pub async fn check_for_updates(

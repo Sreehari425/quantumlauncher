@@ -281,6 +281,7 @@ pub enum LauncherSettingsMessage {
     ToggleAntialiasing(bool),
     ToggleWindowSize(bool),
     ToggleInstanceRemembering(bool),
+    ToggleModUpdateChangelog(bool),
     #[allow(unused)]
     ToggleWindowDecorations(bool),
 

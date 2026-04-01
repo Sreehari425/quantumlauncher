@@ -315,8 +315,9 @@ impl Launcher {
                 .available_updates
                 .clone()
                 .into_iter()
-                .map(|(n, _, _)| n)
+                .map(|(id, version, _)| (id, version))
                 .collect();
+            let write_changelog = self.config.c_persistent().write_mod_update_changelog;
             let (sender, receiver) = std::sync::mpsc::channel();
             menu.mod_update_progress = Some(ProgressBar::with_recv_and_msg(
                 receiver,
@@ -324,7 +325,12 @@ impl Launcher {
             ));
             let selected_instance = self.selected_instance.clone().unwrap();
             Task::perform(
-                ql_mod_manager::store::apply_updates(selected_instance, updates, Some(sender)),
+                ql_mod_manager::store::apply_updates(
+                    selected_instance,
+                    updates,
+                    Some(sender),
+                    write_changelog,
+                ),
                 |n| ManageModsMessage::UpdatePerformDone(n.strerr()).into(),
             )
         } else {
