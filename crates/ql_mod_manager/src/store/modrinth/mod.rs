@@ -1,8 +1,4 @@
-use std::{
-    collections::HashSet,
-    sync::{LazyLock, mpsc::Sender},
-    time::Instant,
-};
+use std::{collections::HashSet, sync::mpsc::Sender, time::Instant};
 
 use chrono::DateTime;
 use download::version_sort;
@@ -10,7 +6,6 @@ use indexmap::IndexMap;
 use info::ProjectInfo;
 use ql_core::{GenericProgress, InstanceSelection, Loader, download, pt};
 use serde::Deserialize;
-use tokio::sync::Mutex;
 use versions::ModVersion;
 
 use crate::{
@@ -193,29 +188,23 @@ impl Backend for ModrinthBackend {
             project_type: String,
             header: String,
         }
-        static CACHE: LazyLock<Mutex<Option<Vec<MCategory>>>> = LazyLock::new(|| Mutex::new(None));
 
-        let mcategories = CACHE.lock().await.clone();
-        let mcategories = if let Some(c) = mcategories {
-            c
-        } else {
-            let mcategories: Vec<MCategory> = download("https://api.modrinth.com/v2/tag/category")
-                .json()
-                .await?;
-            *CACHE.lock().await = Some(mcategories.clone());
-            mcategories
-        };
+        static CACHE: tokio::sync::OnceCell<Vec<MCategory>> = tokio::sync::OnceCell::const_new();
 
+        let mcategories = CACHE
+            .get_or_try_init(|| async {
+                download("https://api.modrinth.com/v2/tag/category")
+                    .json()
+                    .await
+            })
+            .await?;
         let kind_str = kind.to_modrinth_str();
 
         let mut map: IndexMap<String, Vec<Category>> = IndexMap::new();
-        for cat in mcategories
-            .into_iter()
-            .filter(|n| n.project_type == kind_str)
-        {
+        for cat in mcategories.iter().filter(|n| n.project_type == kind_str) {
             let category = Category {
                 name: slug_to_nice_name(&cat.name),
-                slug: cat.name,
+                slug: cat.name.clone(),
                 children: Vec::new(),
                 internal_id: None,
                 is_usable: true,

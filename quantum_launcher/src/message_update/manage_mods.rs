@@ -307,8 +307,6 @@ impl Launcher {
         for m in &ids_downloaded {
             if let Some(m) = menu.mods.mods.get_mut(m) {
                 m.enabled = !m.enabled;
-            } else {
-                println!("not found {m:?}");
             }
         }
 
