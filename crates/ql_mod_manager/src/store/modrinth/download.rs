@@ -6,12 +6,11 @@ use std::{
 
 use chrono::DateTime;
 use ql_core::{
-    GenericProgress, InstanceSelection, StoreBackendType, download, err, file_utils, info,
-    json::VersionDetails, pt,
+    GenericProgress, InstanceSelection, download, err, file_utils, info, json::VersionDetails, pt,
 };
 
 use crate::store::{
-    DirStructure, ModError, QueryType, install_modpack,
+    DirStructure, ModError, ModId, QueryType, StoreBackendType, install_modpack,
     local_json::{ModConfig, ModIndex},
     modrinth::versions::ModVersion,
 };
@@ -104,7 +103,7 @@ impl ModDownloader {
                 .await?;
         }
 
-        if !self.index.mods.contains_key(id) {
+        if !self.index.mods.contains_key(&mid(id)) {
             if let Some(primary_file) = download_version.files.iter().find(|file| file.primary) {
                 self.download_file(query_type, primary_file).await?;
             } else {
@@ -131,7 +130,7 @@ impl ModDownloader {
         &mut self,
         id: &str,
         download_version: &ModVersion,
-        dependency_list: &mut HashSet<String>,
+        dependency_list: &mut HashSet<ModId>,
     ) -> Result<(), ModError> {
         for dependency in &download_version.dependencies {
             let Some(ref dep_id) = dependency.project_id else {
@@ -145,7 +144,7 @@ impl ModDownloader {
                 );
                 continue;
             }
-            if dependency_list.insert(dep_id.clone()) {
+            if dependency_list.insert(mid(dep_id)) {
                 Box::pin(self.download(dep_id, Some(id), false)).await?;
             }
         }
@@ -153,9 +152,9 @@ impl ModDownloader {
     }
 
     fn mark_as_installed(&mut self, id: &str, dependent: Option<&str>, name: &str) -> bool {
-        if let Some(mod_info) = self.index.mods.get_mut(id) {
+        if let Some(mod_info) = self.index.mods.get_mut(&mid(id)) {
             if let Some(dependent) = dependent {
-                mod_info.dependents.insert(dependent.to_owned());
+                mod_info.dependents.insert(mid(dependent));
             } else {
                 mod_info.manually_installed = true;
             }
@@ -165,7 +164,7 @@ impl ModDownloader {
         // Handling the same mod across multiple store backends
         if let Some(mod_info) = self.index.mods.values_mut().find(|n| n.name == name) {
             if let Some(dependent) = dependent {
-                mod_info.dependents.insert(dependent.to_owned());
+                mod_info.dependents.insert(mid(dependent));
             } else {
                 mod_info.manually_installed = true;
             }
@@ -251,7 +250,7 @@ impl ModDownloader {
         &mut self,
         project_info: &ProjectInfo,
         download_version: &ModVersion,
-        dependency_list: HashSet<String>,
+        dependency_list: HashSet<ModId>,
         dependent: Option<&str>,
         manually_installed: bool,
         project_type: QueryType,
@@ -260,13 +259,13 @@ impl ModDownloader {
             name: project_info.title.clone(),
             description: project_info.description.clone(),
             icon_url: project_info.icon_url.clone(),
-            project_id: project_info.id.clone(),
+            project_id: ModId::Modrinth(project_info.id.clone()),
             files: download_version.files.clone(),
             supported_versions: download_version.game_versions.clone(),
             dependencies: dependency_list,
             dependents: if let Some(dependent) = dependent {
                 let mut set = HashSet::new();
-                set.insert(dependent.to_owned());
+                set.insert(mid(dependent));
                 set
             } else {
                 HashSet::new()
@@ -279,7 +278,7 @@ impl ModDownloader {
         };
 
         if let QueryType::Mods = project_type {
-            self.index.mods.insert(project_info.id.clone(), config);
+            self.index.mods.insert(mid(&project_info.id), config);
         }
     }
 }
@@ -315,4 +314,8 @@ fn print_downloading_message(project_info: &ProjectInfo, dependent: Option<&str>
     } else {
         pt!("Downloading {}", project_info.title);
     }
+}
+
+fn mid(id: &str) -> ModId {
+    ModId::Modrinth(id.to_owned())
 }

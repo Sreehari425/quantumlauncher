@@ -6,10 +6,10 @@ use std::{
 
 use iced::{Rectangle, Task, widget::text_editor};
 use ql_core::{
-    InstanceSelection, IntoIoError, IntoJsonError, IntoStringError, JsonFileError, ModId,
+    InstanceSelection, IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
     constants::OS_NAME, json::InstanceConfigJson,
 };
-use ql_mod_manager::store::{ModConfig, ModIndex};
+use ql_mod_manager::store::{ModConfig, ModId, ModIndex};
 
 use crate::config::SIDEBAR_WIDTH;
 use crate::state::{
@@ -176,6 +176,7 @@ impl Launcher {
             | State::LogUploadResult { .. }
             | State::InstallPaper(_)
             | State::CreateShortcut(_)
+            | State::ModDescription(_)
             | State::ExportMods(_) => {}
         }
 
@@ -346,14 +347,14 @@ impl MenuModsDownload {
 }
 
 pub fn sort_dependencies(
-    downloaded_mods: &HashMap<String, ModConfig>,
+    downloaded_mods: &HashMap<ModId, ModConfig>,
     locally_installed_mods: &HashSet<String>,
 ) -> Vec<ModListEntry> {
     let mut entries: Vec<ModListEntry> = downloaded_mods
         .iter()
-        .map(|(k, v)| ModListEntry::Downloaded {
-            id: ModId::from_index_str(k),
-            config: Box::new(v.clone()),
+        .map(|(id, c)| ModListEntry::Downloaded {
+            id: id.clone(),
+            config: Box::new(c.clone()),
         })
         .chain(locally_installed_mods.iter().map(|n| ModListEntry::Local {
             file_name: n.clone(),
