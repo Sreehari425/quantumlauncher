@@ -7,6 +7,8 @@
   - Filter mods, resource packs and shaders by various search categories!
 - Mod Descriptions: now with cleaner UI, links and gallery viewer
 
+TODO: Add screenshots
+
 # UX
 
 - Mods menu: Right click -> Mod Details now takes you directly to description page

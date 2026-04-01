@@ -1,5 +1,6 @@
 use iced::{Task, widget};
 use iced::{futures::executor::block_on, keyboard::Modifiers};
+use ql_core::file_utils::exists;
 use ql_core::{InstanceSelection, IntoIoError, IntoStringError, err, jarmod::JarMods};
 use ql_mod_manager::store::{ModId, ModIndex, SelectedMod};
 use std::{collections::HashSet, path::PathBuf};
@@ -700,7 +701,7 @@ impl Launcher {
 }
 
 async fn delete_file_wrapper(path: PathBuf) -> Result<(), String> {
-    if !path.exists() {
+    if !exists(&path).await {
         return Ok(());
     }
     tokio::fs::remove_file(&path).await.path(path).strerr()

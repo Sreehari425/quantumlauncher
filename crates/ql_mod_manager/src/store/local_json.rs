@@ -132,7 +132,7 @@ async fn load_inner(selected_instance: &InstanceSelection) -> Result<ModIndex, J
     let dot_mc_dir = selected_instance.get_dot_minecraft_path();
 
     let mods_dir = dot_mc_dir.join("mods");
-    if !mods_dir.exists() {
+    if !exists(&mods_dir).await {
         fs::create_dir(&mods_dir).await.path(&mods_dir)?;
     }
 

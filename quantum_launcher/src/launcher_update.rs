@@ -157,10 +157,7 @@ pub async fn install(url: String, progress: Sender<GenericProgress>) -> Result<(
         .ok_or(UpdateError::OsStrToStr(exe_name.into()))?;
 
     let mut backup_idx = 1;
-    while exe_location
-        .join(format!("backup_{backup_idx}_{exe_name}"))
-        .exists()
-    {
+    while exists(&exe_location.join(format!("backup_{backup_idx}_{exe_name}"))).await {
         backup_idx += 1;
     }
 
