@@ -2,10 +2,7 @@ use ql_core::{err, file_utils};
 use serde::Deserialize;
 use std::fmt::Write;
 
-use crate::{
-    rate_limiter::RATE_LIMITER,
-    store::types::{GalleryItem, UrlKind},
-};
+use crate::{rate_limiter::RATE_LIMITER, store::types::UrlKind};
 
 use super::ModError;
 
@@ -42,7 +39,27 @@ pub struct ProjectInfo {
     // pub license: License,
     // pub versions: Vec<String>,
     // pub game_versions: Vec<String>,
-    pub gallery: Vec<GalleryItem>,
+    pub gallery: Vec<MGallery>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct MGallery {
+    pub url: String,
+    // pub featured: bool,
+    pub title: Option<String>,
+    pub description: Option<String>,
+    // pub created: String,
+    pub ordering: i64,
+}
+
+impl From<MGallery> for crate::store::types::GalleryItem {
+    fn from(value: MGallery) -> Self {
+        Self {
+            url: value.url,
+            title: value.title,
+            description: value.description,
+        }
+    }
 }
 
 impl ProjectInfo {

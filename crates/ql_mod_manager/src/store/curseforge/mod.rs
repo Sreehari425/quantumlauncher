@@ -129,7 +129,6 @@ impl From<CfScreenshot> for GalleryItem {
             url: value.url,
             title: Some(value.title),
             description: Some(value.description),
-            ordering: 0,
         }
     }
 }

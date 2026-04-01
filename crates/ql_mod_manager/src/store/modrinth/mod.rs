@@ -55,7 +55,6 @@ impl Backend for ModrinthBackend {
                             url,
                             title: None,
                             description: None,
-                            ordering: 0,
                         })
                         .collect(),
                     urls: Vec::new(),
@@ -245,7 +244,8 @@ impl Backend for ModrinthBackend {
     }
 
     async fn get_info(id: &str) -> Result<SearchMod, ModError> {
-        let info = ProjectInfo::download(id).await?;
+        let mut info = ProjectInfo::download(id).await?;
+        info.gallery.sort_by(|a, b| a.ordering.cmp(&b.ordering));
 
         Ok(SearchMod {
             urls: info.build_urls(),
@@ -257,7 +257,7 @@ impl Backend for ModrinthBackend {
             id: info.id,
             icon_url: info.icon_url,
             backend: StoreBackendType::Modrinth,
-            gallery: info.gallery,
+            gallery: info.gallery.into_iter().map(GalleryItem::from).collect(),
         })
     }
 
@@ -265,17 +265,20 @@ impl Backend for ModrinthBackend {
         let infos = ProjectInfo::download_bulk(ids).await?;
         Ok(infos
             .into_iter()
-            .map(|info| SearchMod {
-                urls: info.build_urls(),
-                title: info.title,
-                description: info.description,
-                downloads: info.downloads,
-                internal_name: info.slug,
-                project_type: info.project_type,
-                id: info.id,
-                icon_url: info.icon_url,
-                backend: StoreBackendType::Modrinth,
-                gallery: info.gallery,
+            .map(|mut info| {
+                info.gallery.sort_by(|a, b| a.ordering.cmp(&b.ordering));
+                SearchMod {
+                    urls: info.build_urls(),
+                    title: info.title,
+                    description: info.description,
+                    downloads: info.downloads,
+                    internal_name: info.slug,
+                    project_type: info.project_type,
+                    id: info.id,
+                    icon_url: info.icon_url,
+                    backend: StoreBackendType::Modrinth,
+                    gallery: info.gallery.into_iter().map(GalleryItem::from).collect(),
+                }
             })
             .collect())
     }

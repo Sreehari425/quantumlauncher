@@ -224,11 +224,8 @@ impl SearchMod {
 #[derive(Deserialize, Debug, Clone)]
 pub struct GalleryItem {
     pub url: String,
-    // pub featured: bool,
     pub title: Option<String>,
     pub description: Option<String>,
-    // pub created: String,
-    pub ordering: i64,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

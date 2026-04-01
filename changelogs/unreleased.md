@@ -5,7 +5,7 @@
 - Redesigned, now with many features
 - Added category filters:
   - Filter mods, resource packs and shaders by various search categories!
-- Mod Descriptions: now with cleaner UI, links and gallery viewer (TODO)
+- Mod Descriptions: now with cleaner UI, links and gallery viewer
 
 # UX
 

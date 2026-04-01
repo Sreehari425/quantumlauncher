@@ -8,7 +8,7 @@ use ql_mod_manager::store::{SearchMod, StoreBackendType};
 use crate::{
     icons,
     menu_renderer::{
-        Element, FONT_DEFAULT, FONT_MONO, barthin, button_with_icon, tooltip, underline,
+        Element, FONT_DEFAULT, FONT_MONO, barthin, button_with_icon, tooltip, tsubtitle, underline,
     },
     state::{ImageState, InstallModsMessage, ManageModsMessage, MenuModDescription, Message},
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
@@ -137,10 +137,33 @@ pub fn view_project_description<'a, T: iced::advanced::text::IntoFragment<'a>>(
                 .into()
             }))
             .spacing(5),
-            widget::horizontal_rule(1).style(barthin),
-            "TODO: Gallery",
         ]
-        .spacing(20)
+        .push_maybe((!hit.gallery.is_empty()).then(|| {
+            column![
+                widget::horizontal_rule(1).style(barthin),
+                widget::text("Gallery").size(20),
+                widget::text("Hover to enlarge").size(12).style(tsubtitle),
+                widget::column(hit.gallery.iter().map(|n| {
+                    let img = || images.view(Some(&n.url), None, None);
+                    column![widget::tooltip(
+                        img(),
+                        img(),
+                        widget::tooltip::Position::Left
+                    )]
+                    .push_maybe(n.title.as_deref().map(|n| widget::text(n).size(14)))
+                    .push_maybe(
+                        n.description
+                            .as_deref()
+                            .map(|n| widget::text(n).size(12).style(tsubtitle)),
+                    )
+                    .spacing(5)
+                    .into()
+                }))
+                .spacing(20),
+            ]
+            .spacing(10)
+        }))
+        .spacing(10)
         .padding(20)
         .width(Length::FillPortion(1)),
         1,
