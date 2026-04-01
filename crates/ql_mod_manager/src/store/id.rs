@@ -13,7 +13,7 @@ impl serde::Serialize for ModId {
     {
         match self {
             ModId::Modrinth(id) => serializer.serialize_str(id),
-            ModId::Curseforge(id) => serializer.serialize_str(&format!("CF:{}", id)),
+            ModId::Curseforge(id) => serializer.serialize_str(&format!("CF:{id}")),
         }
     }
 }

@@ -16,7 +16,7 @@ pub async fn apply_updates(
         let mod_index = ModIndex::load(&selected_instance).await?;
         updates
             .iter()
-            .filter_map(|n| mod_index.mods.get_key_value(&n))
+            .filter_map(|n| mod_index.mods.get_key_value(n))
             .filter(|n| !n.1.enabled)
             .map(|n| n.0.clone())
             .collect()

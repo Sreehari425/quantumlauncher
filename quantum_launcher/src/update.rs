@@ -440,8 +440,10 @@ impl Launcher {
 
         if is_auto_theme && interval {
             Task::perform(tokio::task::spawn_blocking(dark_light::detect), |n| {
-                LauncherSettingsMessage::LoadedSystemTheme(n.strerr().and_then(|n| n.strerr()))
-                    .into()
+                LauncherSettingsMessage::LoadedSystemTheme(
+                    n.strerr().and_then(IntoStringError::strerr),
+                )
+                .into()
             })
         } else {
             Task::none()

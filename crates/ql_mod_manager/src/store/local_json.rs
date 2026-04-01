@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     io::ErrorKind,
+    path::Path,
 };
 
 use ql_core::{
@@ -72,7 +73,7 @@ impl ModIndex {
             return Ok(());
         }
 
-        self.fix_nonexistent_mods(mods_dir);
+        self.fix_nonexistent_mods(&mods_dir);
         self.fix_cf_modpack_id_bug();
 
         Ok(())
@@ -95,7 +96,7 @@ impl ModIndex {
         self.mods.extend(drained_mods);
     }
 
-    fn fix_nonexistent_mods(&mut self, mods_dir: std::path::PathBuf) {
+    fn fix_nonexistent_mods(&mut self, mods_dir: &Path) {
         let mut removed_ids = Vec::new();
         let mut remove_dependents = Vec::new();
 
