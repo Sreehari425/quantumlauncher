@@ -163,11 +163,7 @@ impl Launcher {
                             menu.available_updates = updates
                                 .into_iter()
                                 .map(|(id, title)| {
-                                    let enabled = menu
-                                        .mods
-                                        .mods
-                                        .get(&id.get_index_str())
-                                        .is_none_or(|n| n.enabled);
+                                    let enabled = menu.mods.mods.get(&id).is_none_or(|n| n.enabled);
                                     (id, title, enabled)
                                 })
                                 .collect();
@@ -205,7 +201,7 @@ impl Launcher {
                                         .manually_installed
                                         .then_some(SelectedMod::Downloaded {
                                             name: mod_info.name.clone(),
-                                            id: ModId::from_index_str(id),
+                                            id: id.clone(),
                                         })
                                 })
                                 .chain(menu.locally_installed_mods.iter().map(|n| {
@@ -234,7 +230,7 @@ impl Launcher {
                                         .manually_installed
                                         .then_some(SelectedMod::Downloaded {
                                             name: mod_info.name.clone(),
-                                            id: ModId::from_index_str(id),
+                                            id: id.clone(),
                                         })
                                 })
                                 .chain(menu.locally_installed_mods.iter().map(|n| {
@@ -286,7 +282,6 @@ impl Launcher {
             }
             ManageModsMessage::ToggleOne(id) => {
                 let instance_name = self.selected_instance.clone().unwrap();
-                let id = id.get_index_str();
                 if let State::EditMods(menu) = &mut self.state {
                     if let Some(m) = menu.mods.mods.get_mut(&id) {
                         m.enabled = !m.enabled;
@@ -313,7 +308,7 @@ impl Launcher {
             if let Some(m) = menu.mods.mods.get_mut(m) {
                 m.enabled = !m.enabled;
             } else {
-                println!("not found {m}");
+                println!("not found {m:?}");
             }
         }
 

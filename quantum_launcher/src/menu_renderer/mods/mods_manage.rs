@@ -1,8 +1,9 @@
 use crate::{
     icons,
     menu_renderer::{
-        CTXI_SIZE, Element, FONT_MONO, back_button, back_to_launch_screen, button_with_icon,
-        ctx_button, ctxbox, dots, offset, select_box, subbutton_with_icon, tooltip, tsubtitle,
+        CTXI_SIZE, Element, FONT_MONO, back_button, back_to_launch_screen, barthin,
+        button_with_icon, ctx_button, ctxbox, dots, offset, select_box, subbutton_with_icon,
+        tooltip, tsubtitle,
     },
     message_handler::ForgeKind,
     state::{
@@ -56,8 +57,7 @@ impl MenuEditMods {
                     .on_press(ManageModsMessage::ExportMenuOpen.into()),
                 ctx_button(icons::file_zip_s(CTXI_SIZE), "Export QMP Preset")
                     .on_press(EditPresetsMessage::Open.into()),
-                widget::horizontal_rule(1)
-                    .style(|t: &LauncherTheme| t.style_rule(Color::SecondDark, 1)),
+                widget::horizontal_rule(1).style(barthin),
                 ctx_button(icons::download_s(CTXI_SIZE), "See recommended mods").on_press(
                     Message::RecommendedMods(crate::state::RecommendedModMessage::Open)
                 ),
@@ -157,7 +157,7 @@ impl MenuEditMods {
                             let title = self
                                 .mods
                                 .mods
-                                .get(&id.get_index_str())
+                                .get(id)
                                 .map(|n| n.name.clone())
                                 .unwrap_or_default();
 

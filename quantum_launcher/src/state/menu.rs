@@ -306,13 +306,13 @@ impl MenuEditMods {
     /// - The filenames of local mods
     ///
     /// ...respectively, from the mods selected in the mod menu.
-    pub fn get_kinds_of_ids(&self) -> (Vec<String>, Vec<String>) {
+    pub fn get_kinds_of_ids(&self) -> (Vec<ModId>, Vec<String>) {
         let ids_downloaded = self
             .selected_mods
             .iter()
             .filter_map(|s_mod| {
                 if let SelectedMod::Downloaded { id, .. } = s_mod {
-                    Some(id.get_index_str())
+                    Some(id.clone())
                 } else {
                     None
                 }

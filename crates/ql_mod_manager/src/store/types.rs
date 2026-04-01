@@ -3,64 +3,7 @@ use std::{fmt::Display, time::Instant};
 use ql_core::Loader;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ModId {
-    Modrinth(String),
-    Curseforge(String),
-}
-
-impl ModId {
-    #[must_use]
-    pub fn get_internal_id(&self) -> &str {
-        match self {
-            ModId::Modrinth(n) | ModId::Curseforge(n) => n,
-        }
-    }
-
-    #[must_use]
-    pub fn get_index_str(&self) -> String {
-        match self {
-            ModId::Modrinth(n) => n.clone(),
-            ModId::Curseforge(n) => format!("CF:{n}"),
-        }
-    }
-
-    #[must_use]
-    pub fn get_backend(&self) -> StoreBackendType {
-        match self {
-            ModId::Modrinth(_) => StoreBackendType::Modrinth,
-            ModId::Curseforge(_) => StoreBackendType::Curseforge,
-        }
-    }
-
-    #[must_use]
-    pub fn from_index_str(n: &str) -> Self {
-        if n.starts_with("CF:") {
-            ModId::Curseforge(n.strip_prefix("CF:").unwrap_or(n).to_owned())
-        } else {
-            ModId::Modrinth(n.to_owned())
-        }
-    }
-
-    #[must_use]
-    pub fn from_pair(n: &str, t: StoreBackendType) -> Self {
-        let n = n.to_owned();
-        match t {
-            StoreBackendType::Modrinth => Self::Modrinth(n),
-            StoreBackendType::Curseforge => Self::Curseforge(n),
-        }
-    }
-
-    #[must_use]
-    pub fn to_pair(self) -> (String, StoreBackendType) {
-        let backend = match self {
-            ModId::Modrinth(_) => StoreBackendType::Modrinth,
-            ModId::Curseforge(_) => StoreBackendType::Curseforge,
-        };
-
-        (self.get_internal_id().to_owned(), backend)
-    }
-}
+use crate::store::ModId;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoreBackendType {
@@ -266,11 +209,50 @@ pub struct SearchMod {
     pub id: String,
     pub icon_url: Option<String>,
     pub backend: StoreBackendType,
+
+    pub gallery: Vec<GalleryItem>,
+    pub urls: Vec<(UrlKind, String)>,
 }
 
 impl SearchMod {
     #[must_use]
-    pub fn get_id(&self, backend: StoreBackendType) -> ModId {
-        ModId::from_pair(&self.id, backend)
+    pub fn get_id(&self) -> ModId {
+        ModId::from_pair(&self.id, self.backend)
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct GalleryItem {
+    pub url: String,
+    // pub featured: bool,
+    pub title: Option<String>,
+    pub description: Option<String>,
+    // pub created: String,
+    pub ordering: i64,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum UrlKind {
+    Issues,
+    Source,
+    Wiki,
+
+    // Curseforge-only
+    Website,
+    // Modrinth-only
+    Discord,
+    Donation(String), // Service name
+}
+
+impl Display for UrlKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            UrlKind::Issues => "Issues",
+            UrlKind::Source => "Source",
+            UrlKind::Wiki => "Wiki",
+            UrlKind::Website => "Website",
+            UrlKind::Discord => "Discord",
+            UrlKind::Donation(n) => return f.write_fmt(format_args!("Donation ({n})")),
+        })
     }
 }

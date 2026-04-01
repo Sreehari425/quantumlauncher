@@ -15,7 +15,7 @@ use versions::ModVersion;
 
 use crate::{
     rate_limiter::{RATE_LIMITER, lock},
-    store::{Category, ModId, SearchMod, StoreBackendType},
+    store::{Category, ModId, SearchMod, StoreBackendType, types::GalleryItem},
 };
 
 use super::{Backend, CurseforgeNotAllowed, ModError, Query, SearchResult};
@@ -48,6 +48,17 @@ impl Backend for ModrinthBackend {
                     id: entry.project_id,
                     icon_url: entry.icon_url,
                     backend: StoreBackendType::Modrinth,
+                    gallery: entry
+                        .gallery
+                        .into_iter()
+                        .map(|url| GalleryItem {
+                            url,
+                            title: None,
+                            description: None,
+                            ordering: 0,
+                        })
+                        .collect(),
+                    urls: Vec::new(),
                 })
                 .collect(),
             start_time: instant,
@@ -160,7 +171,7 @@ impl Backend for ModrinthBackend {
             result?;
 
             if set_manually_installed {
-                if let Some(config) = downloader.index.mods.get_mut(id) {
+                if let Some(config) = downloader.index.mods.get_mut(&ModId::Modrinth(id.clone())) {
                     config.manually_installed = true;
                 }
             }
@@ -235,7 +246,9 @@ impl Backend for ModrinthBackend {
 
     async fn get_info(id: &str) -> Result<SearchMod, ModError> {
         let info = ProjectInfo::download(id).await?;
+
         Ok(SearchMod {
+            urls: info.build_urls(),
             title: info.title,
             description: info.description,
             downloads: info.downloads,
@@ -244,6 +257,7 @@ impl Backend for ModrinthBackend {
             id: info.id,
             icon_url: info.icon_url,
             backend: StoreBackendType::Modrinth,
+            gallery: info.gallery,
         })
     }
 
@@ -252,6 +266,7 @@ impl Backend for ModrinthBackend {
         Ok(infos
             .into_iter()
             .map(|info| SearchMod {
+                urls: info.build_urls(),
                 title: info.title,
                 description: info.description,
                 downloads: info.downloads,
@@ -260,6 +275,7 @@ impl Backend for ModrinthBackend {
                 id: info.id,
                 icon_url: info.icon_url,
                 backend: StoreBackendType::Modrinth,
+                gallery: info.gallery,
             })
             .collect())
     }

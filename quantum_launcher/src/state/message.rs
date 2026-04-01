@@ -173,7 +173,8 @@ pub enum InstallModsMessage {
 
     BackToMainScreen,
     Click(usize),
-    LoadData(Res<(ModId, String)>),
+    LoadedDescription(Res<(ModId, String)>),
+    LoadedExtendedInfo(Res<(ModId, SearchMod)>),
     IndexUpdated(Res<ModIndex>),
     Scrolled(widget::scrollable::Viewport),
 

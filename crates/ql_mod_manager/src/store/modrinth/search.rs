@@ -109,9 +109,9 @@ pub struct Entry {
     // pub license: String,
     // pub client_side: String,
     // pub server_side: String,
-    // pub gallery: Vec<String>,
     // pub featured_gallery: Option<String>,
     // pub color: Option<usize>,
     // pub thread_id: Option<String>,
     // pub monetization_status: Option<String>,
+    pub gallery: Vec<String>, // URLs
 }

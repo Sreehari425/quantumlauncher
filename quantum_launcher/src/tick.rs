@@ -347,14 +347,14 @@ impl MenuModsDownload {
 }
 
 pub fn sort_dependencies(
-    downloaded_mods: &HashMap<String, ModConfig>,
+    downloaded_mods: &HashMap<ModId, ModConfig>,
     locally_installed_mods: &HashSet<String>,
 ) -> Vec<ModListEntry> {
     let mut entries: Vec<ModListEntry> = downloaded_mods
         .iter()
-        .map(|(k, v)| ModListEntry::Downloaded {
-            id: ModId::from_index_str(k),
-            config: Box::new(v.clone()),
+        .map(|(id, c)| ModListEntry::Downloaded {
+            id: id.clone(),
+            config: Box::new(c.clone()),
         })
         .chain(locally_installed_mods.iter().map(|n| ModListEntry::Local {
             file_name: n.clone(),

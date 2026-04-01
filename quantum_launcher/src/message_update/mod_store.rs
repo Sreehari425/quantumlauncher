@@ -19,7 +19,8 @@ impl Launcher {
         let is_server = matches!(&self.selected_instance, Some(InstanceSelection::Server(_)));
 
         match message {
-            InstallModsMessage::LoadData(Err(err))
+            InstallModsMessage::LoadedDescription(Err(err))
+            | InstallModsMessage::LoadedExtendedInfo(Err(err))
             | InstallModsMessage::DownloadComplete(Err(err))
             | InstallModsMessage::SearchResult(Err(err))
             | InstallModsMessage::IndexUpdated(Err(err))
@@ -108,9 +109,21 @@ impl Launcher {
                             let backend = menu.backend;
                             let id = ModId::from_pair(&hit.id, backend);
 
-                            return Task::perform(get_description(id), |n| {
-                                InstallModsMessage::LoadData(n.strerr()).into()
+                            let t1 = Task::perform(get_description(id.clone()), |n| {
+                                InstallModsMessage::LoadedDescription(n.strerr()).into()
                             });
+                            let id2 = id.clone();
+                            let t2 = Task::perform(
+                                async move { store::get_info(&id2).await },
+                                move |n| {
+                                    let id = id.clone();
+                                    InstallModsMessage::LoadedExtendedInfo(
+                                        n.strerr().map(move |n| (id, n)),
+                                    )
+                                    .into()
+                                },
+                            );
+                            return Task::batch([t1, t2]);
                         }
                     }
                 }
@@ -125,10 +138,23 @@ impl Launcher {
                     );
                 }
             }
-            InstallModsMessage::LoadData(Ok((id, description))) => {
+            InstallModsMessage::LoadedDescription(Ok((id, description))) => {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.mod_descriptions.insert(id, description);
                     menu.reload_description(&mut self.images);
+                }
+            }
+            InstallModsMessage::LoadedExtendedInfo(Ok((id, info))) => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    if let Some(res) = &mut menu.results {
+                        for m in &mut res.mods {
+                            // Fill in that mod's entry with extended info
+                            if m.get_id() == id {
+                                *m = info;
+                                break;
+                            }
+                        }
+                    }
                 }
             }
             InstallModsMessage::Download(index) => {
@@ -250,7 +276,7 @@ impl Launcher {
                 if let State::ModsDownload(menu) = &mut self.state {
                     for id in ids {
                         menu.mods_download_in_progress.remove(&id);
-                        menu.mod_index.mods.remove(&id.get_index_str());
+                        menu.mod_index.mods.remove(&id);
                     }
                 }
             }

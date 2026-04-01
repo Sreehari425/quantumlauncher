@@ -7,9 +7,11 @@ use ql_mod_manager::store::{SearchMod, StoreBackendType};
 
 use crate::{
     icons,
-    menu_renderer::{Element, FONT_DEFAULT, FONT_MONO, button_with_icon},
+    menu_renderer::{
+        Element, FONT_DEFAULT, FONT_MONO, barthin, button_with_icon, tooltip, underline,
+    },
     state::{ImageState, InstallModsMessage, ManageModsMessage, MenuModDescription, Message},
-    stylesheet::{color::Color, styles::LauncherTheme},
+    stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
 
 impl MenuModDescription {
@@ -50,7 +52,7 @@ pub fn view_project_description<'a, T: iced::advanced::text::IntoFragment<'a>>(
             .into(),
         Ok(None) => {
             let dots = ".".repeat((tick_timer % 3) + 1);
-            widget::text!("Loading...{dots}").into()
+            widget::text!("Loading{dots}").into()
         }
         Err(err) => widget::container(
             column![
@@ -102,23 +104,53 @@ pub fn view_project_description<'a, T: iced::advanced::text::IntoFragment<'a>>(
     .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark))
     .padding([5, 10]);
 
+    let scroll = |e, p| {
+        widget::scrollable(e)
+            .width(Length::FillPortion(p))
+            .height(Length::Fill)
+    };
+
+    let side_description = scroll(column![markdown_description].padding(20), 2)
+        .style(LauncherTheme::style_scrollable_flat_dark);
+
+    let side_extra_info = scroll(
+        column![
+            widget::text(&hit.description)
+                .size(14)
+                .shaping(widget::text::Shaping::Advanced),
+            widget::horizontal_rule(1).style(barthin),
+            // Note: When upgrading to iced 0.14, make sure to update link click handling
+            widget::column(hit.urls.iter().map(|(kind, url)| {
+                tooltip(
+                    widget::button(underline(
+                        widget::text!("{kind} →").size(13),
+                        Color::SecondLight,
+                    ))
+                    .padding(0)
+                    .style(|n: &LauncherTheme, status| {
+                        n.style_button(status, StyleButton::FlatExtraDark)
+                    })
+                    .on_press_with(|| Message::CoreOpenLink(url.clone())),
+                    widget::text(url).size(12),
+                    widget::tooltip::Position::Left,
+                )
+                .into()
+            }))
+            .spacing(5),
+            widget::horizontal_rule(1).style(barthin),
+            "TODO: Gallery",
+        ]
+        .spacing(20)
+        .padding(20)
+        .width(Length::FillPortion(1)),
+        1,
+    )
+    .style(LauncherTheme::style_scrollable_flat_extra_dark);
+
     column![
         top_bar,
-        widget::horizontal_rule(1).style(|t: &LauncherTheme| t.style_rule(Color::SecondDark, 1)),
-        widget::scrollable(
-            column![
-                widget::container(
-                    widget::text(&hit.description).shaping(widget::text::Shaping::Advanced)
-                )
-                .padding(10),
-                markdown_description
-            ]
-            .padding(20)
-            .spacing(20),
-        )
-        .style(LauncherTheme::style_scrollable_flat_extra_dark)
-        .width(Length::Fill)
-        .height(Length::Fill)
+        widget::horizontal_rule(1).style(barthin),
+        row![side_description, side_extra_info]
     ]
     .into()
 }

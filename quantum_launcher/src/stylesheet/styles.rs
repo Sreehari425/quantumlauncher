@@ -200,6 +200,11 @@ impl LauncherTheme {
     }
 
     fn style_scrollable_active(&self, style: StyleScrollable) -> widget::scrollable::Style {
+        let background = match style {
+            StyleScrollable::Round | StyleScrollable::FlatDark => None,
+            StyleScrollable::FlatExtraDark => Some(self.get_bg(Color::ExtraDark)),
+        };
+
         let border = self.get_border_style(
             &style,
             match style {
@@ -207,8 +212,9 @@ impl LauncherTheme {
                 StyleScrollable::FlatExtraDark => Color::Dark,
             },
         );
+
         let rail = Rail {
-            background: Some(self.get_bg(Color::ExtraDark)),
+            background,
             border,
             scroller: widget::scrollable::Scroller {
                 color: mix(
@@ -222,10 +228,7 @@ impl LauncherTheme {
         widget::scrollable::Style {
             container: Style {
                 text_color: None,
-                background: match style {
-                    StyleScrollable::Round | StyleScrollable::FlatDark => None,
-                    StyleScrollable::FlatExtraDark => Some(self.get_bg(Color::ExtraDark)),
-                },
+                background,
                 border,
                 shadow: iced::Shadow::default(),
             },
@@ -241,6 +244,10 @@ impl LauncherTheme {
         vertical_hovered: bool,
         horizontal_hovered: bool,
     ) -> widget::scrollable::Style {
+        let background = match style {
+            StyleScrollable::Round | StyleScrollable::FlatDark => None,
+            StyleScrollable::FlatExtraDark => Some(self.get_bg(Color::ExtraDark)),
+        };
         let border = self.get_border_style(
             &style,
             match style {
@@ -248,19 +255,27 @@ impl LauncherTheme {
                 StyleScrollable::FlatExtraDark => Color::Dark,
             },
         );
-        let vertical_rail = self.s_scrollable_rail_hovered(border, vertical_hovered);
-        let horizontal_rail = self.s_scrollable_rail_hovered(border, horizontal_hovered);
+
+        let vertical_rail = self.s_scrollable_rail_hovered(background, border, vertical_hovered);
+        let horizontal_rail =
+            self.s_scrollable_rail_hovered(background, border, horizontal_hovered);
+
         widget::scrollable::Style {
-            container: self.s_scrollable_get_container(style, border),
+            container: self.s_scrollable_get_container(background, border),
             vertical_rail,
             horizontal_rail,
             gap: None,
         }
     }
 
-    fn s_scrollable_rail_hovered(&self, border: Border, hovered: bool) -> Rail {
+    fn s_scrollable_rail_hovered(
+        &self,
+        background: Option<iced::Background>,
+        border: Border,
+        hovered: bool,
+    ) -> Rail {
         Rail {
-            background: Some(self.get_bg(Color::ExtraDark)),
+            background,
             border,
             scroller: widget::scrollable::Scroller {
                 color: if hovered {
@@ -279,6 +294,11 @@ impl LauncherTheme {
         is_vertical_scrollbar_dragged: bool,
         is_horizontal_scrollbar_dragged: bool,
     ) -> widget::scrollable::Style {
+        let background = match style {
+            StyleScrollable::Round | StyleScrollable::FlatDark => None,
+            StyleScrollable::FlatExtraDark => Some(self.get_bg(Color::ExtraDark)),
+        };
+
         let border = self.get_border_style(
             &style,
             match style {
@@ -287,8 +307,9 @@ impl LauncherTheme {
                 StyleScrollable::FlatExtraDark => Color::Dark,
             },
         );
+
         let rail = |dragged| Rail {
-            background: Some(self.get_bg(Color::ExtraDark)),
+            background,
             border,
             scroller: widget::scrollable::Scroller {
                 color: if dragged {
@@ -299,21 +320,23 @@ impl LauncherTheme {
                 border: self.get_border(Color::SecondDark),
             },
         };
+
         widget::scrollable::Style {
-            container: self.s_scrollable_get_container(style, border),
+            container: self.s_scrollable_get_container(background, border),
             vertical_rail: rail(is_vertical_scrollbar_dragged),
             horizontal_rail: rail(is_horizontal_scrollbar_dragged),
             gap: None,
         }
     }
 
-    fn s_scrollable_get_container(&self, style: StyleScrollable, border: Border) -> Style {
+    fn s_scrollable_get_container(
+        &self,
+        background: Option<iced::Background>,
+        border: Border,
+    ) -> Style {
         Style {
             text_color: None,
-            background: match style {
-                StyleScrollable::Round | StyleScrollable::FlatDark => None,
-                StyleScrollable::FlatExtraDark => Some(self.get_bg(Color::ExtraDark)),
-            },
+            background,
             border,
             shadow: iced::Shadow::default(),
         }

@@ -5,7 +5,7 @@
 - Redesigned, now with many features
 - Added category filters:
   - Filter mods, resource packs and shaders by various search categories!
-- Mod Descriptions: now with cleaner UI and gallery viewer (TODO)
+- Mod Descriptions: now with cleaner UI, links and gallery viewer (TODO)
 
 # UX
 
@@ -17,3 +17,5 @@
 - Fixed launcher auto-updater not supporting `.tar.gz` files (only `.zip`)
 - Fixed Modrinth pages sometimes appearing after selecting Curseforge,
   and vice versa
+- Fixed mods installed through Curseforge modpacks internally being
+  stored as Modrinth mods

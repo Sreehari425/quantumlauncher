@@ -10,6 +10,7 @@ pub mod category;
 mod curseforge;
 mod delete;
 mod error;
+mod id;
 mod image;
 mod local_json;
 mod modpack;
@@ -23,6 +24,7 @@ pub use add_file::add_files;
 pub use curseforge::CurseforgeBackend;
 pub use delete::delete_mods;
 pub use error::{GameExpectation, ModError};
+pub use id::ModId;
 pub use image::{ImageResult, download_image};
 pub use local_json::{ModConfig, ModFile, ModIndex};
 pub use modpack::{PackError, install_modpack};
@@ -30,7 +32,7 @@ pub use modrinth::ModrinthBackend;
 pub use recommended::{RECOMMENDED_MODS, RecommendedMod};
 pub use toggle::{flip_filename, toggle_mods, toggle_mods_local};
 pub use types::{
-    Category, CurseforgeNotAllowed, ModId, Query, QueryType, SearchMod, SearchResult, SelectedMod,
+    Category, CurseforgeNotAllowed, Query, QueryType, SearchMod, SearchResult, SelectedMod,
     StoreBackendType,
 };
 pub use update::{apply_updates, check_for_updates};
@@ -43,6 +45,12 @@ pub trait Backend {
     /// - Query type (Mod/Resource Pack/Shader/...)
     ///
     /// Returns a search result containing a list of matching items
+    ///
+    /// Note: Some `SearchResult` fields may be limited in info, such as:
+    /// - Gallery image titles/descriptions/order
+    /// - Project links
+    ///
+    /// For the full info use `get_info` or `get_info_bulk`
     async fn search(query: Query, offset: usize) -> Result<SearchResult, ModError>;
     /// Gets the description of a mod based on its id.
     /// Returns the id and description `String`.

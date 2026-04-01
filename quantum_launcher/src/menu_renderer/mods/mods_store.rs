@@ -8,7 +8,8 @@ use ql_mod_manager::store::{Category, ModId, QueryType, SearchMod, StoreBackendT
 use crate::{
     icons,
     menu_renderer::{
-        Element, button_with_icon, mods::description::view_project_description, tooltip, tsubtitle,
+        Element, barthin, button_with_icon, mods::description::view_project_description, tooltip,
+        tsubtitle,
     },
     state::{
         ImageState, InstallModsMessage, ManageModsMessage, MenuModsDownload, Message,
@@ -25,8 +26,7 @@ impl MenuModsDownload {
     fn view_main<'a>(&'a self, images: &'a ImageState, tick_timer: usize) -> Element<'a> {
         column![
             self.get_top_bar(),
-            widget::horizontal_rule(1)
-                .style(|t: &LauncherTheme| t.style_rule(Color::SecondDark, 1)),
+            widget::horizontal_rule(1).style(barthin),
             row![
                 self.get_side_panel(tick_timer),
                 self.mods_display(images, tick_timer)
@@ -98,8 +98,8 @@ impl MenuModsDownload {
                 (self.query_type == QueryType::Shaders
                     && self.config.mod_type != Loader::OptiFine
                     // Iris Shaders Mod
-                    && !self.mod_index.mods.contains_key("YL57xq9U") // Modrinth ID
-                    && !self.mod_index.mods.contains_key("CF:455508")) // CurseForge ID
+                    && !self.mod_index.mods.contains_key(&ModId::Modrinth("YL57xq9U".to_owned())) // Modrinth ID
+                    && !self.mod_index.mods.contains_key(&ModId::Curseforge("455508".to_owned()))) // CurseForge ID
                 .then_some(
                     column![
                         widget::text(
@@ -226,10 +226,7 @@ impl MenuModsDownload {
         images: &'a ImageState,
         backend: StoreBackendType,
     ) -> Element<'a> {
-        let is_installed = self
-            .mod_index
-            .mods
-            .contains_key(&hit.get_id(backend).get_index_str())
+        let is_installed = self.mod_index.mods.contains_key(&hit.get_id())
             || self
                 .mod_index
                 .mods
@@ -366,8 +363,7 @@ impl ModCategoryState {
                             .map(|n| self.view_category(n).into())
                     )
                 ],
-                widget::vertical_rule(1)
-                    .style(|t: &LauncherTheme| t.style_rule(Color::SecondDark, 1))
+                widget::vertical_rule(1).style(barthin)
             ))
     }
 }

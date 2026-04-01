@@ -65,10 +65,10 @@ impl<'a> ModDownloader<'a> {
         if !self.already_installed.insert(id.to_owned()) {
             return Ok(());
         }
-        if let Some(config) = self.index.mods.get_mut(id) {
+        if let Some(config) = self.index.mods.get_mut(&mid(id)) {
             // Is this mod a dependency of something else?
             if let Some(dependent) = dependent {
-                config.dependents.insert(format!("CF:{dependent}"));
+                config.dependents.insert(mid(dependent));
             } else {
                 config.manually_installed = true;
             }
@@ -92,14 +92,14 @@ impl<'a> ModDownloader<'a> {
             pt!("Already installed from modrinth? Skipping...");
             // Is this mod a dependency of something else?
             if let Some(dependent) = dependent {
-                config.dependents.insert(format!("CF:{dependent}"));
+                config.dependents.insert(mid(dependent));
             } else {
                 config.manually_installed = true;
             }
             return Ok(());
         }
 
-        let query_type = get_query_type(response.classId).await?;
+        let query_type = get_query_type(response.class_id).await?;
 
         let (file_query, file_id) = response
             .get_file(
@@ -185,9 +185,8 @@ impl<'a> ModDownloader<'a> {
             return;
         };
 
-        let id_index_str = id_mod.get_index_str();
         self.index.mods.insert(
-            id_index_str.clone(),
+            id_mod.clone(),
             ModConfig {
                 name: response.name.clone(),
                 manually_installed: dependent.is_none(),
@@ -197,7 +196,7 @@ impl<'a> ModDownloader<'a> {
                 description: response.summary.clone(),
                 icon_url: response.logo.clone().map(|n| n.url),
                 project_source: StoreBackendType::Curseforge,
-                project_id: id_index_str.clone(),
+                project_id: id_mod.clone(),
                 files: vec![ModFile {
                     url,
                     filename: file_query.data.fileName,
@@ -214,11 +213,11 @@ impl<'a> ModDownloader<'a> {
                     .data
                     .dependencies
                     .into_iter()
-                    .map(|n| format!("CF:{}", n.modId))
+                    .map(|n| ModId::Curseforge(n.modId.to_string()))
                     .collect(),
                 dependents: if let Some(dependent) = dependent {
                     let mut set = HashSet::new();
-                    set.insert(format!("CF:{dependent}"));
+                    set.insert(mid(dependent));
                     set
                 } else {
                     HashSet::new()
@@ -236,4 +235,8 @@ impl<'a> ModDownloader<'a> {
             query.data
         })
     }
+}
+
+fn mid(id: &str) -> ModId {
+    ModId::Curseforge(id.to_owned())
 }

@@ -14,7 +14,11 @@ use serde::Deserialize;
 
 use crate::{
     rate_limiter::RATE_LIMITER,
-    store::{Category, ModId, SearchMod, StoreBackendType, curseforge::categories::CfCategory},
+    store::{
+        Category, ModId, SearchMod, StoreBackendType,
+        curseforge::categories::CfCategory,
+        types::{GalleryItem, UrlKind},
+    },
 };
 
 use super::{Backend, CurseforgeNotAllowed, ModError, QueryType, SearchResult};
@@ -41,16 +45,20 @@ impl ModQuery {
 }
 
 #[derive(Deserialize, Clone, Debug)]
-#[allow(non_snake_case)]
 pub struct Mod {
     pub name: String,
     pub slug: String,
     pub summary: String,
-    pub downloadCount: usize,
+    #[serde(rename = "downloadCount")]
+    pub download_count: usize,
     pub logo: Option<Logo>,
     pub id: i32,
-    pub latestFilesIndexes: Vec<CurseforgeFileIdx>,
-    pub classId: i32,
+    #[serde(rename = "latestFilesIndexes")]
+    pub latest_files_indexes: Vec<CurseforgeFileIdx>,
+    #[serde(rename = "classId")]
+    pub class_id: i32,
+    pub screenshots: Vec<CfScreenshot>,
+    pub links: CfLinks,
     // latestFiles: Vec<CurseforgeFile>,
 }
 
@@ -90,7 +98,7 @@ impl Mod {
         } else {
             self.iter_files(version).next().or_else(|| {
                 err!("No exact compatible version found!\nPicking the closest one anyway");
-                self.latestFilesIndexes.first()
+                self.latest_files_indexes.first()
             })
         }) else {
             return Err(ModError::NoCompatibleVersionFound(title));
@@ -102,9 +110,63 @@ impl Mod {
     }
 
     fn iter_files(&self, version: String) -> impl Iterator<Item = &CurseforgeFileIdx> {
-        self.latestFilesIndexes
+        self.latest_files_indexes
             .iter()
             .filter(move |n| n.gameVersion == version)
+    }
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct CfScreenshot {
+    title: String,
+    description: String,
+    url: String,
+}
+
+impl From<CfScreenshot> for GalleryItem {
+    fn from(value: CfScreenshot) -> Self {
+        Self {
+            url: value.url,
+            title: Some(value.title),
+            description: Some(value.description),
+            ordering: 0,
+        }
+    }
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CfLinks {
+    website_url: Option<String>,
+    wiki_url: Option<String>,
+    issues_url: Option<String>,
+    source_url: Option<String>,
+}
+
+impl CfLinks {
+    pub fn build_urls(&self) -> Vec<(UrlKind, String)> {
+        let mut urls = Vec::new();
+        if let Some(website_url) = &self.website_url {
+            if !website_url.is_empty() {
+                urls.push((UrlKind::Website, website_url.clone()));
+            }
+        }
+        if let Some(wiki_url) = &self.wiki_url {
+            if !wiki_url.is_empty() {
+                urls.push((UrlKind::Wiki, wiki_url.clone()));
+            }
+        }
+        if let Some(issues_url) = &self.issues_url {
+            if !issues_url.is_empty() {
+                urls.push((UrlKind::Issues, issues_url.clone()));
+            }
+        }
+        if let Some(source_url) = &self.source_url {
+            if !source_url.is_empty() {
+                urls.push((UrlKind::Source, source_url.clone()));
+            }
+        }
+        urls
     }
 }
 
@@ -253,12 +315,14 @@ impl Backend for CurseforgeBackend {
                 .map(|n| SearchMod {
                     title: n.name,
                     description: n.summary,
-                    downloads: n.downloadCount,
+                    downloads: n.download_count,
                     internal_name: n.slug,
                     id: n.id.to_string(),
                     project_type: query_type_str.to_owned(),
                     icon_url: n.logo.map(|n| n.url),
                     backend: StoreBackendType::Curseforge,
+                    gallery: n.screenshots.into_iter().map(GalleryItem::from).collect(),
+                    urls: n.links.build_urls(),
                 })
                 .collect(),
             start_time: instant,
@@ -290,7 +354,7 @@ impl Backend for CurseforgeBackend {
         let response = ModQuery::load(id).await?;
         let loader = loader.not_vanilla().map(|n| n.to_curseforge_num());
 
-        let query_type = get_query_type(response.data.classId).await?;
+        let query_type = get_query_type(response.data.class_id).await?;
         let (file_query, _) = response
             .data
             .get_file(
@@ -361,7 +425,11 @@ impl Backend for CurseforgeBackend {
             result?;
 
             if set_manually_installed {
-                if let Some(config) = downloader.index.mods.get_mut(id) {
+                if let Some(config) = downloader
+                    .index
+                    .mods
+                    .get_mut(&ModId::Curseforge(id.clone()))
+                {
                     config.manually_installed = true;
                 }
             }
@@ -415,16 +483,23 @@ impl Backend for CurseforgeBackend {
         Ok(SearchMod {
             title: query.data.name,
             description: query.data.summary,
-            downloads: query.data.downloadCount,
+            downloads: query.data.download_count,
             internal_name: query.data.slug,
             id: query.data.id.to_string(),
-            project_type: get_query_type(query.data.classId)
+            project_type: get_query_type(query.data.class_id)
                 .await
                 .unwrap_or(QueryType::Mods)
                 .to_curseforge_str()
                 .to_owned(),
             icon_url: query.data.logo.map(|n| n.url),
             backend: StoreBackendType::Curseforge,
+            gallery: query
+                .data
+                .screenshots
+                .into_iter()
+                .map(GalleryItem::from)
+                .collect(),
+            urls: query.data.links.build_urls(),
         })
     }
 
@@ -435,16 +510,22 @@ impl Backend for CurseforgeBackend {
             out.push(SearchMod {
                 title: query.name,
                 description: query.summary,
-                downloads: query.downloadCount,
+                downloads: query.download_count,
                 internal_name: query.slug,
                 id: query.id.to_string(),
-                project_type: get_query_type(query.classId)
+                project_type: get_query_type(query.class_id)
                     .await
                     .unwrap_or(QueryType::Mods)
                     .to_curseforge_str()
                     .to_owned(),
                 icon_url: query.logo.map(|n| n.url),
                 backend: StoreBackendType::Curseforge,
+                gallery: query
+                    .screenshots
+                    .into_iter()
+                    .map(GalleryItem::from)
+                    .collect(),
+                urls: query.links.build_urls(),
             });
         }
 
