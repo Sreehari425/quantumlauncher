@@ -113,5 +113,6 @@ pub struct Entry {
     // pub color: Option<usize>,
     // pub thread_id: Option<String>,
     // pub monetization_status: Option<String>,
+    #[serde(default)]
     pub gallery: Vec<String>, // URLs
 }

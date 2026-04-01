@@ -40,6 +40,7 @@ impl Launcher {
                             results.mods.extend(search.mods);
                         } else {
                             menu.results = Some(search);
+                            menu.scroll_offset = AbsoluteOffset::default();
                             return iced::widget::scrollable::scroll_to(
                                 iced::widget::scrollable::Id::new(
                                     "MenuModsDownload:main:mods_list",

@@ -114,7 +114,7 @@ pub trait Backend {
     /// # Caching
     ///
     /// Usually this is cached, so fetching it multiple times is not expensive.
-    /// (Note to implementors: **Please cache this with** [`std::sync::LazyLock`]!)
+    /// (Note to implementors: **Please cache this with** `LazyLock`, `OnceCell` or similar structures!**)
     async fn get_categories(_: QueryType) -> Result<Vec<Category>, ModError> {
         Ok(Vec::new()) // Fallback
     }
