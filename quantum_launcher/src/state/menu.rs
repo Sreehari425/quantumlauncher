@@ -265,6 +265,8 @@ pub struct MenuEditMods {
     pub update_check_handle: Option<iced::task::Handle>,
     pub available_updates: Vec<(ModId, String, bool)>,
 
+    pub info_message: Option<ModInfoMessage>,
+
     pub list_scroll: AbsoluteOffset,
     /// Index of the item selected before pressing shift
     pub list_shift_index: Option<usize>,
@@ -273,6 +275,18 @@ pub struct MenuEditMods {
     pub search: Option<String>,
 
     pub width_name: f32,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum InfoMessageKind {
+    Success,
+    Error,
+}
+
+#[derive(Debug, Clone)]
+pub struct ModInfoMessage {
+    pub text: String,
+    pub kind: InfoMessageKind,
 }
 
 #[derive(Debug, Clone)]

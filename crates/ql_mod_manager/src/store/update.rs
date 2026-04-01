@@ -14,7 +14,7 @@ pub async fn apply_updates(
     updates: Vec<(ModId, String)>,
     progress: Option<Sender<GenericProgress>>,
     should_write_changelog: bool,
-) -> Result<(), ModError> {
+) -> Result<Option<String>, ModError> {
     let mod_index = ModIndex::load(&selected_instance).await?;
     let update_ids: Vec<ModId> = updates.iter().map(|(id, _)| id.clone()).collect();
     let disabled_mods: Vec<_> = update_ids
@@ -34,8 +34,9 @@ pub async fn apply_updates(
     delete_mods(update_ids.clone(), selected_instance.clone()).await?;
     download_mods_bulk(update_ids, selected_instance.clone(), progress).await?;
 
+    let mut changelog_filename = None;
     if should_write_changelog && !changelog_entries.is_empty() {
-        write_changelog(changelog_entries, selected_instance.clone()).await;
+        changelog_filename = write_changelog(changelog_entries, selected_instance.clone()).await;
     }
 
     // Ensure disabled mods stay disabled
@@ -43,10 +44,13 @@ pub async fn apply_updates(
 
 
 
-    Ok(())
+    Ok(changelog_filename)
 }
 
-async fn write_changelog(entries: Vec<String>, selected_instance: InstanceSelection) {
+async fn write_changelog(
+    entries: Vec<String>,
+    selected_instance: InstanceSelection,
+) -> Option<String> {
     let titles = entries.join("\n");
     let now = Local::now();
     let filename = format!("changelog-{}.txt", now.format("%Y-%m-%d-%H-%M"));
@@ -55,16 +59,19 @@ async fn write_changelog(entries: Vec<String>, selected_instance: InstanceSelect
     if let Some(parent) = path.parent() {
         if let Err(err) = create_dir_all(parent) {
             err!(no_log, "Failed to create changelog directory: {err}");
-            return;
+            return None;
         }
     } else {
         err!(no_log, "Failed to resolve changelog directory");
-        return;
+        return None;
     }
 
     if let Err(err) = write(&path, &titles) {
         err!(no_log, "Failed to write changelog: {err}");
+        return None;
     }
+
+    Some(filename)
 }
 
 fn build_changelog_entries(mod_index: &ModIndex, updates: &[(ModId, String)]) -> Vec<String> {

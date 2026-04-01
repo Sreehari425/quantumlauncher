@@ -3,7 +3,7 @@ use std::{collections::HashSet, path::PathBuf, process::ExitStatus};
 use crate::{
     config::sidebar::{FolderId, SDragLocation, SidebarSelection},
     message_handler::ForgeKind,
-    state::{LaunchModal, MenuEditModsModal},
+    state::{LaunchModal, MenuEditModsModal, ModInfoMessage},
     stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
 };
 use iced::widget::{self, scrollable::AbsoluteOffset};
@@ -126,7 +126,8 @@ pub enum ManageModsMessage {
     UpdateCheckResult(Res<Vec<(ModId, String)>>),
     UpdateCheckToggle(usize, bool),
     UpdatePerform,
-    UpdatePerformDone(Res),
+    UpdatePerformDone(Res<(Option<String>, bool)>),
+    SetInfoMessage(Option<ModInfoMessage>),
 
     /// Add a mod, preset or modpack to the current instance.
     /// The field represents whether to delete the file after importing it.

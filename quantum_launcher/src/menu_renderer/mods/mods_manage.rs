@@ -7,7 +7,7 @@ use crate::menu_renderer::{
     tsubtitle,
 };
 use crate::message_handler::ForgeKind;
-use crate::state::{ImageState, InstallPaperMessage, MenuEditModsModal};
+use crate::state::{ImageState, InfoMessageKind, InstallPaperMessage, MenuEditModsModal, ModInfoMessage};
 use crate::stylesheet::widgets::StyleButton;
 use crate::{
     icons,
@@ -22,6 +22,36 @@ use crate::{
 use ql_core::json::InstanceConfigJson;
 
 pub const MODS_SIDEBAR_WIDTH: u16 = 190;
+
+fn view_info_message(
+    message: &ModInfoMessage,
+) -> widget::Container<'_, Message, LauncherTheme> {
+    let (icon, color) = match message.kind {
+        InfoMessageKind::Success => (icons::checkmark(), Color::SecondLight),
+        InfoMessageKind::Error => (icons::qm(), Color::Mid),
+    };
+
+    widget::container(
+        widget::row![
+            icon.style(move |t: &LauncherTheme| t.style_text(color)).size(12),
+            widget::text(&message.text).size(12).style(tsubtitle),
+            widget::horizontal_space(),
+            widget::button(
+                icons::close()
+                    .style(|t: &LauncherTheme| t.style_text(Color::Mid))
+                    .size(12)
+            )
+            .padding(0)
+            .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatExtraDark))
+            .on_press(ManageModsMessage::SetInfoMessage(None).into()),
+        ]
+        .spacing(12)
+        .align_y(Alignment::Center),
+    )
+    .width(Length::Fill)
+    .padding(10)
+    .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark))
+}
 
 impl MenuEditMods {
     pub fn view<'a>(
@@ -42,6 +72,13 @@ impl MenuEditMods {
             self.get_sidebar(selected_instance, tick_timer),
             self.get_mod_list(images)
         );
+        let menu_main: Element<'_> = if let Some(message) = &self.info_message {
+            widget::column![view_info_message(message), menu_main]
+                .spacing(8)
+                .into()
+        } else {
+            widget::column![menu_main].into()
+        };
 
         if self.drag_and_drop_hovered {
             widget::stack!(
@@ -104,7 +141,7 @@ impl MenuEditMods {
             )
             .into()
         } else {
-            menu_main.into()
+            menu_main
         }
     }
 

@@ -10,6 +10,7 @@ use crate::state::{
     AutoSaveKind, ExportModsMessage, Launcher, ManageJarModsMessage, ManageModsMessage,
     MenuCurseforgeManualDownload, MenuEditJarMods, MenuEditMods, MenuEditModsModal, Message,
     ProgressBar, SelectedState, State,
+    ModInfoMessage, InfoMessageKind,
 };
 
 impl Launcher {
@@ -151,10 +152,24 @@ impl Launcher {
 
             ManageModsMessage::ToggleFinished(Ok(())) => self.update_mod_index(),
             ManageModsMessage::UpdatePerform => return self.update_mods(),
-            ManageModsMessage::UpdatePerformDone(Ok(())) => {
+            ManageModsMessage::UpdatePerformDone(Ok((Some(filename), _))) => {
                 self.update_mod_index();
                 if let State::EditMods(menu) = &mut self.state {
                     menu.available_updates.clear();
+                    menu.info_message = Some(ModInfoMessage {
+                        text: format!("Changelog {filename} written to disk"),
+                        kind: InfoMessageKind::Success,
+                    });
+                }
+            }
+            ManageModsMessage::UpdatePerformDone(Ok((None, should_write_changelog))) => {
+                self.update_mod_index();
+                if let State::EditMods(menu) = &mut self.state {
+                    menu.available_updates.clear();
+                    menu.info_message = should_write_changelog.then(|| ModInfoMessage {
+                        text: "Changelog was not written to disk".to_owned(),
+                        kind: InfoMessageKind::Error,
+                    });
                 }
             }
             ManageModsMessage::UpdateCheckResult(updates) => {
@@ -188,6 +203,11 @@ impl Launcher {
                     if let Some((_, _, b)) = available_updates.get_mut(idx) {
                         *b = t;
                     }
+                }
+            }
+            ManageModsMessage::SetInfoMessage(message) => {
+                if let State::EditMods(menu) = &mut self.state {
+                    menu.info_message = message;
                 }
             }
             ManageModsMessage::SelectAll => {

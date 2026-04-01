@@ -255,6 +255,7 @@ impl Launcher {
                 version_json,
                 modal: None,
                 search: None,
+                info_message: None,
                 width_name: 220.0,
                 list_shift_index: None,
                 list_scroll: AbsoluteOffset::default(),
@@ -331,7 +332,12 @@ impl Launcher {
                     Some(sender),
                     write_changelog,
                 ),
-                |n| ManageModsMessage::UpdatePerformDone(n.strerr()).into(),
+                move |n| {
+                    ManageModsMessage::UpdatePerformDone(
+                        n.strerr().map(|res| (res, write_changelog)),
+                    )
+                    .into()
+                },
             )
         } else {
             Task::none()
