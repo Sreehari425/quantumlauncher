@@ -142,7 +142,7 @@ impl MenuLauncherSettings {
                     .on_toggle(|n| LauncherSettingsMessage::ToggleInstanceRemembering(n).into()),
                 widget::Space::with_height(5),
                 widget::checkbox(
-                    "Write mod update changelog",
+                    "Write changelog after mod updates",
                     config
                         .persistent
                         .clone()

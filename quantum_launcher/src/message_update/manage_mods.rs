@@ -6,10 +6,9 @@ use ql_mod_manager::store::{ModId, ModIndex, SelectedMod};
 use std::{collections::HashSet, path::PathBuf};
 
 use crate::state::{
-    AutoSaveKind, ExportModsMessage, Launcher, ManageJarModsMessage, ManageModsMessage,
-    MenuCurseforgeManualDownload, MenuEditJarMods, MenuEditMods, MenuEditModsModal, Message,
-    ProgressBar, SelectedState, State,
-    ModInfoMessage, InfoMessageKind,
+    AutoSaveKind, ExportModsMessage, InfoMessageKind, Launcher, ManageJarModsMessage,
+    ManageModsMessage, MenuCurseforgeManualDownload, MenuEditJarMods, MenuEditMods,
+    MenuEditModsModal, Message, ModInfoMessage, ProgressBar, SelectedState, State,
 };
 
 impl Launcher {
@@ -151,24 +150,21 @@ impl Launcher {
 
             ManageModsMessage::ToggleFinished(Ok(())) => self.update_mod_index(),
             ManageModsMessage::UpdatePerform => return self.update_mods(),
-            ManageModsMessage::UpdatePerformDone(Ok((Some(filename), _))) => {
+            ManageModsMessage::UpdatePerformDone(Ok((file, should_write_changelog))) => {
                 self.update_mod_index();
                 if let State::EditMods(menu) = &mut self.state {
                     menu.available_updates.clear();
-                    menu.info_message = Some(ModInfoMessage {
-                        text: format!("Changelog {filename} written to disk"),
-                        kind: InfoMessageKind::Success,
-                    });
-                }
-            }
-            ManageModsMessage::UpdatePerformDone(Ok((None, should_write_changelog))) => {
-                self.update_mod_index();
-                if let State::EditMods(menu) = &mut self.state {
-                    menu.available_updates.clear();
-                    menu.info_message = should_write_changelog.then(|| ModInfoMessage {
-                        text: "Changelog was not written to disk".to_owned(),
-                        kind: InfoMessageKind::Error,
-                    });
+                    menu.info_message = if let Some(file) = file {
+                        Some(ModInfoMessage {
+                            text: format!("Changelog {} written to disk", file.filename),
+                            kind: InfoMessageKind::AtPath(file.path),
+                        })
+                    } else {
+                        should_write_changelog.then(|| ModInfoMessage {
+                            text: "Changelog was not written to disk".to_owned(),
+                            kind: InfoMessageKind::Error,
+                        })
+                    };
                 }
             }
             ManageModsMessage::UpdateCheckResult(updates) => {
@@ -176,6 +172,13 @@ impl Launcher {
                     menu.update_check_handle = None;
                     match updates {
                         Ok(updates) => {
+                            if updates.is_empty() {
+                                menu.info_message = Some(ModInfoMessage {
+                                    text: "No updates found".to_owned(),
+                                    kind: InfoMessageKind::Success,
+                                })
+                            }
+
                             menu.available_updates = updates
                                 .into_iter()
                                 .map(|(id, title)| {

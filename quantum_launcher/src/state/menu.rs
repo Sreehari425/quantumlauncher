@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
+    path::PathBuf,
     time::Instant,
 };
 
@@ -279,9 +280,10 @@ pub struct MenuEditMods {
     pub width_name: f32,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum InfoMessageKind {
     Success,
+    AtPath(PathBuf),
     Error,
 }
 

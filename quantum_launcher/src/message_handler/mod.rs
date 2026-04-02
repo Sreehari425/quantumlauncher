@@ -256,6 +256,15 @@ impl Launcher {
                 version_json,
                 modal: None,
                 search: None,
+                // If you wanna test stuff out...
+                // info_message: Some(crate::state::ModInfoMessage {
+                //     text: "Hello, World!".to_owned(),
+                //     kind: crate::state::InfoMessageKind::AtPath(PathBuf::from("/home/mrmayman")),
+                // }),
+                // info_message: Some(crate::state::ModInfoMessage {
+                //     text: "Hello, World!".to_owned(),
+                //     kind: crate::state::InfoMessageKind::Success,
+                // }),
                 info_message: None,
                 width_name: 220.0,
                 list_shift_index: None,

@@ -129,7 +129,7 @@ pub enum ManageModsMessage {
     UpdateCheckResult(Res<Vec<(ModId, String)>>),
     UpdateCheckToggle(usize, bool),
     UpdatePerform,
-    UpdatePerformDone(Res<(Option<String>, bool)>),
+    UpdatePerformDone(Res<(Option<ql_mod_manager::store::ChangelogFile>, bool)>),
     SetInfoMessage(Option<ModInfoMessage>),
 
     /// Add a mod, preset or modpack to the current instance.
