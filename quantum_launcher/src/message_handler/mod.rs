@@ -256,6 +256,16 @@ impl Launcher {
                 version_json,
                 modal: None,
                 search: None,
+                // If you wanna test stuff out...
+                // info_message: Some(crate::state::ModInfoMessage {
+                //     text: "Hello, World!".to_owned(),
+                //     kind: crate::state::InfoMessageKind::AtPath(PathBuf::from("/home/mrmayman")),
+                // }),
+                // info_message: Some(crate::state::ModInfoMessage {
+                //     text: "Hello, World!".to_owned(),
+                //     kind: crate::state::InfoMessageKind::Success,
+                // }),
+                info_message: None,
                 width_name: 220.0,
                 list_shift_index: None,
                 list_scroll: AbsoluteOffset::default(),
@@ -316,8 +326,9 @@ impl Launcher {
                 .available_updates
                 .clone()
                 .into_iter()
-                .map(|(n, _, _)| n)
+                .map(|(id, version, _)| (id, version))
                 .collect();
+            let write_changelog = self.config.c_persistent().write_mod_update_changelog;
             let (sender, receiver) = std::sync::mpsc::channel();
             menu.mod_update_progress = Some(ProgressBar::with_recv_and_msg(
                 receiver,
@@ -325,8 +336,18 @@ impl Launcher {
             ));
             let selected_instance = self.selected_instance.clone().unwrap();
             Task::perform(
-                ql_mod_manager::store::apply_updates(selected_instance, updates, Some(sender)),
-                |n| ManageModsMessage::UpdatePerformDone(n.strerr()).into(),
+                ql_mod_manager::store::apply_updates(
+                    selected_instance,
+                    updates,
+                    Some(sender),
+                    write_changelog,
+                ),
+                move |n| {
+                    ManageModsMessage::UpdatePerformDone(
+                        n.strerr().map(|res| (res, write_changelog)),
+                    )
+                    .into()
+                },
             )
         } else {
             Task::none()

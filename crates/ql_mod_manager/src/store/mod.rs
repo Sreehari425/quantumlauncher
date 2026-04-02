@@ -34,7 +34,7 @@ pub use types::{
     Category, CurseforgeNotAllowed, Query, QueryType, SearchMod, SearchResult, SelectedMod,
     StoreBackendType,
 };
-pub use update::{apply_updates, check_for_updates};
+pub use update::{ChangelogFile, apply_updates, check_for_updates};
 
 #[allow(async_fn_in_trait)]
 pub trait Backend {

@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
+    path::PathBuf,
     time::Instant,
 };
 
@@ -267,6 +268,8 @@ pub struct MenuEditMods {
     pub update_check_handle: Option<iced::task::Handle>,
     pub available_updates: Vec<(ModId, String, bool)>,
 
+    pub info_message: Option<ModInfoMessage>,
+
     pub list_scroll: AbsoluteOffset,
     /// Index of the item selected before pressing shift
     pub list_shift_index: Option<usize>,
@@ -275,6 +278,19 @@ pub struct MenuEditMods {
     pub search: Option<String>,
 
     pub width_name: f32,
+}
+
+#[derive(Debug, Clone)]
+pub enum InfoMessageKind {
+    Success,
+    AtPath(PathBuf),
+    Error,
+}
+
+#[derive(Debug, Clone)]
+pub struct ModInfoMessage {
+    pub text: String,
+    pub kind: InfoMessageKind,
 }
 
 #[derive(Debug, Clone)]

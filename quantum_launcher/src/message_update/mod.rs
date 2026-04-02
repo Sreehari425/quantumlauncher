@@ -323,6 +323,9 @@ impl Launcher {
                     persistent.selected_server = None;
                 }
             }
+            LauncherSettingsMessage::ToggleModUpdateChangelog(t) => {
+                self.config.c_persistent().write_mod_update_changelog = t;
+            }
             LauncherSettingsMessage::DefaultMinecraftWidthChanged(input) => {
                 self.config.c_global().window_width = input.trim().parse::<u32>().ok();
             }
