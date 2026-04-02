@@ -12,6 +12,8 @@ TODO: Add screenshots
 
 # UX
 
+- You can now automatically create changelogs after updating mods,
+  showing which versions changed
 
 # Fixes
 
