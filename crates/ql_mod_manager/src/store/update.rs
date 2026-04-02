@@ -87,7 +87,7 @@ fn build_changelog_entries(mod_index: &ModIndex, updates: &[(ModId, String)]) ->
             let old_version = fallback_unknown(&old_version);
             let new_version = fallback_unknown(new_version);
 
-            format!("{name}: {old_version} -> {new_version}")
+            format!("- {name}: {old_version} -> {new_version}  ")
         })
         .collect()
 }
