@@ -75,7 +75,7 @@ impl MenuEditMods {
         window_height: f32,
     ) -> Element<'a> {
         if let Some(progress) = &self.mod_update_progress {
-            return widget::column!(widget::text("Updating mods").size(20), progress.view())
+            return column![widget::text("Updating mods").size(20), progress.view()]
                 .padding(10)
                 .spacing(10)
                 .into();
@@ -152,7 +152,7 @@ impl MenuEditMods {
         tick_timer: usize,
     ) -> widget::Scrollable<'a, Message, LauncherTheme> {
         widget::scrollable(
-            widget::column!(
+            column![
                 row![
                     back_button().on_press(back_to_launch_screen(
                         Some(selected_instance.is_server()),
@@ -170,7 +170,7 @@ impl MenuEditMods {
                 ]
                 .spacing(5),
                 self.get_mod_installer_buttons(selected_instance),
-                widget::column!(
+                column![
                     button_with_icon(icons::download_s(15), "Download Content...", 14)
                         .on_press(InstallModsMessage::Open.into()),
                     button_with_icon(icons::file_jar(), "Jarmod Patches", 14)
@@ -181,10 +181,10 @@ impl MenuEditMods {
                         widget::text("Includes mods and modpacks").size(12),
                         Position::Bottom
                     ),
-                )
+                ]
                 .spacing(5),
                 self.get_mod_update_pane(tick_timer),
-            )
+            ]
             .padding(10)
             .spacing(10),
         )
@@ -199,7 +199,7 @@ impl MenuEditMods {
         if self.update_check_handle.is_some() {
             column![widget::text!("Checking for mod updates{}", dots(tick_timer)).size(12)]
         } else if self.available_updates.is_empty() {
-            column![].into()
+            column![]
         } else {
             column![
                 widget::horizontal_rule(1),
@@ -241,46 +241,46 @@ impl MenuEditMods {
             Loader::Vanilla => match selected_instance {
                 InstanceSelection::Instance(_) => column![
                     "Install:",
-                    widget::row!(
+                    row![
                         install_ldr("Fabric")
                             .on_press(InstallFabricMessage::ScreenOpen { is_quilt: false }.into()),
                         install_ldr("Quilt")
                             .on_press(InstallFabricMessage::ScreenOpen { is_quilt: true }.into()),
-                    )
+                    ]
                     .spacing(5),
-                    widget::row!(
+                    row![
                         install_ldr("Forge").on_press(Message::InstallForge(ForgeKind::Normal)),
                         install_ldr("NeoForge")
                             .on_press(Message::InstallForge(ForgeKind::NeoForge))
-                    )
+                    ]
                     .spacing(5),
                     install_ldr("OptiFine").on_press(InstallOptifineMessage::ScreenOpen.into())
                 ]
                 .spacing(5)
                 .into(),
-                InstanceSelection::Server(_) => widget::column!(
+                InstanceSelection::Server(_) => column![
                     "Install:",
-                    widget::row!(
+                    row![
                         install_ldr("Fabric")
                             .on_press(InstallFabricMessage::ScreenOpen { is_quilt: false }.into()),
                         install_ldr("Quilt")
                             .on_press(InstallFabricMessage::ScreenOpen { is_quilt: true }.into()),
-                    )
+                    ]
                     .spacing(5),
-                    widget::row!(
+                    row![
                         install_ldr("Forge").on_press(Message::InstallForge(ForgeKind::Normal)),
                         install_ldr("NeoForge")
                             .on_press(Message::InstallForge(ForgeKind::NeoForge))
-                    )
+                    ]
                     .spacing(5),
-                    widget::row!(
+                    row![
                         widget::button("Bukkit").width(97),
                         widget::button("Spigot").width(97)
-                    )
+                    ]
                     .spacing(5),
                     install_ldr("Paper")
                         .on_press(Message::InstallPaper(InstallPaperMessage::ScreenOpen)),
-                )
+                ]
                 .spacing(5)
                 .into(),
             },
@@ -293,11 +293,11 @@ impl MenuEditMods {
                 .push(Self::get_uninstall_panel(self.config.mod_type))
                 .spacing(5)
                 .into(),
-            Loader::OptiFine => widget::column!(
+            Loader::OptiFine => column![
                 widget::button(widget::text("Install Forge with OptiFine").size(14))
                     .on_press(Message::InstallForge(ForgeKind::OptiFine)),
                 Self::get_uninstall_panel(self.config.mod_type),
-            )
+            ]
             .spacing(5)
             .into(),
 
@@ -305,9 +305,7 @@ impl MenuEditMods {
                 Self::get_uninstall_panel(self.config.mod_type).into()
             }
 
-            _ => {
-                widget::column!(widget::text!("Unknown mod type: {}", self.config.mod_type)).into()
-            }
+            _ => widget::text!("Unknown mod type: {}", self.config.mod_type).into(),
         }
     }
 
@@ -356,11 +354,11 @@ impl MenuEditMods {
 
     fn get_mod_list<'a>(&'a self, images: &'a ImageState) -> Element<'a> {
         if self.sorted_mods_list.is_empty() {
-            return widget::column!(
+            return column![
                 "Download some mods to get started",
                 widget::button(widget::text("View Recommended Mods").size(14))
                     .on_press(crate::state::RecommendedModMessage::Open.into())
-            )
+            ]
             .spacing(10)
             .padding(10)
             .width(Length::Fill)
@@ -368,7 +366,7 @@ impl MenuEditMods {
         }
 
         widget::container(
-            widget::column!(
+            column![
                 widget::Column::new()
                     .push_maybe(
                         (self.config.mod_type.is_vanilla() && !self.sorted_mods_list.is_empty())
@@ -446,8 +444,7 @@ impl MenuEditMods {
                     .padding(10)
                     .spacing(10),
                 widget::responsive(|s| self.get_mod_list_contents(s, images)),
-            )
-            .spacing(0),
+            ],
         )
         .style(|n| n.style_container_sharp_box(0.0, Color::ExtraDark))
         .into()
