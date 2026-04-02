@@ -192,52 +192,47 @@ impl MenuEditMods {
         .height(Length::Fill)
     }
 
-    fn get_mod_update_pane(&'_ self, tick_timer: usize) -> Element<'_> {
+    fn get_mod_update_pane(
+        &'_ self,
+        tick_timer: usize,
+    ) -> widget::Column<'_, Message, LauncherTheme> {
         if self.update_check_handle.is_some() {
-            widget::text!("Checking for mod updates{}", dots(tick_timer))
-                .size(12)
-                .into()
+            column![widget::text!("Checking for mod updates{}", dots(tick_timer)).size(12)]
         } else if self.available_updates.is_empty() {
-            widget::column!().into()
+            column![].into()
         } else {
-            widget::container(
-                widget::column!(
-                    widget::text("Mod Updates Available!").size(15),
-                    widget::column(self.available_updates.iter().enumerate().map(
-                        |(i, (id, update_name, is_enabled))| {
-                            let title = self
-                                .mods
-                                .mods
-                                .get(id)
-                                .map(|n| n.name.clone())
-                                .unwrap_or_default();
+            column![
+                widget::horizontal_rule(1),
+                widget::text("Mod Updates Available!").size(15),
+                widget::column(self.available_updates.iter().enumerate().map(
+                    |(i, (id, update_name, is_enabled))| {
+                        let title = self
+                            .mods
+                            .mods
+                            .get(id)
+                            .map(|n| n.name.clone())
+                            .unwrap_or_default();
 
-                            let text = if title.is_empty()
-                                || update_name.contains(&title)
-                                || update_name.contains(&title.replace(' ', ""))
-                            {
-                                update_name.clone()
-                            } else {
-                                format!("{title} - {update_name}")
-                            };
+                        let toggle = move |b| ManageModsMessage::UpdateCheckToggle(i, b).into();
 
-                            widget::checkbox(text, *is_enabled)
-                                .on_toggle(move |b| {
-                                    ManageModsMessage::UpdateCheckToggle(i, b).into()
-                                })
-                                .text_size(12)
-                                .into()
-                        }
-                    ))
-                    .spacing(10),
-                    button_with_icon(icons::version_download(), "Update", 16)
-                        .on_press(ManageModsMessage::UpdatePerform.into()),
-                )
-                .padding(10)
-                .spacing(10)
-                .width(MODS_SIDEBAR_WIDTH),
-            )
-            .into()
+                        widget::mouse_area(row![
+                            widget::checkbox("", *is_enabled).on_toggle(toggle),
+                            column![
+                                widget::text(title).size(12),
+                                widget::text!("{update_name}").size(10).style(tsubtitle)
+                            ]
+                        ])
+                        .on_press(toggle(!*is_enabled))
+                        .into()
+                    }
+                ))
+                .spacing(5),
+                button_with_icon(icons::version_download(), "Update", 16)
+                    .on_press(ManageModsMessage::UpdatePerform.into()),
+            ]
+            .padding(5)
+            .spacing(10)
+            .width(MODS_SIDEBAR_WIDTH)
         }
     }
 
