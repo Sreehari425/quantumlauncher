@@ -1,14 +1,10 @@
-use iced::widget::tooltip::Position;
-use iced::{Alignment, Length, widget};
-use ql_core::{InstanceSelection, Loader, SelectedMod};
-
-use crate::menu_renderer::{
-    CTXI_SIZE, FONT_MONO, ctx_button, ctxbox, dots, offset, select_box, subbutton_with_icon,
-    tsubtitle,
+use iced::{
+    Alignment, Length,
+    widget::{self, tooltip::Position},
 };
-use crate::message_handler::ForgeKind;
-use crate::state::{ImageState, InfoMessageKind, InstallPaperMessage, MenuEditModsModal, ModInfoMessage};
-use crate::stylesheet::widgets::StyleButton;
+use ql_core::{InstanceSelection, Loader, json::InstanceConfigJson};
+use ql_mod_manager::store::SelectedMod;
+
 use crate::{
     icons,
     menu_renderer::{
@@ -18,23 +14,17 @@ use crate::{
     },
     message_handler::ForgeKind,
     state::{
-        EditPresetsMessage, ImageState, InstallFabricMessage, InstallModsMessage,
+        EditPresetsMessage, ImageState, InfoMessageKind, InstallFabricMessage, InstallModsMessage,
         InstallOptifineMessage, InstallPaperMessage, ManageJarModsMessage, ManageModsMessage,
-        MenuEditMods, MenuEditModsModal, Message, ModDescriptionMessage, ModListEntry,
-        SelectedState,
+        MenuEditMods, MenuEditModsModal, Message, ModDescriptionMessage, ModInfoMessage,
+        ModListEntry, SelectedState,
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
-use iced::widget::tooltip::Position;
-use iced::{Alignment, Length, widget};
-use ql_core::{InstanceSelection, Loader, json::InstanceConfigJson};
-use ql_mod_manager::store::SelectedMod;
 
 pub const MODS_SIDEBAR_WIDTH: u16 = 190;
 
-fn view_info_message(
-    message: &ModInfoMessage,
-) -> widget::Container<'_, Message, LauncherTheme> {
+fn view_info_message(message: &ModInfoMessage) -> widget::Container<'_, Message, LauncherTheme> {
     let (icon, color) = match message.kind {
         InfoMessageKind::Success => (icons::checkmark(), Color::SecondLight),
         InfoMessageKind::Error => (icons::qm(), Color::Mid),
@@ -42,7 +32,8 @@ fn view_info_message(
 
     widget::container(
         widget::row![
-            icon.style(move |t: &LauncherTheme| t.style_text(color)).size(12),
+            icon.style(move |t: &LauncherTheme| t.style_text(color))
+                .size(12),
             widget::text(&message.text).size(12).style(tsubtitle),
             widget::horizontal_space(),
             widget::button(

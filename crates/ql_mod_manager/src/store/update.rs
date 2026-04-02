@@ -3,7 +3,9 @@ use std::sync::mpsc::Sender;
 
 use chrono::DateTime;
 use chrono::Local;
-use ql_core::{GenericProgress, InstanceSelection, Loader, do_jobs, err, info, json::VersionDetails};
+use ql_core::{
+    GenericProgress, InstanceSelection, Loader, do_jobs, err, info, json::VersionDetails,
+};
 
 use crate::store::{get_latest_version_date, toggle_mods};
 
@@ -19,7 +21,7 @@ pub async fn apply_updates(
     let update_ids: Vec<ModId> = updates.iter().map(|(id, _)| id.clone()).collect();
     let disabled_mods: Vec<_> = update_ids
         .iter()
-        .filter_map(|n| mod_index.mods.get_key_value(&n.get_index_str()))
+        .filter_map(|n| mod_index.mods.get_key_value(&n))
         .filter(|n| !n.1.enabled)
         .map(|n| n.0.clone())
         .collect();
@@ -42,8 +44,6 @@ pub async fn apply_updates(
     // Ensure disabled mods stay disabled
     toggle_mods(disabled_mods, selected_instance).await?;
 
-
-
     Ok(changelog_filename)
 }
 
@@ -54,7 +54,10 @@ async fn write_changelog(
     let titles = entries.join("\n");
     let now = Local::now();
     let filename = format!("changelog-{}.txt", now.format("%Y-%m-%d-%H-%M"));
-    let path = selected_instance.get_dot_minecraft_path().join("changelogs").join(&filename);
+    let path = selected_instance
+        .get_dot_minecraft_path()
+        .join("changelogs")
+        .join(&filename);
 
     if let Some(parent) = path.parent() {
         if let Err(err) = create_dir_all(parent) {
@@ -78,9 +81,9 @@ fn build_changelog_entries(mod_index: &ModIndex, updates: &[(ModId, String)]) ->
     updates
         .iter()
         .map(|(mod_id, new_version)| {
-            let (name, old_version) = match mod_index.mods.get(&mod_id.get_index_str()) {
+            let (name, old_version) = match mod_index.mods.get(&mod_id) {
                 Some(mod_cfg) => (mod_cfg.name.clone(), mod_cfg.installed_version.clone()),
-                None => (mod_id.get_index_str(), String::new()),
+                None => (mod_id.get_internal_id().to_owned(), String::new()),
             };
 
             let name = fallback_unknown(&name);
