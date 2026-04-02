@@ -89,16 +89,16 @@ fn build_changelog_entries(mod_index: &ModIndex, updates: &[(ModId, String)]) ->
                 None => (mod_id.get_internal_id().to_owned(), String::new()),
             };
 
-            let name = fallback_unknown(&name);
-            let old_version = fallback_unknown(&old_version);
-            let new_version = fallback_unknown(new_version);
+            let name = trim(&name);
+            let old_version = trim(&old_version);
+            let new_version = trim(new_version);
 
-            format!("- {name}: {old_version} -> {new_version}  ")
+            format!("- {name}: {old_version} -> {new_version}")
         })
         .collect()
 }
 
-fn fallback_unknown(value: &str) -> &str {
+fn trim(value: &str) -> &str {
     let trimmed = value.trim();
     if trimmed.is_empty() {
         "unknown"

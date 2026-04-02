@@ -22,21 +22,6 @@ impl Launcher {
             | ManageModsMessage::ToggleFinished(Err(err))
             | ManageModsMessage::UpdatePerformDone(Err(err)) => self.set_error(err),
 
-            ManageModsMessage::UpdateCheck => {
-                let (task, handle) = Task::perform(
-                    ql_mod_manager::store::check_for_updates(
-                        self.selected_instance.clone().unwrap(),
-                    ),
-                    |n| ManageModsMessage::UpdateCheckResult(n.strerr()).into(),
-                )
-                .abortable();
-                if let State::EditMods(menu) = &mut self.state {
-                    menu.update_check_handle = Some(handle.abort_on_drop());
-                    menu.modal = None;
-                }
-                return task;
-            }
-
             ManageModsMessage::ListScrolled(offset) => {
                 if let State::EditMods(menu) = &mut self.state {
                     menu.list_scroll = offset;
@@ -149,6 +134,7 @@ impl Launcher {
             ManageModsMessage::ToggleSelected => return self.manage_mods_toggle_selected(),
 
             ManageModsMessage::ToggleFinished(Ok(())) => self.update_mod_index(),
+
             ManageModsMessage::UpdatePerform => return self.update_mods(),
             ManageModsMessage::UpdatePerformDone(Ok((file, should_write_changelog))) => {
                 self.update_mod_index();
@@ -156,7 +142,7 @@ impl Launcher {
                     menu.available_updates.clear();
                     menu.info_message = if let Some(file) = file {
                         Some(ModInfoMessage {
-                            text: format!("Changelog {} written to disk", file.filename),
+                            text: format!("{} written to disk", file.filename),
                             kind: InfoMessageKind::AtPath(file.path),
                         })
                     } else {
@@ -166,6 +152,21 @@ impl Launcher {
                         })
                     };
                 }
+            }
+
+            ManageModsMessage::UpdateCheck => {
+                let (task, handle) = Task::perform(
+                    ql_mod_manager::store::check_for_updates(
+                        self.selected_instance.clone().unwrap(),
+                    ),
+                    |n| ManageModsMessage::UpdateCheckResult(n.strerr()).into(),
+                )
+                .abortable();
+                if let State::EditMods(menu) = &mut self.state {
+                    menu.update_check_handle = Some(handle.abort_on_drop());
+                    menu.modal = None;
+                }
+                return task;
             }
             ManageModsMessage::UpdateCheckResult(updates) => {
                 if let State::EditMods(menu) = &mut self.state {
