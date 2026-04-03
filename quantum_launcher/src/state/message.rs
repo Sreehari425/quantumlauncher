@@ -21,8 +21,8 @@ use ql_instances::auth::{
 use ql_mod_manager::{
     loaders::{fabric, paper::PaperVersion},
     store::{
-        Category, CurseforgeNotAllowed, ImageResult, ModId, ModIndex, QueryType, RecommendedMod,
-        SearchMod, SearchResult, StoreBackendType,
+        Category, CurseforgeNotAllowed, ModId, ModIndex, QueryType, RecommendedMod, SearchMod,
+        SearchResult, StoreBackendType,
     },
 };
 
@@ -491,7 +491,7 @@ pub enum Message {
     CoreTryQuit,
     CoreHideModal,
 
-    CoreImageDownloaded(Res<ImageResult>),
+    CoreImageDownloaded(Res<ql_mod_manager::store::image::Output>),
 
     CoreLogToggle,
     CoreLogScroll(isize),

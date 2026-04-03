@@ -109,7 +109,7 @@ impl MenuLauncherSettings {
                             .then_some(ui_scale_apply)
                     )
                     .align_y(Alignment::Center).width(SETTING_WIDTH),
-                widget::slider(0.5..=2.0, self.temp_scale, |n| Message::LauncherSettings(
+                widget::slider(0.5..=3.0, self.temp_scale, |n| Message::LauncherSettings(
                     LauncherSettingsMessage::UiScale(n)
                 ))
                 .step(0.1),

@@ -470,8 +470,7 @@ impl MenuEditMods {
                     });
 
                     let image: Element = if let Some(url) = &config.icon_url {
-                        // SVGs cause absurd lag in large lists of mods
-                        images.view_bitmap(url, Some(ICON_SIZE), Some(ICON_SIZE), no_icon)
+                        images.view(Some(url), Some(ICON_SIZE), Some(ICON_SIZE))
                     } else {
                         no_icon
                     };

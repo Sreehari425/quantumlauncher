@@ -521,7 +521,7 @@ impl MenuModsDownload {
         self.description = Some(description);
 
         for img in imgs {
-            images.queue(&img);
+            images.queue(&img, false);
         }
     }
 }
