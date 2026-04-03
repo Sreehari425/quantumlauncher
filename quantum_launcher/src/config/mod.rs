@@ -253,10 +253,10 @@ impl LauncherConfig {
         self.ui.as_ref().map_or(OPACITY, |n| n.window_opacity)
     }
 
-    pub fn c_minimize_on_launch(&self) -> bool {
+    pub fn c_after_launch_behavior(&self) -> AfterLaunchBehavior {
         self.ui
             .as_ref()
-            .is_some_and(|n| n.minimize_on_launch)
+            .map_or(AfterLaunchBehavior::default(), |n| n.after_game_opens)
     }
 
 
@@ -416,9 +416,9 @@ pub struct UiSettings {
     pub window_opacity: f32,
     // Since: v0.5.0
     pub idle_fps: Option<u64>,
-    // Since: TBD
+    // Since: v0.5.2
     #[serde(default)]
-    pub minimize_on_launch: bool,
+    pub after_game_opens: AfterLaunchBehavior,
     #[serde(flatten)]
     _extra: HashMap<String, serde_json::Value>,
 }
@@ -429,9 +429,25 @@ impl Default for UiSettings {
             window_decorations: UiWindowDecorations::default(),
             window_opacity: OPACITY,
             idle_fps: None,
-            minimize_on_launch: false,
+            after_game_opens: AfterLaunchBehavior::default(),
             _extra: HashMap::new(),
         }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AfterLaunchBehavior {
+    #[serde(rename = "do_nothing")]
+    DoNothing,
+    #[serde(rename = "close_launcher")]
+    CloseLauncher,
+    #[serde(rename = "minimize_launcher")]
+    MinimizeLauncher,
+}
+
+impl Default for AfterLaunchBehavior {
+    fn default() -> Self {
+        Self::DoNothing
     }
 }
 

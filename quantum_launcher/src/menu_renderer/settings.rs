@@ -10,7 +10,7 @@ use super::{
 use crate::menu_renderer::edit_instance::{args_split_by_space, get_args_list, resolution_dialog};
 use crate::menu_renderer::{back_to_launch_screen, checkered_list, sidebar, tsubtitle};
 use crate::{
-    config::LauncherConfig,
+    config::{AfterLaunchBehavior, LauncherConfig},
     icons,
     state::{LauncherSettingsMessage, LauncherSettingsTab, MenuLauncherSettings, Message},
     stylesheet::{
@@ -154,11 +154,28 @@ impl MenuLauncherSettings {
                     .size(12)
                     .style(tsubtitle),
                 widget::Space::with_height(5),
-                widget::checkbox(
-                    "Minimize launcher when game starts",
-                    config.c_minimize_on_launch(),
-                )
-                .on_toggle(|n| LauncherSettingsMessage::ToggleMinimizeOnLaunch(n).into()),
+                widget::text("After game opens:").size(14),
+                widget::column![
+                    widget::radio(
+                        "Do nothing",
+                        AfterLaunchBehavior::DoNothing,
+                        Some(config.c_after_launch_behavior()),
+                        |n| LauncherSettingsMessage::AfterLaunchBehaviorChanged(n).into(),
+                    ),
+                    widget::radio(
+                        "Close launcher",
+                        AfterLaunchBehavior::CloseLauncher,
+                        Some(config.c_after_launch_behavior()),
+                        |n| LauncherSettingsMessage::AfterLaunchBehaviorChanged(n).into(),
+                    ),
+                    widget::radio(
+                        "Minimize launcher",
+                        AfterLaunchBehavior::MinimizeLauncher,
+                        Some(config.c_after_launch_behavior()),
+                        |n| LauncherSettingsMessage::AfterLaunchBehaviorChanged(n).into(),
+                    ),
+                ]
+                .spacing(4),
             ]
             .spacing(5)
             .into(),

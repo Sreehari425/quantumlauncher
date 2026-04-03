@@ -330,11 +330,11 @@ impl Launcher {
             LauncherSettingsMessage::ToggleModUpdateChangelog(t) => {
                 self.config.c_persistent().write_mod_update_changelog = t;
             }
-            LauncherSettingsMessage::ToggleMinimizeOnLaunch(t) => {
+            LauncherSettingsMessage::AfterLaunchBehaviorChanged(behavior) => {
                 self.config
                     .ui
                     .get_or_insert_with(UiSettings::default)
-                    .minimize_on_launch = t;
+                    .after_game_opens = behavior;
                 self.autosave.remove(&AutoSaveKind::LauncherConfig);
             }
             LauncherSettingsMessage::DefaultMinecraftWidthChanged(input) => {

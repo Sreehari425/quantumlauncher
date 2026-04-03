@@ -12,6 +12,7 @@ use crate::{
         MenuLaunch, OFFLINE_ACCOUNT_NAME, ProgressBar, SelectedState, State,
     },
 };
+use crate::config::AfterLaunchBehavior;
 use iced::Task;
 use iced::futures::executor::block_on;
 use iced::widget::scrollable::AbsoluteOffset;
@@ -95,6 +96,8 @@ impl Launcher {
 
         let global_settings = self.config.global_settings.clone();
         let extra_java_args = self.config.extra_java_args.clone().unwrap_or_default();
+        let after_launch = self.config.c_after_launch_behavior();
+        let exit_on_start = matches!(after_launch, AfterLaunchBehavior::CloseLauncher);
 
         let instance_name = self.instance().get_name().to_owned();
         Task::perform(
@@ -106,6 +109,7 @@ impl Launcher {
                     account_data,
                     global_settings,
                     extra_java_args,
+                    exit_on_start,
                 )
                 .await
                 .strerr()
@@ -163,7 +167,9 @@ impl Launcher {
                     Message::LaunchGameExited,
                 );
 
-                if self.config.c_minimize_on_launch() {
+                if self.config.c_after_launch_behavior()
+                    == AfterLaunchBehavior::MinimizeLauncher
+                {
                     let minimize_task = iced::window::get_latest()
                         .and_then(|id| iced::window::minimize(id, true));
                     return Task::batch([log_task, minimize_task]);

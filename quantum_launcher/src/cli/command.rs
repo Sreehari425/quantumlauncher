@@ -220,6 +220,7 @@ pub async fn launch_instance(
             account.clone(),
             None, // No global defaults in CLI mode
             Vec::new(),
+            false,
         )
         .await?
     };

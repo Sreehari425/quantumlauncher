@@ -45,10 +45,6 @@ impl MenuEditInstance {
                 },
 
                 widget::Column::new()
-                .push_maybe((!selected_instance.is_server()).then_some(column![
-                    widget::checkbox("Close launcher after game opens", self.config.close_on_start.unwrap_or(false))
-                        .on_toggle(|t| EditInstanceMessage::CloseLauncherToggle(t).into()),
-                ].spacing(5)))
                 .push(
                     column![
                         widget::Space::with_height(5),
