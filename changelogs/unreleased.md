@@ -16,6 +16,7 @@ TODO: Add screenshots
   showing which versions changed.
 - Added success notification messages for common tasks like installing/uninstalling mod loaders,
   importing/exporting presets, etc.
+- Added option to minimize launcher on game open
 
 # Fixes
 
