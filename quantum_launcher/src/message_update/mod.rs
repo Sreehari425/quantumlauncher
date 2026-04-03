@@ -16,7 +16,7 @@ mod recommended;
 
 use crate::config::UiWindowDecorations;
 use crate::state::{
-    GameLogMessage, InfoMessage, InstanceNotes, MenuLaunch, MenuModDescription,
+    AutoSaveKind, GameLogMessage, InfoMessage, InstanceNotes, MenuLaunch, MenuModDescription,
     ModDescriptionMessage, NotesMessage,
 };
 use crate::{
@@ -329,6 +329,13 @@ impl Launcher {
             }
             LauncherSettingsMessage::ToggleModUpdateChangelog(t) => {
                 self.config.c_persistent().write_mod_update_changelog = t;
+            }
+            LauncherSettingsMessage::ToggleMinimizeOnLaunch(t) => {
+                self.config
+                    .ui
+                    .get_or_insert_with(UiSettings::default)
+                    .minimize_on_launch = t;
+                self.autosave.remove(&AutoSaveKind::LauncherConfig);
             }
             LauncherSettingsMessage::DefaultMinecraftWidthChanged(input) => {
                 self.config.c_global().window_width = input.trim().parse::<u32>().ok();

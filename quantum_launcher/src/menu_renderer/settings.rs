@@ -153,6 +153,12 @@ impl MenuLauncherSettings {
                 widget::text("Writes mod update changes to .minecraft/changelogs")
                     .size(12)
                     .style(tsubtitle),
+                widget::Space::with_height(5),
+                widget::checkbox(
+                    "Minimize launcher when game starts",
+                    config.c_minimize_on_launch(),
+                )
+                .on_toggle(|n| LauncherSettingsMessage::ToggleMinimizeOnLaunch(n).into()),
             ]
             .spacing(5)
             .into(),

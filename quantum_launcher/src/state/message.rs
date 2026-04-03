@@ -293,6 +293,7 @@ pub enum LauncherSettingsMessage {
     ToggleWindowSize(bool),
     ToggleInstanceRemembering(bool),
     ToggleModUpdateChangelog(bool),
+    ToggleMinimizeOnLaunch(bool),
     #[allow(unused)]
     ToggleWindowDecorations(bool),
 
