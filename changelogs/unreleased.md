@@ -13,7 +13,9 @@ TODO: Add screenshots
 # UX
 
 - You can now automatically create changelogs after updating mods,
-  showing which versions changed
+  showing which versions changed.
+- Added success notification messages for common tasks like installing/uninstalling mod loaders,
+  importing/exporting presets, etc.
 
 # Fixes
 

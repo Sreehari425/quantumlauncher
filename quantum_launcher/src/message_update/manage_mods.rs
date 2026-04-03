@@ -6,15 +6,15 @@ use ql_mod_manager::store::{ModId, ModIndex, SelectedMod};
 use std::{collections::HashSet, path::PathBuf};
 
 use crate::state::{
-    AutoSaveKind, ExportModsMessage, InfoMessageKind, Launcher, ManageJarModsMessage,
+    AutoSaveKind, ExportModsMessage, InfoMessage, InfoMessageKind, Launcher, ManageJarModsMessage,
     ManageModsMessage, MenuCurseforgeManualDownload, MenuEditJarMods, MenuEditMods,
-    MenuEditModsModal, Message, ModInfoMessage, ProgressBar, SelectedState, State,
+    MenuEditModsModal, Message, ProgressBar, SelectedState, State,
 };
 
 impl Launcher {
     pub fn update_manage_mods(&mut self, msg: ManageModsMessage) -> Task<Message> {
         match msg {
-            ManageModsMessage::Open => return self.go_to_edit_mods_menu(),
+            ManageModsMessage::Open => return self.go_to_edit_mods_menu(None),
 
             ManageModsMessage::AddFileDone(Err(err))
             | ManageModsMessage::DeleteFinished(Err(err))
@@ -63,7 +63,7 @@ impl Launcher {
                         delete_mods: true,
                     });
                 }
-                return self.go_to_edit_mods_menu();
+                return self.go_to_edit_mods_menu(None);
             }
             ManageModsMessage::DeleteSelected => {
                 if let State::EditMods(menu) = &mut self.state {
@@ -141,15 +141,13 @@ impl Launcher {
                 if let State::EditMods(menu) = &mut self.state {
                     menu.available_updates.clear();
                     menu.info_message = if let Some(file) = file {
-                        Some(ModInfoMessage {
+                        Some(InfoMessage {
                             text: format!("{} written to disk", file.filename),
                             kind: InfoMessageKind::AtPath(file.path),
                         })
                     } else {
-                        should_write_changelog.then(|| ModInfoMessage {
-                            text: "Changelog was not written to disk".to_owned(),
-                            kind: InfoMessageKind::Error,
-                        })
+                        should_write_changelog
+                            .then(|| InfoMessage::error("Changelog was not written to disk"))
                     };
                 }
             }
@@ -174,7 +172,7 @@ impl Launcher {
                     match updates {
                         Ok(updates) => {
                             if updates.is_empty() {
-                                menu.info_message = Some(ModInfoMessage {
+                                menu.info_message = Some(InfoMessage {
                                     text: "No updates found".to_owned(),
                                     kind: InfoMessageKind::Success,
                                 })

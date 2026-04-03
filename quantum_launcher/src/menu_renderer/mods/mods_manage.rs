@@ -10,61 +10,19 @@ use crate::{
     menu_renderer::{
         CTXI_SIZE, Element, FONT_MONO, back_button, back_to_launch_screen, barthin,
         button_with_icon, ctx_button, ctxbox, dots, offset, select_box, subbutton_with_icon,
-        tooltip, tsubtitle,
+        tooltip, tsubtitle, view_info_message,
     },
     message_handler::ForgeKind,
     state::{
-        EditPresetsMessage, ImageState, InfoMessageKind, InstallFabricMessage, InstallModsMessage,
+        EditPresetsMessage, ImageState, InstallFabricMessage, InstallModsMessage,
         InstallOptifineMessage, InstallPaperMessage, ManageJarModsMessage, ManageModsMessage,
-        MenuEditMods, MenuEditModsModal, Message, ModDescriptionMessage, ModInfoMessage,
-        ModListEntry, SelectedState,
+        MenuEditMods, MenuEditModsModal, Message, ModDescriptionMessage, ModListEntry,
+        SelectedState,
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
 
 pub const MODS_SIDEBAR_WIDTH: u16 = 190;
-
-fn view_info_message(message: &ModInfoMessage) -> widget::Container<'_, Message, LauncherTheme> {
-    let (icon, color) = match &message.kind {
-        InfoMessageKind::Success | InfoMessageKind::AtPath(_) => {
-            (icons::checkmark(), Color::SecondLight)
-        }
-        InfoMessageKind::Error => (icons::qm(), Color::Mid),
-    };
-
-    widget::container(
-        row![
-            icon.style(move |t: &LauncherTheme| t.style_text(color))
-                .size(12),
-            widget::text(&message.text).size(12).style(tsubtitle),
-            widget::horizontal_space(),
-        ]
-        .push_maybe(if let InfoMessageKind::AtPath(path) = &message.kind {
-            Some(
-                button_with_icon(icons::folder_s(10), "Open", 12)
-                    .padding([2, 8])
-                    .on_press_with(|| Message::CoreOpenPath(path.clone())),
-            )
-        } else {
-            None
-        })
-        .push(
-            widget::button(
-                icons::close()
-                    .style(|t: &LauncherTheme| t.style_text(Color::Mid))
-                    .size(12),
-            )
-            .padding(0)
-            .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatExtraDark))
-            .on_press(ManageModsMessage::SetInfoMessage(None).into()),
-        )
-        .spacing(12)
-        .align_y(Alignment::Center),
-    )
-    .width(Length::Fill)
-    .padding([7, 10])
-    .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark))
-}
 
 impl MenuEditMods {
     pub fn view<'a>(
@@ -82,7 +40,11 @@ impl MenuEditMods {
         }
 
         let menu_main = widget::Column::new()
-            .push_maybe(self.info_message.as_ref().map(view_info_message))
+            .push_maybe(
+                self.info_message
+                    .as_ref()
+                    .map(|n| view_info_message(n, ManageModsMessage::SetInfoMessage(None).into())),
+            )
             .push_maybe(self.info_message.as_ref().map(|_| {
                 widget::horizontal_rule(2)
                     .style(|t: &LauncherTheme| t.style_rule(Color::SecondDark, 1))
@@ -155,8 +117,8 @@ impl MenuEditMods {
             column![
                 row![
                     back_button().on_press(back_to_launch_screen(
+                        None,
                         Some(selected_instance.is_server()),
-                        None
                     )),
                     tooltip(
                         button_with_icon(icons::folder_s(14), "Open", 14).on_press_with(|| {

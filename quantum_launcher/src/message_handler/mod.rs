@@ -1,7 +1,8 @@
 use crate::config::SIDEBAR_WIDTH;
+use crate::menu_renderer::back_to_launch_screen;
 use crate::state::{
-    AutoSaveKind, GameProcess, LaunchTab, LogState, MenuCreateInstance, MenuCreateInstanceChoosing,
-    MenuInstallOptifine,
+    AutoSaveKind, GameProcess, InfoMessage, LaunchTab, LogState, MenuCreateInstance,
+    MenuCreateInstanceChoosing, MenuInstallOptifine,
 };
 use crate::tick::sort_dependencies;
 use crate::{
@@ -182,9 +183,9 @@ impl Launcher {
 
         self.unselect_instance();
         if is_server {
-            self.go_to_server_manage_menu(Some("Deleted Server".to_owned()))
+            self.go_to_server_manage_menu(Some(InfoMessage::success("Deleted Server")))
         } else {
-            self.go_to_launch_screen(Some("Deleted Instance".to_owned()))
+            self.go_to_launch_screen(Some(InfoMessage::success("Deleted Instance")))
         }
     }
 
@@ -227,8 +228,11 @@ impl Launcher {
         Ok(())
     }
 
-    pub fn go_to_edit_mods_menu(&mut self) -> Task<Message> {
-        async fn inner(this: &mut Launcher) -> Result<Task<Message>, JsonFileError> {
+    pub fn go_to_edit_mods_menu(&mut self, msg: Option<InfoMessage>) -> Task<Message> {
+        async fn inner(
+            this: &mut Launcher,
+            info_message: Option<InfoMessage>,
+        ) -> Result<Task<Message>, JsonFileError> {
             let instance = this.selected_instance.as_ref().unwrap();
 
             let config_json = InstanceConfigJson::read(instance).await?;
@@ -265,7 +269,7 @@ impl Launcher {
                 //     text: "Hello, World!".to_owned(),
                 //     kind: crate::state::InfoMessageKind::Success,
                 // }),
-                info_message: None,
+                info_message,
                 width_name: 220.0,
                 list_shift_index: None,
                 list_scroll: AbsoluteOffset::default(),
@@ -273,7 +277,7 @@ impl Launcher {
 
             Ok(Task::batch([update_local_mods_task]))
         }
-        match block_on(inner(self)) {
+        match block_on(inner(self, msg)) {
             Ok(n) => n,
             Err(err) => {
                 self.set_error(format!("While opening Mods screen:\n{err}"));
@@ -301,11 +305,12 @@ impl Launcher {
         {
             let has_crashed = !status.success();
             if has_crashed {
-                *message = format!("{kind} crashed! ({status})\nCheck \"Logs\" for more info");
+                let mut msg = format!("{kind} crashed! ({status})\nCheck \"Logs\" for more info");
                 if let Some(diag) = diagnostic {
-                    message.push_str("\n\n");
-                    message.push_str(&diag.to_string());
+                    msg.push_str("\n\n");
+                    msg.push_str(&diag.to_string());
                 }
+                *message = Some(InfoMessage::error(msg));
             }
             if let Some(log) = self.logs.get_mut(instance) {
                 log.has_crashed = has_crashed;
@@ -354,17 +359,12 @@ impl Launcher {
         }
     }
 
-    pub fn go_to_server_manage_menu(&mut self, message: Option<String>) -> Task<Message> {
+    pub fn go_to_server_manage_menu(&mut self, message: Option<InfoMessage>) -> Task<Message> {
         if let State::Launch(menu) = &mut self.state {
             menu.is_viewing_server = true;
-            if let Some(message) = message {
-                menu.message = message;
-            }
+            menu.message = message;
         } else {
-            let mut menu_launch = match message {
-                Some(message) => MenuLaunch::with_message(message),
-                None => MenuLaunch::default(),
-            };
+            let mut menu_launch = MenuLaunch::new(message);
             menu_launch.is_viewing_server = true;
             menu_launch.resize_sidebar(SIDEBAR_WIDTH);
             self.state = State::Launch(menu_launch);
@@ -433,15 +433,11 @@ impl Launcher {
         command
     }
 
-    pub fn go_to_main_menu_with_message(
-        &mut self,
-        message: Option<impl ToString>,
-    ) -> Task<Message> {
-        let message = message.map(|n| n.to_string());
+    pub fn go_to_main_menu(&mut self, message: Option<InfoMessage>) -> Task<Message> {
         if self.server_selected() {
             self.go_to_server_manage_menu(message)
         } else {
-            self.go_to_launch_screen::<String>(message)
+            self.go_to_launch_screen(message)
         }
     }
 
@@ -613,11 +609,7 @@ impl Launcher {
             ),
             msg2: "All your data, including worlds, will be lost".to_owned(),
             yes: Message::DeleteInstance,
-            no: Message::MScreenOpen {
-                message: None,
-                clear_selection: false,
-                is_server: None,
-            },
+            no: back_to_launch_screen(None, None),
         };
     }
 

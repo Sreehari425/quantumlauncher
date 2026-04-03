@@ -11,13 +11,13 @@ use ql_core::{
 };
 use ql_mod_manager::store::{ModConfig, ModId, ModIndex};
 
-use crate::config::SIDEBAR_WIDTH;
 use crate::state::{
     AutoSaveKind, EditInstanceMessage, GameProcess, InstallModsMessage, InstanceLog, LaunchModal,
     LaunchTab, Launcher, LogState, ManageJarModsMessage, MenuCreateInstance, MenuEditMods,
     MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuLaunch, MenuLoginMS,
     MenuModsDownload, MenuRecommendedMods, Message, ModListEntry, State,
 };
+use crate::{config::SIDEBAR_WIDTH, state::InfoMessage};
 
 impl Launcher {
     pub fn tick(&mut self) -> Task<Message> {
@@ -106,7 +106,7 @@ impl Launcher {
                 };
                 if has_finished {
                     self.java_recv = None;
-                    return self.go_to_main_menu_with_message(Some("Installed Java"));
+                    return self.go_to_main_menu(Some(InfoMessage::success("Installed Java")));
                 }
             }
             State::ModsDownload(_) => {

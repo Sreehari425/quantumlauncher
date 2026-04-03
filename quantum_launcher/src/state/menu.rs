@@ -98,7 +98,7 @@ pub struct LogState {
 
 /// The home screen of the launcher.
 pub struct MenuLaunch {
-    pub message: String,
+    pub message: Option<InfoMessage>,
     pub login_progress: Option<ProgressBar<GenericProgress>>,
     pub tab: LaunchTab,
     pub edit_instance: Option<MenuEditInstance>,
@@ -118,12 +118,12 @@ pub struct MenuLaunch {
 
 impl Default for MenuLaunch {
     fn default() -> Self {
-        Self::with_message(String::new())
+        Self::new(None)
     }
 }
 
 impl MenuLaunch {
-    pub fn with_message(message: String) -> Self {
+    pub fn new(message: Option<InfoMessage>) -> Self {
         let (mut sidebar_grid_state, pane) = widget::pane_grid::State::new(true);
         let sidebar_split = if let Some((_, split)) =
             sidebar_grid_state.split(widget::pane_grid::Axis::Vertical, pane, false)
@@ -268,7 +268,7 @@ pub struct MenuEditMods {
     pub update_check_handle: Option<iced::task::Handle>,
     pub available_updates: Vec<(ModId, String, bool)>,
 
-    pub info_message: Option<ModInfoMessage>,
+    pub info_message: Option<InfoMessage>,
 
     pub list_scroll: AbsoluteOffset,
     /// Index of the item selected before pressing shift
@@ -288,9 +288,25 @@ pub enum InfoMessageKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct ModInfoMessage {
+pub struct InfoMessage {
     pub text: String,
     pub kind: InfoMessageKind,
+}
+
+impl InfoMessage {
+    pub fn error(text: impl ToString) -> Self {
+        Self {
+            text: text.to_string(),
+            kind: InfoMessageKind::Error,
+        }
+    }
+
+    pub fn success(text: impl ToString) -> Self {
+        Self {
+            text: text.to_string(),
+            kind: InfoMessageKind::Success,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

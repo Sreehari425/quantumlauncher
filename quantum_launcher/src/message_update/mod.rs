@@ -16,8 +16,8 @@ mod recommended;
 
 use crate::config::UiWindowDecorations;
 use crate::state::{
-    GameLogMessage, InstanceNotes, MenuLaunch, MenuModDescription, ModDescriptionMessage,
-    NotesMessage,
+    GameLogMessage, InfoMessage, InstanceNotes, MenuLaunch, MenuModDescription,
+    ModDescriptionMessage, NotesMessage,
 };
 use crate::{
     config::UiSettings,
@@ -36,7 +36,10 @@ impl Launcher {
     pub fn update_install_fabric(&mut self, message: InstallFabricMessage) -> Task<Message> {
         match message {
             InstallFabricMessage::End(result) => match result {
-                Ok(()) => return self.go_to_edit_mods_menu(),
+                Ok(()) => {
+                    return self
+                        .go_to_edit_mods_menu(Some(InfoMessage::success("Installed Fabric")));
+                }
                 Err(err) => self.set_error(err),
             },
             InstallFabricMessage::VersionSelected(selection) => {
@@ -184,7 +187,8 @@ impl Launcher {
                 if let Err(err) = result {
                     self.set_error(err);
                 } else {
-                    return self.go_to_edit_mods_menu();
+                    return self
+                        .go_to_edit_mods_menu(Some(InfoMessage::success("Installed Optifine")));
                 }
             }
         }
@@ -469,7 +473,8 @@ impl Launcher {
                 if let Err(err) = res {
                     self.set_error(err);
                 } else {
-                    return self.go_to_edit_mods_menu();
+                    return self
+                        .go_to_edit_mods_menu(Some(InfoMessage::success("Installed Paper")));
                 }
             }
         }

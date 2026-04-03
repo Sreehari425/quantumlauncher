@@ -7,7 +7,8 @@ use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
 use crate::cli::{EXPERIMENTAL_MMC_IMPORT, EXPERIMENTAL_SERVERS};
 use crate::menu_renderer::onboarding::x86_warning;
 use crate::menu_renderer::{
-    CTXI_SIZE, FONT_MONO, ctx_button, ctxbox, sidebar, tsubtitle, underline,
+    CTXI_SIZE, FONT_MONO, back_to_launch_screen, ctx_button, ctxbox, sidebar, tsubtitle, underline,
+    view_info_message,
 };
 use crate::state::{
     GameLogMessage, InstanceNotes, LaunchModal, MainMenuMessage, NotesMessage, ShortcutMessage,
@@ -121,7 +122,12 @@ impl Launcher {
 
         widget::stack!(
             column![menu.get_tab_selector(decor)]
-                .push_maybe(view_info_message(menu))
+                .push_maybe(
+                    menu.message.as_ref().map(|n| view_info_message(
+                        n,
+                        MainMenuMessage::SetInfoMessage(None).into()
+                    ))
+                )
                 .push(
                     widget::container(tab_body)
                         .width(Length::Fill)
@@ -545,11 +551,7 @@ fn get_view_servers(
         .style(tsubtitle),
     )
     .padding([4, 8])
-    .on_press(Message::MScreenOpen {
-        message: None,
-        clear_selection: false,
-        is_server: Some(!is_viewing_server),
-    });
+    .on_press(back_to_launch_screen(None, Some(!is_viewing_server)));
 
     EXPERIMENTAL_SERVERS.read().unwrap().then_some(b)
 }
@@ -605,7 +607,11 @@ fn render_tab_button(tab: LaunchTab, decor: bool, menu: &'_ MenuLaunch) -> Eleme
     let name = widget::text(tab.to_string()).size(15);
 
     let txt: Element = if let LaunchTab::Log = tab {
-        if menu.message.contains("crashed!") {
+        if menu
+            .message
+            .as_ref()
+            .is_some_and(|n| n.text.contains("crashed!"))
+        {
             underline(name, Color::Mid).into()
         } else {
             name.into()
@@ -723,33 +729,4 @@ fn get_sidebar_new_button(
         is_server: menu.is_viewing_server,
     }))
     .width(Length::Fill)
-}
-
-fn view_info_message(
-    menu: &'_ MenuLaunch,
-) -> Option<widget::Container<'_, Message, LauncherTheme>> {
-    (!menu.message.is_empty()).then_some(
-        widget::container(
-            row![
-                widget::button(
-                    icons::close()
-                        .style(|t: &LauncherTheme| t.style_text(Color::Mid))
-                        .size(12)
-                )
-                .padding(0)
-                .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::FlatExtraDark))
-                .on_press(Message::MScreenOpen {
-                    message: None,
-                    clear_selection: false,
-                    is_server: Some(menu.is_viewing_server)
-                }),
-                widget::text(&menu.message).size(12).style(tsubtitle),
-            ]
-            .spacing(16)
-            .align_y(Alignment::Center),
-        )
-        .width(Length::Fill)
-        .padding(10)
-        .style(|t: &LauncherTheme| t.style_container_sharp_box(0.0, Color::ExtraDark)),
-    )
 }
