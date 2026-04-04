@@ -128,6 +128,17 @@ pub trait Backend {
         // Fallback implementation (concurrent)
         do_jobs(ids.iter().map(|n| Self::get_info(n))).await
     }
+
+    /// Gets the direct download link for a mod file, based on its id.
+    ///
+    /// Useful for exporting to certain modpack formats (like modrinth).
+    ///
+    /// May return [`ModError::NoFilesFound`] if a Curseforge mod doesn't allow direct downloading.
+    async fn get_download_link(
+        instance: &InstanceSelection,
+        id: &str,
+        query_type: QueryType,
+    ) -> Result<String, ModError>;
 }
 
 /// Gets the description of a mod based on its id.
@@ -274,6 +285,17 @@ pub async fn get_info_bulk(ids: Vec<ModId>) -> Result<Vec<SearchMod>, ModError> 
     results.extend(CurseforgeBackend::get_info_bulk(&curseforge).await?);
 
     Ok(results)
+}
+
+pub async fn get_download_link(
+    instance: &InstanceSelection,
+    id: &ModId,
+    query_type: QueryType,
+) -> Result<String, ModError> {
+    match id {
+        ModId::Modrinth(n) => ModrinthBackend::get_download_link(instance, n, query_type).await,
+        ModId::Curseforge(n) => CurseforgeBackend::get_download_link(instance, n, query_type).await,
+    }
 }
 
 struct DirStructure {

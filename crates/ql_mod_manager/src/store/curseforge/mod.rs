@@ -13,7 +13,7 @@ use reqwest::header::HeaderValue;
 use serde::Deserialize;
 
 use crate::{
-    rate_limiter::RATE_LIMITER,
+    rate_limiter::{RATE_LIMITER, lock},
     store::{
         Category, ModId, SearchMod, StoreBackendType,
         curseforge::categories::CfCategory,
@@ -375,6 +375,7 @@ impl Backend for CurseforgeBackend {
         instance: &ql_core::InstanceSelection,
         sender: Option<Sender<GenericProgress>>,
     ) -> Result<HashSet<CurseforgeNotAllowed>, ModError> {
+        let _guard = lock().await;
         let mut downloader = ModDownloader::new(instance.clone(), sender.as_ref()).await?;
 
         downloader.ensure_essential_mods().await?;
@@ -392,6 +393,7 @@ impl Backend for CurseforgeBackend {
         set_manually_installed: bool,
         sender: Option<&Sender<GenericProgress>>,
     ) -> Result<HashSet<CurseforgeNotAllowed>, ModError> {
+        let _guard = lock().await;
         let mut downloader = ModDownloader::new(instance.clone(), sender).await?;
         downloader.ensure_essential_mods().await?;
         downloader.query_cache.extend(
@@ -529,6 +531,16 @@ impl Backend for CurseforgeBackend {
         }
 
         Ok(out)
+    }
+
+    async fn get_download_link(
+        instance: &ql_core::InstanceSelection,
+        id: &str,
+        query_type: QueryType,
+    ) -> Result<String, ModError> {
+        let mut downloader = ModDownloader::basic(instance.clone()).await?;
+        let url = downloader.get_download_link(id, query_type).await?;
+        Ok(url)
     }
 }
 

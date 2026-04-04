@@ -10,7 +10,7 @@ use versions::ModVersion;
 
 use crate::{
     rate_limiter::{RATE_LIMITER, lock},
-    store::{Category, ModId, SearchMod, StoreBackendType, types::GalleryItem},
+    store::{Category, ModId, QueryType, SearchMod, StoreBackendType, types::GalleryItem},
 };
 
 use super::{Backend, CurseforgeNotAllowed, ModError, Query, SearchResult};
@@ -270,6 +270,15 @@ impl Backend for ModrinthBackend {
                 }
             })
             .collect())
+    }
+
+    async fn get_download_link(
+        instance: &InstanceSelection,
+        id: &str,
+        query_type: QueryType,
+    ) -> Result<String, ModError> {
+        let downloader = download::ModDownloader::basic(instance).await?;
+        downloader.get_download_link(id, query_type).await
     }
 }
 

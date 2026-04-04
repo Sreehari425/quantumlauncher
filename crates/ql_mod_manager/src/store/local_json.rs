@@ -32,7 +32,7 @@ pub struct ModConfig {
     pub dependents: HashSet<ModId>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct ModIndex {
     pub mods: HashMap<ModId, ModConfig>,
     pub is_server: Option<bool>,

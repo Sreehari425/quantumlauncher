@@ -7,14 +7,11 @@ use ql_core::{
     GenericProgress, InstanceSelection, download, err, file_utils, info, json::VersionDetails, pt,
 };
 
-use crate::{
-    rate_limiter::lock,
-    store::{
-        CurseforgeNotAllowed, DirStructure, ModConfig, ModError, ModFile, ModId, ModIndex,
-        QueryType, StoreBackendType,
-        curseforge::{ModQuery, get_query_type},
-        install_modpack,
-    },
+use crate::store::{
+    CurseforgeNotAllowed, DirStructure, ModConfig, ModError, ModFile, ModId, ModIndex, QueryType,
+    StoreBackendType,
+    curseforge::{ModQuery, get_query_type},
+    install_modpack,
 };
 
 use super::Mod;
@@ -31,8 +28,6 @@ pub struct ModDownloader<'a> {
     pub not_allowed: HashSet<CurseforgeNotAllowed>,
     pub already_installed: HashSet<String>,
     pub sender: Option<&'a Sender<GenericProgress>>,
-
-    _guard: tokio::sync::MutexGuard<'a, ()>,
 }
 
 impl<'a> ModDownloader<'a> {
@@ -49,7 +44,6 @@ impl<'a> ModDownloader<'a> {
                 .await?
                 .not_vanilla()
                 .map(|n| n.to_curseforge_num()),
-            _guard: lock().await, // Before ModIndex::load
             index: ModIndex::load(&instance).await?,
             dirs: DirStructure::new(&instance, &version_json).await?,
             already_installed: HashSet::new(),
@@ -58,6 +52,46 @@ impl<'a> ModDownloader<'a> {
             sender,
             not_allowed: HashSet::new(),
         })
+    }
+
+    pub async fn basic(instance: InstanceSelection) -> Result<Self, ModError> {
+        let version_json = VersionDetails::load(&instance).await?;
+
+        Ok(Self {
+            version: version_json.get_id().to_owned(),
+            loader: instance
+                .get_loader()
+                .await?
+                .not_vanilla()
+                .map(|n| n.to_curseforge_num()),
+            index: ModIndex::default(),
+            dirs: DirStructure::new(&instance, &version_json).await?,
+            already_installed: HashSet::new(),
+            query_cache: HashMap::new(),
+            instance,
+            sender: None,
+            not_allowed: HashSet::new(),
+        })
+    }
+
+    pub async fn get_download_link(
+        &mut self,
+        id: &str,
+        query_type: QueryType,
+    ) -> Result<String, ModError> {
+        let response = self.get_query(id).await?;
+
+        let file_query = response
+            .get_file(
+                response.name.clone(),
+                id,
+                self.version.clone(),
+                self.loader,
+                query_type,
+            )
+            .await?;
+
+        file_query.0.data.downloadUrl.ok_or(ModError::NoFilesFound)
     }
 
     pub async fn download(&mut self, id: &str, dependent: Option<&str>) -> Result<(), ModError> {
