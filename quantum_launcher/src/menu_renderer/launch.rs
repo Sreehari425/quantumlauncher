@@ -7,7 +7,7 @@ use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
 use crate::cli::{EXPERIMENTAL_MMC_IMPORT, EXPERIMENTAL_SERVERS};
 use crate::menu_renderer::onboarding::x86_warning;
 use crate::menu_renderer::{
-    CTXI_SIZE, Column, FONT_MONO, back_to_launch_screen, ctx_button, ctxbox, sidebar, tsubtitle,
+    CTXI_SIZE, FONT_MONO, back_to_launch_screen, barthin, ctx_button, ctxbox, sidebar, tsubtitle,
     underline, view_info_message,
 };
 use crate::state::{
@@ -121,19 +121,21 @@ impl Launcher {
         let mmc_import = EXPERIMENTAL_MMC_IMPORT.read().unwrap();
 
         widget::stack!(
-            column![menu.get_tab_selector(decor)]
-                .push_maybe(
-                    menu.message.as_ref().map(|n| view_info_message(
-                        n,
-                        MainMenuMessage::SetInfoMessage(None).into()
-                    ))
-                )
-                .push(
-                    widget::container(tab_body)
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                        .style(|t: &LauncherTheme| t.style_container_bg(0.0, None)),
-                )
+            column![
+                menu.get_tab_selector(decor),
+                widget::horizontal_rule(1).style(barthin)
+            ]
+            .push_maybe(
+                menu.message
+                    .as_ref()
+                    .map(|n| view_info_message(n, MainMenuMessage::SetInfoMessage(None).into()))
+            )
+            .push(
+                widget::container(tab_body)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .style(|t: &LauncherTheme| t.style_container_bg(0.0, None)),
+            )
         )
         .push_maybe(if let Some(LaunchModal::InstanceOptions) = &menu.modal {
             Some(

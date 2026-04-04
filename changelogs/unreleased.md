@@ -29,3 +29,4 @@ TODO: Add screenshots
   and vice versa
 - Fixed mods installed through Curseforge modpacks internally being
   stored as Modrinth mods
+- Fixed Java binary not being found on Linux ARM
