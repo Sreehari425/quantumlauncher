@@ -31,7 +31,6 @@ pub async fn launch(
     auth: Option<AccountData>,
     global_settings: Option<GlobalSettings>,
     extra_java_args: Vec<String>,
-    exit_on_start: bool,
 ) -> Result<LaunchedProcess, GameLaunchError> {
     if username.is_empty() {
         return Err(GameLaunchError::UsernameIsEmpty);
@@ -103,11 +102,6 @@ pub async fn launch(
         info!("Launched! PID: {id}");
     } else {
         err!("No ID found!");
-    }
-
-    if exit_on_start {
-        ql_core::logger_finish();
-        std::process::exit(0);
     }
 
     Ok(LaunchedProcess {

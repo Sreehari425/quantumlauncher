@@ -259,7 +259,6 @@ impl LauncherConfig {
             .map_or(AfterLaunchBehavior::default(), |n| n.after_game_opens)
     }
 
-
     pub fn uses_system_decorations(&self) -> bool {
         // change this to `is_some_and` when enabling the experimental decorations
         self.ui
@@ -416,6 +415,8 @@ pub struct UiSettings {
     pub window_opacity: f32,
     // Since: v0.5.0
     pub idle_fps: Option<u64>,
+    /// When the game is launched, the launcher can either
+    /// minimize itself, close itself, or do nothing (default).
     // Since: v0.5.2
     #[serde(default)]
     pub after_game_opens: AfterLaunchBehavior,
@@ -435,19 +436,26 @@ impl Default for UiSettings {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum AfterLaunchBehavior {
-    #[serde(rename = "do_nothing")]
-    DoNothing,
+    /// Enable to reduce taskbar icons; leaving it open has negligible impact.
     #[serde(rename = "close_launcher")]
     CloseLauncher,
     #[serde(rename = "minimize_launcher")]
     MinimizeLauncher,
+    #[serde(rename = "do_nothing")]
+    #[default]
+    #[serde(other)]
+    DoNothing,
 }
 
-impl Default for AfterLaunchBehavior {
-    fn default() -> Self {
-        Self::DoNothing
+impl AfterLaunchBehavior {
+    pub const fn desc(self) -> &'static str {
+        match self {
+            Self::CloseLauncher => "Close launcher",
+            Self::MinimizeLauncher => "Minimize launcher",
+            Self::DoNothing => "Do nothing",
+        }
     }
 }
 

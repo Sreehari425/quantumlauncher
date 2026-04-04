@@ -303,7 +303,7 @@ impl Launcher {
             LauncherSettingsMessage::ClearJavaInstallsConfirm => {
                 return Task::perform(ql_instances::delete_java_installs(), |()| {
                     Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(
-                        state::LauncherSettingsTab::Internal,
+                        state::LauncherSettingsTab::Game,
                     ))
                 });
             }
@@ -410,7 +410,7 @@ impl Launcher {
             msg1: "delete auto-installed Java files".to_owned(),
             msg2: "They will get reinstalled automatically as needed".to_owned(),
             yes: LauncherSettingsMessage::ClearJavaInstallsConfirm.into(),
-            no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Internal).into(),
+            no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Game).into(),
         }
     }
 
