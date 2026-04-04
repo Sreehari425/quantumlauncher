@@ -658,7 +658,7 @@ fn render_tab_button(tab: LaunchTab, decor: bool, menu: &'_ MenuLaunch) -> Eleme
     }
 }
 
-fn get_no_logs_message<'a>() -> widget::Column<'a, Message, LauncherTheme> {
+fn get_no_logs_message<'a>() -> Column<'a> {
     const BASE_MESSAGE: &str = "No logs found";
 
     column![widget::text(BASE_MESSAGE).style(|t: &LauncherTheme| t.style_text(Color::Mid))]
