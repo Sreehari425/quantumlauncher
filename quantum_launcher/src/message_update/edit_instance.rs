@@ -126,15 +126,6 @@ impl Launcher {
             EditInstanceMessage::LoggingToggle(t) => iflet_config!(&mut self.state, config <- {
                 config.enable_logger = Some(t);
             }),
-            EditInstanceMessage::CloseLauncherToggle(t) => {
-                if let State::Launch(MenuLaunch {
-                    edit_instance: Some(menu),
-                    ..
-                }) = &mut self.state
-                {
-                    menu.config.close_on_start = Some(t);
-                }
-            }
             EditInstanceMessage::JavaArgsModeChanged(mode) => {
                 iflet_config!(&mut self.state, global_java_args_enable, {
                     *global_java_args_enable = Some(mode);
@@ -408,7 +399,7 @@ impl Launcher {
             return Ok(Task::none());
         }
 
-        menu.old_instance_name = sanitized_name.to_owned();
+        menu.old_instance_name.clone_from(&sanitized_name);
         std::fs::rename(&old_path, &new_path)
             .path(&old_path)
             .strerr()?;
@@ -443,7 +434,6 @@ impl EditInstanceMessage {
             EditInstanceMessage::MemoryChanged(_) |
             EditInstanceMessage::MemoryInputChanged(_) |
             EditInstanceMessage::LoggingToggle(_) |
-            EditInstanceMessage::CloseLauncherToggle(_) |
             EditInstanceMessage::SetMainClass(_, _) |
             EditInstanceMessage::JavaArgs(_) |
             EditInstanceMessage::JavaArgsModeChanged(_) |

@@ -4,7 +4,7 @@ use ql_core::{DownloadProgress, InstanceSelection, IntoStringError, ListEntry, L
 use crate::{
     message_handler::{SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT},
     state::{
-        AutoSaveKind, CreateInstanceMessage, Launcher, MenuCreateInstance,
+        AutoSaveKind, CreateInstanceMessage, InfoMessage, Launcher, MenuCreateInstance,
         MenuCreateInstanceChoosing, Message, ProgressBar, State,
     },
 };
@@ -37,7 +37,7 @@ impl Launcher {
                 iflet!(self, selected_version, show_category_dropdown; {
                     *show_category_dropdown = false;
                     *selected_version = ver;
-                })
+                });
             }
 
             CreateInstanceMessage::SearchInput(t) => iflet!(self, search_box; {
@@ -78,6 +78,8 @@ impl Launcher {
                     }
                 });
             }
+
+            // Filters dropdown
             CreateInstanceMessage::ContextMenuToggle => iflet!(self, show_category_dropdown; {
                 *show_category_dropdown = !*show_category_dropdown;
             }),
@@ -95,6 +97,7 @@ impl Launcher {
                     .c_persistent().create_instance_filters = Some(selected_categories.clone());
                 self.autosave.remove(&AutoSaveKind::LauncherConfig);
             }),
+
             CreateInstanceMessage::NameInput(name) => iflet!(self, instance_name; {
                 *instance_name = name;
             }),
@@ -103,9 +106,9 @@ impl Launcher {
                 let is_server = instance.is_server();
                 self.selected_instance = Some(instance);
                 return if is_server {
-                    self.go_to_server_manage_menu(Some("Created Server".to_owned()))
+                    self.go_to_server_manage_menu(Some(InfoMessage::success("Created Server")))
                 } else {
-                    self.go_to_launch_screen(Some("Created Instance"))
+                    self.go_to_launch_screen(Some(InfoMessage::success("Created Instance")))
                 };
             }
             CreateInstanceMessage::ChangeAssetToggle(t) => iflet!(self, download_assets; {
@@ -131,7 +134,7 @@ impl Launcher {
                 let is_valid_modpack = instance.is_some();
                 self.selected_instance = instance;
                 if is_valid_modpack {
-                    return self.go_to_main_menu_with_message(None::<String>);
+                    return self.go_to_main_menu(None);
                 }
                 self.set_error(
                     r#"the file you imported isn't a valid QuantumLauncher/MultiMC instance.

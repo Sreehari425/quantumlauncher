@@ -60,6 +60,11 @@ impl Launcher {
                 self.config.username = username;
                 self.autosave.remove(&AutoSaveKind::LauncherConfig);
             }
+            MainMenuMessage::SetInfoMessage(msg) => {
+                if let State::Launch(menu) = &mut self.state {
+                    menu.message = msg;
+                }
+            }
         }
         Task::none()
     }
@@ -74,7 +79,6 @@ impl Launcher {
         match message {
             SidebarMessage::Resize(ratio) => {
                 if let State::Launch(menu) = &mut self.state {
-                    // self.autosave.remove(&AutoSaveKind::LauncherConfig);
                     let window_width = self.window_state.size.0;
                     let ratio = ratio * window_width;
                     menu.resize_sidebar(

@@ -1,7 +1,9 @@
+use crate::config::AfterLaunchBehavior;
 use crate::config::SIDEBAR_WIDTH;
+use crate::menu_renderer::back_to_launch_screen;
 use crate::state::{
-    AutoSaveKind, GameProcess, LaunchTab, LogState, MenuCreateInstance, MenuCreateInstanceChoosing,
-    MenuInstallOptifine,
+    AutoSaveKind, GameProcess, InfoMessage, LaunchTab, LogState, MenuCreateInstance,
+    MenuCreateInstanceChoosing, MenuInstallOptifine,
 };
 use crate::tick::sort_dependencies;
 use crate::{
@@ -15,6 +17,7 @@ use filthy_rich::{Activity, DiscordIPCRunner};
 use iced::Task;
 use iced::futures::executor::block_on;
 use iced::widget::scrollable::AbsoluteOffset;
+use ql_core::file_utils::exists;
 use ql_core::json::VersionDetails;
 use ql_core::json::instance_config::ModTypeInfo;
 use ql_core::read_log::{Diagnostic, ReadError};
@@ -169,7 +172,7 @@ impl Launcher {
                     )
                 };
 
-                let launch_task = Task::perform(
+                let log_task = Task::perform(
                     async move {
                         let result = child.read_logs(censors, Some(sender)).await;
                         let default_output = Ok((ExitStatus::default(), selected_instance, None));
@@ -189,7 +192,20 @@ impl Launcher {
                     Message::LaunchGameExited,
                 );
 
-                return Task::batch([launch_task, version_presence_task]);
+                match self.config.c_after_launch_behavior() {
+                    AfterLaunchBehavior::DoNothing => {}
+                    AfterLaunchBehavior::CloseLauncher => {
+                        ql_core::logger_finish();
+                        std::process::exit(0);
+                    }
+                    AfterLaunchBehavior::MinimizeLauncher => {
+                        let minimize_task = iced::window::get_latest()
+                            .and_then(|id| iced::window::minimize(id, true));
+                        return Task::batch([log_task, minimize_task, version_presence_task]);
+                    }
+                };
+
+                return Task::batch([log_task, version_presence_task]);
             }
             Err(err) => self.set_error(err),
         }
@@ -211,9 +227,9 @@ impl Launcher {
 
         self.unselect_instance();
         if is_server {
-            self.go_to_server_manage_menu(Some("Deleted Server".to_owned()))
+            self.go_to_server_manage_menu(Some(InfoMessage::success("Deleted Server")))
         } else {
-            self.go_to_launch_screen(Some("Deleted Instance".to_owned()))
+            self.go_to_launch_screen(Some(InfoMessage::success("Deleted Instance")))
         }
     }
 
@@ -256,8 +272,11 @@ impl Launcher {
         Ok(())
     }
 
-    pub fn go_to_edit_mods_menu(&mut self) -> Task<Message> {
-        async fn inner(this: &mut Launcher) -> Result<Task<Message>, JsonFileError> {
+    pub fn go_to_edit_mods_menu(&mut self, msg: Option<InfoMessage>) -> Task<Message> {
+        async fn inner(
+            this: &mut Launcher,
+            info_message: Option<InfoMessage>,
+        ) -> Result<Task<Message>, JsonFileError> {
             let instance = this.selected_instance.as_ref().unwrap();
 
             let config_json = InstanceConfigJson::read(instance).await?;
@@ -285,6 +304,16 @@ impl Launcher {
                 version_json,
                 modal: None,
                 search: None,
+                // If you wanna test stuff out...
+                // info_message: Some(crate::state::ModInfoMessage {
+                //     text: "Hello, World!".to_owned(),
+                //     kind: crate::state::InfoMessageKind::AtPath(PathBuf::from("/home/mrmayman")),
+                // }),
+                // info_message: Some(crate::state::ModInfoMessage {
+                //     text: "Hello, World!".to_owned(),
+                //     kind: crate::state::InfoMessageKind::Success,
+                // }),
+                info_message,
                 width_name: 220.0,
                 list_shift_index: None,
                 list_scroll: AbsoluteOffset::default(),
@@ -292,7 +321,7 @@ impl Launcher {
 
             Ok(Task::batch([update_local_mods_task]))
         }
-        match block_on(inner(self)) {
+        match block_on(inner(self, msg)) {
             Ok(n) => n,
             Err(err) => {
                 self.set_error(format!("While opening Mods screen:\n{err}"));
@@ -320,11 +349,12 @@ impl Launcher {
         {
             let has_crashed = !status.success();
             if has_crashed {
-                *message = format!("{kind} crashed! ({status})\nCheck \"Logs\" for more info");
+                let mut msg = format!("{kind} crashed! ({status})\nCheck \"Logs\" for more info");
                 if let Some(diag) = diagnostic {
-                    message.push_str("\n\n");
-                    message.push_str(&diag.to_string());
+                    msg.push_str("\n\n");
+                    msg.push_str(&diag.to_string());
                 }
+                *message = Some(InfoMessage::error(msg));
             }
             if let Some(log) = self.logs.get_mut(instance) {
                 log.has_crashed = has_crashed;
@@ -338,29 +368,25 @@ impl Launcher {
             Self::read_game_logs(&process, instance, &mut self.logs, log_state);
         }
 
-        let presence_task = {
-            let instance = instance.clone();
-            let client = self.discord_ipc_client.clone();
+        let instance = instance.clone();
+        let client = self.discord_ipc_client.clone();
 
-            Task::perform(
-                async move {
-                    let details = VersionDetails::load(&instance).await;
+        Task::perform(
+            async move {
+                let details = VersionDetails::load(&instance).await;
 
-                    if let Ok(details) = details {
-                        if let Some(c) = client {
-                            let activity = Activity::new()
-                                .details("Just quit game")
-                                .state(format!("Minecraft v{}", details.id))
-                                .build();
-                            c.set_activity(activity).await.ok();
-                        }
+                if let Ok(details) = details {
+                    if let Some(c) = client {
+                        let activity = Activity::new()
+                            .details("Just quit game")
+                            .state(format!("Minecraft v{}", details.id))
+                            .build();
+                        c.set_activity(activity).await.ok();
                     }
-                },
-                |_| Message::Nothing,
-            )
-        };
-
-        presence_task
+                }
+            },
+            |_| Message::Nothing,
+        )
     }
 
     pub fn start_discord_ipc_run(&self) -> Task<Message> {
@@ -375,7 +401,7 @@ impl Launcher {
                     runner.clone_handle()
                 }
             },
-            |c| Message::DiscordIPCRunStarted(c),
+            Message::DiscordIPCRunStarted,
         )
     }
 
@@ -399,8 +425,9 @@ impl Launcher {
                 .available_updates
                 .clone()
                 .into_iter()
-                .map(|(n, _, _)| n)
+                .map(|(id, version, _)| (id, version))
                 .collect();
+            let write_changelog = self.config.c_persistent().write_mod_update_changelog;
             let (sender, receiver) = std::sync::mpsc::channel();
             menu.mod_update_progress = Some(ProgressBar::with_recv_and_msg(
                 receiver,
@@ -408,25 +435,30 @@ impl Launcher {
             ));
             let selected_instance = self.selected_instance.clone().unwrap();
             Task::perform(
-                ql_mod_manager::store::apply_updates(selected_instance, updates, Some(sender)),
-                |n| ManageModsMessage::UpdatePerformDone(n.strerr()).into(),
+                ql_mod_manager::store::apply_updates(
+                    selected_instance,
+                    updates,
+                    Some(sender),
+                    write_changelog,
+                ),
+                move |n| {
+                    ManageModsMessage::UpdatePerformDone(
+                        n.strerr().map(|res| (res, write_changelog)),
+                    )
+                    .into()
+                },
             )
         } else {
             Task::none()
         }
     }
 
-    pub fn go_to_server_manage_menu(&mut self, message: Option<String>) -> Task<Message> {
+    pub fn go_to_server_manage_menu(&mut self, message: Option<InfoMessage>) -> Task<Message> {
         if let State::Launch(menu) = &mut self.state {
             menu.is_viewing_server = true;
-            if let Some(message) = message {
-                menu.message = message;
-            }
+            menu.message = message;
         } else {
-            let mut menu_launch = match message {
-                Some(message) => MenuLaunch::with_message(message),
-                None => MenuLaunch::default(),
-            };
+            let mut menu_launch = MenuLaunch::new(message);
             menu_launch.is_viewing_server = true;
             menu_launch.resize_sidebar(SIDEBAR_WIDTH);
             self.state = State::Launch(menu_launch);
@@ -495,15 +527,11 @@ impl Launcher {
         command
     }
 
-    pub fn go_to_main_menu_with_message(
-        &mut self,
-        message: Option<impl ToString>,
-    ) -> Task<Message> {
-        let message = message.map(|n| n.to_string());
+    pub fn go_to_main_menu(&mut self, message: Option<InfoMessage>) -> Task<Message> {
         if self.server_selected() {
             self.go_to_server_manage_menu(message)
         } else {
-            self.go_to_launch_screen::<String>(message)
+            self.go_to_launch_screen(message)
         }
     }
 
@@ -675,11 +703,7 @@ impl Launcher {
             ),
             msg2: "All your data, including worlds, will be lost".to_owned(),
             yes: Message::DeleteInstance,
-            no: Message::MScreenOpen {
-                message: None,
-                clear_selection: false,
-                is_server: None,
-            },
+            no: back_to_launch_screen(None, None),
         };
     }
 
@@ -778,10 +802,10 @@ async fn copy_optifine_over(instance: &InstanceSelection) -> Result<(), String> 
     let installer_path = instance_dir.join("optifine/OptiFine.jar");
     let mods_dir = instance_dir.join(".minecraft/mods");
 
-    if !installer_path.exists() {
+    if !exists(&installer_path).await {
         return Ok(());
     }
-    if !mods_dir.exists() {
+    if !exists(&mods_dir).await {
         tokio::fs::create_dir_all(&mods_dir)
             .await
             .path(&mods_dir)

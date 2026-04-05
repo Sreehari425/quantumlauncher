@@ -10,8 +10,8 @@ use crate::{
     cli::EXPERIMENTAL_MMC_IMPORT,
     icons,
     menu_renderer::{
-        Element, button_with_icon, ctxbox, dots, launch::import_description, offset, shortcut_ctrl,
-        sidebar_button, tooltip, tsubtitle,
+        Column, Element, back_to_launch_screen, button_with_icon, ctxbox, dots,
+        launch::import_description, offset, shortcut_ctrl, sidebar_button, tooltip, tsubtitle,
     },
     state::{CreateInstanceMessage, MenuCreateInstance, MenuCreateInstanceChoosing, Message},
     stylesheet::{
@@ -124,7 +124,7 @@ impl MenuCreateInstanceChoosing {
         .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark))
     }
 
-    fn get_sidebar_header(&self) -> widget::Column<'_, Message, LauncherTheme> {
+    fn get_sidebar_header(&self) -> Column<'_> {
         let pb = [4, 10];
         let opened_controls = self.show_category_dropdown;
         let hidden = self.selected_categories.len() == ListEntryKind::ALL.len();
@@ -133,11 +133,7 @@ impl MenuCreateInstanceChoosing {
             button_with_icon(icons::back_s(12), "Back", 13)
                 .padding(pb)
                 .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
-                .on_press(Message::MScreenOpen {
-                    message: None,
-                    clear_selection: false,
-                    is_server: Some(self.is_server),
-                }),
+                .on_press(back_to_launch_screen(None, Some(self.is_server))),
             button_with_icon(
                 icons::filter_s(12),
                 if hidden { "Filters" } else { "Filters •" },

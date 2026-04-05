@@ -46,7 +46,7 @@ mod progress;
 pub mod read_log;
 pub mod request;
 mod structs;
-mod urlcache;
+pub mod urlcache;
 
 pub use crate::json::InstanceConfigJson;
 pub use constants::*;
@@ -59,7 +59,6 @@ pub use print::{LOGGER, LogType, LoggingState, logger_finish};
 pub use progress::{DownloadProgress, GenericProgress, Progress};
 pub use request::download;
 pub use structs::{JavaVersion, Loader};
-pub use urlcache::url_cache_get;
 
 pub const LAUNCHER_VERSION_NAME: &str = "0.5.1";
 
@@ -468,89 +467,6 @@ impl ListEntryKind {
                 | ListEntryKind::Indev
                 | ListEntryKind::Infdev
         )
-    }
-}
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ModId {
-    Modrinth(String),
-    Curseforge(String),
-}
-
-impl ModId {
-    #[must_use]
-    pub fn get_internal_id(&self) -> &str {
-        match self {
-            ModId::Modrinth(n) | ModId::Curseforge(n) => n,
-        }
-    }
-
-    #[must_use]
-    pub fn get_index_str(&self) -> String {
-        match self {
-            ModId::Modrinth(n) => n.clone(),
-            ModId::Curseforge(n) => format!("CF:{n}"),
-        }
-    }
-
-    #[must_use]
-    pub fn get_backend(&self) -> StoreBackendType {
-        match self {
-            ModId::Modrinth(_) => StoreBackendType::Modrinth,
-            ModId::Curseforge(_) => StoreBackendType::Curseforge,
-        }
-    }
-
-    #[must_use]
-    pub fn from_index_str(n: &str) -> Self {
-        if n.starts_with("CF:") {
-            ModId::Curseforge(n.strip_prefix("CF:").unwrap_or(n).to_owned())
-        } else {
-            ModId::Modrinth(n.to_owned())
-        }
-    }
-
-    #[must_use]
-    pub fn from_pair(n: &str, t: StoreBackendType) -> Self {
-        let n = n.to_owned();
-        match t {
-            StoreBackendType::Modrinth => Self::Modrinth(n),
-            StoreBackendType::Curseforge => Self::Curseforge(n),
-        }
-    }
-
-    #[must_use]
-    pub fn to_pair(self) -> (String, StoreBackendType) {
-        let backend = match self {
-            ModId::Modrinth(_) => StoreBackendType::Modrinth,
-            ModId::Curseforge(_) => StoreBackendType::Curseforge,
-        };
-
-        (self.get_internal_id().to_owned(), backend)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StoreBackendType {
-    #[serde(rename = "modrinth")]
-    Modrinth,
-    #[serde(rename = "curseforge")]
-    Curseforge,
-}
-
-#[derive(Hash, PartialEq, Eq, Clone)]
-pub enum SelectedMod {
-    Downloaded { name: String, id: ModId },
-    Local { file_name: String },
-}
-
-impl SelectedMod {
-    #[must_use]
-    pub fn from_pair(name: String, id: Option<ModId>) -> Self {
-        match id {
-            Some(id) => Self::Downloaded { name, id },
-            None => Self::Local { file_name: name },
-        }
     }
 }
 
