@@ -318,8 +318,9 @@ impl Launcher {
                     let client = self.discord_ipc_client.clone();
 
                     tokio::spawn(async move {
-                        let mut client = client.lock().await;
-                        client.close().await.ok();
+                        if let Some(c) = client {
+                            c.close().await.ok();
+                        }
                     });
                 }
             }

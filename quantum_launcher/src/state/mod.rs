@@ -2,13 +2,10 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
     path::Path,
-    sync::{
-        mpsc::{self, Receiver},
-        Arc,
-    },
+    sync::mpsc::{self, Receiver},
 };
 
-use filthy_rich::DiscordIPC;
+use filthy_rich::DiscordIPCClient;
 use iced::Task;
 use notify::Watcher;
 use ql_core::{
@@ -17,7 +14,7 @@ use ql_core::{
     read_log::LogLine,
 };
 use ql_instances::auth::{AccountData, AccountType, ms::CLIENT_ID};
-use tokio::{process::ChildStdin, sync::Mutex};
+use tokio::process::ChildStdin;
 
 use crate::{
     config::{LauncherConfig, SIDEBAR_WIDTH},
@@ -59,7 +56,7 @@ pub struct Launcher {
     pub tick_timer: usize,
     pub is_launching_game: bool,
 
-    pub discord_ipc_client: Arc<Mutex<DiscordIPC>>,
+    pub discord_ipc_client: Option<DiscordIPCClient>,
 
     pub java_recv: Option<ProgressBar<GenericProgress>>,
     pub custom_jar: Option<CustomJarState>,
@@ -201,7 +198,7 @@ impl Launcher {
             is_log_open: false,
             is_launching_game: false,
 
-            discord_ipc_client: get_presence_identity(),
+            discord_ipc_client: None,
 
             log_scroll: 0,
             tick_timer: 0,
@@ -256,7 +253,7 @@ impl Launcher {
             log_scroll: 0,
             tick_timer: 0,
 
-            discord_ipc_client: get_presence_identity(),
+            discord_ipc_client: None,
 
             logs: HashMap::new(),
             processes: HashMap::new(),
@@ -394,11 +391,6 @@ fn load_account(
             accounts_to_remove.push(username.to_owned());
         }
     }
-}
-
-pub fn get_presence_identity() -> Arc<Mutex<DiscordIPC>> {
-    const DISCORD_APP_ID: &str = "1468876407756029965";
-    Arc::new(Mutex::new(DiscordIPC::new(DISCORD_APP_ID)))
 }
 
 pub async fn get_entries(is_server: bool) -> Res<(Vec<String>, bool)> {

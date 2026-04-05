@@ -6,6 +6,7 @@ use crate::{
     state::{LaunchModal, MenuEditModsModal},
     stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
 };
+use filthy_rich::DiscordIPCClient;
 use iced::widget::{self, scrollable::AbsoluteOffset};
 use ql_core::{
     InstanceSelection, LaunchedProcess, ListEntry, Loader, ModId, StoreBackendType,
@@ -416,6 +417,9 @@ pub enum Message {
     GameLog(GameLogMessage),
     Window(WindowMessage),
     Shortcut(ShortcutMessage),
+
+    DiscordIPCRunStarted(DiscordIPCClient),
+    DiscordBasicRichPresence,
 
     ManageMods(ManageModsMessage),
     ManageJarMods(ManageJarModsMessage),

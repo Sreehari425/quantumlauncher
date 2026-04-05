@@ -11,6 +11,7 @@ use crate::{
         MenuLaunch, OFFLINE_ACCOUNT_NAME, ProgressBar, SelectedState, State,
     },
 };
+use filthy_rich::{Activity, DiscordIPCRunner};
 use iced::Task;
 use iced::futures::executor::block_on;
 use iced::widget::scrollable::AbsoluteOffset;
@@ -144,26 +145,24 @@ impl Launcher {
 
                 let version_presence_task = {
                     let selected_instance = selected_instance.clone();
-                    let launcher_client = self.discord_ipc_client.clone();
+                    let client = self.discord_ipc_client.clone();
 
                     Task::perform(
                         async move {
                             if let Ok(version_details) =
                                 VersionDetails::load(&selected_instance).await
                             {
-                                let client = launcher_client.lock().await;
+                                if let Some(c) = client {
+                                    let instance_name = selected_instance.get_name();
+                                    let version_name = version_details.id;
 
-                                let instance_name = selected_instance.get_name();
-                                let version_name = version_details.id;
+                                    let activity = Activity::new()
+                                        .details(format!("Minecraft v{version_name}"))
+                                        .state(format!("Instance: {instance_name}"))
+                                        .build();
 
-                                let details = format!("Minecraft v{version_name}");
-                                let state = if instance_name == version_name {
-                                    None
-                                } else {
-                                    Some(format!("Instance: {instance_name}"))
-                                };
-
-                                client.set_activity(details, state).await.ok();
+                                    c.set_activity(activity).await.ok();
+                                }
                             }
                         },
                         |_| Message::Nothing,
@@ -347,19 +346,14 @@ impl Launcher {
                 async move {
                     let details = VersionDetails::load(&instance).await;
 
-                    // TODO: might implement time here? since VersionDetails exposes this
-                    // but I'm not sure whether this is fully implemented yet
-
                     if let Ok(details) = details {
-                        let client = client.lock().await;
-
-                        client
-                            .set_activity(
-                                "Just quit game".to_string(),
-                                Some(format!("Minecraft v{}", details.id)),
-                            )
-                            .await
-                            .ok();
+                        if let Some(c) = client {
+                            let activity = Activity::new()
+                                .details("Just quit game")
+                                .state(format!("Minecraft v{}", details.id))
+                                .build();
+                            c.set_activity(activity).await.ok();
+                        }
                     }
                 },
                 |_| Message::Nothing,
@@ -370,23 +364,33 @@ impl Launcher {
     }
 
     pub fn start_discord_ipc_run(&self) -> Task<Message> {
-        let client = self.discord_ipc_client.clone();
+        const DISCORD_CLIENT_ID: &str = "1468876407756029965";
+
+        let mut runner = DiscordIPCRunner::new(DISCORD_CLIENT_ID);
 
         Task::perform(
             {
                 async move {
-                    let mut client = client.lock().await;
-                    client.run(true).await.ok();
-
-                    let version = env!("CARGO_PKG_VERSION");
-                    client
-                        .set_activity(format!("Running v{version}"), None)
-                        .await
-                        .ok();
+                    runner.run(true).await.ok();
+                    runner.clone_handle()
                 }
             },
-            |_| Message::Nothing,
+            |c| Message::DiscordIPCRunStarted(c),
         )
+    }
+
+    pub fn set_basic_discord_presence(&self) -> Task<Message> {
+        if let Some(c) = self.discord_ipc_client.clone() {
+            Task::perform(
+                async move {
+                    let activity = Activity::new().details("Launcher initialized.").build();
+                    c.set_activity(activity).await.ok();
+                },
+                |_| Message::DiscordBasicRichPresence,
+            )
+        } else {
+            Task::none()
+        }
     }
 
     pub fn update_mods(&mut self) -> Task<Message> {
