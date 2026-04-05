@@ -11,7 +11,7 @@ use crate::{
         DISCORD, Element, button_with_icon, center_x, get_mode_selector, onboarding::x86_warning,
         settings::get_theme_selector, tsubtitle,
     },
-    state::{AccountMessage, MainMenuMessage, MenuWelcome, Message},
+    state::{AccountMessage, LauncherSettingsMessage, MainMenuMessage, MenuWelcome, Message},
 };
 
 use super::IMG_LOGO;
@@ -49,31 +49,45 @@ impl MenuWelcome {
             .align_x(Alignment::Center)
             .spacing(10)
             .into(),
-            MenuWelcome::P2Theme => widget::column![
-                widget::vertical_space(),
-                center_x(widget::text("Customize your launcher!").size(24)),
-                widget::row!["Mode:", get_mode_selector(config)]
-                    .align_y(Alignment::Center)
+            MenuWelcome::P2Theme => {
+                widget::column![
+                    widget::vertical_space(),
+                    center_x(widget::text("Customize your launcher!").size(24)),
+                    widget::row!["Mode:", get_mode_selector(config)]
+                        .align_y(Alignment::Center)
+                        .spacing(10),
+                    widget::row![
+                        widget::Space::with_width(20),
+                        "Theme:",
+                        get_theme_selector().wrap()
+                    ]
+                    .width(350)
                     .spacing(10),
-                widget::row![
-                    widget::Space::with_width(20),
-                    "Theme:",
-                    get_theme_selector().wrap()
+                    widget::Space::with_height(5),
+                    column![
+                        widget::toggler(config.rich_presence.unwrap_or(true))
+                            .label("Enable Discord Rich Presence")
+                            .on_toggle(
+                                |t| LauncherSettingsMessage::ToggleDiscordRichPresence(t).into()
+                            ),
+                        widget::text("Allow others to see your gameplay activity in Discord")
+                            .size(12)
+                            .style(tsubtitle),
+                    ]
+                    .spacing(5),
+                    widget::Space::with_height(5),
+                    button_with_icon(icons::discord(), "Join our Discord", 14)
+                        .padding([4, 8])
+                        .on_press(Message::CoreOpenLink(DISCORD.to_owned())),
+                    widget::Space::with_height(5),
+                    center_x(widget::button("Continue").on_press(Message::WelcomeContinueToAuth)),
+                    widget::vertical_space(),
                 ]
-                .width(350)
-                .spacing(10),
-                widget::Space::with_height(5),
-                button_with_icon(icons::discord(), "Join our Discord", 14)
-                    .padding([4, 8])
-                    .on_press(Message::CoreOpenLink(DISCORD.to_owned())),
-                widget::Space::with_height(5),
-                center_x(widget::button("Continue").on_press(Message::WelcomeContinueToAuth)),
-                widget::vertical_space(),
-            ]
-            .width(Length::Fill)
-            .align_x(Alignment::Center)
-            .spacing(10)
-            .into(),
+                .width(Length::Fill)
+                .align_x(Alignment::Center)
+                .spacing(10)
+                .into()
+            }
             MenuWelcome::P3Auth => {
                 let next = Message::MScreenOpen {
                     message: None,
