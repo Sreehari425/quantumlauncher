@@ -1,4 +1,3 @@
-use filthy_rich::Activity;
 use iced::{Task, futures::executor::block_on};
 use ql_core::{InstanceSelection, IntoIoError, IntoStringError, err, file_utils::DirItem, info};
 use std::fmt::Write;
