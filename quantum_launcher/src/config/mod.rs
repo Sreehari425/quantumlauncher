@@ -93,7 +93,7 @@ pub struct LauncherConfig {
     /// support or not.
     ///
     /// Default: `true`
-    /// Since: <TODO: update>
+    /// Since: TBD
     pub rich_presence: Option<bool>,
 
     /// Settings that apply both on a per-instance basis and with global overrides.
@@ -425,7 +425,7 @@ pub struct UiSettings {
     pub idle_fps: Option<u64>,
     /// When the game is launched, the launcher can either
     /// minimize itself, close itself, or do nothing (default).
-    // Since: v0.5.2
+    // Since: TBD
     #[serde(default)]
     pub after_game_opens: AfterLaunchBehavior,
     #[serde(flatten)]

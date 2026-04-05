@@ -20,13 +20,6 @@ use crate::{
 impl Launcher {
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::DiscordIPCRunStarted(c) => {
-                self.discord_ipc_client = Some(c);
-                return self.set_basic_discord_presence();
-            }
-            Message::DiscordBasicRichPresence => {
-                info!("Launcher initialized with Discord Rich Presence...")
-            }
             Message::Nothing | Message::CoreCleanComplete(Ok(())) => {}
             Message::Error(err) => self.set_error(err),
             Message::Multiple(msgs) => {
@@ -88,6 +81,14 @@ impl Launcher {
             Message::CreateInstance(message) => return self.update_create_instance(message),
             Message::DeleteInstanceMenu => self.go_to_delete_instance_menu(),
             Message::DeleteInstance => return self.delete_instance_confirm(),
+
+            Message::DiscordIPCRunStarted(c) => {
+                self.discord_ipc_client = Some(c);
+                return self.set_basic_discord_presence();
+            }
+            Message::DiscordBasicRichPresence => {
+                info!(no_log, "Launcher initialized with Discord Rich Presence...")
+            }
 
             Message::MScreenOpen {
                 message,
