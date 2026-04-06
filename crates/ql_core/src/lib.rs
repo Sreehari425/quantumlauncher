@@ -289,9 +289,9 @@ impl InstanceSelection {
     }
 
     #[must_use]
-    pub const fn get_name(&self) -> &str {
+    pub fn get_name(&self) -> &str {
         match self {
-            Self::Instance(name) | Self::Server(name) => name.as_str(),
+            Self::Instance(name) | Self::Server(name) => name,
         }
     }
 
@@ -307,7 +307,7 @@ impl InstanceSelection {
     }
 
     #[must_use]
-    pub const fn get_pair(&self) -> (&str, bool) {
+    pub fn get_pair(&self) -> (&str, bool) {
         (self.get_name(), self.is_server())
     }
 }

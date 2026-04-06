@@ -104,7 +104,14 @@ impl Launcher {
                 &self.images,
                 self.window_state.size.1,
             ),
-            State::Create(menu) => menu.view(self.client_list.as_deref(), self.tick_timer),
+            State::Create(menu) => menu.view(
+                if self.server_selected() {
+                    self.server_list.as_deref()
+                } else {
+                    self.client_list.as_deref()
+                },
+                self.tick_timer,
+            ),
             State::ConfirmAction {
                 msg1,
                 msg2,

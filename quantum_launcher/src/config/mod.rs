@@ -191,7 +191,8 @@ impl LauncherConfig {
         // Remove nonexistent instances
         sidebar.retain_instances(|node| match &node.kind {
             SidebarNodeKind::Instance(instance_kind) => {
-                *instance_kind == kind && instances.contains(&node.name)
+                (*instance_kind == kind && instances.contains(&node.name))
+                    || (*instance_kind != kind)
             }
             SidebarNodeKind::Folder { .. } => true,
         });
