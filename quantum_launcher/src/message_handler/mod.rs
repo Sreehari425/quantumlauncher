@@ -147,14 +147,16 @@ impl Launcher {
                 }
 
                 let version_presence_task = {
-                    if self.config.rich_presence_events.unwrap() {
+                    if self.config.rich_presence_events.unwrap_or(true) {
                         let selected_instance = selected_instance.clone();
                         let client = self.discord_ipc_client.clone();
 
-                        let show_mc_version =
-                            self.config.rich_presence_show_minecraft_version.unwrap();
+                        let show_mc_version = self
+                            .config
+                            .rich_presence_show_minecraft_version
+                            .unwrap_or(true);
                         let show_instance_name =
-                            self.config.rich_presence_show_instance_name.unwrap();
+                            self.config.rich_presence_show_instance_name.unwrap_or(true);
 
                         Task::perform(
                             async move {
@@ -389,18 +391,26 @@ impl Launcher {
         let instance = instance.clone();
         let client = self.discord_ipc_client.clone();
 
-        if self.config.rich_presence_events.unwrap() {
+        if self.config.rich_presence_events.unwrap_or(true) {
+            let show_mc_version = self
+                .config
+                .rich_presence_show_minecraft_version
+                .unwrap_or(true);
+
             Task::perform(
                 async move {
                     let details = VersionDetails::load(&instance).await;
 
                     if let Ok(details) = details {
                         if let Some(c) = client {
-                            let activity = Activity::new()
-                                .details("Just quit game")
-                                .state(format!("Minecraft v{}", details.id))
-                                .build();
-                            c.set_activity(activity).await.ok();
+                            let mut activity = Activity::new().details("Just quit game");
+
+                            if show_mc_version {
+                                activity = activity.state(format!("Minecraft v{}", details.id));
+                            }
+
+                            let built_activity = activity.build();
+                            c.set_activity(built_activity).await.ok();
                         }
                     }
                 },
