@@ -147,29 +147,47 @@ impl Launcher {
                 }
 
                 let version_presence_task = {
-                    let selected_instance = selected_instance.clone();
-                    let client = self.discord_ipc_client.clone();
+                    if self.config.rich_presence_events.unwrap() {
+                        let selected_instance = selected_instance.clone();
+                        let client = self.discord_ipc_client.clone();
 
-                    Task::perform(
-                        async move {
-                            if let Ok(version_details) =
-                                VersionDetails::load(&selected_instance).await
-                            {
-                                if let Some(c) = client {
-                                    let instance_name = selected_instance.get_name();
-                                    let version_name = version_details.id;
+                        let show_mc_version =
+                            self.config.rich_presence_show_minecraft_version.unwrap();
+                        let show_instance_name =
+                            self.config.rich_presence_show_instance_name.unwrap();
 
-                                    let activity = Activity::new()
-                                        .details(format!("Minecraft v{version_name}"))
-                                        .state(format!("Instance: {instance_name}"))
-                                        .build();
+                        Task::perform(
+                            async move {
+                                if let Ok(version_details) =
+                                    VersionDetails::load(&selected_instance).await
+                                {
+                                    if let Some(c) = client {
+                                        let instance_name = selected_instance.get_name();
+                                        let version_name = version_details.id;
 
-                                    c.set_activity(activity).await.ok();
+                                        let mut activity =
+                                            Activity::new().details(if show_mc_version {
+                                                format!("Minecraft v{version_name}")
+                                            } else {
+                                                "Playing Minecraft".to_string()
+                                            });
+
+                                        if show_instance_name {
+                                            activity = activity
+                                                .state(format!("Instance: {}", instance_name));
+                                        }
+
+                                        let built_activity = activity.build();
+
+                                        c.set_activity(built_activity).await.ok();
+                                    }
                                 }
-                            }
-                        },
-                        |_| Message::Nothing,
-                    )
+                            },
+                            |_| Message::Nothing,
+                        )
+                    } else {
+                        Task::none()
+                    }
                 };
 
                 let log_task = Task::perform(
@@ -371,22 +389,26 @@ impl Launcher {
         let instance = instance.clone();
         let client = self.discord_ipc_client.clone();
 
-        Task::perform(
-            async move {
-                let details = VersionDetails::load(&instance).await;
+        if self.config.rich_presence_events.unwrap() {
+            Task::perform(
+                async move {
+                    let details = VersionDetails::load(&instance).await;
 
-                if let Ok(details) = details {
-                    if let Some(c) = client {
-                        let activity = Activity::new()
-                            .details("Just quit game")
-                            .state(format!("Minecraft v{}", details.id))
-                            .build();
-                        c.set_activity(activity).await.ok();
+                    if let Ok(details) = details {
+                        if let Some(c) = client {
+                            let activity = Activity::new()
+                                .details("Just quit game")
+                                .state(format!("Minecraft v{}", details.id))
+                                .build();
+                            c.set_activity(activity).await.ok();
+                        }
                     }
-                }
-            },
-            |_| Message::Nothing,
-        )
+                },
+                |_| Message::Nothing,
+            )
+        } else {
+            Task::none()
+        }
     }
 
     pub fn start_discord_ipc_run(&self) -> Task<Message> {
