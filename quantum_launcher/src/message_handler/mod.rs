@@ -412,7 +412,7 @@ impl Launcher {
                     let activity = Activity::new().details("Launcher initialized.").build();
                     c.set_activity(activity).await.ok();
                 },
-                |_| Message::DiscordBasicRichPresence,
+                |_| Message::DiscordIPCBasicPresenceSet,
             )
         } else {
             Task::none()

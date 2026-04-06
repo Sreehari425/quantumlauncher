@@ -439,7 +439,7 @@ pub enum Message {
     Shortcut(ShortcutMessage),
 
     DiscordIPCRunStarted(DiscordIPCClient),
-    DiscordBasicRichPresence,
+    DiscordIPCBasicPresenceSet,
 
     ManageMods(ManageModsMessage),
     ManageJarMods(ManageJarModsMessage),
