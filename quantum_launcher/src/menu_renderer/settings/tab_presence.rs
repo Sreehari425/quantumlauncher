@@ -12,7 +12,7 @@ impl MenuLauncherSettings {
             column![widget::text("Discord Rich Presence").size(20)],
 
             column![
-                widget::checkbox("Enable this feature", config.rich_presence.unwrap_or(true))
+                widget::checkbox("Enable Broadcast", config.rich_presence.unwrap_or(true))
                     .on_toggle(|n| Message::LauncherSettings(
                         LauncherSettingsMessage::ToggleDiscordRichPresence(n)
                     )),
@@ -22,13 +22,13 @@ impl MenuLauncherSettings {
             .spacing(5),
 
             column![
-                widget::text("Default presence content:"),
-                widget::Space::with_height(5),
+                widget::text("Basic Presence String"),
+                widget::text("Changes will take effect with a toggle of the feature / launcher restart.").size(12).style(tsubtitle),
                 widget::text_input("Enter presence text...", &self.default_presence_string)
                     .on_input(|v| Message::LauncherSettings(
                         LauncherSettingsMessage::DefaultPresenceStringChanged(v)
                     )),
-            ]
+            ].spacing(5)
         ])
     }
 }

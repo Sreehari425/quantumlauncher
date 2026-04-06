@@ -403,7 +403,17 @@ impl Launcher {
                 }
             },
             LauncherSettingsMessage::DefaultPresenceStringChanged(t) => {
-                self.config.rich_presence_content = Some(t)
+                self.config.rich_presence_content = Some(t);
+                self.state = State::LauncherSettings(state::MenuLauncherSettings {
+                    temp_scale: self.config.ui_scale.unwrap_or(1.0),
+                    selected_tab: state::LauncherSettingsTab::Presence,
+                    arg_split_by_space: true,
+                    default_presence_string: self
+                        .config
+                        .rich_presence_content
+                        .clone()
+                        .unwrap_or_default(),
+                });
             }
         }
         Task::none()
@@ -440,7 +450,11 @@ impl Launcher {
             temp_scale: self.config.ui_scale.unwrap_or(1.0),
             selected_tab: state::LauncherSettingsTab::UserInterface,
             arg_split_by_space: true,
-            default_presence_string: self.config.rich_presence_content.clone().unwrap(),
+            default_presence_string: self
+                .config
+                .rich_presence_content
+                .clone()
+                .unwrap_or_default(),
         });
     }
 

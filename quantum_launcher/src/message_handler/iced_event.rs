@@ -347,7 +347,7 @@ impl Launcher {
                                 .config
                                 .rich_presence_content
                                 .clone()
-                                .unwrap(),
+                                .unwrap_or_default(),
                         });
                     }
                 }
