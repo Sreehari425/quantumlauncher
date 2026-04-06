@@ -39,7 +39,7 @@ impl MenuLauncherSettings {
                 widget::text("Toggles"),
                 widget::Space::with_height(5),
                 widget::checkbox("Show in-game status on play/quit", config.rich_presence_events.unwrap_or(true)).on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::TogglePresenceEvents(n))),
-                widget::text("Disabling this will ensure that only the basic rich presence stays alive throughout your play time.").size(12).style(tsubtitle),
+                widget::text("Disabling this will ensure that only the basic rich presence stays alive throughout your play-time.").size(12).style(tsubtitle),
                 widget::Space::with_height(5),
                 widget::checkbox("Show current instance name", config.rich_presence_show_instance_name.unwrap_or(true)).on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::TogglePresenceShowInstanceName(n))),
                 widget::Space::with_height(5),
