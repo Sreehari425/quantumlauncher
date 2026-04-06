@@ -24,6 +24,7 @@ impl MenuLauncherSettings {
             column![
                 widget::text("Initial Presence"),
                 widget::text("Changes will take effect with a toggle of the feature / launcher restart.").size(12).style(tsubtitle),
+                widget::Space::with_height(5),
                 widget::text_input("Enter top text...", &self.default_presence_details)
                     .on_input(|v| Message::LauncherSettings(
                         LauncherSettingsMessage::DefaultPresenceDetailsChanged(v)
