@@ -124,7 +124,7 @@ pub async fn repeat_stage(
             downloader.download_jar().await.strerr()?;
         }
         DownloadProgress::DownloadingJsonManifest | DownloadProgress::DownloadingVersionJson => {
-            unimplemented!()
+            // Can't do anything about that :/
         }
     }
     info!("Finished redownloading");

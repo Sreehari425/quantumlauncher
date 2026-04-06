@@ -4,7 +4,8 @@ use std::{
 };
 
 use ql_core::{
-    GenericProgress, InstanceSelection, download, err, file_utils, info, json::VersionDetails, pt,
+    GenericProgress, InstanceConfigJson, InstanceSelection, download, err, file_utils, info,
+    json::VersionDetails, pt,
 };
 
 use crate::store::{
@@ -36,14 +37,11 @@ impl<'a> ModDownloader<'a> {
         sender: Option<&'a Sender<GenericProgress>>,
     ) -> Result<Self, ModError> {
         let version_json = VersionDetails::load(&instance).await?;
+        let config = InstanceConfigJson::read(&instance).await?;
 
         Ok(Self {
             version: version_json.get_id().to_owned(),
-            loader: instance
-                .get_loader()
-                .await?
-                .not_vanilla()
-                .map(|n| n.to_curseforge_num()),
+            loader: config.mod_type.not_vanilla().map(|n| n.to_curseforge_num()),
             index: ModIndex::load(&instance).await?,
             dirs: DirStructure::new(&instance, &version_json).await?,
             already_installed: HashSet::new(),
@@ -56,14 +54,11 @@ impl<'a> ModDownloader<'a> {
 
     pub async fn basic(instance: InstanceSelection) -> Result<Self, ModError> {
         let version_json = VersionDetails::load(&instance).await?;
+        let config = InstanceConfigJson::read(&instance).await?;
 
         Ok(Self {
             version: version_json.get_id().to_owned(),
-            loader: instance
-                .get_loader()
-                .await?
-                .not_vanilla()
-                .map(|n| n.to_curseforge_num()),
+            loader: config.mod_type.not_vanilla().map(|n| n.to_curseforge_num()),
             index: ModIndex::default(),
             dirs: DirStructure::new(&instance, &version_json).await?,
             already_installed: HashSet::new(),

@@ -289,14 +289,14 @@ impl InstanceSelection {
     }
 
     #[must_use]
-    pub fn get_name(&self) -> &str {
+    pub const fn get_name(&self) -> &str {
         match self {
-            Self::Instance(name) | Self::Server(name) => name,
+            Self::Instance(name) | Self::Server(name) => name.as_str(),
         }
     }
 
     #[must_use]
-    pub fn is_server(&self) -> bool {
+    pub const fn is_server(&self) -> bool {
         matches!(self, Self::Server(_))
     }
 
@@ -307,13 +307,8 @@ impl InstanceSelection {
     }
 
     #[must_use]
-    pub fn get_pair(&self) -> (&str, bool) {
+    pub const fn get_pair(&self) -> (&str, bool) {
         (self.get_name(), self.is_server())
-    }
-
-    pub async fn get_loader(&self) -> Result<Loader, JsonFileError> {
-        let config_json = InstanceConfigJson::read(self).await?;
-        Ok(config_json.mod_type)
     }
 }
 

@@ -6,7 +6,8 @@ use std::{
 
 use chrono::DateTime;
 use ql_core::{
-    GenericProgress, InstanceSelection, download, err, file_utils, info, json::VersionDetails, pt,
+    GenericProgress, InstanceConfigJson, InstanceSelection, download, err, file_utils, info,
+    json::VersionDetails, pt,
 };
 
 use crate::store::{
@@ -35,11 +36,11 @@ impl ModDownloader {
         sender: Option<Sender<GenericProgress>>,
     ) -> Result<ModDownloader, ModError> {
         let version_json = VersionDetails::load(instance).await?;
-
+        let config = InstanceConfigJson::read(instance).await?;
         let index = ModIndex::load(instance).await?;
-        let loader = instance
-            .get_loader()
-            .await?
+
+        let loader = config
+            .mod_type
             .not_vanilla()
             .map(ql_core::Loader::to_modrinth_str);
         Ok(ModDownloader {
@@ -57,9 +58,10 @@ impl ModDownloader {
 
     pub async fn basic(instance: &InstanceSelection) -> Result<ModDownloader, ModError> {
         let version_json = VersionDetails::load(instance).await?;
-        let loader = instance
-            .get_loader()
-            .await?
+        let config = InstanceConfigJson::read(instance).await?;
+
+        let loader = config
+            .mod_type
             .not_vanilla()
             .map(ql_core::Loader::to_modrinth_str);
 

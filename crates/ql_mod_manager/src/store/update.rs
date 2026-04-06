@@ -3,9 +3,8 @@ use std::sync::mpsc::Sender;
 
 use chrono::DateTime;
 use chrono::Local;
-use ql_core::{
-    GenericProgress, InstanceSelection, Loader, do_jobs, err, info, json::VersionDetails,
-};
+use ql_core::InstanceConfigJson;
+use ql_core::{GenericProgress, InstanceSelection, do_jobs, err, info, json::VersionDetails};
 
 use crate::store::{get_latest_version_date, toggle_mods};
 
@@ -112,11 +111,10 @@ pub async fn check_for_updates(
 ) -> Result<Vec<(ModId, String)>, ModError> {
     let index = ModIndex::load(&instance).await?;
     let version_json = VersionDetails::load(&instance).await?;
+    let config = InstanceConfigJson::read(&instance).await?;
 
-    let loader = instance.get_loader().await?;
-    if let Loader::OptiFine = loader {
-        return Ok(Vec::new());
-    }
+    let loader = config.mod_type;
+
     info!(
         "Checking for mod updates (instance: {}, loader: {loader})",
         instance.get_name()
