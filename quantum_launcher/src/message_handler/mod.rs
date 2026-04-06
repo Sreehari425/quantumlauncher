@@ -71,9 +71,6 @@ impl Launcher {
             return;
         };
         if let (Some(logs), LaunchTab::Log) = (self.logs.get(&instance), menu.tab) {
-            if menu.log_state.is_some() && Some(instance) == self.selected_instance {
-                return;
-            }
             menu.log_state = Some(LogState {
                 content: iced::widget::text_editor::Content::with_text(&logs.log.join("\n")),
             });
@@ -192,6 +189,7 @@ impl Launcher {
         let selected_instance = self.instance();
         let is_server = selected_instance.is_server();
         let deleted_instance_dir = selected_instance.get_instance_path();
+
         if let Err(err) = std::fs::remove_dir_all(&deleted_instance_dir) {
             self.set_error(err);
             return Task::none();
@@ -337,7 +335,13 @@ impl Launcher {
         };
 
         if let Some(process) = self.processes.remove(instance) {
-            Self::read_game_logs(&process, instance, &mut self.logs, log_state);
+            Self::read_game_logs(
+                &process,
+                instance,
+                &mut self.logs,
+                log_state,
+                self.selected_instance.as_ref(),
+            );
         }
     }
 

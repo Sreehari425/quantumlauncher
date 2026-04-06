@@ -51,13 +51,19 @@ impl Launcher {
                     }
                 }
 
-                for (name, process) in &mut self.processes {
+                for (instance, process) in &mut self.processes {
                     let log_state = if let State::Launch(menu) = &mut self.state {
                         &mut menu.log_state
                     } else {
                         &mut None
                     };
-                    Self::read_game_logs(process, name, &mut self.logs, log_state);
+                    Self::read_game_logs(
+                        process,
+                        instance,
+                        &mut self.logs,
+                        log_state,
+                        self.selected_instance.as_ref(),
+                    );
                 }
 
                 if let State::Launch(menu) = &self.state {
@@ -287,7 +293,10 @@ impl Launcher {
         instance: &InstanceSelection,
         logs: &mut HashMap<InstanceSelection, InstanceLog>,
         log_state: &mut Option<LogState>,
+        selected_instance: Option<&InstanceSelection>,
     ) {
+        let update_ui = selected_instance.is_some_and(|n| n == instance);
+
         while let Some(message) = process.receiver.as_ref().and_then(|n| n.try_recv().ok()) {
             let message = message.to_string();
 
@@ -302,9 +311,11 @@ impl Launcher {
                         },
                     );
 
-                    *log_state = Some(LogState {
-                        content: text_editor::Content::with_text(&log_start),
-                    });
+                    if update_ui {
+                        *log_state = Some(LogState {
+                            content: text_editor::Content::with_text(&log_start),
+                        });
+                    }
                     InstanceLog {
                         log: vec![log_start],
                         has_crashed: false,
@@ -314,7 +325,9 @@ impl Launcher {
                 .log
                 .push(message.clone());
 
-            update_log_render_state(log_state.as_mut(), message);
+            if update_ui {
+                update_log_render_state(log_state.as_mut(), message);
+            }
         }
     }
 
