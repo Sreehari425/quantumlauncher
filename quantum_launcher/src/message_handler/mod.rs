@@ -407,9 +407,10 @@ impl Launcher {
 
     pub fn set_basic_discord_presence(&self) -> Task<Message> {
         if let Some(c) = self.discord_ipc_client.clone() {
+            let content = self.config.rich_presence_content.clone();
             Task::perform(
                 async move {
-                    let activity = Activity::new().details("Launcher initialized.").build();
+                    let activity = Activity::new().details(content.unwrap()).build();
                     c.set_activity(activity).await.ok();
                 },
                 |_| Message::DiscordIPCBasicPresenceSet,

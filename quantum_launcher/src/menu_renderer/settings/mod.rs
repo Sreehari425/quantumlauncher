@@ -15,6 +15,7 @@ use crate::{
 
 mod tab_about;
 mod tab_game;
+mod tab_presence;
 mod tab_ui;
 
 pub static IMG_ICED: LazyLock<widget::image::Handle> = LazyLock::new(|| {
@@ -101,6 +102,7 @@ impl LauncherSettingsTab {
     ) -> Element<'a> {
         match self {
             LauncherSettingsTab::UserInterface => menu.view_ui_tab(config),
+            LauncherSettingsTab::Presence => menu.view_presence_tab(config),
             LauncherSettingsTab::Game => menu.view_game_tab(config),
             LauncherSettingsTab::About => tab_about::view(),
         }

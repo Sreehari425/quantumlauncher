@@ -63,13 +63,6 @@ impl MenuLauncherSettings {
                 // widget::text("Use custom window borders and close/minimize/maximize buttons").size(12),
                 // widget::Space::with_height(5),
 
-                widget::checkbox("Discord Rich Presence", config.rich_presence.unwrap_or(true))
-                    .on_toggle(|n| Message::LauncherSettings(
-                        LauncherSettingsMessage::ToggleDiscordRichPresence(n)
-                    )),
-                widget::text("Sometimes toggling this option might take some time to apply the activity updates on Discord.").size(12).style(tsubtitle),
-                widget::Space::with_height(5),
-
                 widget::checkbox("Antialiasing (UI) - Requires Restart", config.ui_antialiasing.unwrap_or(true))
                     .on_toggle(|n| Message::LauncherSettings(
                         LauncherSettingsMessage::ToggleAntialiasing(n)

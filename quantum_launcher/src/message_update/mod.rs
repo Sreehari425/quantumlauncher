@@ -402,6 +402,9 @@ impl Launcher {
                     err!(no_log, "while loading system theme: {err}");
                 }
             },
+            LauncherSettingsMessage::DefaultPresenceStringChanged(t) => {
+                self.config.rich_presence_content = Some(t)
+            }
         }
         Task::none()
     }
@@ -437,6 +440,7 @@ impl Launcher {
             temp_scale: self.config.ui_scale.unwrap_or(1.0),
             selected_tab: state::LauncherSettingsTab::UserInterface,
             arg_split_by_space: true,
+            default_presence_string: self.config.rich_presence_content.clone().unwrap(),
         });
     }
 
