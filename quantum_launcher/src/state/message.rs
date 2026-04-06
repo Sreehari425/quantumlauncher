@@ -292,6 +292,9 @@ pub enum LauncherSettingsMessage {
     ToggleDiscordRichPresence(bool),
     DefaultPresenceDetailsChanged(String),
     DefaultPresenceStateChanged(String),
+    TogglePresenceEvents(bool),
+    TogglePresenceShowInstanceName(bool),
+    TogglePresenceShowMinecraftVersion(bool),
 
     ToggleAntialiasing(bool),
     ToggleWindowSize(bool),

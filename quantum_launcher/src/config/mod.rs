@@ -99,6 +99,12 @@ pub struct LauncherConfig {
     pub rich_presence_basic_details: Option<String>,
     /// The state for the basic/initial rich presence activity (bottom text).
     pub rich_presence_basic_state: Option<String>,
+    /// Whether to change rich presence with instance open/exit events.
+    pub rich_presence_events: Option<bool>,
+    /// Whether to show instance name in rich presence.
+    pub rich_presence_show_instance_name: Option<bool>,
+    /// Whether to show Minecraft version in rich presence.
+    pub rich_presence_show_minecraft_version: Option<bool>,
 
     /// Settings that apply both on a per-instance basis and with global overrides.
     // Since: v0.4.2
@@ -132,6 +138,9 @@ impl Default for LauncherConfig {
             rich_presence: Some(true),
             rich_presence_basic_details: Some("Launcher initialized!".to_string()),
             rich_presence_basic_state: None,
+            rich_presence_events: Some(true),
+            rich_presence_show_instance_name: Some(true),
+            rich_presence_show_minecraft_version: Some(true),
             account_selected: None,
             window: None,
             global_settings: None,

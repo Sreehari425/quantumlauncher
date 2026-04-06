@@ -402,6 +402,15 @@ impl Launcher {
                     err!(no_log, "while loading system theme: {err}");
                 }
             },
+            LauncherSettingsMessage::TogglePresenceEvents(t) => {
+                self.config.rich_presence_events = Some(t);
+            }
+            LauncherSettingsMessage::TogglePresenceShowInstanceName(t) => {
+                self.config.rich_presence_show_instance_name = Some(t);
+            }
+            LauncherSettingsMessage::TogglePresenceShowMinecraftVersion(t) => {
+                self.config.rich_presence_show_minecraft_version = Some(t);
+            }
             LauncherSettingsMessage::DefaultPresenceDetailsChanged(t) => {
                 self.config.rich_presence_basic_details = Some(t);
                 self.update_state_presence(state::LauncherSettingsTab::Presence);
