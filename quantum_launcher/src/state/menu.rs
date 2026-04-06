@@ -566,7 +566,8 @@ pub struct MenuLauncherSettings {
     pub selected_tab: LauncherSettingsTab,
     pub arg_split_by_space: bool,
 
-    pub default_presence_string: String,
+    pub default_presence_details: String,
+    pub default_presence_state: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

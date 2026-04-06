@@ -290,7 +290,8 @@ pub enum LauncherSettingsMessage {
     DefaultMinecraftHeightChanged(String),
 
     ToggleDiscordRichPresence(bool),
-    DefaultPresenceStringChanged(String),
+    DefaultPresenceDetailsChanged(String),
+    DefaultPresenceStateChanged(String),
 
     ToggleAntialiasing(bool),
     ToggleWindowSize(bool),

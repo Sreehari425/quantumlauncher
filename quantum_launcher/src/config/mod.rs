@@ -95,8 +95,10 @@ pub struct LauncherConfig {
     /// Default: `true`
     /// Since: TBD
     pub rich_presence: Option<bool>,
-    /// The default rich presence text for QuantumLauncher.
-    pub rich_presence_content: Option<String>,
+    /// The details for the basic/initial rich presence activity (top text).
+    pub rich_presence_basic_details: Option<String>,
+    /// The state for the basic/initial rich presence activity (bottom text).
+    pub rich_presence_basic_state: Option<String>,
 
     /// Settings that apply both on a per-instance basis and with global overrides.
     // Since: v0.4.2
@@ -128,7 +130,8 @@ impl Default for LauncherConfig {
             java_installs: Some(Vec::new()),
             ui_antialiasing: Some(true),
             rich_presence: Some(true),
-            rich_presence_content: Some("Launcher initialized!".to_string()),
+            rich_presence_basic_details: Some("Launcher initialized!".to_string()),
+            rich_presence_basic_state: None,
             account_selected: None,
             window: None,
             global_settings: None,

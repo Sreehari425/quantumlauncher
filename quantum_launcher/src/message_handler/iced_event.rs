@@ -343,9 +343,14 @@ impl Launcher {
                             temp_scale: self.config.ui_scale.unwrap_or(1.0),
                             selected_tab: LauncherSettingsTab::About,
                             arg_split_by_space: true,
-                            default_presence_string: self
+                            default_presence_details: self
                                 .config
-                                .rich_presence_content
+                                .rich_presence_basic_details
+                                .clone()
+                                .unwrap_or_default(),
+                            default_presence_state: self
+                                .config
+                                .rich_presence_basic_state
                                 .clone()
                                 .unwrap_or_default(),
                         });

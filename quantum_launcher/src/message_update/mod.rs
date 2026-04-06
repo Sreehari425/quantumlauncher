@@ -402,21 +402,34 @@ impl Launcher {
                     err!(no_log, "while loading system theme: {err}");
                 }
             },
-            LauncherSettingsMessage::DefaultPresenceStringChanged(t) => {
-                self.config.rich_presence_content = Some(t);
-                self.state = State::LauncherSettings(state::MenuLauncherSettings {
-                    temp_scale: self.config.ui_scale.unwrap_or(1.0),
-                    selected_tab: state::LauncherSettingsTab::Presence,
-                    arg_split_by_space: true,
-                    default_presence_string: self
-                        .config
-                        .rich_presence_content
-                        .clone()
-                        .unwrap_or_default(),
-                });
+            LauncherSettingsMessage::DefaultPresenceDetailsChanged(t) => {
+                self.config.rich_presence_basic_details = Some(t);
+                self.update_state_presence(state::LauncherSettingsTab::Presence);
+            }
+            LauncherSettingsMessage::DefaultPresenceStateChanged(t) => {
+                self.config.rich_presence_basic_state = Some(t);
+                self.update_state_presence(state::LauncherSettingsTab::Presence);
             }
         }
         Task::none()
+    }
+
+    pub fn update_state_presence(&mut self, tab: state::LauncherSettingsTab) {
+        self.state = State::LauncherSettings(state::MenuLauncherSettings {
+            temp_scale: self.config.ui_scale.unwrap_or(1.0),
+            selected_tab: tab,
+            arg_split_by_space: true,
+            default_presence_details: self
+                .config
+                .rich_presence_basic_details
+                .clone()
+                .unwrap_or_default(),
+            default_presence_state: self
+                .config
+                .rich_presence_basic_state
+                .clone()
+                .unwrap_or_default(),
+        });
     }
 
     pub fn should_split_args(&self) -> bool {
@@ -446,16 +459,7 @@ impl Launcher {
         if let State::LauncherSettings(_) = &self.state {
             return;
         }
-        self.state = State::LauncherSettings(state::MenuLauncherSettings {
-            temp_scale: self.config.ui_scale.unwrap_or(1.0),
-            selected_tab: state::LauncherSettingsTab::UserInterface,
-            arg_split_by_space: true,
-            default_presence_string: self
-                .config
-                .rich_presence_content
-                .clone()
-                .unwrap_or_default(),
-        });
+        self.update_state_presence(state::LauncherSettingsTab::UserInterface);
     }
 
     pub fn update_install_paper(&mut self, msg: InstallPaperMessage) -> Task<Message> {

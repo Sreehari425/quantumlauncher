@@ -22,11 +22,15 @@ impl MenuLauncherSettings {
             .spacing(5),
 
             column![
-                widget::text("Basic Presence String"),
+                widget::text("Initial Presence"),
                 widget::text("Changes will take effect with a toggle of the feature / launcher restart.").size(12).style(tsubtitle),
-                widget::text_input("Enter presence text...", &self.default_presence_string)
+                widget::text_input("Enter top text...", &self.default_presence_details)
                     .on_input(|v| Message::LauncherSettings(
-                        LauncherSettingsMessage::DefaultPresenceStringChanged(v)
+                        LauncherSettingsMessage::DefaultPresenceDetailsChanged(v)
+                    )),
+                widget::text_input("Enter bottom text...", &self.default_presence_state)
+                    .on_input(|v| Message::LauncherSettings(
+                        LauncherSettingsMessage::DefaultPresenceStateChanged(v)
                     )),
             ].spacing(5)
         ])
