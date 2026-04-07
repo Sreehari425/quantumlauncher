@@ -46,7 +46,7 @@ impl MenuLauncherSettings {
                 widget::checkbox("Change presence during play/quit events", config.rich_presence_events.unwrap_or(true)).on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::TogglePresenceEvents(n))),
                 widget::text("Disabling this will ensure that only the custom rich presence set above stays alive when you run the launcher and/or play Minecraft.").size(12).style(tsubtitle),
                 widget::Space::with_height(5),
-                widget::checkbox("Show current instance name", config.rich_presence_show_instance_name.unwrap_or(true)).on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::TogglePresenceShowInstanceName(n))),
+                widget::checkbox("Show current/last instance name", config.rich_presence_show_instance_name.unwrap_or(true)).on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::TogglePresenceShowInstanceName(n))),
                 widget::Space::with_height(5),
                 widget::checkbox("Show Minecraft version", config.rich_presence_show_minecraft_version.unwrap_or(true)).on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::TogglePresenceShowMinecraftVersion(n))),
             ].spacing(5)
