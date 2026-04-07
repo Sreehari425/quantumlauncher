@@ -1,5 +1,5 @@
 use iced::{Task, futures::executor::block_on};
-use ql_core::{IntoIoError, IntoStringError, err, file_utils::DirItem, info};
+use ql_core::{IntoIoError, IntoStringError, LAUNCHER_DIR, err, file_utils::DirItem, info};
 use std::fmt::Write;
 use tokio::io::AsyncWriteExt;
 
@@ -10,9 +10,9 @@ use owo_colors::OwoColorize;
 use crate::launcher_update::UpdateCheckInfo;
 use crate::{
     state::{
-        AutoSaveKind, CustomJarState, GameProcess, InfoMessage, LaunchTab, Launcher,
+        AutoSaveKind, CustomJarState, DirWatcher, GameProcess, InfoMessage, LaunchTab, Launcher,
         LauncherSettingsMessage, ManageModsMessage, MenuExportInstance, MenuLaunch, MenuLicense,
-        MenuWelcome, Message, ProgressBar, State,
+        MenuWelcome, Message, ProgressBar, State, dir_watch, get_entries,
     },
     stylesheet::styles::LauncherThemeLightness,
 };
@@ -85,18 +85,11 @@ impl Launcher {
             Message::MScreenOpen {
                 message,
                 clear_selection,
-                is_server,
             } => {
-                let is_server = is_server.unwrap_or(self.server_selected());
                 if clear_selection {
                     self.unselect_instance();
                 }
-
-                return if is_server {
-                    self.go_to_server_manage_menu(message)
-                } else {
-                    self.go_to_launch_screen(message)
-                };
+                return self.go_to_main_menu(message);
             }
             Message::EditInstance(message) => {
                 if message.edits_config() {
@@ -153,10 +146,23 @@ impl Launcher {
                 let custom_jars_changed = self
                     .custom_jar
                     .as_ref()
-                    .and_then(|n| n.recv.try_recv().ok())
-                    .is_some();
+                    .is_some_and(|n| n.watcher.has_changed());
+
                 if custom_jars_changed {
                     tasks.push(CustomJarState::load());
+                }
+
+                for (i, watcher) in [self.client_watcher.as_ref(), self.server_watcher.as_ref()]
+                    .iter()
+                    .enumerate()
+                {
+                    const SERVER: usize = 1;
+                    if watcher.is_some_and(DirWatcher::has_changed) {
+                        tasks.push(Task::perform(
+                            get_entries(i == SERVER),
+                            Message::CoreListLoaded,
+                        ));
+                    }
                 }
 
                 return Task::batch(tasks);
@@ -409,20 +415,33 @@ impl Launcher {
         self.autosave.remove(&AutoSaveKind::LauncherConfig);
 
         let persistent = self.config.c_persistent();
-        if is_server {
-            if let Some(n) = &persistent.selected_server {
-                if !list.contains(n) {
-                    self.unselect_instance();
-                }
-            }
-            self.server_list = Some(list);
+
+        let selected = if is_server {
+            persistent.selected_server.as_ref()
         } else {
-            if let Some(n) = &persistent.selected_instance {
-                if !list.contains(n) {
-                    self.unselect_instance();
+            persistent.selected_instance.as_ref()
+        };
+        if selected.is_some_and(|n| !list.contains(n)) {
+            self.unselect_instance();
+        }
+
+        let (self_list, self_watcher) = if is_server {
+            (&mut self.server_list, &mut self.server_watcher)
+        } else {
+            (&mut self.client_list, &mut self.client_watcher)
+        };
+        *self_list = Some(list);
+
+        if self_watcher.is_none() {
+            let dir = if is_server { "servers" } else { "instances" };
+            let watcher = match dir_watch(LAUNCHER_DIR.join(dir)) {
+                Ok(n) => n,
+                Err(err) => {
+                    err!("Couldn't start dir watcher! {err}");
+                    return;
                 }
-            }
-            self.client_list = Some(list);
+            };
+            *self_watcher = Some(watcher);
         }
     }
 

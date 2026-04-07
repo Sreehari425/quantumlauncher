@@ -383,12 +383,7 @@ impl MenuModsDownload {
                     .categories
                     .as_ref()
                     .ok()
-                    .and_then(|categories| {
-                        categories
-                            .iter()
-                            .filter_map(|n| n.search_for_slug(slug))
-                            .next()
-                    })
+                    .and_then(|categories| categories.iter().find_map(|n| n.search_for_slug(slug)))
                     .cloned()
             })
             .collect();

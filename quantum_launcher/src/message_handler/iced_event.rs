@@ -158,10 +158,9 @@ impl Launcher {
                 // ========
                 // MAIN MENU
                 // ========
-                ("n", true, _, _, State::Launch(n)) => CreateInstanceMessage::ScreenOpen {
-                    is_server: n.is_viewing_server,
+                ("n", true, _, _, State::Launch(_)) => {
+                    CreateInstanceMessage::ScreenOpen { is_server: false }.into()
                 }
-                .into(),
                 ("1", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
                     MainMenuMessage::ChangeTab(LaunchTab::Buttons).into()
                 }
@@ -193,11 +192,12 @@ impl Launcher {
                 return Task::done(Message::LicenseChangeTab(menu.selected_tab.next()));
             }
         } else if let (State::Launch(_), true) = (&self.state, ignored) {
-            if let Key::Named(Named::ArrowUp) = key {
+            /*if let Key::Named(Named::ArrowUp) = key {
                 return self.key_change_selected_instance(false);
             } else if let Key::Named(Named::ArrowDown) = key {
                 return self.key_change_selected_instance(true);
-            } else if let Key::Named(Named::Enter) = key {
+            } else*/
+            if let Key::Named(Named::Enter) = key {
                 if modifiers.command() {
                     return self.launch_start();
                 }
@@ -207,7 +207,7 @@ impl Launcher {
                 }
             }
         } else if let State::Create(MenuCreateInstance::Choosing(MenuCreateInstanceChoosing {
-            list: Some(_),
+            list: Ok(Some(_)),
             ..
         })) = &self.state
         {
@@ -227,7 +227,6 @@ impl Launcher {
                                 "Install Minecraft by clicking \"+ New\"",
                             )),
                             clear_selection: true,
-                            is_server: Some(false),
                         });
                     }
                 };
@@ -460,7 +459,7 @@ impl Launcher {
         false
     }
 
-    fn key_change_selected_instance(&mut self, down: bool) -> Task<Message> {
+    /*fn key_change_selected_instance(&mut self, down: bool) -> Task<Message> {
         let (is_viewing_server, sidebar_height) = {
             let State::Launch(menu) = &self.state else {
                 return Task::none();
@@ -530,9 +529,9 @@ impl Launcher {
         );
 
         if did_scroll {
-            Task::batch([scroll_task, self.on_instance_selected()])
+            Task::batch([scroll_task, self.select_instance()])
         } else {
             scroll_task
         }
-    }
+    }*/
 }

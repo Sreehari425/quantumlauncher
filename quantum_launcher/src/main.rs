@@ -100,7 +100,6 @@ impl Launcher {
         #[cfg(not(feature = "auto_update"))]
         let check_for_updates_command = Task::none();
 
-        let get_entries_command = Task::perform(get_entries(false), Message::CoreListLoaded);
         let mut launcher =
             Launcher::load_new(is_new_user, config).unwrap_or_else(Launcher::with_error);
         // let mut launcher = Launcher::with_error("test");
@@ -117,7 +116,8 @@ impl Launcher {
             launcher,
             Task::batch([
                 check_for_updates_command,
-                get_entries_command,
+                Task::perform(get_entries(false), Message::CoreListLoaded),
+                Task::perform(get_entries(true), Message::CoreListLoaded),
                 load_notes_command,
                 Task::perform(ql_core::clean::dir("logs"), |n| {
                     Message::CoreCleanComplete(n.strerr())

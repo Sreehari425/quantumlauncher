@@ -58,6 +58,7 @@ pub enum CreateInstanceMessage {
     VersionSelected(ListEntry),
     NameInput(String),
     ChangeAssetToggle(bool),
+    ChangeIsServer(bool),
 
     SearchInput(String),
     SearchSubmit,
@@ -451,7 +452,6 @@ pub enum Message {
     MScreenOpen {
         message: Option<InfoMessage>,
         clear_selection: bool,
-        is_server: Option<bool>,
     },
     LaunchStart,
     LaunchEnd(Res<LaunchedProcess>),

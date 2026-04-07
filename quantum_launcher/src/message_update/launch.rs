@@ -30,8 +30,8 @@ impl Launcher {
                 }
 
                 self.load_edit_instance(Some(tab));
-                if let (LaunchTab::Log, Some(instance)) = (tab, self.selected_instance.clone()) {
-                    self.load_logs(instance);
+                if let LaunchTab::Log = tab {
+                    self.load_logs();
                 }
             }
             MainMenuMessage::Modal(modal) => {
@@ -53,8 +53,7 @@ impl Launcher {
                 }
             }
             MainMenuMessage::InstanceSelected(inst) => {
-                self.selected_instance = Some(inst);
-                return self.on_instance_selected();
+                return self.select_instance(inst);
             }
             MainMenuMessage::UsernameSet(username) => {
                 self.config.username = username;

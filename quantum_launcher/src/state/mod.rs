@@ -67,6 +67,8 @@ pub struct Launcher {
 
     pub client_list: Option<Vec<String>>,
     pub server_list: Option<Vec<String>>,
+    pub client_watcher: Option<DirWatcher>,
+    pub server_watcher: Option<DirWatcher>,
 
     pub processes: HashMap<InstanceSelection, GameProcess>,
     pub logs: HashMap<InstanceSelection, InstanceLog>,
@@ -100,8 +102,7 @@ pub struct WindowState {
 
 pub struct CustomJarState {
     pub choices: Vec<String>,
-    pub recv: Receiver<notify::Event>,
-    pub _watcher: notify::RecommendedWatcher,
+    pub watcher: DirWatcher,
 }
 
 impl CustomJarState {
@@ -109,6 +110,21 @@ impl CustomJarState {
         Task::perform(load_custom_jars(), |n| {
             EditInstanceMessage::CustomJarLoaded(n.strerr()).into()
         })
+    }
+}
+
+pub struct DirWatcher {
+    recv: Receiver<notify::Event>,
+    _watcher: notify::RecommendedWatcher,
+}
+
+impl DirWatcher {
+    pub fn has_changed(&self) -> bool {
+        let mut has_changed = false;
+        while let Ok(_event) = self.recv.try_recv() {
+            has_changed = true;
+        }
+        has_changed
     }
 }
 
@@ -178,6 +194,8 @@ impl Launcher {
 
             client_list: None,
             server_list: None,
+            client_watcher: None,
+            server_watcher: None,
             java_recv: None,
             custom_jar: None,
 
@@ -233,6 +251,8 @@ impl Launcher {
             java_recv: None,
             client_list: None,
             server_list: None,
+            client_watcher: None,
+            server_watcher: None,
             selected_instance: None,
             custom_jar: None,
 
@@ -271,24 +291,17 @@ impl Launcher {
         self.state = State::Error { error }
     }
 
-    pub fn go_to_launch_screen(&mut self, message: Option<InfoMessage>) -> Task<Message> {
+    pub fn go_to_main_menu(&mut self, message: Option<InfoMessage>) -> Task<Message> {
         let mut menu_launch = MenuLaunch::new(message);
         menu_launch.resize_sidebar(SIDEBAR_WIDTH);
+        let t = if let Some(inst) = &self.selected_instance {
+            menu_launch.reload_notes(inst.clone())
+        } else {
+            Task::none()
+        };
         self.state = State::Launch(menu_launch);
 
-        let get_entries = Task::perform(get_entries(false), Message::CoreListLoaded);
-        match &self.selected_instance {
-            Some(i @ InstanceSelection::Instance(_)) => {
-                if let State::Launch(menu) = &mut self.state {
-                    return Task::batch([menu.reload_notes(i.clone()), get_entries]);
-                }
-            }
-            // We're going to the *instance* launch screen,
-            // there's a separate function for servers.
-            Some(InstanceSelection::Server(_)) => self.selected_instance = None,
-            None => {}
-        }
-        get_entries
+        t
     }
 }
 
@@ -459,10 +472,8 @@ pub async fn load_custom_jars() -> Result<Vec<String>, IoError> {
     Ok(list)
 }
 
-pub fn dir_watch<P: AsRef<Path>>(
-    path: P,
-) -> notify::Result<(Receiver<notify::Event>, notify::RecommendedWatcher)> {
-    let (tx, rx) = mpsc::channel();
+pub fn dir_watch<P: AsRef<Path>>(path: P) -> notify::Result<DirWatcher> {
+    let (tx, recv) = mpsc::channel();
 
     // `notify` runs callbacks in its own thread.
     let mut watcher: notify::RecommendedWatcher = notify::recommended_watcher(move |res| {
@@ -470,9 +481,13 @@ pub fn dir_watch<P: AsRef<Path>>(
             _ = tx.send(event);
         }
     })?;
-    watcher.watch(path.as_ref(), notify::RecursiveMode::NonRecursive)?;
+    let path = path.as_ref();
+    watcher.watch(path, notify::RecursiveMode::NonRecursive)?;
 
-    Ok((rx, watcher))
+    Ok(DirWatcher {
+        recv,
+        _watcher: watcher,
+    })
 }
 
 fn migration(version: &str) -> Result<(), String> {

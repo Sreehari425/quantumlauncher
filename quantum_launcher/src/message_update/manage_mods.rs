@@ -175,7 +175,7 @@ impl Launcher {
                                 menu.info_message = Some(InfoMessage {
                                     text: "No updates found".to_owned(),
                                     kind: InfoMessageKind::Success,
-                                })
+                                });
                             }
 
                             menu.available_updates = updates

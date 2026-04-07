@@ -2,7 +2,7 @@ use iced::{
     Alignment, Length,
     widget::{self, column, row},
 };
-use ql_core::InstanceSelection;
+use ql_core::{InstanceKind, InstanceSelection};
 
 use crate::{
     config::sidebar::{FolderId, SidebarFolder, SidebarNode, SidebarNodeKind, SidebarSelection},
@@ -68,8 +68,8 @@ impl Launcher {
         );
 
         let button: Element = match &node.kind {
-            SidebarNodeKind::Instance(_) => {
-                self.get_node_instance(node, &selection, mode, is_selected)
+            SidebarNodeKind::Instance(kind) => {
+                self.get_node_instance(node, &selection, mode, is_selected, *kind)
             }
             SidebarNodeKind::Folder(f) => self.get_node_folder(node, &selection, mode, f),
         };
@@ -136,6 +136,7 @@ impl Launcher {
         selection: &SidebarSelection,
         mode: NodeMode,
         is_selected: bool,
+        kind: InstanceKind,
     ) -> Element<'a> {
         let State::Launch(menu) = &self.state else {
             return widget::Column::new().into();
@@ -147,7 +148,7 @@ impl Launcher {
 
         let view = widget::stack!(underline_maybe(
             widget::row![text]
-                .push_maybe(self.get_running_icon(menu, &node.name))
+                .push_maybe(self.get_running_icon(&node.name, kind.is_server()))
                 .padding([5, 14])
                 .width(Length::Fill)
                 .align_y(Alignment::Center),
@@ -161,7 +162,7 @@ impl Launcher {
                 .on_press_maybe((!is_selected).then(|| {
                     MainMenuMessage::InstanceSelected(InstanceSelection::new(
                         &node.name,
-                        menu.is_viewing_server,
+                        kind.is_server(),
                     ))
                     .into()
                 }))

@@ -1,5 +1,4 @@
 use crate::config::AfterLaunchBehavior;
-use crate::config::SIDEBAR_WIDTH;
 use crate::menu_renderer::back_to_launch_screen;
 use crate::state::{
     AutoSaveKind, GameProcess, InfoMessage, LaunchTab, LogState, MenuCreateInstance,
@@ -7,7 +6,7 @@ use crate::state::{
 };
 use crate::tick::sort_dependencies;
 use crate::{
-    Launcher, Message, get_entries,
+    Launcher, Message,
     state::{
         EditPresetsMessage, ManageModsMessage, MenuEditInstance, MenuEditMods, MenuInstallForge,
         MenuLaunch, OFFLINE_ACCOUNT_NAME, ProgressBar, SelectedState, State,
@@ -42,9 +41,8 @@ pub const SIDEBAR_LIMIT_LEFT: f32 = 135.0;
 mod iced_event;
 
 impl Launcher {
-    pub fn on_instance_selected(&mut self) -> Task<Message> {
-        let instance = self.instance().clone();
-
+    pub fn select_instance(&mut self, instance: InstanceSelection) -> Task<Message> {
+        self.selected_instance = Some(instance.clone());
         self.load_edit_instance(None);
 
         {
@@ -57,7 +55,7 @@ impl Launcher {
                 self.autosave.remove(&AutoSaveKind::LauncherConfig);
             }
         }
-        self.load_logs(instance.clone());
+        self.load_logs();
         if let State::Launch(menu) = &mut self.state {
             menu.modal = None;
             menu.reload_notes(instance)
@@ -66,8 +64,12 @@ impl Launcher {
         }
     }
 
-    pub fn load_logs(&mut self, instance: InstanceSelection) {
+    pub fn load_logs(&mut self) {
         let State::Launch(menu) = &mut self.state else {
+            return;
+        };
+        let Some(instance) = self.selected_instance.as_ref() else {
+            menu.log_state = None;
             return;
         };
         if let (Some(logs), LaunchTab::Log) = (self.logs.get(&instance), menu.tab) {
@@ -196,11 +198,10 @@ impl Launcher {
         }
 
         self.unselect_instance();
-        if is_server {
-            self.go_to_server_manage_menu(Some(InfoMessage::success("Deleted Server")))
-        } else {
-            self.go_to_launch_screen(Some(InfoMessage::success("Deleted Instance")))
-        }
+        self.go_to_main_menu(Some(InfoMessage::success(format!(
+            "Deleted {}",
+            if is_server { "Server" } else { "Instance" }
+        ))))
     }
 
     pub fn unselect_instance(&mut self) {
@@ -379,30 +380,6 @@ impl Launcher {
         }
     }
 
-    pub fn go_to_server_manage_menu(&mut self, message: Option<InfoMessage>) -> Task<Message> {
-        if let State::Launch(menu) = &mut self.state {
-            menu.is_viewing_server = true;
-            menu.message = message;
-        } else {
-            let mut menu_launch = MenuLaunch::new(message);
-            menu_launch.is_viewing_server = true;
-            menu_launch.resize_sidebar(SIDEBAR_WIDTH);
-            self.state = State::Launch(menu_launch);
-        }
-
-        let get_entries = Task::perform(get_entries(true), Message::CoreListLoaded);
-        match &self.selected_instance {
-            Some(InstanceSelection::Instance(_)) => self.selected_instance = None,
-            Some(i @ InstanceSelection::Server(_)) => {
-                if let State::Launch(menu) = &mut self.state {
-                    return Task::batch([get_entries, menu.reload_notes(i.clone())]);
-                }
-            }
-            None => {}
-        }
-        get_entries
-    }
-
     pub fn install_forge(&mut self, kind: ForgeKind) -> Task<Message> {
         let (f_sender, f_receiver) = std::sync::mpsc::channel();
         let (j_sender, j_receiver): (Sender<GenericProgress>, Receiver<GenericProgress>) =
@@ -453,23 +430,14 @@ impl Launcher {
         command
     }
 
-    pub fn go_to_main_menu(&mut self, message: Option<InfoMessage>) -> Task<Message> {
-        if self.server_selected() {
-            self.go_to_server_manage_menu(message)
-        } else {
-            self.go_to_launch_screen(message)
-        }
-    }
-
     pub fn server_selected(&self) -> bool {
         self.selected_instance
             .as_ref()
             .is_some_and(InstanceSelection::is_server)
-            || if let State::Launch(menu) = &self.state {
-                menu.is_viewing_server
-            } else if let State::Create(MenuCreateInstance::Choosing(
-                MenuCreateInstanceChoosing { is_server, .. },
-            )) = &self.state
+            || if let State::Create(MenuCreateInstance::Choosing(MenuCreateInstanceChoosing {
+                is_server,
+                ..
+            })) = &self.state
             {
                 *is_server
             } else {
@@ -629,7 +597,7 @@ impl Launcher {
             ),
             msg2: "All your data, including worlds, will be lost".to_owned(),
             yes: Message::DeleteInstance,
-            no: back_to_launch_screen(None, None),
+            no: back_to_launch_screen(None),
         };
     }
 

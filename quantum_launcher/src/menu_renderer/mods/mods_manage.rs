@@ -116,10 +116,7 @@ impl MenuEditMods {
         widget::scrollable(
             column![
                 row![
-                    back_button().on_press(back_to_launch_screen(
-                        None,
-                        Some(selected_instance.is_server()),
-                    )),
+                    back_button().on_press(back_to_launch_screen(None)),
                     tooltip(
                         button_with_icon(icons::folder_s(14), "Open", 14).on_press_with(|| {
                             Message::CoreOpenPath(

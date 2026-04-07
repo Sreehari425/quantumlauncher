@@ -9,6 +9,7 @@ use ql_core::{
 };
 
 use crate::{
+    config::sidebar::SidebarSelection,
     message_handler::format_memory,
     state::{
         ADD_JAR_NAME, AutoSaveKind, CustomJarState, EditInstanceMessage, LaunchTab, Launcher,
@@ -308,18 +309,14 @@ impl Launcher {
         if let Some(cx) = &mut self.custom_jar {
             cx.choices = choices;
         } else {
-            let (recv, watcher) = match dir_watch(LAUNCHER_DIR.join("custom_jars")) {
+            let watcher = match dir_watch(LAUNCHER_DIR.join("custom_jars")) {
                 Ok(n) => n,
                 Err(err) => {
                     err!("Couldn't load list of custom jars (2)! {err}");
                     return Task::none();
                 }
             };
-            self.custom_jar = Some(CustomJarState {
-                choices,
-                recv,
-                _watcher: watcher,
-            });
+            self.custom_jar = Some(CustomJarState { choices, watcher });
         }
 
         Task::none()
@@ -399,13 +396,21 @@ impl Launcher {
             return Ok(Task::none());
         }
 
+        let old_name = menu.old_instance_name.clone();
         menu.old_instance_name.clone_from(&sanitized_name);
         std::fs::rename(&old_path, &new_path)
             .path(&old_path)
             .strerr()?;
 
         let mut instance = self.selected_instance.clone().unwrap();
-        instance.set_name(sanitized_name);
+        instance.set_name(sanitized_name.clone());
+
+        if let Some(s) = &mut self.config.sidebar {
+            s.rename(
+                &SidebarSelection::Instance(old_name, instance.kind()),
+                &sanitized_name,
+            );
+        }
 
         Ok(Task::perform(
             get_entries(self.instance().is_server()),

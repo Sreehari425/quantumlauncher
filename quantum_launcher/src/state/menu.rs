@@ -112,7 +112,6 @@ pub struct MenuLaunch {
     pub sidebar_grid_state: widget::pane_grid::State<bool>,
     sidebar_split: Option<widget::pane_grid::Split>,
 
-    pub is_viewing_server: bool,
     pub is_uploading_mclogs: bool,
 }
 
@@ -141,7 +140,6 @@ impl MenuLaunch {
             sidebar_scroll_total: 100.0,
             sidebar_scroll_offset: 0.0,
             sidebar_scroll_bounds: None,
-            is_viewing_server: false,
             sidebar_grid_state,
             log_state: None,
             is_uploading_mclogs: false,
@@ -405,7 +403,7 @@ pub enum MenuCreateInstance {
 
 pub struct MenuCreateInstanceChoosing {
     pub _loading_list_handle: iced::task::Handle,
-    pub list: Option<Vec<ListEntry>>,
+    pub list: Result<Option<Vec<ListEntry>>, String>,
     // UI:
     pub is_server: bool,
     pub search_box: String,
