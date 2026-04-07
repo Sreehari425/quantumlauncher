@@ -293,8 +293,10 @@ pub enum LauncherSettingsMessage {
     DefaultPresenceDetailsChanged(String),
     DefaultPresenceStateChanged(String),
     TogglePresenceEvents(bool),
-    TogglePresenceShowInstanceName(bool),
-    TogglePresenceShowMinecraftVersion(bool),
+    GameOpenPresenceDetailsChanged(String),
+    GameOpenPresenceStateChanged(String),
+    GameExitPresenceDetailsChanged(String),
+    GameExitPresenceStateChanged(String),
     SetPresenceNow,
 
     ToggleAntialiasing(bool),

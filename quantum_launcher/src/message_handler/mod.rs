@@ -42,6 +42,17 @@ pub const SIDEBAR_LIMIT_LEFT: f32 = 135.0;
 
 mod iced_event;
 
+trait StringPresenceExt {
+    fn substitute(&self, instance: &str, minecraft_vers: &str) -> String;
+}
+
+impl StringPresenceExt for str {
+    fn substitute(&self, instance: &str, minecraft_vers: &str) -> String {
+        self.replace("${version}", minecraft_vers)
+            .replace("${instance}", instance)
+    }
+}
+
 impl Launcher {
     pub fn on_instance_selected(&mut self) -> Task<Message> {
         let instance = self.instance().clone();
@@ -151,12 +162,16 @@ impl Launcher {
                         let selected_instance = selected_instance.clone();
                         let client = self.discord_ipc_client.clone();
 
-                        let show_mc_version = self
+                        let gameopen_details = self
                             .config
-                            .rich_presence_show_minecraft_version
-                            .unwrap_or(true);
-                        let show_instance_name =
-                            self.config.rich_presence_show_instance_name.unwrap_or(true);
+                            .rich_presence_gameopen_details
+                            .clone()
+                            .unwrap_or("Minecraft v${version}".into());
+                        let gameopen_state = self
+                            .config
+                            .rich_presence_gameopen_state
+                            .clone()
+                            .unwrap_or("Instance: ${instance}".into());
 
                         Task::perform(
                             async move {
@@ -164,24 +179,20 @@ impl Launcher {
                                     VersionDetails::load(&selected_instance).await
                                 {
                                     if let Some(c) = client {
-                                        let instance_name = selected_instance.get_name();
-                                        let version_name = version_details.id;
+                                        let instance = selected_instance.get_name();
+                                        let minecraft_vers = version_details.get_id();
 
-                                        let mut activity =
-                                            Activity::new().details(if show_mc_version {
-                                                format!("Minecraft v{version_name}")
-                                            } else {
-                                                "Playing Minecraft".to_string()
-                                            });
+                                        let activity = Activity::new()
+                                            .details(
+                                                gameopen_details
+                                                    .substitute(instance, minecraft_vers),
+                                            )
+                                            .state(
+                                                gameopen_state.substitute(instance, minecraft_vers),
+                                            )
+                                            .build();
 
-                                        if show_instance_name {
-                                            activity = activity
-                                                .state(format!("Instance: {}", instance_name));
-                                        }
-
-                                        let built_activity = activity.build();
-
-                                        c.set_activity(built_activity).await.ok();
+                                        c.set_activity(activity).await.ok();
                                     }
                                 }
                             },
@@ -392,25 +403,32 @@ impl Launcher {
         let client = self.discord_ipc_client.clone();
 
         if self.config.rich_presence_events.unwrap_or(true) {
-            let show_mc_version = self
+            let gameexit_details = self
                 .config
-                .rich_presence_show_minecraft_version
-                .unwrap_or(true);
+                .rich_presence_gameexit_details
+                .clone()
+                .unwrap_or("Just quit game".into());
+            let gameexit_state = self
+                .config
+                .rich_presence_gameexit_state
+                .clone()
+                .unwrap_or("Minecraft v${version}".into());
 
             Task::perform(
                 async move {
-                    let details = VersionDetails::load(&instance).await;
+                    let version_details = VersionDetails::load(&instance).await;
 
-                    if let Ok(details) = details {
+                    if let Ok(details) = version_details {
                         if let Some(c) = client {
-                            let mut activity = Activity::new().details("Just quit game");
+                            let instance = instance.get_name();
+                            let minecraft_vers = details.get_id();
 
-                            if show_mc_version {
-                                activity = activity.state(format!("Minecraft v{}", details.id));
-                            }
+                            let activity = Activity::new()
+                                .details(gameexit_details.substitute(instance, minecraft_vers))
+                                .state(gameexit_state.substitute(instance, minecraft_vers))
+                                .build();
 
-                            let built_activity = activity.build();
-                            c.set_activity(built_activity).await.ok();
+                            c.set_activity(activity).await.ok();
                         }
                     }
                 },

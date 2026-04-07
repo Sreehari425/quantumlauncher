@@ -101,10 +101,11 @@ pub struct LauncherConfig {
     pub rich_presence_basic_state: Option<String>,
     /// Whether to change rich presence with instance open/exit events.
     pub rich_presence_events: Option<bool>,
-    /// Whether to show instance name in rich presence.
-    pub rich_presence_show_instance_name: Option<bool>,
-    /// Whether to show Minecraft version in rich presence.
-    pub rich_presence_show_minecraft_version: Option<bool>,
+    // Presence attributes for game open/exit events.
+    pub rich_presence_gameopen_details: Option<String>,
+    pub rich_presence_gameopen_state: Option<String>,
+    pub rich_presence_gameexit_details: Option<String>,
+    pub rich_presence_gameexit_state: Option<String>,
 
     /// Settings that apply both on a per-instance basis and with global overrides.
     // Since: v0.4.2
@@ -136,11 +137,13 @@ impl Default for LauncherConfig {
             java_installs: Some(Vec::new()),
             ui_antialiasing: Some(true),
             rich_presence: Some(true),
-            rich_presence_basic_details: Some("Launcher initialized!".to_string()),
+            rich_presence_basic_details: Some("Launcher initialized!".into()),
             rich_presence_basic_state: None,
             rich_presence_events: Some(true),
-            rich_presence_show_instance_name: Some(true),
-            rich_presence_show_minecraft_version: Some(true),
+            rich_presence_gameopen_details: Some("Minecraft v${version}".into()),
+            rich_presence_gameopen_state: Some("Instance name: ${instance}".into()),
+            rich_presence_gameexit_details: Some("Just quit game".into()),
+            rich_presence_gameexit_state: Some("Minecraft v${version}".into()),
             account_selected: None,
             window: None,
             global_settings: None,

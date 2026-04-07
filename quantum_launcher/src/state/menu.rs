@@ -569,6 +569,11 @@ pub struct MenuLauncherSettings {
     pub is_presence_running: bool,
     pub default_presence_details: String,
     pub default_presence_state: String,
+
+    pub gameopen_presence_details: String,
+    pub gameopen_presence_state: String,
+    pub gameexit_presence_details: String,
+    pub gameexit_presence_state: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

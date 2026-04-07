@@ -414,11 +414,21 @@ impl Launcher {
             LauncherSettingsMessage::TogglePresenceEvents(t) => {
                 self.config.rich_presence_events = Some(t);
             }
-            LauncherSettingsMessage::TogglePresenceShowInstanceName(t) => {
-                self.config.rich_presence_show_instance_name = Some(t);
+            LauncherSettingsMessage::GameOpenPresenceDetailsChanged(t) => {
+                self.config.rich_presence_gameopen_details = Some(t);
+                self.update_state_presence(state::LauncherSettingsTab::Presence);
             }
-            LauncherSettingsMessage::TogglePresenceShowMinecraftVersion(t) => {
-                self.config.rich_presence_show_minecraft_version = Some(t);
+            LauncherSettingsMessage::GameOpenPresenceStateChanged(t) => {
+                self.config.rich_presence_gameopen_state = Some(t);
+                self.update_state_presence(state::LauncherSettingsTab::Presence);
+            }
+            LauncherSettingsMessage::GameExitPresenceDetailsChanged(t) => {
+                self.config.rich_presence_gameexit_details = Some(t);
+                self.update_state_presence(state::LauncherSettingsTab::Presence);
+            }
+            LauncherSettingsMessage::GameExitPresenceStateChanged(t) => {
+                self.config.rich_presence_gameexit_state = Some(t);
+                self.update_state_presence(state::LauncherSettingsTab::Presence);
             }
             LauncherSettingsMessage::SetPresenceNow => return self.set_custom_discord_presence(),
             LauncherSettingsMessage::DefaultPresenceDetailsChanged(t) => {
@@ -447,6 +457,26 @@ impl Launcher {
             default_presence_state: self
                 .config
                 .rich_presence_basic_state
+                .clone()
+                .unwrap_or_default(),
+            gameopen_presence_details: self
+                .config
+                .rich_presence_gameopen_details
+                .clone()
+                .unwrap_or_default(),
+            gameopen_presence_state: self
+                .config
+                .rich_presence_gameopen_state
+                .clone()
+                .unwrap_or_default(),
+            gameexit_presence_details: self
+                .config
+                .rich_presence_gameexit_details
+                .clone()
+                .unwrap_or_default(),
+            gameexit_presence_state: self
+                .config
+                .rich_presence_gameexit_state
                 .clone()
                 .unwrap_or_default(),
         });
