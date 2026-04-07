@@ -54,10 +54,16 @@ impl MenuLauncherSettings {
                     .on_input(|v| Message::LauncherSettings(
                         LauncherSettingsMessage::DefaultPresenceStateChanged(v)
                     )),
-                widget::Space::with_height(5),
-                button_with_icon(icons::discord_s(16), "Set Now", 12)
-                    .padding([5, 10])
-                    .on_press(Message::LauncherSettings(LauncherSettingsMessage::SetPresenceNow)),
+                if config.rich_presence.unwrap_or(true) {
+                    widget::column![
+                        widget::Space::with_height(5),
+                        button_with_icon(icons::discord_s(16), "Set Now", 12)
+                            .padding([5, 10])
+                            .on_press(Message::LauncherSettings(LauncherSettingsMessage::SetPresenceNow))
+                    ]
+                } else {
+                    widget::column![]
+                },
             ].spacing(5),
 
             column![
@@ -65,36 +71,38 @@ impl MenuLauncherSettings {
                 widget::Space::with_height(5),
                 widget::checkbox("Change presence during play/quit events", config.rich_presence_events.unwrap_or(true)).on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::TogglePresenceEvents(n))),
                 widget::text("Disabling this will ensure that only the custom rich presence set above stays alive when you run the launcher and/or play Minecraft.").size(12).style(tsubtitle),
-                if config.rich_presence_events.unwrap_or(true) {
-                    widget::column![
-                        widget::Space::with_height(10),
-                        widget::text("On game launch").size(15).style(tsubtitle),
-                        widget::Space::with_height(3),
-                        widget::text_input("*Enter top text...", &self.gameopen_presence_details)
-                            .on_input(|v| Message::LauncherSettings(
-                                LauncherSettingsMessage::GameOpenPresenceDetailsChanged(v)
-                            )),
-                        widget::text_input("Enter bottom text...", &self.gameopen_presence_state)
-                            .on_input(|v| Message::LauncherSettings(
-                                LauncherSettingsMessage::GameOpenPresenceStateChanged(v)
-                            )),
-                        widget::Space::with_height(10),
-                        widget::text("On exit").size(15).style(tsubtitle),
-                        widget::Space::with_height(3),
-                        widget::text_input("*Enter top text...", &self.gameexit_presence_details)
-                            .on_input(|v| Message::LauncherSettings(
-                                LauncherSettingsMessage::GameExitPresenceDetailsChanged(v)
-                            )),
-                        widget::text_input("Enter bottom text...", &self.gameexit_presence_state)
-                            .on_input(|v| Message::LauncherSettings(
-                                LauncherSettingsMessage::GameExitPresenceStateChanged(v)
-                            )),
 
-                    ].spacing(5)
-                } else {
-                    widget::column![]
-                }
-            ].spacing(5)
+            ].spacing(5),
+
+            if config.rich_presence_events.unwrap_or(true) {
+                widget::column![
+                    widget::text("Event Presences"),
+                    widget::text("NOTE: You can use substitutes like ${instance} and ${version} for instance and version names respectively.").size(12).style(tsubtitle),
+                    widget::Space::with_height(6),
+                    widget::text("On game launch:").size(14),
+                    widget::text_input("*Enter top text...", &self.gameopen_presence_details)
+                        .on_input(|v| Message::LauncherSettings(
+                            LauncherSettingsMessage::GameOpenPresenceDetailsChanged(v)
+                        )),
+                    widget::text_input("Enter bottom text...", &self.gameopen_presence_state)
+                        .on_input(|v| Message::LauncherSettings(
+                            LauncherSettingsMessage::GameOpenPresenceStateChanged(v)
+                        )),
+                    widget::Space::with_height(3),
+                    widget::text("On exit:").size(14),
+                    widget::text_input("*Enter top text...", &self.gameexit_presence_details)
+                        .on_input(|v| Message::LauncherSettings(
+                            LauncherSettingsMessage::GameExitPresenceDetailsChanged(v)
+                        )),
+                    widget::text_input("Enter bottom text...", &self.gameexit_presence_state)
+                        .on_input(|v| Message::LauncherSettings(
+                            LauncherSettingsMessage::GameExitPresenceStateChanged(v)
+                        )),
+
+                ].spacing(5)
+            } else {
+                widget::column![]
+            },
         ])
     }
 }
