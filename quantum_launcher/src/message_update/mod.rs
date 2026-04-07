@@ -415,24 +415,32 @@ impl Launcher {
                 self.config.rich_presence_events = Some(t);
             }
             LauncherSettingsMessage::GameOpenPresenceDetailsChanged(t) => {
-                self.config.rich_presence_gameopen_details = Some(t);
+                self.config.rich_presence_gameopen_details =
+                    if t.is_empty() { None } else { Some(t) };
                 self.update_state_presence(state::LauncherSettingsTab::Presence);
             }
             LauncherSettingsMessage::GameOpenPresenceStateChanged(t) => {
-                self.config.rich_presence_gameopen_state = Some(t);
+                self.config.rich_presence_gameopen_state =
+                    if t.is_empty() { None } else { Some(t) };
                 self.update_state_presence(state::LauncherSettingsTab::Presence);
             }
             LauncherSettingsMessage::GameExitPresenceDetailsChanged(t) => {
-                self.config.rich_presence_gameexit_details = Some(t);
+                self.config.rich_presence_gameexit_details =
+                    if t.is_empty() { None } else { Some(t) };
                 self.update_state_presence(state::LauncherSettingsTab::Presence);
             }
             LauncherSettingsMessage::GameExitPresenceStateChanged(t) => {
-                self.config.rich_presence_gameexit_state = Some(t);
+                self.config.rich_presence_gameexit_state =
+                    if t.is_empty() { None } else { Some(t) };
                 self.update_state_presence(state::LauncherSettingsTab::Presence);
             }
             LauncherSettingsMessage::SetPresenceNow => return self.set_custom_discord_presence(),
             LauncherSettingsMessage::DefaultPresenceDetailsChanged(t) => {
                 self.config.rich_presence_basic_details = if t.is_empty() { None } else { Some(t) };
+                self.update_state_presence(state::LauncherSettingsTab::Presence);
+            }
+            LauncherSettingsMessage::ResetPresence => {
+                self.config.reset_presence();
                 self.update_state_presence(state::LauncherSettingsTab::Presence);
             }
             LauncherSettingsMessage::DefaultPresenceStateChanged(t) => {

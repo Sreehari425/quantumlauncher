@@ -124,6 +124,14 @@ pub struct LauncherConfig {
     _extra: HashMap<String, serde_json::Value>,
 }
 
+// Discord Rich Presence constants.
+pub const RICH_PRESENCE_BASIC_DETAILS: &str = "Launcher initialized!";
+pub const RICH_PRESENCE_BASIC_STATE: &str = "";
+pub const RICH_PRESENCE_GAMEOPEN_DETAIILS: &str = "Minecraft v${version}";
+pub const RICH_PRESENCE_GAMEOPEN_STATE: &str = "Instance name: ${instance}";
+pub const RICH_PRESENCE_GAMEEXIT_DETAILS: &str = "Just quit game";
+pub const RICH_PRESENCE_GAMEEXIT_STATE: &str = "Minecraft v${version}";
+
 impl Default for LauncherConfig {
     fn default() -> Self {
         #[allow(deprecated)]
@@ -137,13 +145,13 @@ impl Default for LauncherConfig {
             java_installs: Some(Vec::new()),
             ui_antialiasing: Some(true),
             rich_presence: Some(true),
-            rich_presence_basic_details: Some("Launcher initialized!".into()),
-            rich_presence_basic_state: None,
+            rich_presence_basic_details: Some(RICH_PRESENCE_BASIC_DETAILS.to_owned()),
+            rich_presence_basic_state: Some(RICH_PRESENCE_BASIC_STATE.to_owned()),
             rich_presence_events: Some(true),
-            rich_presence_gameopen_details: Some("Minecraft v${version}".into()),
-            rich_presence_gameopen_state: Some("Instance name: ${instance}".into()),
-            rich_presence_gameexit_details: Some("Just quit game".into()),
-            rich_presence_gameexit_state: Some("Minecraft v${version}".into()),
+            rich_presence_gameopen_details: Some(RICH_PRESENCE_GAMEOPEN_DETAIILS.to_owned()),
+            rich_presence_gameopen_state: Some(RICH_PRESENCE_GAMEOPEN_STATE.to_owned()),
+            rich_presence_gameexit_details: Some(RICH_PRESENCE_GAMEEXIT_DETAILS.to_owned()),
+            rich_presence_gameexit_state: Some(RICH_PRESENCE_GAMEEXIT_STATE.to_owned()),
             account_selected: None,
             window: None,
             global_settings: None,
@@ -204,6 +212,18 @@ impl LauncherConfig {
             .await
             .path(config_path)?;
         Ok(())
+    }
+
+    /// Resets the Discord Rich Presence configuration to default.
+    pub fn reset_presence(&mut self) {
+        self.rich_presence = Some(true);
+        self.rich_presence_basic_details = Some(RICH_PRESENCE_BASIC_DETAILS.to_owned());
+        self.rich_presence_basic_state = Some(RICH_PRESENCE_BASIC_STATE.to_owned());
+        self.rich_presence_events = Some(true);
+        self.rich_presence_gameopen_details = Some(RICH_PRESENCE_GAMEOPEN_DETAIILS.to_owned());
+        self.rich_presence_gameopen_state = Some(RICH_PRESENCE_GAMEOPEN_STATE.to_owned());
+        self.rich_presence_gameexit_details = Some(RICH_PRESENCE_GAMEEXIT_DETAILS.to_owned());
+        self.rich_presence_gameexit_state = Some(RICH_PRESENCE_GAMEEXIT_STATE.to_owned());
     }
 
     pub fn update_sidebar(&mut self, instances: &[String], is_server: bool) {

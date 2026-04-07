@@ -298,6 +298,7 @@ pub enum LauncherSettingsMessage {
     GameExitPresenceDetailsChanged(String),
     GameExitPresenceStateChanged(String),
     SetPresenceNow,
+    ResetPresence,
 
     ToggleAntialiasing(bool),
     ToggleWindowSize(bool),

@@ -1,4 +1,9 @@
 use crate::config::AfterLaunchBehavior;
+use crate::config::RICH_PRESENCE_BASIC_DETAILS;
+use crate::config::RICH_PRESENCE_GAMEEXIT_DETAILS;
+use crate::config::RICH_PRESENCE_GAMEEXIT_STATE;
+use crate::config::RICH_PRESENCE_GAMEOPEN_DETAIILS;
+use crate::config::RICH_PRESENCE_GAMEOPEN_STATE;
 use crate::config::SIDEBAR_WIDTH;
 use crate::menu_renderer::back_to_launch_screen;
 use crate::state::{
@@ -166,12 +171,12 @@ impl Launcher {
                             .config
                             .rich_presence_gameopen_details
                             .clone()
-                            .unwrap_or("Minecraft v${version}".into());
+                            .unwrap_or(RICH_PRESENCE_GAMEOPEN_DETAIILS.into());
                         let gameopen_state = self
                             .config
                             .rich_presence_gameopen_state
                             .clone()
-                            .unwrap_or("Instance: ${instance}".into());
+                            .unwrap_or(RICH_PRESENCE_GAMEOPEN_STATE.into());
 
                         Task::perform(
                             async move {
@@ -407,12 +412,12 @@ impl Launcher {
                 .config
                 .rich_presence_gameexit_details
                 .clone()
-                .unwrap_or("Just quit game".into());
+                .unwrap_or(RICH_PRESENCE_GAMEEXIT_DETAILS.into());
             let gameexit_state = self
                 .config
                 .rich_presence_gameexit_state
                 .clone()
-                .unwrap_or("Minecraft v${version}".into());
+                .unwrap_or(RICH_PRESENCE_GAMEEXIT_STATE.into());
 
             Task::perform(
                 async move {
@@ -457,10 +462,12 @@ impl Launcher {
 
     pub fn set_custom_discord_presence(&self) -> Task<Message> {
         if let Some(c) = self.discord_ipc_client.clone() {
-            let details = if let Some(t) = self.config.rich_presence_basic_details.clone() {
+            let details = if let Some(t) = self.config.rich_presence_basic_details.clone()
+                && !t.is_empty()
+            {
                 t
             } else {
-                "Launcher initialized".into()
+                RICH_PRESENCE_BASIC_DETAILS.into()
             };
             let state = self.config.rich_presence_basic_state.clone();
 
