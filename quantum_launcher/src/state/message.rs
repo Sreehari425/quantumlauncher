@@ -295,6 +295,7 @@ pub enum LauncherSettingsMessage {
     TogglePresenceEvents(bool),
     TogglePresenceShowInstanceName(bool),
     TogglePresenceShowMinecraftVersion(bool),
+    SetPresenceNow,
 
     ToggleAntialiasing(bool),
     ToggleWindowSize(bool),

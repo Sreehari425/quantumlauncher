@@ -411,12 +411,13 @@ impl Launcher {
             LauncherSettingsMessage::TogglePresenceShowMinecraftVersion(t) => {
                 self.config.rich_presence_show_minecraft_version = Some(t);
             }
+            LauncherSettingsMessage::SetPresenceNow => return self.set_custom_discord_presence(),
             LauncherSettingsMessage::DefaultPresenceDetailsChanged(t) => {
-                self.config.rich_presence_basic_details = Some(t);
+                self.config.rich_presence_basic_details = if t.is_empty() { None } else { Some(t) };
                 self.update_state_presence(state::LauncherSettingsTab::Presence);
             }
             LauncherSettingsMessage::DefaultPresenceStateChanged(t) => {
-                self.config.rich_presence_basic_state = Some(t);
+                self.config.rich_presence_basic_state = if t.is_empty() { None } else { Some(t) };
                 self.update_state_presence(state::LauncherSettingsTab::Presence);
             }
         }

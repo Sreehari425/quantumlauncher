@@ -437,19 +437,23 @@ impl Launcher {
         )
     }
 
-    pub fn set_basic_discord_presence(&self) -> Task<Message> {
+    pub fn set_custom_discord_presence(&self) -> Task<Message> {
         if let Some(c) = self.discord_ipc_client.clone() {
-            let details = self.config.rich_presence_basic_details.clone();
+            let details = if let Some(t) = self.config.rich_presence_basic_details.clone() {
+                t
+            } else {
+                "Launcher initialized".into()
+            };
             let state = self.config.rich_presence_basic_state.clone();
 
             Task::perform(
                 async move {
-                    let mut activity = Activity::new().details(details.unwrap_or_default());
+                    let mut activity = Activity::new().details(details);
 
-                    if let Some(s) = state {
-                        if !s.is_empty() {
-                            activity = activity.state(s);
-                        }
+                    if let Some(s) = state
+                        && !s.is_empty()
+                    {
+                        activity = activity.state(s);
                     }
 
                     let built_activity = activity.build();

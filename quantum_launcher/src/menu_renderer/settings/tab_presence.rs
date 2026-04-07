@@ -2,7 +2,8 @@ use iced::widget::{self, column};
 
 use crate::{
     config::LauncherConfig,
-    menu_renderer::{Column, checkered_list, tsubtitle},
+    icons,
+    menu_renderer::{Column, button_with_icon, checkered_list, tsubtitle},
     state::{LauncherSettingsMessage, MenuLauncherSettings, Message},
 };
 
@@ -22,10 +23,10 @@ impl MenuLauncherSettings {
             .spacing(5),
 
             column![
-                widget::text("Initial Presence"),
-                widget::text("Changes will take effect with a toggle of the feature / launcher restart.").size(12).style(tsubtitle),
+                widget::text("Custom Presence"),
+                widget::text("Changes will take effect on launcher restart or with the press of the button below.").size(12).style(tsubtitle),
                 widget::Space::with_height(5),
-                widget::text_input("Enter top text...", &self.default_presence_details)
+                widget::text_input("*Enter top text...", &self.default_presence_details)
                     .on_input(|v| Message::LauncherSettings(
                         LauncherSettingsMessage::DefaultPresenceDetailsChanged(v)
                     )),
@@ -33,13 +34,17 @@ impl MenuLauncherSettings {
                     .on_input(|v| Message::LauncherSettings(
                         LauncherSettingsMessage::DefaultPresenceStateChanged(v)
                     )),
+                widget::Space::with_height(5),
+                button_with_icon(icons::discord_s(16), "Set Now", 12)
+                    .padding([5, 10])
+                    .on_press(Message::LauncherSettings(LauncherSettingsMessage::SetPresenceNow)),
             ].spacing(5),
 
             column![
                 widget::text("Toggles"),
                 widget::Space::with_height(5),
-                widget::checkbox("Show in-game status on play/quit", config.rich_presence_events.unwrap_or(true)).on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::TogglePresenceEvents(n))),
-                widget::text("Disabling this will ensure that only the basic rich presence stays alive throughout your play-time.").size(12).style(tsubtitle),
+                widget::checkbox("Change presence during play/quit events", config.rich_presence_events.unwrap_or(true)).on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::TogglePresenceEvents(n))),
+                widget::text("Disabling this will ensure that only the custom rich presence set above stays alive when you run the launcher and/or play Minecraft.").size(12).style(tsubtitle),
                 widget::Space::with_height(5),
                 widget::checkbox("Show current instance name", config.rich_presence_show_instance_name.unwrap_or(true)).on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::TogglePresenceShowInstanceName(n))),
                 widget::Space::with_height(5),

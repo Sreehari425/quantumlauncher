@@ -22,10 +22,10 @@ impl Launcher {
         match message {
             Message::DiscordIPCRunStarted(c) => {
                 self.discord_ipc_client = Some(c);
-                return self.set_basic_discord_presence();
+                return self.set_custom_discord_presence();
             }
             Message::DiscordIPCBasicPresenceSet => {
-                info!("Basic rich presence has been set.")
+                info!("Rich presence has been set.")
             }
             Message::Nothing | Message::CoreCleanComplete(Ok(())) => {}
             Message::Error(err) => self.set_error(err),
