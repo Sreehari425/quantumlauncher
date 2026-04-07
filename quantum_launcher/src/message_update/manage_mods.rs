@@ -1,7 +1,7 @@
 use iced::{Task, widget};
 use iced::{futures::executor::block_on, keyboard::Modifiers};
 use ql_core::file_utils::exists;
-use ql_core::{InstanceSelection, IntoIoError, IntoStringError, err, jarmod::JarMods};
+use ql_core::{Instance, IntoIoError, IntoStringError, err, jarmod::JarMods};
 use ql_mod_manager::store::{ModId, ModIndex, SelectedMod};
 use std::{collections::HashSet, path::PathBuf};
 
@@ -399,7 +399,7 @@ impl Launcher {
     }
 
     fn get_delete_mods_command(
-        selected_instance: InstanceSelection,
+        selected_instance: Instance,
         menu: &MenuEditMods,
     ) -> Task<Message> {
         let ids: Vec<ModId> = menu

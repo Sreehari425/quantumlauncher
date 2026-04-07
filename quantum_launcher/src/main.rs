@@ -30,7 +30,9 @@ use iced::{Settings, Task};
 use owo_colors::OwoColorize;
 use state::{Launcher, Message, get_entries};
 
-use ql_core::{IntoStringError, JsonFileError, constants::OS_NAME, err, file_utils, info, pt};
+use ql_core::{
+    InstanceKind, IntoStringError, JsonFileError, constants::OS_NAME, err, file_utils, info, pt,
+};
 
 use crate::{
     menu_renderer::FONT_DEFAULT,
@@ -116,8 +118,8 @@ impl Launcher {
             launcher,
             Task::batch([
                 check_for_updates_command,
-                Task::perform(get_entries(false), Message::CoreListLoaded),
-                Task::perform(get_entries(true), Message::CoreListLoaded),
+                Task::perform(get_entries(InstanceKind::Client), Message::CoreListLoaded),
+                Task::perform(get_entries(InstanceKind::Server), Message::CoreListLoaded),
                 load_notes_command,
                 Task::perform(ql_core::clean::dir("logs"), |n| {
                     Message::CoreCleanComplete(n.strerr())

@@ -531,16 +531,12 @@ pub fn view_error(error: &'_ str) -> Element<'_> {
     .into()
 }
 
-pub fn view_log_upload_result(url: &'_ str, is_server: bool) -> Element<'_> {
+pub fn view_log_upload_result(url: &'_ str) -> Element<'_> {
     column![
         back_button().on_press(back_to_launch_screen(None)),
         column![
             widget::vertical_space(),
-            widget::text(format!(
-                "{} log uploaded successfully!",
-                if is_server { "Server" } else { "Game" }
-            ))
-            .size(20),
+            widget::text("Log uploaded successfully!").size(20),
             widget::text("Your log has been uploaded to mclo.gs. You can share the link below:")
                 .size(14),
             widget::container(

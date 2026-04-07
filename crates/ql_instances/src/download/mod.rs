@@ -1,7 +1,7 @@
 use std::sync::mpsc::Sender;
 
 use ql_core::{
-    DownloadProgress, InstanceSelection, IntoIoError, IntoStringError, LAUNCHER_DIR,
+    DownloadProgress, Instance, IntoIoError, IntoStringError, LAUNCHER_DIR,
     LAUNCHER_VERSION_NAME, ListEntry, info, json::VersionDetails, sanitize_instance_name,
 };
 
@@ -93,7 +93,7 @@ pub async fn create_instance(
 }
 
 pub async fn repeat_stage(
-    instance: InstanceSelection,
+    instance: Instance,
     stage: DownloadProgress,
     sender: Option<Sender<DownloadProgress>>,
 ) -> Result<(), String> {

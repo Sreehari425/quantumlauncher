@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use ql_core::InstanceKind;
 use serde::{Deserialize, Serialize};
@@ -52,7 +55,7 @@ impl SidebarConfig {
             }
 
             let index = index?;
-            let folder = SidebarNode::new_folder(name.to_owned());
+            let folder = SidebarNode::new_folder(Arc::from(name));
             let id = folder
                 .get_folder_id()
                 .expect("should be folder, not instance");
@@ -63,7 +66,7 @@ impl SidebarConfig {
         if let Some(selection) = selection {
             for (i, child) in self.list.iter_mut().enumerate() {
                 if *child == selection {
-                    let folder = SidebarNode::new_folder(name.to_owned());
+                    let folder = SidebarNode::new_folder(Arc::from(name));
                     let id = folder
                         .get_folder_id()
                         .expect("should be folder, not instance");
@@ -76,7 +79,7 @@ impl SidebarConfig {
             }
         }
 
-        let folder = SidebarNode::new_folder(name.to_owned());
+        let folder = SidebarNode::new_folder(Arc::from(name));
         let id = folder
             .get_folder_id()
             .expect("should be folder, not instance");
@@ -106,7 +109,7 @@ impl SidebarConfig {
     pub fn rename(&mut self, selection: &SidebarSelection, new_name: &str) {
         fn walk(node: &mut SidebarNode, selection: &SidebarSelection, new_name: &str) -> bool {
             if node == selection {
-                new_name.clone_into(&mut node.name);
+                node.name = Arc::from(new_name);
                 return true;
             }
 
@@ -201,7 +204,7 @@ impl SidebarConfig {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct SidebarNode {
-    pub name: String,
+    pub name: Arc<str>,
     // icon: Option<String>
     pub kind: SidebarNodeKind,
     #[serde(flatten)]
@@ -213,7 +216,7 @@ impl SidebarNode {
     fn contains_instance(&self, name: &str, instance_kind: InstanceKind) -> bool {
         match &self.kind {
             SidebarNodeKind::Instance(kind) => {
-                if *kind == instance_kind && self.name == name {
+                if *kind == instance_kind && &*self.name == name {
                     return true;
                 }
             }
@@ -239,7 +242,7 @@ impl SidebarNode {
     }
 
     #[must_use]
-    pub fn new_folder(name: String) -> Self {
+    pub fn new_folder(name: Arc<str>) -> Self {
         SidebarNode {
             name,
             kind: SidebarNodeKind::Folder(SidebarFolder::default()),
@@ -248,7 +251,7 @@ impl SidebarNode {
     }
 
     #[must_use]
-    pub fn new_instance(name: String, kind: InstanceKind) -> Self {
+    pub fn new_instance(name: Arc<str>, kind: InstanceKind) -> Self {
         SidebarNode {
             name,
             kind: SidebarNodeKind::Instance(kind),

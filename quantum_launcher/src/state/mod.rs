@@ -8,7 +8,7 @@ use std::{
 use iced::Task;
 use notify::Watcher;
 use ql_core::{
-    GenericProgress, InstanceSelection, IntoIoError, IntoStringError, IoError, JsonFileError,
+    GenericProgress, Instance, InstanceKind, IntoIoError, IntoStringError, IoError, JsonFileError,
     LAUNCHER_DIR, LAUNCHER_VERSION_NAME, LaunchedProcess, Progress, err,
     file_utils::{self, exists},
     read_log::LogLine,
@@ -46,7 +46,7 @@ pub struct InstanceLog {
 
 pub struct Launcher {
     pub state: State,
-    pub selected_instance: Option<InstanceSelection>,
+    pub selected_instance: Option<Instance>,
     pub config: LauncherConfig,
     pub theme: LauncherTheme,
     pub images: ImageState,
@@ -70,8 +70,8 @@ pub struct Launcher {
     pub client_watcher: Option<DirWatcher>,
     pub server_watcher: Option<DirWatcher>,
 
-    pub processes: HashMap<InstanceSelection, GameProcess>,
-    pub logs: HashMap<InstanceSelection, InstanceLog>,
+    pub processes: HashMap<Instance, GameProcess>,
+    pub logs: HashMap<Instance, InstanceLog>,
 
     pub window_state: WindowState,
     pub keys_pressed: HashSet<iced::keyboard::Key>,
@@ -172,13 +172,21 @@ impl Launcher {
         let (accounts, accounts_dropdown, account_selected) = load_accounts(&mut config);
 
         let persistent = config.c_persistent();
+        let selected_instance = persistent
+            .selected_instance
+            .as_ref()
+            .filter(|_| persistent.selected_remembered)
+            .map(|n| {
+                Instance::new(
+                    n,
+                    persistent
+                        .selected_instance_kind
+                        .unwrap_or(ql_core::InstanceKind::Client),
+                )
+            });
 
         Ok(Self {
-            selected_instance: persistent
-                .selected_instance
-                .as_ref()
-                .filter(|_| persistent.selected_remembered)
-                .map(|n| InstanceSelection::new(n, false)),
+            selected_instance,
             state,
             config,
             theme,
@@ -280,7 +288,7 @@ impl Launcher {
         }
     }
 
-    pub fn instance(&self) -> &InstanceSelection {
+    pub fn instance(&self) -> &Instance {
         self.selected_instance.as_ref().unwrap()
     }
 
@@ -390,18 +398,14 @@ fn load_account(
     }
 }
 
-pub async fn get_entries(is_server: bool) -> Res<(Vec<String>, bool)> {
-    let dir_path = file_utils::get_launcher_dir().strerr()?.join(if is_server {
-        "servers"
-    } else {
-        "instances"
-    });
+pub async fn get_entries(kind: InstanceKind) -> Res<(Vec<String>, InstanceKind)> {
+    let dir_path = kind.get_root_directory();
     if !exists(&dir_path).await {
         tokio::fs::create_dir_all(&dir_path)
             .await
             .path(&dir_path)
             .strerr()?;
-        return Ok((Vec::new(), is_server));
+        return Ok((Vec::new(), kind));
     }
 
     Ok((
@@ -412,7 +416,7 @@ pub async fn get_entries(is_server: bool) -> Res<(Vec<String>, bool)> {
             .filter(|n| !n.is_file)
             .map(|n| n.name)
             .collect(),
-        is_server,
+        kind,
     ))
 }
 

@@ -1,5 +1,5 @@
 use iced::{Alignment, Length, widget};
-use ql_core::InstanceSelection;
+use ql_core::Instance;
 use ql_mod_manager::loaders::fabric::{self, FabricVersionList, FabricVersionListItem};
 
 use crate::menu_renderer::Column;
@@ -97,7 +97,7 @@ impl MenuInstallOptifine {
 }
 
 impl MenuInstallFabric {
-    pub fn view(&'_ self, selected_instance: &InstanceSelection, tick_timer: usize) -> Element<'_> {
+    pub fn view(&'_ self, selected_instance: &Instance, tick_timer: usize) -> Element<'_> {
         match self {
             MenuInstallFabric::Loading { is_quilt, .. } => {
                 let loader_name = if *is_quilt { "Quilt" } else { "Fabric" };
@@ -151,7 +151,7 @@ impl MenuInstallFabric {
 }
 
 fn install_fabric_main<'a>(
-    selected_instance: &InstanceSelection,
+    selected_instance: &Instance,
     backend: &'a fabric::BackendType,
     fabric_version: &'a str,
     fabric_versions: &'a FabricVersionList,

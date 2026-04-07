@@ -1,5 +1,5 @@
 use iced::{Task, futures::executor::block_on};
-use ql_core::{IntoIoError, IntoStringError, LAUNCHER_DIR, err, file_utils::DirItem, info};
+use ql_core::{InstanceKind, IntoIoError, IntoStringError, err, file_utils::DirItem, info};
 use std::fmt::Write;
 use tokio::io::AsyncWriteExt;
 
@@ -152,18 +152,13 @@ impl Launcher {
                     tasks.push(CustomJarState::load());
                 }
 
-                for (i, watcher) in [self.client_watcher.as_ref(), self.server_watcher.as_ref()]
-                    .iter()
-                    .enumerate()
-                {
-                    const SERVER: usize = 1;
+                let mut watch_reload = |watcher: Option<&DirWatcher>, kind| {
                     if watcher.is_some_and(DirWatcher::has_changed) {
-                        tasks.push(Task::perform(
-                            get_entries(i == SERVER),
-                            Message::CoreListLoaded,
-                        ));
+                        tasks.push(Task::perform(get_entries(kind), Message::CoreListLoaded));
                     }
-                }
+                };
+                watch_reload(self.client_watcher.as_ref(), InstanceKind::Client);
+                watch_reload(self.server_watcher.as_ref(), InstanceKind::Server);
 
                 return Task::batch(tasks);
             }
@@ -239,8 +234,8 @@ impl Launcher {
                     _ = block_on(future);
                 }
             }
-            Message::CoreListLoaded(Ok((list, is_server))) => {
-                self.core_list_loaded(list, is_server);
+            Message::CoreListLoaded(Ok((list, kind))) => {
+                self.core_list_loaded(list, kind);
             }
             Message::CoreCopyText(txt) => {
                 return iced::clipboard::write(txt);
@@ -410,31 +405,34 @@ impl Launcher {
         Task::none()
     }
 
-    fn core_list_loaded(&mut self, list: Vec<String>, is_server: bool) {
-        self.config.update_sidebar(&list, is_server);
+    fn core_list_loaded(&mut self, list: Vec<String>, kind: InstanceKind) {
+        self.config.update_sidebar(&list, kind);
         self.autosave.remove(&AutoSaveKind::LauncherConfig);
 
         let persistent = self.config.c_persistent();
 
-        let selected = if is_server {
-            persistent.selected_server.as_ref()
-        } else {
-            persistent.selected_instance.as_ref()
-        };
-        if selected.is_some_and(|n| !list.contains(n)) {
+        let p_kind = persistent
+            .selected_instance_kind
+            .unwrap_or(InstanceKind::Client);
+        if p_kind == kind
+            && persistent
+                .selected_instance
+                .as_ref()
+                .is_some_and(|p| !list.iter().any(|n| n == &**p))
+        {
+            // The previously selected instance no longer exists
             self.unselect_instance();
         }
 
-        let (self_list, self_watcher) = if is_server {
-            (&mut self.server_list, &mut self.server_watcher)
-        } else {
-            (&mut self.client_list, &mut self.client_watcher)
+        let (self_list, self_watcher) = match kind {
+            InstanceKind::Client => (&mut self.client_list, &mut self.client_watcher),
+            InstanceKind::Server => (&mut self.server_list, &mut self.server_watcher),
         };
         *self_list = Some(list);
 
         if self_watcher.is_none() {
-            let dir = if is_server { "servers" } else { "instances" };
-            let watcher = match dir_watch(LAUNCHER_DIR.join(dir)) {
+            let dir = kind.get_root_directory();
+            let watcher = match dir_watch(dir) {
                 Ok(n) => n,
                 Err(err) => {
                     err!("Couldn't start dir watcher! {err}");

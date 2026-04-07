@@ -2,7 +2,7 @@ use cfg_if::cfg_if;
 use frostmark::MarkWidget;
 use iced::widget::{column, horizontal_space, row, text_editor, tooltip::Position, vertical_space};
 use iced::{Alignment, Length, Padding, widget};
-use ql_core::{InstanceSelection, LAUNCHER_VERSION_NAME};
+use ql_core::{Instance, InstanceKind, LAUNCHER_VERSION_NAME};
 
 use crate::cli::EXPERIMENTAL_MMC_IMPORT;
 use crate::menu_renderer::onboarding::x86_warning;
@@ -79,7 +79,7 @@ impl Launcher {
         let tab_body = if let Some(selected) = &self.selected_instance {
             match menu.tab {
                 LaunchTab::Buttons => self.get_tab_main(menu, selected),
-                LaunchTab::Log => self.get_tab_logs(menu, selected.is_server()).into(),
+                LaunchTab::Log => self.get_tab_logs(menu, selected.kind).into(),
                 LaunchTab::Edit => {
                     if let Some(menu) = &menu.edit_instance {
                         menu.view(selected, self.custom_jar.as_ref())
@@ -167,11 +167,7 @@ impl Launcher {
         .into()
     }
 
-    fn get_tab_main<'a>(
-        &'a self,
-        menu: &'a MenuLaunch,
-        selected: &'a InstanceSelection,
-    ) -> Element<'a> {
+    fn get_tab_main<'a>(&'a self, menu: &'a MenuLaunch, selected: &'a Instance) -> Element<'a> {
         let is_running = self.is_process_running(selected);
 
         let main_buttons = row![
@@ -268,7 +264,7 @@ impl Launcher {
     pub fn get_tab_logs<'element>(
         &'element self,
         menu: &'element MenuLaunch,
-        is_server: bool,
+        kind: InstanceKind,
     ) -> widget::Column<'element, Message, LauncherTheme> {
         const TEXT_SIZE: f32 = 12.0;
 
@@ -326,13 +322,16 @@ impl Launcher {
             has_crashed.then_some(
                 widget::text!(
                     "The {} has crashed!",
-                    if is_server { "server" } else { "game" }
+                    match kind {
+                        InstanceKind::Client => "game",
+                        InstanceKind::Server => "server",
+                    }
                 )
                 .size(18),
             ),
         )
         .push_maybe(
-            is_server.then_some(
+            matches!(kind, InstanceKind::Server).then_some(
                 widget::text_input("Enter command...", command)
                     .on_input(Message::ServerCommandEdit)
                     .on_submit(Message::ServerCommandSubmit)
@@ -413,9 +412,9 @@ impl Launcher {
     pub(super) fn get_running_icon(
         &self,
         name: &str,
-        is_server: bool,
+        kind: InstanceKind,
     ) -> Option<widget::Row<'static, Message, LauncherTheme>> {
-        if self.is_process_running(&InstanceSelection::new(name, is_server)) {
+        if self.is_process_running(&Instance::new(name, kind)) {
             Some(row![
                 horizontal_space(),
                 icons::play_s(12),
@@ -426,7 +425,7 @@ impl Launcher {
         }
     }
 
-    fn is_process_running(&self, instance: &InstanceSelection) -> bool {
+    fn is_process_running(&self, instance: &Instance) -> bool {
         self.processes.contains_key(instance)
     }
 
@@ -473,7 +472,7 @@ impl Launcher {
 
     fn get_client_play_button(
         &'_ self,
-        selected: &InstanceSelection,
+        selected: &Instance,
     ) -> widget::Tooltip<'_, Message, LauncherTheme> {
         let play_button = button_with_icon(icons::play(), "Play", 16).width(98);
         let is_offline = self.account_selected == OFFLINE_ACCOUNT_NAME;
@@ -506,7 +505,7 @@ impl Launcher {
     }
 
     fn get_files_button(
-        selected_instance: &InstanceSelection,
+        selected_instance: &Instance,
     ) -> widget::Button<'_, Message, LauncherTheme> {
         button_with_icon(icons::folder(), "Files", 16)
             .on_press(Message::CoreOpenPath(
@@ -517,7 +516,7 @@ impl Launcher {
 
     fn get_server_play_button(
         &self,
-        selected: &InstanceSelection,
+        selected: &Instance,
     ) -> widget::Tooltip<'_, Message, LauncherTheme> {
         if self.processes.contains_key(selected) {
             tooltip(
@@ -711,8 +710,8 @@ fn get_sidebar_new_button(decor: bool) -> widget::Button<'static, Message, Launc
             },
         )
     })
-    .on_press(Message::CreateInstance(CreateInstanceMessage::ScreenOpen {
-        is_server: false,
-    }))
+    .on_press(Message::CreateInstance(CreateInstanceMessage::ScreenOpen(
+        InstanceKind::Client,
+    )))
     .width(Length::Fill)
 }

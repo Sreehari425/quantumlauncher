@@ -1,5 +1,7 @@
 use iced::{Task, widget::pane_grid};
-use ql_core::{DownloadProgress, InstanceSelection, IntoStringError, ListEntry, ListEntryKind};
+use ql_core::{
+    DownloadProgress, Instance, InstanceKind, IntoStringError, ListEntry, ListEntryKind,
+};
 
 use crate::{
     message_handler::{SIDEBAR_LIMIT_LEFT, SIDEBAR_LIMIT_RIGHT},
@@ -26,8 +28,8 @@ impl Launcher {
             | CreateInstanceMessage::ImportResult(Err(err)) => {
                 self.set_error(err);
             }
-            CreateInstanceMessage::ScreenOpen { is_server } => {
-                return self.go_to_create_screen(is_server);
+            CreateInstanceMessage::ScreenOpen(kind) => {
+                return self.go_to_create_screen(kind);
             }
             CreateInstanceMessage::VersionsLoaded(res) => {
                 self.create_instance_finish_loading_versions_list(res);
@@ -43,9 +45,9 @@ impl Launcher {
                 *search_box = t;
             }),
             CreateInstanceMessage::SearchSubmit => {
-                iflet!(self, search_box, selected_version, is_server, selected_categories, list; {
+                iflet!(self, search_box, selected_version, kind, selected_categories, list; {
                     let iter = || list.iter().flatten().flatten()
-                        .filter(|n| n.supports_server || !*is_server)
+                        .filter(|n| n.supports_server || !matches!(kind, InstanceKind::Server))
                         .filter(|n| selected_categories.contains(&n.kind))
                         .filter(|n|
                             search_box.trim().is_empty()
@@ -98,8 +100,8 @@ impl Launcher {
             CreateInstanceMessage::NameInput(name) => iflet!(self, instance_name; {
                 *instance_name = name;
             }),
-            CreateInstanceMessage::ChangeIsServer(t) => iflet!(self, is_server; {
-                *is_server = t;
+            CreateInstanceMessage::ChangeKind(t) => iflet!(self, kind; {
+                *kind = t;
             }),
 
             CreateInstanceMessage::Start => return self.create_instance(),
@@ -171,7 +173,7 @@ then go to "Mods->Add File""#,
         });
     }
 
-    pub fn go_to_create_screen(&mut self, is_server: bool) -> Task<Message> {
+    pub fn go_to_create_screen(&mut self, kind: InstanceKind) -> Task<Message> {
         let (task, handle) = Task::perform(ql_instances::list_versions(), |n| {
             CreateInstanceMessage::VersionsLoaded(n.strerr()).into()
         })
@@ -200,7 +202,7 @@ then go to "Mods->Add File""#,
             search_box: String::new(),
             show_category_dropdown: false,
             selected_categories: self.config.c_persistent().get_create_instance_filters(),
-            is_server,
+            kind,
             sidebar_grid_state,
             sidebar_split,
         }));
@@ -209,14 +211,11 @@ then go to "Mods->Add File""#,
     }
 
     fn create_instance(&mut self) -> Task<Message> {
-        iflet!(self, instance_name, download_assets, selected_version, is_server; {
-            let is_server = *is_server;
-
+        iflet!(self, instance_name, download_assets, selected_version, kind; {
             let already_exists = {
-                let existing_instances = if is_server {
-                    self.server_list.as_ref()
-                } else {
-                    self.client_list.as_ref()
+                let existing_instances = match kind {
+                    InstanceKind::Client => self.client_list.as_ref(),
+                    InstanceKind::Server => self.server_list.as_ref(),
                 };
                 existing_instances.is_some_and(|n| {
                     n.contains(instance_name)
@@ -243,22 +242,22 @@ then go to "Mods->Add File""#,
                 instance_name.clone()
             };
             let download_assets = *download_assets;
+            let kind = *kind;
 
             self.state = State::Create(MenuCreateInstance::DownloadingInstance(progress));
 
-            return if is_server {
-                Task::perform(
+            return match kind {
+                InstanceKind::Server => Task::perform(
                     async move {
                         let sender = sender;
                         ql_servers::create_server(instance_name.clone(), version, Some(&sender))
                             .await
                             .strerr()
-                            .map(InstanceSelection::Server)
+                            .map(|n| Instance::server(&n))
                     },
                     |n| CreateInstanceMessage::End(n).into(),
-                )
-            } else {
-                Task::perform(
+                ),
+                InstanceKind::Client => Task::perform(
                     ql_instances::create_instance(
                         instance_name.clone(),
                         version,
@@ -266,10 +265,10 @@ then go to "Mods->Add File""#,
                         download_assets,
                     ),
                     |n| CreateInstanceMessage::End(
-                        n.strerr().map(InstanceSelection::Instance),
+                        n.strerr().map(|n| Instance::client(&n)),
                     ).into(),
                 )
-            };
+            }
         });
         Task::none()
     }

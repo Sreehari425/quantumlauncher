@@ -6,7 +6,7 @@ use std::{
 
 use iced::{Rectangle, Task, widget::text_editor};
 use ql_core::{
-    InstanceSelection, IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
+    Instance, IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
     constants::OS_NAME, json::InstanceConfigJson,
 };
 use ql_mod_manager::store::{ModConfig, ModId, ModIndex};
@@ -290,10 +290,10 @@ impl Launcher {
 
     pub fn read_game_logs(
         process: &GameProcess,
-        instance: &InstanceSelection,
-        logs: &mut HashMap<InstanceSelection, InstanceLog>,
+        instance: &Instance,
+        logs: &mut HashMap<Instance, InstanceLog>,
         log_state: &mut Option<LogState>,
-        selected_instance: Option<&InstanceSelection>,
+        selected_instance: Option<&Instance>,
     ) {
         let update_ui = selected_instance.is_some_and(|n| n == instance);
 
@@ -332,7 +332,7 @@ impl Launcher {
     }
 
     async fn save_config(
-        instance: InstanceSelection,
+        instance: Instance,
         config: InstanceConfigJson,
     ) -> Result<(), JsonFileError> {
         let mut config = config.clone();
@@ -350,7 +350,7 @@ impl Launcher {
 }
 
 impl MenuModsDownload {
-    pub fn tick(selected_instance: InstanceSelection) -> Task<Message> {
+    pub fn tick(selected_instance: Instance) -> Task<Message> {
         Task::perform(
             async move { ModIndex::load(&selected_instance).await },
             |n| InstallModsMessage::IndexUpdated(n.strerr()).into(),
@@ -409,7 +409,7 @@ pub fn sort_dependencies(
 }
 
 impl MenuEditMods {
-    fn tick(&mut self, instance_selection: &InstanceSelection) -> Task<Message> {
+    fn tick(&mut self, instance_selection: &Instance) -> Task<Message> {
         self.sorted_mods_list = sort_dependencies(&self.mods.mods, &self.locally_installed_mods);
 
         if let Some(progress) = &mut self.mod_update_progress {

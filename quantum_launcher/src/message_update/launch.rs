@@ -1,5 +1,5 @@
 use iced::Task;
-use ql_core::InstanceSelection;
+use ql_core::Instance;
 
 use crate::{
     config::sidebar::SidebarSelection,
@@ -22,8 +22,7 @@ impl Launcher {
                     }) = modal
                     {
                         if self.selected_instance.is_none() {
-                            self.selected_instance =
-                                Some(InstanceSelection::new(name, kind.is_server()));
+                            self.selected_instance = Some(Instance::new(name, *kind));
                         }
                     }
                     *modal = None;

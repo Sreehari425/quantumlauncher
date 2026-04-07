@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
+    sync::Arc,
     time::Instant,
 };
 
@@ -19,7 +20,7 @@ use iced::{
     widget::{self, scrollable::AbsoluteOffset},
 };
 use ql_core::{
-    DownloadProgress, GenericProgress, InstanceSelection, IntoStringError, ListEntry,
+    DownloadProgress, GenericProgress, Instance, InstanceKind, IntoStringError, ListEntry,
     OptifineUniqueVersion,
     file_utils::DirItem,
     jarmod::JarMods,
@@ -64,7 +65,7 @@ pub enum LaunchModal {
     InstanceOptions,
 
     // Sidebar
-    SCtxMenu(Option<(SidebarSelection, String)>, (f32, f32)),
+    SCtxMenu(Option<(SidebarSelection, Arc<str>)>, (f32, f32)),
     SDragging {
         being_dragged: SidebarSelection,
         dragged_to: Option<SDragLocation>,
@@ -155,7 +156,7 @@ impl MenuLaunch {
         }
     }
 
-    pub fn reload_notes(&mut self, instance: InstanceSelection) -> Task<Message> {
+    pub fn reload_notes(&mut self, instance: Instance) -> Task<Message> {
         self.notes = None;
         Task::perform(ql_instances::notes::read(instance), |n| {
             NotesMessage::Loaded(n.strerr()).into()
@@ -181,7 +182,7 @@ pub struct MenuEditInstance {
     // Renaming Instance:
     pub is_editing_name: bool,
     pub instance_name: String,
-    pub old_instance_name: String,
+    pub old_instance_name: Arc<str>,
     // Changing RAM:
     pub slider_value: f32,
     pub slider_text: String,
@@ -316,7 +317,7 @@ pub enum MenuEditModsModal {
 impl MenuEditMods {
     pub fn update_locally_installed_mods(
         idx: &ModIndex,
-        selected_instance: &InstanceSelection,
+        selected_instance: &Instance,
     ) -> Task<Message> {
         let mut blacklist = Vec::new();
         for mod_info in idx.mods.values() {
@@ -405,7 +406,7 @@ pub struct MenuCreateInstanceChoosing {
     pub _loading_list_handle: iced::task::Handle,
     pub list: Result<Option<Vec<ListEntry>>, String>,
     // UI:
-    pub is_server: bool,
+    pub kind: InstanceKind,
     pub search_box: String,
     pub show_category_dropdown: bool,
     pub selected_categories: HashSet<ql_core::ListEntryKind>,

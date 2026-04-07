@@ -1,4 +1,5 @@
 use iced::{Alignment, Length, widget};
+use ql_core::InstanceKind;
 
 use crate::{
     DEBUG_LOG_BUTTON_HEIGHT,
@@ -105,10 +106,9 @@ impl Launcher {
                 self.window_state.size.1,
             ),
             State::Create(menu) => menu.view(
-                if self.server_selected() {
-                    self.server_list.as_deref()
-                } else {
-                    self.client_list.as_deref()
+                match self.selected_kind() {
+                    Some(InstanceKind::Server) => self.server_list.as_deref(),
+                    Some(InstanceKind::Client) | None => self.client_list.as_deref(),
                 },
                 self.tick_timer,
             ),
@@ -138,9 +138,7 @@ impl Launcher {
                     .spacing(10)
                     .into()
             }
-            State::LogUploadResult { url } => {
-                view_log_upload_result(url, self.instance().is_server())
-            }
+            State::LogUploadResult { url } => view_log_upload_result(url),
             State::CreateShortcut(menu) => menu.view(&self.accounts_dropdown),
             State::LoginAlternate(menu) => menu.view(self.tick_timer),
             State::ExportInstance(menu) => menu.view(self.tick_timer),

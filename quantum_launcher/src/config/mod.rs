@@ -7,6 +7,7 @@ use ql_core::{
 };
 use ql_instances::auth::{AccountData, AccountType};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -181,18 +182,13 @@ impl LauncherConfig {
         Ok(())
     }
 
-    pub fn update_sidebar(&mut self, instances: &[String], is_server: bool) {
+    pub fn update_sidebar(&mut self, instances: &[String], kind: InstanceKind) {
         let sidebar = self.sidebar.get_or_insert_with(SidebarConfig::default);
-        let kind = if is_server {
-            InstanceKind::Server
-        } else {
-            InstanceKind::Client
-        };
 
         // Remove nonexistent instances
         sidebar.retain_instances(|node| match &node.kind {
             SidebarNodeKind::Instance(instance_kind) => {
-                (*instance_kind == kind && instances.contains(&node.name))
+                (*instance_kind == kind && instances.iter().any(|n| n == &*node.name))
                     || (*instance_kind != kind)
             }
             SidebarNodeKind::Folder { .. } => true,
@@ -200,9 +196,10 @@ impl LauncherConfig {
         // Add new instances
         for instance in instances {
             if !sidebar.contains_instance(instance, kind) {
-                sidebar
-                    .list
-                    .push(SidebarNode::new_instance(instance.clone(), kind));
+                sidebar.list.push(SidebarNode::new_instance(
+                    Arc::from(instance.as_str()),
+                    kind,
+                ));
             }
         }
     }
@@ -483,9 +480,10 @@ pub enum UiWindowDecorations {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PersistentSettings {
-    pub selected_instance: Option<String>,
-    pub selected_server: Option<String>,
+    pub selected_instance: Option<Arc<str>>,
     pub selected_remembered: bool,
+    // Since: TBD
+    pub selected_instance_kind: Option<InstanceKind>,
 
     #[serde(default = "default_true")]
     pub write_mod_update_changelog: bool,
@@ -501,7 +499,7 @@ impl Default for PersistentSettings {
     fn default() -> Self {
         Self {
             selected_instance: None,
-            selected_server: None,
+            selected_instance_kind: None,
             selected_remembered: true,
             write_mod_update_changelog: true,
             create_instance_filters: None,

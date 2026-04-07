@@ -1,24 +1,23 @@
 use std::path::Path;
 
 use ql_core::{
-    InstanceSelection, IntoIoError, IntoStringError, LAUNCHER_DIR, Loader, err,
-    find_forge_shim_file, json::InstanceConfigJson,
+    Instance, InstanceKind, IntoIoError, IntoStringError, Loader, err, find_forge_shim_file,
+    json::InstanceConfigJson,
 };
 
 use crate::loaders::{self, change_instance_type};
 
 use super::error::ForgeInstallError;
 
-pub async fn uninstall(instance: InstanceSelection) -> Result<(), String> {
-    match instance {
-        InstanceSelection::Instance(instance) => uninstall_client(&instance).await,
-        InstanceSelection::Server(instance) => uninstall_server(&instance).await.strerr(),
+pub async fn uninstall(instance: Instance) -> Result<(), String> {
+    let instance_dir = instance.get_instance_path();
+    match instance.kind {
+        InstanceKind::Client => uninstall_client(&instance_dir, instance).await,
+        InstanceKind::Server => uninstall_server(&instance_dir).await.strerr(),
     }
 }
 
-async fn uninstall_client(instance: &str) -> Result<(), String> {
-    let instance_dir = LAUNCHER_DIR.join("instances").join(instance);
-
+async fn uninstall_client(instance_dir: &Path, instance: Instance) -> Result<(), String> {
     let forge_dir = instance_dir.join("forge");
     if forge_dir.is_dir() {
         if let Err(err) = tokio::fs::remove_dir_all(&forge_dir)
@@ -44,15 +43,9 @@ async fn uninstall_client(instance: &str) -> Result<(), String> {
             .path(&installer_path)
             .strerr()?
         {
-            loaders::optifine::install(
-                instance.to_owned(),
-                installer_path.clone(),
-                None,
-                None,
-                None,
-            )
-            .await
-            .strerr()?;
+            loaders::optifine::install(instance, installer_path.clone(), None, None, None)
+                .await
+                .strerr()?;
             tokio::fs::remove_file(&installer_path)
                 .await
                 .path(&installer_path)
@@ -70,8 +63,7 @@ async fn uninstall_client(instance: &str) -> Result<(), String> {
     Ok(())
 }
 
-async fn uninstall_server(instance: &str) -> Result<(), ForgeInstallError> {
-    let instance_dir = LAUNCHER_DIR.join("servers").join(instance);
+async fn uninstall_server(instance_dir: &Path) -> Result<(), ForgeInstallError> {
     change_instance_type(&instance_dir, Loader::Vanilla, None).await?;
 
     if let Some(forge_shim_file) = find_forge_shim_file(&instance_dir).await {

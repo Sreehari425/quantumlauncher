@@ -6,7 +6,7 @@ use std::{
 
 use chrono::DateTime;
 use ql_core::{
-    GenericProgress, InstanceConfigJson, InstanceSelection, download, err, file_utils, info,
+    GenericProgress, InstanceConfigJson, Instance, download, err, file_utils, info,
     json::VersionDetails, pt,
 };
 
@@ -19,7 +19,7 @@ use crate::store::{
 use super::info::ProjectInfo;
 
 pub struct ModDownloader {
-    instance: InstanceSelection,
+    instance: Instance,
     version: String,
     loader: Option<&'static str>,
 
@@ -32,7 +32,7 @@ pub struct ModDownloader {
 
 impl ModDownloader {
     pub async fn new(
-        instance: &InstanceSelection,
+        instance: &Instance,
         sender: Option<Sender<GenericProgress>>,
     ) -> Result<ModDownloader, ModError> {
         let version_json = VersionDetails::load(instance).await?;
@@ -56,7 +56,7 @@ impl ModDownloader {
         })
     }
 
-    pub async fn basic(instance: &InstanceSelection) -> Result<ModDownloader, ModError> {
+    pub async fn basic(instance: &Instance) -> Result<ModDownloader, ModError> {
         let version_json = VersionDetails::load(instance).await?;
         let config = InstanceConfigJson::read(instance).await?;
 

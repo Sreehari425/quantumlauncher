@@ -2,7 +2,7 @@ use iced::{
     Alignment, Length,
     widget::{self, column, row, tooltip::Position},
 };
-use ql_core::{InstanceSelection, Loader, json::InstanceConfigJson};
+use ql_core::{Instance, InstanceKind, Loader, json::InstanceConfigJson};
 use ql_mod_manager::store::SelectedMod;
 
 use crate::{
@@ -27,7 +27,7 @@ pub const MODS_SIDEBAR_WIDTH: u16 = 190;
 impl MenuEditMods {
     pub fn view<'a>(
         &'a self,
-        selected_instance: &'a InstanceSelection,
+        selected_instance: &'a Instance,
         tick_timer: usize,
         images: &'a ImageState,
         window_height: f32,
@@ -110,7 +110,7 @@ impl MenuEditMods {
 
     fn get_sidebar<'a>(
         &'a self,
-        selected_instance: &'a InstanceSelection,
+        selected_instance: &'a Instance,
         tick_timer: usize,
     ) -> widget::Scrollable<'a, Message, LauncherTheme> {
         widget::scrollable(
@@ -128,7 +128,7 @@ impl MenuEditMods {
                     )
                 ]
                 .spacing(5),
-                self.get_mod_installer_buttons(selected_instance),
+                self.get_mod_installer_buttons(selected_instance.kind),
                 column![
                     button_with_icon(icons::download_s(15), "Download Content...", 14)
                         .on_press(InstallModsMessage::Open.into()),
@@ -192,10 +192,10 @@ impl MenuEditMods {
         }
     }
 
-    fn get_mod_installer_buttons(&'_ self, selected_instance: &InstanceSelection) -> Element<'_> {
+    fn get_mod_installer_buttons(&'_ self, kind: InstanceKind) -> Element<'_> {
         match self.config.mod_type {
-            Loader::Vanilla => match selected_instance {
-                InstanceSelection::Instance(_) => column![
+            Loader::Vanilla => match kind {
+                InstanceKind::Client => column![
                     "Install:",
                     row![
                         install_ldr("Fabric")
@@ -214,7 +214,7 @@ impl MenuEditMods {
                 ]
                 .spacing(5)
                 .into(),
-                InstanceSelection::Server(_) => column![
+                InstanceKind::Server => column![
                     "Install:",
                     row![
                         install_ldr("Fabric")
@@ -243,7 +243,7 @@ impl MenuEditMods {
 
             Loader::Forge => widget::Column::new()
                 .push_maybe(
-                    (!selected_instance.is_server())
+                    matches!(kind, InstanceKind::Client)
                         .then(|| Self::get_optifine_install_button(&self.config)),
                 )
                 .push(Self::get_uninstall_panel(self.config.mod_type))

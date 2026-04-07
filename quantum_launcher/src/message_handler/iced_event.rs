@@ -11,7 +11,7 @@ use iced::{
     keyboard::{self, Key, key::Named},
 };
 use ql_core::{
-    InstanceSelection, err,
+    Instance, err,
     jarmod::{JarMod, JarMods},
     pt,
 };
@@ -159,7 +159,7 @@ impl Launcher {
                 // MAIN MENU
                 // ========
                 ("n", true, _, _, State::Launch(_)) => {
-                    CreateInstanceMessage::ScreenOpen { is_server: false }.into()
+                    CreateInstanceMessage::ScreenOpen(ql_core::InstanceKind::Client).into()
                 }
                 ("1", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
                     MainMenuMessage::ChangeTab(LaunchTab::Buttons).into()
@@ -280,7 +280,7 @@ impl Launcher {
     }
 
     fn load_jarmods_from_path(
-        selected_instance: &InstanceSelection,
+        selected_instance: &Instance,
         path: &Path,
         filename: &str,
         jarmods: &mut JarMods,

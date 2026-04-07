@@ -4,7 +4,7 @@ use std::{
 };
 
 use ql_core::{
-    GenericProgress, InstanceConfigJson, InstanceSelection, download, err, file_utils, info,
+    GenericProgress, InstanceConfigJson, Instance, download, err, file_utils, info,
     json::VersionDetails, pt,
 };
 
@@ -19,7 +19,7 @@ use super::Mod;
 
 pub struct ModDownloader<'a> {
     version: String,
-    instance: InstanceSelection,
+    instance: Instance,
     pub loader: Option<&'static str>,
     pub index: ModIndex,
 
@@ -33,7 +33,7 @@ pub struct ModDownloader<'a> {
 
 impl<'a> ModDownloader<'a> {
     pub async fn new(
-        instance: InstanceSelection,
+        instance: Instance,
         sender: Option<&'a Sender<GenericProgress>>,
     ) -> Result<Self, ModError> {
         let version_json = VersionDetails::load(&instance).await?;
@@ -52,7 +52,7 @@ impl<'a> ModDownloader<'a> {
         })
     }
 
-    pub async fn basic(instance: InstanceSelection) -> Result<Self, ModError> {
+    pub async fn basic(instance: Instance) -> Result<Self, ModError> {
         let version_json = VersionDetails::load(&instance).await?;
         let config = InstanceConfigJson::read(&instance).await?;
 

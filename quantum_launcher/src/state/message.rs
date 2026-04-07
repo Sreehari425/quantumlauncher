@@ -8,7 +8,7 @@ use crate::{
 };
 use iced::widget::{self, scrollable::AbsoluteOffset};
 use ql_core::{
-    InstanceSelection, LaunchedProcess, ListEntry, Loader,
+    Instance, InstanceKind, LaunchedProcess, ListEntry, Loader,
     file_utils::DirItem,
     jarmod::JarMods,
     json::instance_config::{MainClassMode, PreLaunchPrefixMode},
@@ -49,16 +49,14 @@ pub enum InstallPaperMessage {
 
 #[derive(Debug, Clone)]
 pub enum CreateInstanceMessage {
-    ScreenOpen {
-        is_server: bool,
-    },
+    ScreenOpen(InstanceKind),
     SidebarResize(f32),
 
     VersionsLoaded(Res<(Vec<ListEntry>, String)>),
     VersionSelected(ListEntry),
     NameInput(String),
     ChangeAssetToggle(bool),
-    ChangeIsServer(bool),
+    ChangeKind(InstanceKind),
 
     SearchInput(String),
     SearchSubmit,
@@ -66,11 +64,11 @@ pub enum CreateInstanceMessage {
     CategoryToggle(ql_core::ListEntryKind),
 
     Start,
-    End(Res<InstanceSelection>),
+    End(Res<Instance>),
 
     #[allow(unused)]
     Import,
-    ImportResult(Res<Option<InstanceSelection>>),
+    ImportResult(Res<Option<Instance>>),
 }
 
 #[derive(Debug, Clone)]
@@ -388,7 +386,7 @@ pub enum SidebarMessage {
 pub enum MainMenuMessage {
     ChangeTab(LaunchTab),
     Modal(Option<LaunchModal>),
-    InstanceSelected(InstanceSelection),
+    InstanceSelected(Instance),
     UsernameSet(String),
     SetInfoMessage(Option<InfoMessage>),
 }
@@ -456,7 +454,7 @@ pub enum Message {
     LaunchStart,
     LaunchEnd(Res<LaunchedProcess>),
     LaunchKill,
-    LaunchGameExited(Res<(ExitStatus, InstanceSelection, Option<Diagnostic>)>),
+    LaunchGameExited(Res<(ExitStatus, Instance, Option<Diagnostic>)>),
 
     DeleteInstanceMenu,
     DeleteInstance,
@@ -482,7 +480,7 @@ pub enum Message {
     CoreOpenPath(PathBuf),
     CoreCopyText(String),
     CoreTick,
-    CoreListLoaded(Res<(Vec<String>, bool)>),
+    CoreListLoaded(Res<(Vec<String>, InstanceKind)>),
     CoreOpenChangeLog,
     CoreOpenIntro,
     CoreEvent(iced::Event, iced::event::Status),

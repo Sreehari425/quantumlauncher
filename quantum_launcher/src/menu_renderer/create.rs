@@ -4,7 +4,7 @@ use iced::{
     Alignment, Length,
     widget::{self, column, row, tooltip::Position},
 };
-use ql_core::ListEntryKind;
+use ql_core::{InstanceKind, ListEntryKind};
 
 use crate::{
     cli::{EXPERIMENTAL_MMC_IMPORT, EXPERIMENTAL_SERVERS},
@@ -105,7 +105,7 @@ impl MenuCreateInstanceChoosing {
 
         let versions_iter = versions
             .iter()
-            .filter(|n| n.supports_server || !self.is_server)
+            .filter(|n| n.supports_server || !matches!(self.kind, InstanceKind::Server))
             .filter(|n| self.selected_categories.contains(&n.kind))
             .filter(|n| {
                 self.search_box.trim().is_empty()
@@ -202,8 +202,8 @@ impl MenuCreateInstanceChoosing {
             )
             .push_maybe(enabled_servers.then(|| {
                 let radio = |l, v| {
-                    widget::radio(l, v, Some(self.is_server), |t| {
-                        CreateInstanceMessage::ChangeIsServer(t).into()
+                    widget::radio(l, v, Some(self.kind), |t| {
+                        CreateInstanceMessage::ChangeKind(t).into()
                     })
                     .spacing(4)
                     .size(12)
@@ -211,8 +211,8 @@ impl MenuCreateInstanceChoosing {
                 };
                 row![
                     widget::text("Create:").size(12),
-                    radio("Instance", false),
-                    radio("Server", true)
+                    radio("Instance", InstanceKind::Client),
+                    radio("Server", InstanceKind::Server)
                 ]
                 .spacing(4)
                 .align_y(Alignment::Center)
@@ -228,20 +228,23 @@ impl MenuCreateInstanceChoosing {
         });
 
         let main_part = column![
-            widget::text!("Create {}", if self.is_server { "Server" } else { "Instance" })
+            widget::text!("Create {}", match self.kind {
+                InstanceKind::Client => "Instance",
+                InstanceKind::Server => "Server",
+            })
                 .size(24),
             row![
                 widget::text("Name:").size(18),
-                if self.is_server {
-                    widget::text_input(&format!("{} server", self.selected_version.name), &self.instance_name)
-                } else {
-                    widget::text_input(&self.selected_version.name, &self.instance_name)
-                }.on_input(|n| CreateInstanceMessage::NameInput(n).into())
+                match self.kind {
+                    InstanceKind::Server => widget::text_input(&format!("{} server", self.selected_version.name), &self.instance_name),
+                    InstanceKind::Client => widget::text_input(&self.selected_version.name, &self.instance_name),
+                }
+                .on_input(|n| CreateInstanceMessage::NameInput(n).into())
 
             ].spacing(10).align_y(Alignment::Center),
         ]
 
-        .push_maybe((!self.is_server).then(|| tooltip(
+        .push_maybe(matches!(self.kind, InstanceKind::Client).then(|| tooltip(
             row![
                 widget::Space::with_width(5),
                 widget::checkbox("Download assets?", self.download_assets).text_size(14).size(14).on_toggle(|t| Message::CreateInstance(CreateInstanceMessage::ChangeAssetToggle(t)))

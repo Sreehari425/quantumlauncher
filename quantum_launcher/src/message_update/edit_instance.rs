@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use iced::Task;
 use ql_core::{
     IntoIoError, IntoStringError, LAUNCHER_DIR, err,
@@ -374,7 +376,8 @@ impl Launcher {
             return Ok(Task::none());
         }
 
-        if menu.old_instance_name == sanitized_name || menu.old_instance_name == menu.instance_name
+        if &*menu.old_instance_name == sanitized_name
+            || &*menu.old_instance_name == menu.instance_name
         {
             // Don't waste time talking to OS
             // and "renaming" instance if nothing has changed.
@@ -388,7 +391,7 @@ impl Launcher {
                 "instances"
             });
 
-        let old_path = instances_dir.join(&menu.old_instance_name);
+        let old_path = instances_dir.join(&*menu.old_instance_name);
         let new_path = instances_dir.join(&sanitized_name);
 
         if new_path.parent().is_none_or(|n| n != instances_dir) {
@@ -397,30 +400,27 @@ impl Launcher {
         }
 
         let old_name = menu.old_instance_name.clone();
-        menu.old_instance_name.clone_from(&sanitized_name);
+        menu.old_instance_name = Arc::from(sanitized_name.as_str());
         std::fs::rename(&old_path, &new_path)
             .path(&old_path)
             .strerr()?;
 
         let mut instance = self.selected_instance.clone().unwrap();
-        instance.set_name(sanitized_name.clone());
+        instance.name = Arc::from(sanitized_name.as_str());
 
         if let Some(s) = &mut self.config.sidebar {
             s.rename(
-                &SidebarSelection::Instance(old_name, instance.kind()),
+                &SidebarSelection::Instance(old_name, instance.kind),
                 &sanitized_name,
             );
         }
 
-        Ok(Task::perform(
-            get_entries(self.instance().is_server()),
-            move |n| {
-                Message::Multiple(vec![
-                    Message::CoreListLoaded(n),
-                    MainMenuMessage::InstanceSelected(instance.clone()).into(),
-                ])
-            },
-        ))
+        Ok(Task::perform(get_entries(self.instance().kind), move |n| {
+            Message::Multiple(vec![
+                Message::CoreListLoaded(n),
+                MainMenuMessage::InstanceSelected(instance.clone()).into(),
+            ])
+        }))
     }
 }
 

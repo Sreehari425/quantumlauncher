@@ -20,10 +20,10 @@ use ql_core::json::VersionDetails;
 use ql_core::json::instance_config::ModTypeInfo;
 use ql_core::read_log::{Diagnostic, ReadError};
 use ql_core::{
-    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
-    err, json::instance_config::InstanceConfigJson,
+    GenericProgress, Instance, IntoIoError, IntoJsonError, IntoStringError, JsonFileError, err,
+    json::instance_config::InstanceConfigJson,
 };
-use ql_core::{LaunchedProcess, info, pt};
+use ql_core::{InstanceKind, LaunchedProcess, info, pt};
 use ql_instances::auth::AccountData;
 use ql_mod_manager::{loaders, store::ModIndex};
 use std::{
@@ -41,19 +41,13 @@ pub const SIDEBAR_LIMIT_LEFT: f32 = 135.0;
 mod iced_event;
 
 impl Launcher {
-    pub fn select_instance(&mut self, instance: InstanceSelection) -> Task<Message> {
+    pub fn select_instance(&mut self, instance: Instance) -> Task<Message> {
         self.selected_instance = Some(instance.clone());
         self.load_edit_instance(None);
 
         {
             let persistent = self.config.c_persistent();
-            if persistent.selected_remembered {
-                match instance.clone() {
-                    InstanceSelection::Instance(n) => persistent.selected_instance = Some(n),
-                    InstanceSelection::Server(n) => persistent.selected_server = Some(n),
-                }
-                self.autosave.remove(&AutoSaveKind::LauncherConfig);
-            }
+            persistent.selected_instance = Some(instance.name.clone());
         }
         self.load_logs();
         if let State::Launch(menu) = &mut self.state {
@@ -96,7 +90,7 @@ impl Launcher {
         let global_settings = self.config.global_settings.clone();
         let extra_java_args = self.config.extra_java_args.clone().unwrap_or_default();
 
-        let instance_name = self.instance().get_name().to_owned();
+        let instance_name = self.instance().name.clone();
         Task::perform(
             async move {
                 ql_instances::launch(
@@ -206,14 +200,15 @@ impl Launcher {
 
     pub fn unselect_instance(&mut self) {
         self.selected_instance = None;
-        self.config.c_persistent().selected_instance = None;
-        self.config.c_persistent().selected_server = None;
+        let p = self.config.c_persistent();
+        p.selected_instance = None;
+        p.selected_instance_kind = None;
         self.autosave.remove(&AutoSaveKind::LauncherConfig);
     }
 
     pub fn load_edit_instance_inner(
         edit_instance: &mut Option<MenuEditInstance>,
-        selected_instance: &InstanceSelection,
+        selected_instance: &Instance,
     ) -> Result<(), JsonFileError> {
         let config_path = selected_instance.get_instance_path().join("config.json");
 
@@ -227,14 +222,12 @@ impl Launcher {
         // Use this to check for performance impact
         // std::thread::sleep(std::time::Duration::from_millis(500));
 
-        let instance_name = selected_instance.get_name();
-
         *edit_instance = Some(MenuEditInstance {
             main_class_mode: config_json.get_main_class_mode(),
             config: config_json,
             slider_value,
-            instance_name: instance_name.to_owned(),
-            old_instance_name: instance_name.to_owned(),
+            instance_name: selected_instance.name.to_string(),
+            old_instance_name: selected_instance.name.clone(),
             slider_text: format_memory(memory_mb),
             memory_input: memory_mb.to_string(),
             is_editing_name: false,
@@ -304,7 +297,7 @@ impl Launcher {
     pub fn set_game_exited(
         &mut self,
         status: ExitStatus,
-        instance: &InstanceSelection,
+        instance: &Instance,
         diagnostic: Option<Diagnostic>,
     ) {
         let kind = if instance.is_server() {
@@ -430,19 +423,18 @@ impl Launcher {
         command
     }
 
-    pub fn server_selected(&self) -> bool {
-        self.selected_instance
-            .as_ref()
-            .is_some_and(InstanceSelection::is_server)
-            || if let State::Create(MenuCreateInstance::Choosing(MenuCreateInstanceChoosing {
-                is_server,
+    pub fn selected_kind(&self) -> Option<InstanceKind> {
+        self.selected_instance.as_ref().map(|n| n.kind).or(
+            if let State::Create(MenuCreateInstance::Choosing(MenuCreateInstanceChoosing {
+                kind,
                 ..
             })) = &self.state
             {
-                *is_server
+                Some(*kind)
             } else {
-                false
-            }
+                None
+            },
+        )
     }
 
     pub fn get_selected_dot_minecraft_dir(&self) -> Option<PathBuf> {
@@ -556,14 +548,14 @@ impl Launcher {
         let Some(instance) = &self.selected_instance else {
             return Task::none();
         };
-        match instance {
-            InstanceSelection::Instance(_) => {
+        match instance.kind {
+            InstanceKind::Client => {
                 if let Some(process) = self.processes.remove(instance) {
                     let mut child = block_on(process.child.child.lock());
                     _ = child.start_kill();
                 }
             }
-            InstanceSelection::Server(_) => {
+            InstanceKind::Server => {
                 if let Some(GameProcess {
                     server_input: Some((stdin, has_issued_stop_command)),
                     child,
@@ -610,8 +602,8 @@ impl Launcher {
         }
         self.logs.remove(selected_instance);
 
-        match selected_instance {
-            InstanceSelection::Instance(_) => {
+        match selected_instance.kind {
+            InstanceKind::Client => {
                 if self.account_selected == OFFLINE_ACCOUNT_NAME
                     && (self.config.username.is_empty() || self.config.username.contains(' '))
                 {
@@ -631,11 +623,11 @@ impl Launcher {
                 // directly launch the game
                 self.launch_game(account_data)
             }
-            InstanceSelection::Server(server) => {
+            InstanceKind::Server => {
                 let (sender, receiver) = std::sync::mpsc::channel();
                 self.java_recv = Some(ProgressBar::with_recv(receiver));
 
-                let server = server.clone();
+                let server = selected_instance.name.clone();
                 Task::perform(
                     async move { ql_servers::run(server, Some(sender)).await.strerr() },
                     Message::LaunchEnd,
@@ -691,7 +683,7 @@ pub enum ForgeKind {
     OptiFine,
 }
 
-async fn copy_optifine_over(instance: &InstanceSelection) -> Result<(), String> {
+async fn copy_optifine_over(instance: &Instance) -> Result<(), String> {
     let instance_dir = instance.get_instance_path();
     let installer_path = instance_dir.join("optifine/OptiFine.jar");
     let mods_dir = instance_dir.join(".minecraft/mods");
