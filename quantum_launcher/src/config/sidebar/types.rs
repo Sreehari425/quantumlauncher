@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ql_core::InstanceSelection;
+use ql_core::{InstanceKind, InstanceSelection};
 use serde::{Deserialize, Serialize};
 
 use crate::config::sidebar::SidebarNode;
@@ -95,21 +95,6 @@ pub struct FolderId(u128);
 impl FolderId {
     pub fn new() -> Self {
         Self(rand::random())
-    }
-}
-
-// TODO: Refactor the entire launcher to use this
-// instead of `is_server: bool`
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[serde(rename_all = "snake_case")]
-pub enum InstanceKind {
-    Client,
-    Server,
-}
-
-impl InstanceKind {
-    pub fn is_server(self) -> bool {
-        matches!(self, Self::Server)
     }
 }
 

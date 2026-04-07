@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use ql_core::InstanceKind;
 use serde::{Deserialize, Serialize};
 
 mod drag_drop;
@@ -102,28 +103,25 @@ impl SidebarConfig {
         self.list.extend(temp);
     }
 
-    pub fn rename_folder(&mut self, id: FolderId, new_name: &str) {
-        fn walk(node: &mut SidebarNode, id: FolderId, new_name: &str) -> bool {
-            let SidebarNodeKind::Folder(f) = &mut node.kind else {
-                return false;
-            };
-
-            if f.id == id {
-                // Finally rename the thing
+    pub fn rename(&mut self, selection: &SidebarSelection, new_name: &str) {
+        fn walk(node: &mut SidebarNode, selection: &SidebarSelection, new_name: &str) -> bool {
+            if node == selection {
                 new_name.clone_into(&mut node.name);
                 return true;
             }
 
-            for child in &mut f.children {
-                if walk(child, id, new_name) {
-                    return true;
+            if let SidebarNodeKind::Folder(f) = &mut node.kind {
+                for child in &mut f.children {
+                    if walk(child, selection, new_name) {
+                        return true;
+                    }
                 }
             }
             false
         }
 
         for child in &mut self.list {
-            if walk(child, id, new_name) {
+            if walk(child, selection, new_name) {
                 break;
             }
         }
@@ -147,6 +145,7 @@ impl SidebarConfig {
         }
     }
 
+    #[must_use]
     pub fn get_node(&self, selection: &SidebarSelection) -> Option<&SidebarNode> {
         fn walk<'a>(
             child: &'a SidebarNode,

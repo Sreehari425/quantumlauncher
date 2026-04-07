@@ -310,6 +310,30 @@ impl InstanceSelection {
     pub fn get_pair(&self) -> (&str, bool) {
         (self.get_name(), self.is_server())
     }
+
+    #[must_use]
+    pub fn kind(&self) -> InstanceKind {
+        match self {
+            Self::Instance(_) => InstanceKind::Client,
+            Self::Server(_) => InstanceKind::Server,
+        }
+    }
+}
+
+// TODO: Refactor the entire launcher to use this
+// instead of `is_server: bool`
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum InstanceKind {
+    Client,
+    Server,
+}
+
+impl InstanceKind {
+    #[must_use]
+    pub fn is_server(self) -> bool {
+        matches!(self, Self::Server)
+    }
 }
 
 /// A struct representing information about a Minecraft version

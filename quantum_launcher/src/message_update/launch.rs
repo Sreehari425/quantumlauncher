@@ -157,7 +157,9 @@ impl Launcher {
                     ..
                 }) = &self.state
                 {
-                    self.config.c_sidebar().rename_folder(*id, name);
+                    self.config
+                        .c_sidebar()
+                        .rename(&SidebarSelection::Folder(*id), name);
                     self.hide_submenu();
                 }
                 self.sidebar_update_state();
