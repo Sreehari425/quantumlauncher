@@ -524,14 +524,14 @@ impl Launcher {
         match &self.selected_instance {
             Some(n) if self.processes.contains_key(n) => tooltip(
                 button_with_icon(icons::play(), "Stop", 16)
-                    .width(97)
+                    .width(98)
                     .on_press(Message::LaunchKill),
                 shortcut_ctrl("Escape"),
                 Position::Bottom,
             ),
             _ => tooltip(
                 button_with_icon(icons::play(), "Start", 16)
-                    .width(97)
+                    .width(98)
                     .on_press(Message::LaunchStart),
                 "By starting the server, you agree to the EULA",
                 Position::Bottom,

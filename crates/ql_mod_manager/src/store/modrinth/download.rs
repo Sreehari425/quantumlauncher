@@ -262,7 +262,7 @@ impl ModDownloader {
                 .into_iter()
                 .next_back()
                 .ok_or(ModError::NoCompatibleVersionFound(
-                    title.map(str::to_owned).unwrap_or_else(|| id.to_owned()),
+                    title.map_or_else(|| id.to_owned(), str::to_owned),
                 ))?;
 
         Ok(download_version)
