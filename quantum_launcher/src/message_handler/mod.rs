@@ -459,7 +459,7 @@ impl Launcher {
                     let built_activity = activity.build();
                     c.set_activity(built_activity).await.ok();
                 },
-                |_| Message::DiscordIPCBasicPresenceSet,
+                |_| Message::DiscordIPCPresenceSet,
             )
         } else {
             Task::none()

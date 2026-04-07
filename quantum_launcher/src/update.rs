@@ -11,8 +11,8 @@ use crate::launcher_update::UpdateCheckInfo;
 use crate::{
     state::{
         AutoSaveKind, CustomJarState, GameProcess, InfoMessage, LaunchTab, Launcher,
-        LauncherSettingsMessage, ManageModsMessage, MenuExportInstance, MenuLaunch, MenuLicense,
-        MenuWelcome, Message, ProgressBar, State,
+        LauncherSettingsMessage, LauncherSettingsTab, ManageModsMessage, MenuExportInstance,
+        MenuLaunch, MenuLauncherSettings, MenuLicense, MenuWelcome, Message, ProgressBar, State,
     },
     stylesheet::styles::LauncherThemeLightness,
 };
@@ -24,8 +24,18 @@ impl Launcher {
                 self.discord_ipc_client = Some(c);
                 return self.set_custom_discord_presence();
             }
-            Message::DiscordIPCBasicPresenceSet => {
-                info!("Rich presence has been set.")
+            Message::DiscordIPCPresenceSet => {
+                self.is_presence_running = true;
+
+                if let State::LauncherSettings(MenuLauncherSettings {
+                    selected_tab: LauncherSettingsTab::Presence,
+                    ..
+                }) = &self.state
+                {
+                    self.update_state_presence(LauncherSettingsTab::Presence);
+                }
+
+                info!("Rich presence has been set.");
             }
             Message::Nothing | Message::CoreCleanComplete(Ok(())) => {}
             Message::Error(err) => self.set_error(err),

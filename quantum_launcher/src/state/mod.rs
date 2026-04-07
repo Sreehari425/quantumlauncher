@@ -58,6 +58,7 @@ pub struct Launcher {
     pub is_launching_game: bool,
 
     pub discord_ipc_client: Option<DiscordIPCClient>,
+    pub is_presence_running: bool,
 
     pub java_recv: Option<ProgressBar<GenericProgress>>,
     pub custom_jar: Option<CustomJarState>,
@@ -193,6 +194,7 @@ impl Launcher {
             is_launching_game: false,
 
             discord_ipc_client: None,
+            is_presence_running: false,
 
             log_scroll: 0,
             tick_timer: 0,
@@ -248,6 +250,7 @@ impl Launcher {
             tick_timer: 0,
 
             discord_ipc_client: None,
+            is_presence_running: false,
 
             logs: HashMap::new(),
             processes: HashMap::new(),

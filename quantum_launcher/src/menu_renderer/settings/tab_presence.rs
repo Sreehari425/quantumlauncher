@@ -1,4 +1,4 @@
-use iced::widget::{self, column};
+use iced::widget::{self, column, row};
 
 use crate::{
     config::LauncherConfig,
@@ -18,9 +18,30 @@ impl MenuLauncherSettings {
                         LauncherSettingsMessage::ToggleDiscordRichPresence(n)
                     )),
                 widget::text("Sometimes toggling this option might take some time to apply the activity updates on Discord.").size(12).style(tsubtitle),
+                widget::Space::with_height(5),
+                    if self.is_presence_running {
+                        row!(
+                            icons::version_tick_s(13),
+                            widget::Space::with_width(5),
+                            widget::text("Synced!").size(13).style(tsubtitle)
+                        )
+                    } else if config.rich_presence.unwrap_or(true) {
+                        row!(
+                            icons::clock_s(13),
+                            widget::Space::with_width(5),
+                            widget::text("Awaiting sync...").size(13).style(tsubtitle),
+                        )
+                    } else {
+                        row!(
+                            icons::cross_s(13),
+                            widget::Space::with_width(5),
+                            widget::text("Not enabled.").size(13).style(tsubtitle)
+                        )
+                    }
 
             ]
             .spacing(5),
+
 
             column![
                 widget::text("Custom Presence"),

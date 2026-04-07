@@ -16,8 +16,8 @@ mod recommended;
 
 use crate::config::UiWindowDecorations;
 use crate::state::{
-    AutoSaveKind, GameLogMessage, InfoMessage, InstanceNotes, MenuLaunch, MenuModDescription,
-    ModDescriptionMessage, NotesMessage,
+    AutoSaveKind, GameLogMessage, InfoMessage, InstanceNotes, LauncherSettingsTab, MenuLaunch,
+    MenuLauncherSettings, MenuModDescription, ModDescriptionMessage, NotesMessage,
 };
 use crate::{
     config::UiSettings,
@@ -323,12 +323,21 @@ impl Launcher {
                     return self.start_discord_ipc_run();
                 } else {
                     let client = self.discord_ipc_client.clone();
+                    self.is_presence_running = false;
 
                     tokio::spawn(async move {
                         if let Some(c) = client {
                             c.close().await.ok();
                         }
                     });
+
+                    if let State::LauncherSettings(MenuLauncherSettings {
+                        selected_tab: LauncherSettingsTab::Presence,
+                        ..
+                    }) = &self.state
+                    {
+                        self.update_state_presence(LauncherSettingsTab::Presence);
+                    }
                 }
             }
             LauncherSettingsMessage::ToggleWindowSize(t) => {
@@ -429,6 +438,7 @@ impl Launcher {
             temp_scale: self.config.ui_scale.unwrap_or(1.0),
             selected_tab: tab,
             arg_split_by_space: true,
+            is_presence_running: self.is_presence_running,
             default_presence_details: self
                 .config
                 .rich_presence_basic_details

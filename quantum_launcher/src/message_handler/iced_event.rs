@@ -3,8 +3,8 @@ use crate::state::{
     AutoSaveKind, CreateInstanceMessage, InfoMessage, LaunchTab, Launcher, LauncherSettingsMessage,
     LauncherSettingsTab, MainMenuMessage, ManageModsMessage, MenuCreateInstance,
     MenuCreateInstanceChoosing, MenuEditMods, MenuEditPresets, MenuExportInstance,
-    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLauncherSettings,
-    MenuLoginAlternate, MenuLoginMS, MenuRecommendedMods, MenuWelcome, Message, State,
+    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLoginAlternate, MenuLoginMS,
+    MenuRecommendedMods, MenuWelcome, Message, State,
 };
 use iced::{
     Task,
@@ -339,21 +339,7 @@ impl Launcher {
                 if affect {
                     if let State::LauncherSettings(_) = &self.state {
                     } else {
-                        self.state = State::LauncherSettings(MenuLauncherSettings {
-                            temp_scale: self.config.ui_scale.unwrap_or(1.0),
-                            selected_tab: LauncherSettingsTab::About,
-                            arg_split_by_space: true,
-                            default_presence_details: self
-                                .config
-                                .rich_presence_basic_details
-                                .clone()
-                                .unwrap_or_default(),
-                            default_presence_state: self
-                                .config
-                                .rich_presence_basic_state
-                                .clone()
-                                .unwrap_or_default(),
-                        });
+                        self.update_state_presence(LauncherSettingsTab::About);
                     }
                 }
                 return (true, Task::none());
