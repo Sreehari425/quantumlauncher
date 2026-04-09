@@ -215,7 +215,7 @@ fn xml_parse(
 }
 
 async fn is_xml(instance: &Instance) -> Result<bool, ReadError> {
-    let json = VersionDetails::load(&instance).await?;
+    let json = VersionDetails::load(instance).await?;
 
     Ok(json.logging.is_some())
 }

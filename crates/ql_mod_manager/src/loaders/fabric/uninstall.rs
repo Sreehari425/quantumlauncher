@@ -19,7 +19,7 @@ async fn delete(server_dir: &Path, name: &str) -> Result<(), IoError> {
 }
 
 async fn uninstall_server(server_name: &str) -> Result<(), FabricInstallError> {
-    let server_dir = LAUNCHER_DIR.join("servers").join(&server_name);
+    let server_dir = LAUNCHER_DIR.join("servers").join(server_name);
 
     info!("Uninstalling fabric from server: {server_name}");
 
@@ -55,7 +55,7 @@ async fn uninstall_server(server_name: &str) -> Result<(), FabricInstallError> {
 }
 
 async fn uninstall_client(instance_name: &str) -> Result<(), FabricInstallError> {
-    let instance_dir = LAUNCHER_DIR.join("instances").join(&instance_name);
+    let instance_dir = LAUNCHER_DIR.join("instances").join(instance_name);
 
     let libraries_dir = instance_dir.join("libraries");
 

@@ -29,7 +29,7 @@ async fn uninstall_client(instance_dir: &Path, instance: Instance) -> Result<(),
         }
     }
 
-    let mut config = InstanceConfigJson::read_from_dir(&instance_dir)
+    let mut config = InstanceConfigJson::read_from_dir(instance_dir)
         .await
         .strerr()?;
     config.mod_type = if let Some(jar) = config
@@ -58,15 +58,15 @@ async fn uninstall_client(instance_dir: &Path, instance: Instance) -> Result<(),
     } else {
         Loader::Vanilla
     };
-    config.save_to_dir(&instance_dir).await.strerr()?;
+    config.save_to_dir(instance_dir).await.strerr()?;
 
     Ok(())
 }
 
 async fn uninstall_server(instance_dir: &Path) -> Result<(), ForgeInstallError> {
-    change_instance_type(&instance_dir, Loader::Vanilla, None).await?;
+    change_instance_type(instance_dir, Loader::Vanilla, None).await?;
 
-    if let Some(forge_shim_file) = find_forge_shim_file(&instance_dir).await {
+    if let Some(forge_shim_file) = find_forge_shim_file(instance_dir).await {
         tokio::fs::remove_file(&forge_shim_file)
             .await
             .path(forge_shim_file)?;

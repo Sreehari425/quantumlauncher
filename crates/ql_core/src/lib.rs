@@ -299,7 +299,7 @@ impl Instance {
 
     #[must_use]
     pub fn get_name(&self) -> &str {
-        &*self.name
+        &self.name
     }
 
     #[must_use]
