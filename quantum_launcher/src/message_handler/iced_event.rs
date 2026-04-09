@@ -1,3 +1,4 @@
+use crate::message_handler::arrow_keys::InstSelectOperation;
 use crate::message_update::MSG_RESIZE;
 use crate::state::{
     AutoSaveKind, CreateInstanceMessage, InfoMessage, LaunchTab, Launcher, LauncherSettingsMessage,
@@ -193,9 +194,9 @@ impl Launcher {
             }
         } else if let (State::Launch(_), true) = (&self.state, ignored) {
             if let Key::Named(Named::ArrowUp) = key {
-                return self.key_change_selected_instance(false);
+                return self.select_instance_recursive(InstSelectOperation::Up);
             } else if let Key::Named(Named::ArrowDown) = key {
-                return self.key_change_selected_instance(true);
+                return self.select_instance_recursive(InstSelectOperation::Down);
             } else if let Key::Named(Named::Enter) = key {
                 if modifiers.command() {
                     return self.launch_start();
