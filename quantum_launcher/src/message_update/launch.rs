@@ -52,7 +52,8 @@ impl Launcher {
                 }
             }
             MainMenuMessage::InstanceSelected(inst) => {
-                return self.select_instance(inst);
+                self.selected_instance = Some(inst);
+                return self.on_selecting_instance();
             }
             MainMenuMessage::UsernameSet(username) => {
                 self.config.username = username;
@@ -85,21 +86,9 @@ impl Launcher {
                     );
                 }
             }
-            SidebarMessage::Scroll {
-                total,
-                offset,
-                bounds,
-            } => {
-                if let State::Launch(MenuLaunch {
-                    sidebar_scroll_total,
-                    sidebar_scroll_offset,
-                    sidebar_scroll_bounds,
-                    ..
-                }) = &mut self.state
-                {
-                    *sidebar_scroll_total = total;
-                    *sidebar_scroll_offset = offset;
-                    *sidebar_scroll_bounds = Some(bounds);
+            SidebarMessage::Scroll(scroll) => {
+                if let State::Launch(MenuLaunch { sidebar_scroll, .. }) = &mut self.state {
+                    *sidebar_scroll = scroll;
                 }
             }
             SidebarMessage::NewFolder(at_position) => {

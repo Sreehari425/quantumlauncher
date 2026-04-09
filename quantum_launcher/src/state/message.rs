@@ -3,7 +3,7 @@ use std::{collections::HashSet, path::PathBuf, process::ExitStatus};
 use crate::{
     config::sidebar::{FolderId, SDragLocation, SidebarSelection},
     message_handler::ForgeKind,
-    state::{InfoMessage, LaunchModal, MenuEditModsModal},
+    state::{InfoMessage, LaunchModal, MenuEditModsModal, SidebarScroll},
     stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
 };
 use iced::widget::{self, scrollable::AbsoluteOffset};
@@ -365,11 +365,7 @@ pub enum GameLogMessage {
 #[derive(Debug, Clone)]
 pub enum SidebarMessage {
     Resize(f32),
-    Scroll {
-        total: f32,
-        offset: f32,
-        bounds: iced::Rectangle,
-    },
+    Scroll(SidebarScroll),
     FolderRenameConfirm,
 
     NewFolder(Option<SidebarSelection>),

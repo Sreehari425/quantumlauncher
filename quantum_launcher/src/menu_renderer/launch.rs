@@ -12,7 +12,7 @@ use crate::menu_renderer::{
 };
 use crate::state::{
     GameLogMessage, InstanceNotes, LaunchModal, MainMenuMessage, NotesMessage, ShortcutMessage,
-    SidebarMessage, WindowMessage,
+    SidebarMessage, SidebarScroll, WindowMessage,
 };
 use crate::{
     icons,
@@ -366,12 +366,12 @@ impl Launcher {
                     .style(LauncherTheme::style_scrollable_flat_extra_dark)
                     .id(widget::scrollable::Id::new("MenuLaunch:sidebar"))
                     .on_scroll(|n| {
-                        let total = n.content_bounds().height - n.bounds().height;
-                        SidebarMessage::Scroll {
-                            total,
+                        let remaining = n.content_bounds().height - n.bounds().height;
+                        SidebarMessage::Scroll(SidebarScroll {
+                            remaining,
                             offset: n.absolute_offset().y,
-                            bounds: n.bounds(),
-                        }
+                            bounds: Some(n.bounds()),
+                        })
                         .into()
                     })
             )

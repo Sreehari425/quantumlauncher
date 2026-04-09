@@ -107,9 +107,7 @@ pub struct MenuLaunch {
     pub log_state: Option<LogState>,
     pub modal: Option<LaunchModal>,
 
-    pub sidebar_scroll_total: f32,
-    pub sidebar_scroll_offset: f32,
-    pub sidebar_scroll_bounds: Option<Rectangle>,
+    pub sidebar_scroll: SidebarScroll,
     pub sidebar_grid_state: widget::pane_grid::State<bool>,
     sidebar_split: Option<widget::pane_grid::Split>,
 
@@ -119,6 +117,23 @@ pub struct MenuLaunch {
 impl Default for MenuLaunch {
     fn default() -> Self {
         Self::new(None)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct SidebarScroll {
+    pub remaining: f32,
+    pub offset: f32,
+    pub bounds: Option<Rectangle>,
+}
+
+impl Default for SidebarScroll {
+    fn default() -> Self {
+        Self {
+            remaining: 100.0,
+            offset: 0.0,
+            bounds: None,
+        }
     }
 }
 
@@ -138,9 +153,7 @@ impl MenuLaunch {
             tab: LaunchTab::default(),
             edit_instance: None,
             login_progress: None,
-            sidebar_scroll_total: 100.0,
-            sidebar_scroll_offset: 0.0,
-            sidebar_scroll_bounds: None,
+            sidebar_scroll: SidebarScroll::default(),
             sidebar_grid_state,
             log_state: None,
             is_uploading_mclogs: false,

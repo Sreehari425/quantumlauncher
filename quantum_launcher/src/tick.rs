@@ -6,8 +6,8 @@ use std::{
 
 use iced::{Rectangle, Task, widget::text_editor};
 use ql_core::{
-    Instance, IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
-    constants::OS_NAME, json::InstanceConfigJson,
+    Instance, IntoIoError, IntoJsonError, IntoStringError, JsonFileError, constants::OS_NAME,
+    json::InstanceConfigJson,
 };
 use ql_mod_manager::store::{ModConfig, ModId, ModIndex};
 
@@ -213,11 +213,12 @@ impl Launcher {
             return;
         };
 
-        if menu.sidebar_scroll_total <= 0.0 {
+        let scroll = menu.sidebar_scroll;
+        if scroll.remaining <= 0.0 {
             return;
         }
 
-        let bounds = menu.sidebar_scroll_bounds.unwrap_or_else(|| {
+        let bounds = scroll.bounds.unwrap_or_else(|| {
             let (width, height) = self.window_state.size;
             let sidebar_width = width * SIDEBAR_WIDTH;
             let usable_height = (height - FALLBACK_TOP - FALLBACK_BOTTOM).max(0.0);
@@ -252,9 +253,9 @@ impl Launcher {
             return;
         }
 
-        let new_offset = (menu.sidebar_scroll_offset + delta).clamp(0.0, menu.sidebar_scroll_total);
+        let new_offset = (scroll.offset + delta).clamp(0.0, scroll.remaining);
 
-        if (new_offset - menu.sidebar_scroll_offset).abs() < 0.25 {
+        if (new_offset - scroll.offset).abs() < 0.25 {
             return;
         }
 

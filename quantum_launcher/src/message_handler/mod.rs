@@ -38,21 +38,24 @@ use tokio::io::AsyncWriteExt;
 pub const SIDEBAR_LIMIT_RIGHT: f32 = 140.0;
 pub const SIDEBAR_LIMIT_LEFT: f32 = 135.0;
 
+mod arrow_keys;
 mod iced_event;
 
 impl Launcher {
-    pub fn select_instance(&mut self, instance: Instance) -> Task<Message> {
-        self.selected_instance = Some(instance.clone());
+    pub fn on_selecting_instance(&mut self) -> Task<Message> {
         self.load_edit_instance(None);
+        let Some(instance) = self.selected_instance.clone() else {
+            return Task::none();
+        };
 
-        {
-            let persistent = self.config.c_persistent();
-            persistent.selected_instance = Some(instance.name.clone());
-        }
+        let persistent = self.config.c_persistent();
+        persistent.selected_instance = Some(instance.name.clone());
+        self.autosave.remove(&AutoSaveKind::LauncherConfig);
+
         self.load_logs();
         if let State::Launch(menu) = &mut self.state {
             menu.modal = None;
-            menu.reload_notes(instance)
+            menu.reload_notes(instance.clone())
         } else {
             Task::none()
         }

@@ -398,10 +398,7 @@ impl Launcher {
         }
     }
 
-    fn get_delete_mods_command(
-        selected_instance: Instance,
-        menu: &MenuEditMods,
-    ) -> Task<Message> {
+    fn get_delete_mods_command(selected_instance: Instance, menu: &MenuEditMods) -> Task<Message> {
         let ids: Vec<ModId> = menu
             .selected_mods
             .iter()
