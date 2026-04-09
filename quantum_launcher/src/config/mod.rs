@@ -102,6 +102,10 @@ pub struct LauncherConfig {
     pub persistent: Option<PersistentSettings>,
     // Since: v0.5.1
     pub sidebar: Option<SidebarConfig>,
+    /// Time of last auto-update check result, in seconds since the Unix epoch.
+    // Since: TBD
+    #[cfg(feature = "auto_update")]
+    pub last_update_check: Option<u64>,
 
     /// Preserve fields when downgrading
     #[serde(flatten)]
@@ -128,6 +132,8 @@ impl Default for LauncherConfig {
             persistent: None,
             sidebar: None,
             _extra: HashMap::new(),
+            #[cfg(feature = "auto_update")]
+            last_update_check: None,
         }
     }
 }
@@ -307,6 +313,29 @@ impl LauncherConfig {
             debug_assert!(false, "idle FPS shouldn't be zero");
             IDLE_FPS
         }
+    }
+
+    #[cfg(feature = "auto_update")]
+    pub fn should_update_check(&self) -> bool {
+        const INTERVAL_SECS: u64 = 60 * 60;
+
+        if let Some(last) = self.last_update_check {
+            if let Ok(now) = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+                let elapsed = now.as_secs().saturating_sub(last);
+                return elapsed >= INTERVAL_SECS;
+            }
+        }
+        true
+    }
+
+    #[cfg(feature = "auto_update")]
+    pub fn update_set_now(&mut self) {
+        self.last_update_check = Some(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+        );
     }
 }
 

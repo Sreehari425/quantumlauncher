@@ -95,10 +95,21 @@ impl Launcher {
         config: Result<LauncherConfig, JsonFileError>,
     ) -> (Self, Task<Message>) {
         #[cfg(feature = "auto_update")]
-        let check_for_updates_command = Task::perform(
-            async move { launcher_update::check().await.strerr() },
-            Message::UpdateCheckResult,
-        );
+        let check_for_updates_command = {
+            let should_check = if let Ok(c) = &config {
+                c.should_update_check()
+            } else {
+                true
+            };
+            if should_check {
+                Task::perform(
+                    async move { launcher_update::check().await.strerr() },
+                    Message::UpdateCheckResult,
+                )
+            } else {
+                Task::none()
+            }
+        };
         #[cfg(not(feature = "auto_update"))]
         let check_for_updates_command = Task::none();
 

@@ -186,6 +186,8 @@ impl Launcher {
             #[cfg(feature = "auto_update")]
             Message::UpdateCheckResult(res) => match res {
                 Ok(UpdateCheckInfo::UpToDate) => {
+                    self.config.update_set_now();
+                    self.autosave.remove(&AutoSaveKind::LauncherConfig);
                     ql_core::pt!(no_log, "{}", "Latest version".bright_black());
                 }
                 Ok(UpdateCheckInfo::NewVersion { url }) => {
