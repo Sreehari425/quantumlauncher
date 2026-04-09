@@ -40,3 +40,6 @@ TODO: Add screenshots
 - Fixed switching to server manager messing up folder organization
 - Fixed Logs tab not being updated when switching instances
 - Fixed one instance's log output showing up in another
+- Fixed up/down arrow key instance selection following creation date order
+  rather than the order shown in sidebar
+- Reduced clashing between sidebar resizing and scrollbar in main menu

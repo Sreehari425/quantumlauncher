@@ -66,7 +66,7 @@ impl Launcher {
                 .on_press(Message::CoreHideModal)
                 .into()
             })
-            .on_resize(10, |t| SidebarMessage::Resize(t.ratio).into())
+            .on_resize(5, |t| SidebarMessage::Resize(t.ratio).into())
         )
         .push_maybe(Self::sidebar_context_menu(menu))
         .push_maybe(self.sidebar_drag_tooltip(menu))
@@ -386,7 +386,6 @@ impl Launcher {
             widget::horizontal_rule(1).style(|t: &LauncherTheme| t.style_rule(Color::Dark, 1)),
             self.get_accounts_bar(menu),
         ]
-        .padding(iced::Padding::default().right(3.0))
         .spacing(5)
         .width(Length::Fill);
 
