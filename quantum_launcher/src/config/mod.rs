@@ -125,12 +125,12 @@ pub struct LauncherConfig {
 }
 
 // Discord Rich Presence constants.
-pub const RICH_PRESENCE_BASIC_DETAILS: &str = "Launcher initialized!";
-pub const RICH_PRESENCE_BASIC_STATE: &str = "";
-pub const RICH_PRESENCE_GAMEOPEN_DETAIILS: &str = "Minecraft v${version}";
-pub const RICH_PRESENCE_GAMEOPEN_STATE: &str = "Instance name: ${instance}";
-pub const RICH_PRESENCE_GAMEEXIT_DETAILS: &str = "Just quit game";
-pub const RICH_PRESENCE_GAMEEXIT_STATE: &str = "Minecraft v${version}";
+const RICH_PRESENCE_BASIC_DETAILS: &str = "Launcher initialized!";
+const RICH_PRESENCE_BASIC_STATE: &str = "";
+const RICH_PRESENCE_GAMEOPEN_DETAIILS: &str = "Minecraft v${version}";
+const RICH_PRESENCE_GAMEOPEN_STATE: &str = "Instance name: ${instance}";
+const RICH_PRESENCE_GAMEEXIT_DETAILS: &str = "Just quit game";
+const RICH_PRESENCE_GAMEEXIT_STATE: &str = "Minecraft v${version}";
 
 impl Default for LauncherConfig {
     fn default() -> Self {

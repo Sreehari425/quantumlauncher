@@ -1,9 +1,5 @@
 use crate::config::AfterLaunchBehavior;
-use crate::config::RICH_PRESENCE_BASIC_DETAILS;
-use crate::config::RICH_PRESENCE_GAMEEXIT_DETAILS;
-use crate::config::RICH_PRESENCE_GAMEEXIT_STATE;
-use crate::config::RICH_PRESENCE_GAMEOPEN_DETAIILS;
-use crate::config::RICH_PRESENCE_GAMEOPEN_STATE;
+
 use crate::config::SIDEBAR_WIDTH;
 use crate::menu_renderer::back_to_launch_screen;
 use crate::state::{
@@ -163,20 +159,18 @@ impl Launcher {
                 }
 
                 let version_presence_task = {
-                    if self.config.rich_presence_events.unwrap_or(true) {
+                    if self.config.rich_presence_events.unwrap_or(true)
+                        && let Some(gameopen_details) =
+                            self.config.rich_presence_gameopen_details.clone()
+                    {
                         let selected_instance = selected_instance.clone();
                         let client = self.discord_ipc_client.clone();
 
-                        let gameopen_details = self
-                            .config
-                            .rich_presence_gameopen_details
-                            .clone()
-                            .unwrap_or(RICH_PRESENCE_GAMEOPEN_DETAIILS.into());
                         let gameopen_state = self
                             .config
                             .rich_presence_gameopen_state
                             .clone()
-                            .unwrap_or(RICH_PRESENCE_GAMEOPEN_STATE.into());
+                            .unwrap_or_default();
 
                         Task::perform(
                             async move {
@@ -407,34 +401,31 @@ impl Launcher {
         let instance = instance.clone();
         let client = self.discord_ipc_client.clone();
 
-        if self.config.rich_presence_events.unwrap_or(true) {
-            let gameexit_details = self
-                .config
-                .rich_presence_gameexit_details
-                .clone()
-                .unwrap_or(RICH_PRESENCE_GAMEEXIT_DETAILS.into());
+        if self.config.rich_presence_events.unwrap_or(true)
+            && let Some(gameexit_details) = self.config.rich_presence_gameexit_details.clone()
+        {
             let gameexit_state = self
                 .config
                 .rich_presence_gameexit_state
                 .clone()
-                .unwrap_or(RICH_PRESENCE_GAMEEXIT_STATE.into());
+                .unwrap_or_default();
 
             Task::perform(
                 async move {
                     let version_details = VersionDetails::load(&instance).await;
 
-                    if let Ok(details) = version_details {
-                        if let Some(c) = client {
-                            let instance = instance.get_name();
-                            let minecraft_vers = details.get_id();
+                    if let Ok(details) = version_details
+                        && let Some(c) = client
+                    {
+                        let instance = instance.get_name();
+                        let minecraft_vers = details.get_id();
 
-                            let activity = Activity::new()
-                                .details(gameexit_details.substitute(instance, minecraft_vers))
-                                .state(gameexit_state.substitute(instance, minecraft_vers))
-                                .build();
+                        let activity = Activity::new()
+                            .details(gameexit_details.substitute(instance, minecraft_vers))
+                            .state(gameexit_state.substitute(instance, minecraft_vers))
+                            .build();
 
-                            c.set_activity(activity).await.ok();
-                        }
+                        c.set_activity(activity).await.ok();
                     }
                 },
                 |_| Message::Nothing,
@@ -461,14 +452,9 @@ impl Launcher {
     }
 
     pub fn set_custom_discord_presence(&self) -> Task<Message> {
-        if let Some(c) = self.discord_ipc_client.clone() {
-            let details = if let Some(t) = self.config.rich_presence_basic_details.clone()
-                && !t.is_empty()
-            {
-                t
-            } else {
-                RICH_PRESENCE_BASIC_DETAILS.into()
-            };
+        if let Some(c) = self.discord_ipc_client.clone()
+            && let Some(details) = self.config.rich_presence_basic_details.clone()
+        {
             let state = self.config.rich_presence_basic_state.clone();
 
             Task::perform(
