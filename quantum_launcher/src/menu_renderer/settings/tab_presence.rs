@@ -27,6 +27,8 @@ impl MenuLauncherSettings {
                         LauncherSettingsMessage::ToggleDiscordRichPresence(n)
                     )),
                 widget::text("Sometimes toggling this option might take some time to apply the activity updates on Discord.").size(12).style(tsubtitle),
+                widget::Space::with_height(3),
+                widget::text("Please note that for all types of presences, the top text is mandatory. If not provided, the presence isn't set.").size(12).style(tsubtitle),
                 widget::Space::with_height(5),
                     if self.is_presence_running {
                         row!(
@@ -52,14 +54,14 @@ impl MenuLauncherSettings {
             .spacing(5),
 
             column![
-                widget::text("Custom Presence:"),
+                widget::text(format!("Custom Presence: {}", if self.default_presence_details.is_empty() { "(Disabled)" } else { "" })),
                 widget::text("Changes will take effect on launcher restart or with the press of the button below.").size(12).style(tsubtitle),
                 widget::Space::with_height(5),
-                widget::text_input("*Enter top text...", &self.default_presence_details)
+                widget::text_input("(Mandatory) Top Text", &self.default_presence_details)
                     .on_input(|v| Message::LauncherSettings(
                         LauncherSettingsMessage::DefaultPresenceDetailsChanged(v)
                     )),
-                widget::text_input("Enter bottom text...", &self.default_presence_state)
+                widget::text_input("Bottom Text", &self.default_presence_state)
                     .on_input(|v| Message::LauncherSettings(
                         LauncherSettingsMessage::DefaultPresenceStateChanged(v)
                     )),
@@ -88,24 +90,24 @@ impl MenuLauncherSettings {
                     widget::text("Event Presences:"),
                     widget::text("NOTE: You can use substitutes like ${instance} and ${version} for instance and version names respectively.").size(12).style(tsubtitle),
                     widget::Space::with_height(6),
-                    widget::text("Game Launch").size(14),
+                    widget::text(format!("Game Launch {}", if self.gameopen_presence_details.is_empty() { "(Disabled)" } else { "" })).size(14),
                     widget::Space::with_height(3),
-                    widget::text_input("*Enter top text...", &self.gameopen_presence_details)
+                    widget::text_input("(Mandatory) Top Text", &self.gameopen_presence_details)
                         .on_input(|v| Message::LauncherSettings(
                             LauncherSettingsMessage::GameOpenPresenceDetailsChanged(v)
                         )),
-                    widget::text_input("Enter bottom text...", &self.gameopen_presence_state)
+                    widget::text_input("Bottom Text", &self.gameopen_presence_state)
                         .on_input(|v| Message::LauncherSettings(
                             LauncherSettingsMessage::GameOpenPresenceStateChanged(v)
                         )),
                     widget::Space::with_height(3),
-                    widget::text("Game Exit").size(14),
+                    widget::text(format!("Game Exit {}", if self.gameexit_presence_details.is_empty() { "(Disabled)" } else { "" })).size(14),
                     widget::Space::with_height(3),
-                    widget::text_input("*Enter top text...", &self.gameexit_presence_details)
+                    widget::text_input("(Mandatory) Top Text", &self.gameexit_presence_details)
                         .on_input(|v| Message::LauncherSettings(
                             LauncherSettingsMessage::GameExitPresenceDetailsChanged(v)
                         )),
-                    widget::text_input("Enter bottom text...", &self.gameexit_presence_state)
+                    widget::text_input("Bottom Text", &self.gameexit_presence_state)
                         .on_input(|v| Message::LauncherSettings(
                             LauncherSettingsMessage::GameExitPresenceStateChanged(v)
                         )),
@@ -113,7 +115,7 @@ impl MenuLauncherSettings {
                 ].spacing(5)
             } else {
                 widget::column![]
-            },
+            }
         ])
     }
 }
