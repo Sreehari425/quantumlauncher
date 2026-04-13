@@ -4,8 +4,10 @@ use std::{
 };
 
 use ql_core::{
-    GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, LAUNCHER_DIR, Loader, do_jobs,
-    download, info,
+    GenericProgress, Instance, InstanceKind, IntoIoError, IntoJsonError, LAUNCHER_DIR, Loader,
+    do_jobs, download,
+    file_utils::exists,
+    info,
     json::{FabricJSON, V_1_12_2, VersionDetails, instance_config::ModTypeInfo},
     pt,
 };
@@ -33,7 +35,7 @@ const CURSED_LEGACY_JSON: &str =
 
 pub async fn install_server(
     loader_version: String,
-    server_name: String,
+    server_name: &str,
     progress: Option<&Sender<GenericProgress>>,
     backend: BackendType,
 ) -> Result<(), FabricInstallError> {
@@ -152,7 +154,7 @@ async fn download_library(
 
 pub async fn install_client(
     loader_version: String,
-    instance_name: String,
+    instance_name: &str,
     progress: Option<&Sender<GenericProgress>>,
     backend: BackendType,
 ) -> Result<(), FabricInstallError> {
@@ -264,7 +266,7 @@ async fn get_fabric_json(
 async fn migrate_index_file(instance_dir: &Path) -> Result<(), FabricInstallError> {
     let old_index_dir = instance_dir.join(".minecraft/mods/index.json");
     let new_index_dir = instance_dir.join(".minecraft/mod_index.json");
-    if old_index_dir.exists() {
+    if exists(&old_index_dir).await {
         let index = tokio::fs::read_to_string(&old_index_dir)
             .await
             .path(&old_index_dir)?;
@@ -314,7 +316,7 @@ fn send_progress(
 /// - `backend` - Backend fabric implementation (Fabric/Quilt/Babric/OrnitheMC/...)
 pub async fn install(
     loader_version: Option<String>,
-    instance: InstanceSelection,
+    instance: Instance,
     progress: Option<&Sender<GenericProgress>>,
     mut backend: BackendType,
 ) -> Result<(), FabricInstallError> {
@@ -331,10 +333,9 @@ pub async fn install(
             .version
             .clone()
     };
-    match instance {
-        InstanceSelection::Instance(n) => {
-            install_client(loader_version, n, progress, backend).await
-        }
-        InstanceSelection::Server(n) => install_server(loader_version, n, progress, backend).await,
+    let name = instance.get_name();
+    match instance.kind {
+        InstanceKind::Client => install_client(loader_version, name, progress, backend).await,
+        InstanceKind::Server => install_server(loader_version, name, progress, backend).await,
     }
 }

@@ -92,7 +92,7 @@ impl Launcher {
                                     self.account_selected = saved.to_owned();
                                 }
                             }
-                            return self.go_to_launch_screen::<&str>(None);
+                            return self.go_to_main_menu(None);
                         }
                         Err(err) => {
                             menu.error = Some(err);
@@ -101,7 +101,7 @@ impl Launcher {
                 }
             }
             TokenPasswordMessage::Skip => {
-                return self.go_to_launch_screen::<&str>(None);
+                return self.go_to_main_menu(None);
             }
         }
         Task::none()
