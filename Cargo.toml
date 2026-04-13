@@ -16,7 +16,7 @@ default-members = ["quantum_launcher"]
 resolver = "2"
 
 [workspace.dependencies]
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive", "rc"] }
 serde_json = "1"
 semver = "1"
 dirs = "6"
@@ -30,7 +30,11 @@ cfg-if = "1"
 owo-colors = "4"
 chrono = "0.4"
 thiserror = "2"
-rfd = "0.16.*"
+rfd = { version = "0.16.*", default-features = false, features = [
+    "xdg-portal",
+    "wayland",
+    "tokio"
+] }
 clap = { version = "4", features = ["help", "derive"] }
 
 zip = { version = "=7.2", default-features = false, features = ["deflate"] } # MSRV

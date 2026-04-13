@@ -48,15 +48,11 @@ pub enum AccountType {
 
 impl Display for AccountType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                AccountType::Microsoft => "Microsoft",
-                AccountType::ElyBy => "ElyBy",
-                AccountType::LittleSkin => "LittleSkin",
-            }
-        )
+        f.write_str(match self {
+            AccountType::Microsoft => "Microsoft",
+            AccountType::ElyBy => "ElyBy",
+            AccountType::LittleSkin => "LittleSkin",
+        })
     }
 }
 
@@ -128,7 +124,7 @@ impl AccountType {
             AccountType::ElyBy => " (elyby)",
             AccountType::LittleSkin => " (littleskin)",
         };
-        format!("{}{suffix}", name)
+        format!("{name}{suffix}")
     }
 }
 

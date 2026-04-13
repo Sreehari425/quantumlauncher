@@ -10,6 +10,7 @@ use crate::{
     stylesheet::{color::Color, styles::LauncherTheme},
 };
 
+/// Renders the drag-and-drop guide lines (bright lines that show where you're dropping it)
 pub fn drag_drop_receiver(
     menu: &MenuLaunch,
     selection: &SidebarSelection,

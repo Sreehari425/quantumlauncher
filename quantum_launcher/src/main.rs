@@ -30,7 +30,9 @@ use iced::{Settings, Task};
 use owo_colors::OwoColorize;
 use state::{Launcher, Message, get_entries};
 
-use ql_core::{IntoStringError, JsonFileError, constants::OS_NAME, err, file_utils, info, pt};
+use ql_core::{
+    InstanceKind, IntoStringError, JsonFileError, constants::OS_NAME, err, file_utils, info, pt,
+};
 
 use crate::{
     menu_renderer::FONT_DEFAULT,
@@ -64,6 +66,9 @@ mod view;
 /// (called by [`view`]).
 mod menu_renderer;
 
+/// Checking/installing app updates
+#[cfg(feature = "auto_update")]
+mod launcher_update;
 /// Handles `mclo.gs` log uploads
 mod mclog_upload;
 /// Child functions of the
@@ -77,8 +82,6 @@ mod message_handler;
 /// This module has functions for handling each of
 /// these "child messages".
 mod message_update;
-/// Handles mod store
-mod mods_store;
 /// Stylesheet definitions (launcher themes)
 mod stylesheet;
 /// Code to tick every frame
@@ -92,16 +95,27 @@ impl Launcher {
         config: Result<LauncherConfig, JsonFileError>,
     ) -> (Self, Task<Message>) {
         #[cfg(feature = "auto_update")]
-        let check_for_updates_command = Task::perform(
-            async move { ql_instances::check_for_launcher_updates().await.strerr() },
-            Message::UpdateCheckResult,
-        );
+        let check_for_updates_command = {
+            let should_check = if let Ok(c) = &config {
+                c.should_update_check()
+            } else {
+                true
+            };
+            if should_check {
+                Task::perform(
+                    async move { launcher_update::check().await.strerr() },
+                    Message::UpdateCheckResult,
+                )
+            } else {
+                Task::none()
+            }
+        };
         #[cfg(not(feature = "auto_update"))]
         let check_for_updates_command = Task::none();
 
-        let get_entries_command = Task::perform(get_entries(false), Message::CoreListLoaded);
         let mut launcher =
-            Launcher::load_new(None, is_new_user, config).unwrap_or_else(Launcher::with_error);
+            Launcher::load_new(is_new_user, config).unwrap_or_else(Launcher::with_error);
+        // let mut launcher = Launcher::with_error("test");
 
         let load_notes_command = if let (Some(instance), State::Launch(menu)) =
             (launcher.selected_instance.clone(), &mut launcher.state)
@@ -115,7 +129,8 @@ impl Launcher {
             launcher,
             Task::batch([
                 check_for_updates_command,
-                get_entries_command,
+                Task::perform(get_entries(InstanceKind::Client), Message::CoreListLoaded),
+                Task::perform(get_entries(InstanceKind::Server), Message::CoreListLoaded),
                 load_notes_command,
                 Task::perform(ql_core::clean::dir("logs"), |n| {
                     Message::CoreCleanComplete(n.strerr())
@@ -130,7 +145,7 @@ impl Launcher {
 
     #[allow(clippy::unused_self)]
     fn subscription(&self) -> iced::Subscription<Message> {
-        let tick = iced::time::every(Duration::from_millis(1000 / self.config.c_idle_fps()))
+        let tick = iced::time::every(Duration::from_millis(1000 / self.tick_interval()))
             .map(|_| Message::CoreTick);
         let events = iced::event::listen_with(|a, b, _| Some(Message::CoreEvent(a, b)));
 

@@ -1,10 +1,11 @@
 use iced::Task;
-use ql_core::{IntoIoError, IntoStringError, SelectedMod};
+use ql_core::{IntoIoError, IntoStringError};
+use ql_mod_manager::store::SelectedMod;
 use std::collections::HashSet;
 
 use crate::state::{
-    EditPresetsMessage, Launcher, MenuCurseforgeManualDownload, MenuEditPresets, Message,
-    SelectedState, State,
+    EditPresetsMessage, InfoMessage, Launcher, MenuCurseforgeManualDownload, MenuEditPresets,
+    Message, SelectedState, State,
 };
 
 macro_rules! iflet_manage_preset {
@@ -75,7 +76,7 @@ impl Launcher {
             EditPresetsMessage::LoadComplete(result) => {
                 match result.map(|not_allowed| {
                     if not_allowed.is_empty() {
-                        self.go_to_edit_mods_menu()
+                        self.go_to_edit_mods_menu(Some(InfoMessage::success("Imported mod preset")))
                     } else {
                         self.state =
                             State::CurseforgeManualDownload(MenuCurseforgeManualDownload {
@@ -155,7 +156,7 @@ impl Launcher {
             if let Err(err) = std::fs::write(&path, preset).path(&path) {
                 self.set_error(err);
             }
-            self.go_to_edit_mods_menu()
+            self.go_to_edit_mods_menu(Some(InfoMessage::success("Created Preset")))
         } else {
             Task::none()
         }

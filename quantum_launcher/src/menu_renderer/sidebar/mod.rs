@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
 use iced::{
     Alignment, Length,
     widget::{self, column, row},
 };
-use ql_core::InstanceSelection;
+use ql_core::{Instance, InstanceKind};
 
 use crate::{
     config::sidebar::{FolderId, SidebarFolder, SidebarNode, SidebarNodeKind, SidebarSelection},
@@ -33,11 +35,21 @@ pub enum NodeMode {
 }
 
 impl NodeMode {
-    pub fn get_space(self) -> widget::Space {
+    fn get_space(self) -> widget::Space {
         widget::Space::with_width(match self {
             NodeMode::InTree(n) => LEVEL_WIDTH * n,
             NodeMode::Dragged => 0,
         })
+    }
+
+    fn get_button<'a>(
+        self,
+        inner: impl Into<Element<'a>>,
+    ) -> widget::Button<'a, Message, LauncherTheme> {
+        widget::button(row![self.get_space(), inner.into()])
+            .style(|n: &LauncherTheme, status| n.style_button(status, StyleButton::FlatExtraDark))
+            .padding(0)
+            .width(Length::Fill)
     }
 }
 
@@ -58,8 +70,8 @@ impl Launcher {
         );
 
         let button: Element = match &node.kind {
-            SidebarNodeKind::Instance(_) => {
-                self.get_node_instance(node, &selection, mode, is_selected)
+            SidebarNodeKind::Instance(kind) => {
+                self.get_node_instance(node, &selection, mode, is_selected, *kind)
             }
             SidebarNodeKind::Folder(f) => self.get_node_folder(node, &selection, mode, f),
         };
@@ -85,72 +97,38 @@ impl Launcher {
         let State::Launch(menu) = &self.state else {
             return widget::Column::new().into();
         };
-        let is_drag_happening = matches!(&menu.modal, Some(LaunchModal::SDragging { .. }));
 
-        let drop_receiver = drag_drop_receiver(menu, selection, node);
-
-        let text = if folder.is_expanded {
-            widget::text(&node.name)
-        } else {
-            widget::text!("{}...", node.name)
-        }
-        .size(15)
-        .style(move |t: &LauncherTheme| t.style_text(Color::Mid));
-
-        let view = widget::stack!(
-            underline(
-                widget::row![
-                    widget::Space::with_width(2),
-                    widget::text(if folder.is_expanded { "- " } else { "+ " })
-                        .font(FONT_MONO)
-                        .size(14)
-                        .style(move |t: &LauncherTheme| t.style_text(Color::Light)),
-                    text,
-                ]
-                .width(Length::Fill)
-                .align_y(Alignment::Center)
-                .padding([4, 10]),
-                Color::Dark,
-            ),
-            widget::horizontal_rule(0.5).style(|t: &LauncherTheme| widget::rule::Style {
-                color: mix(t.get(Color::Dark), t.get(Color::SecondDark)),
-                width: 1,
-                radius: 0.into(),
-                fill_mode: widget::rule::FillMode::Full,
-            })
-        );
-
-        let space = mode.get_space();
+        let view = self.create_folder_view(node, folder);
 
         match mode {
             NodeMode::InTree(nesting) => {
-                let regular = || {
-                    column![
-                        node_button(
-                            row![space, view.push_maybe(drop_receiver)],
-                            is_drag_happening
-                        )
-                        .on_press(SidebarMessage::ToggleFolderVisibility(folder.id).into())
-                    ]
-                };
+                let view = view.push_maybe(drag_drop_receiver(menu, selection, node));
 
-                if let Some(LaunchModal::SRenamingFolder(id, name, is_creating)) = &menu.modal {
+                let msg = SidebarMessage::ToggleFolderVisibility(folder.id).into();
+                let inner: Element = if let Some(LaunchModal::SRenamingFolder(
+                    id,
+                    name,
+                    is_creating,
+                )) = &menu.modal
+                {
                     if folder.id == *id {
-                        column![renaming_folder(*id, name, *is_creating)]
+                        renaming_folder(*id, name, *is_creating).into()
                     } else {
-                        regular()
+                        mode.get_button(view).on_press(msg).into()
                     }
                 } else {
-                    regular()
-                }
-                .push_maybe(folder.is_expanded.then(|| {
-                    widget::column(folder.children.iter().map(|node| {
-                        self.get_node_rendered(menu, node, NodeMode::InTree(nesting + 1))
+                    mode.get_button(view).on_press(msg).into()
+                };
+
+                column![inner]
+                    .push_maybe(folder.is_expanded.then(|| {
+                        widget::column(folder.children.iter().map(|node| {
+                            self.get_node_rendered(menu, node, NodeMode::InTree(nesting + 1))
+                        }))
                     }))
-                }))
-                .into()
+                    .into()
             }
-            NodeMode::Dragged => drag_tooltip(row![space, view]).into(),
+            NodeMode::Dragged => drag_tooltip(row![mode.get_space(), view]).into(),
         }
     }
 
@@ -160,40 +138,33 @@ impl Launcher {
         selection: &SidebarSelection,
         mode: NodeMode,
         is_selected: bool,
+        kind: InstanceKind,
     ) -> Element<'a> {
         let State::Launch(menu) = &self.state else {
             return widget::Column::new().into();
         };
-        let is_drag = matches!(&menu.modal, Some(LaunchModal::SDragging { .. }));
 
-        let text = widget::text(&node.name)
+        let text = widget::text(&*node.name)
             .size(15)
             .style(move |t: &LauncherTheme| t.style_text(Color::SecondLight));
 
         let view = widget::stack!(underline_maybe(
-            widget::row![widget::Space::with_width(2), text]
-                .push_maybe(self.get_running_icon(menu, &node.name))
-                .padding([5, 10])
-                .width(Length::Fill),
+            widget::row![text]
+                .push_maybe(self.get_running_icon(&node.name, kind))
+                .padding([5, 14])
+                .width(Length::Fill)
+                .align_y(Alignment::Center),
             Color::Dark,
             !is_selected
         ));
+
         match mode {
-            NodeMode::InTree(_) => node_button(
-                row![
-                    mode.get_space(),
-                    view.push_maybe(drag_drop_receiver(menu, selection, node))
-                ],
-                is_drag,
-            )
-            .on_press_maybe((!is_selected).then(|| {
-                MainMenuMessage::InstanceSelected(InstanceSelection::new(
-                    &node.name,
-                    menu.is_viewing_server,
-                ))
-                .into()
-            }))
-            .into(),
+            NodeMode::InTree(_) => mode
+                .get_button(view.push_maybe(drag_drop_receiver(menu, selection, node)))
+                .on_press_maybe((!is_selected).then(|| {
+                    MainMenuMessage::InstanceSelected(Instance::new(&node.name, kind)).into()
+                }))
+                .into(),
             NodeMode::Dragged => drag_tooltip(row![mode.get_space(), view]).into(),
         }
     }
@@ -208,7 +179,7 @@ impl Launcher {
         &self,
         selection: SidebarSelection,
         elem: impl Into<Element<'a>>,
-        name: String,
+        name: Arc<str>,
     ) -> widget::MouseArea<'a, Message, LauncherTheme> {
         widget::mouse_area(elem).on_right_press(
             MainMenuMessage::Modal(Some(LaunchModal::SCtxMenu(
@@ -270,11 +241,8 @@ impl Launcher {
                         move || match inst {
                             SidebarSelection::Instance(name, kind) => {
                                 Message::Multiple(vec![
-                                    MainMenuMessage::InstanceSelected(InstanceSelection::new(
-                                        name,
-                                        kind.is_server(),
-                                    ))
-                                    .into(),
+                                    MainMenuMessage::InstanceSelected(Instance::new(name, *kind))
+                                        .into(),
                                     MainMenuMessage::ChangeTab(LaunchTab::Edit).into(),
                                     EditInstanceMessage::RenameToggle.into(),
                                 ])
@@ -282,7 +250,7 @@ impl Launcher {
                             SidebarSelection::Folder(folder_id) => {
                                 MainMenuMessage::Modal(Some(LaunchModal::SRenamingFolder(
                                     *folder_id,
-                                    name.clone(),
+                                    name.to_string(),
                                     false,
                                 )))
                                 .into()
@@ -303,6 +271,44 @@ impl Launcher {
             *x,
             *y,
         ))
+    }
+
+    fn create_folder_view<'a>(
+        &self,
+        node: &'a SidebarNode,
+        folder: &SidebarFolder,
+    ) -> widget::Stack<'a, Message, LauncherTheme> {
+        let text = if folder.is_expanded {
+            widget::text(&*node.name)
+        } else {
+            widget::text!("{}...", node.name)
+        }
+        .size(15)
+        .style(move |t: &LauncherTheme| t.style_text(Color::Mid));
+
+        let bottom_bar =
+            widget::horizontal_rule(0.5).style(|t: &LauncherTheme| widget::rule::Style {
+                color: mix(t.get(Color::Dark), t.get(Color::SecondDark)),
+                width: 1,
+                radius: 0.into(),
+                fill_mode: widget::rule::FillMode::Full,
+            });
+
+        let expand_sign = widget::text(if folder.is_expanded { "- " } else { "+ " })
+            .font(FONT_MONO)
+            .size(14)
+            .style(move |t: &LauncherTheme| t.style_text(Color::Light));
+
+        widget::stack!(
+            underline(
+                widget::row![widget::Space::with_width(2), expand_sign, text]
+                    .width(Length::Fill)
+                    .align_y(Alignment::Center)
+                    .padding([5, 10]),
+                Color::Dark,
+            ),
+            bottom_bar
+        )
     }
 }
 
@@ -382,12 +388,15 @@ fn drag_tooltip<'a>(
 fn drag_handle(selection: &SidebarSelection) -> widget::MouseArea<'static, Message, LauncherTheme> {
     widget::mouse_area(
         widget::row![
-            widget::text("=")
-                .size(20)
-                .style(|t: &LauncherTheme| t.style_text(Color::ExtraDark))
+            widget::text(":")
+                .size(16)
+                .style(|t: &LauncherTheme| widget::text::Style {
+                    // color: Some(mix(t.get(Color::Mid), t.get(Color::Dark))),
+                    color: Some(mix(t.get(Color::Mid), t.get(Color::SecondDark))),
+                    // color: Some(t.get(Color::Mid)),
+                })
         ]
-        .padding([0, 8])
-        .align_y(Alignment::Center),
+        .padding([3, 14]),
     )
     .on_press(
         MainMenuMessage::Modal(Some(LaunchModal::SDragging {
@@ -396,23 +405,4 @@ fn drag_handle(selection: &SidebarSelection) -> widget::MouseArea<'static, Messa
         }))
         .into(),
     )
-}
-
-fn node_button<'a>(
-    inner: impl Into<Element<'a>>,
-    is_drag: bool,
-) -> widget::Button<'a, Message, LauncherTheme> {
-    widget::button(inner)
-        .style(move |n: &LauncherTheme, status| {
-            n.style_button(
-                status,
-                if is_drag {
-                    StyleButton::FlatExtraDarkDead
-                } else {
-                    StyleButton::FlatExtraDark
-                },
-            )
-        })
-        .padding(0)
-        .width(Length::Fill)
 }

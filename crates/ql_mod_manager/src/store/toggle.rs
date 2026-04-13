@@ -1,8 +1,8 @@
 use std::path::Path;
 
-use ql_core::{InstanceSelection, IoError, err};
+use ql_core::{Instance, IoError, err};
 
-use crate::store::ModIndex;
+use crate::store::{ModId, ModIndex};
 
 use super::ModError;
 
@@ -17,7 +17,7 @@ pub fn flip_filename(name: &str) -> String {
 
 pub async fn toggle_mods_local(
     names: Vec<String>,
-    instance: InstanceSelection,
+    instance: Instance,
 ) -> Result<(), ModError> {
     let mods_dir = instance.get_dot_minecraft_path().join("mods");
 
@@ -28,13 +28,13 @@ pub async fn toggle_mods_local(
     Ok(())
 }
 
-pub async fn toggle_mods(id: Vec<String>, instance: InstanceSelection) -> Result<(), ModError> {
+pub async fn toggle_mods(ids: Vec<ModId>, instance: Instance) -> Result<(), ModError> {
     let mut index = ModIndex::load(&instance).await?;
 
     let dot_mc_dir = instance.get_dot_minecraft_path();
     let mods_dir = dot_mc_dir.join("mods");
 
-    for id in id {
+    for id in ids {
         if let Some(info) = index.mods.get_mut(&id) {
             // Only allow toggling mods, not resource packs/shaders/etc.
             if info.project_type != "mod" {
@@ -66,15 +66,15 @@ pub async fn toggle_mods(id: Vec<String>, instance: InstanceSelection) -> Result
 }
 
 async fn rename_file(a: &Path, b: &Path) -> Result<(), ModError> {
-    if let Err(err) = tokio::fs::rename(a, b).await {
-        if let std::io::ErrorKind::NotFound = err.kind() {
+    if let Err(error) = tokio::fs::rename(a, b).await {
+        if let std::io::ErrorKind::NotFound = error.kind() {
             err!("Cannot find file for renaming, skipping: {a:?} -> {b:?}");
         } else {
-            let err = IoError::Io {
-                error: err.to_string(),
+            return Err(IoError::Io {
+                error,
                 path: a.to_owned(),
-            };
-            Err(err)?;
+            }
+            .into());
         }
     }
     Ok(())

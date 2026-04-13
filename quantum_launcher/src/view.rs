@@ -1,12 +1,13 @@
 use iced::{Alignment, Length, widget};
+use ql_core::InstanceKind;
 
 use crate::{
     DEBUG_LOG_BUTTON_HEIGHT,
     config::UiWindowDecorations,
     icons,
     menu_renderer::{
-        Element, FONT_MONO, button_with_icon, changelog, tooltip, view_account_login, view_confirm,
-        view_error, view_log_upload_result,
+        Element, FONT_MONO, tooltip, view_account_login, view_changelog, view_confirm, view_error,
+        view_log_upload_result,
     },
     state::{Launcher, Message, State, WindowMessage},
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
@@ -104,7 +105,13 @@ impl Launcher {
                 &self.images,
                 self.window_state.size.1,
             ),
-            State::Create(menu) => menu.view(self.client_list.as_deref(), self.tick_timer),
+            State::Create(menu) => menu.view(
+                match self.selected_kind() {
+                    Some(InstanceKind::Server) => self.server_list.as_deref(),
+                    Some(InstanceKind::Client) | None => self.client_list.as_deref(),
+                },
+                self.tick_timer,
+            ),
             State::ConfirmAction {
                 msg1,
                 msg2,
@@ -119,27 +126,10 @@ impl Launcher {
                 .spacing(10)
                 .into(),
             State::ModsDownload(menu) => menu.view(&self.images, self.tick_timer),
+            State::ModDescription(menu) => menu.view(&self.images, self.tick_timer),
             State::LauncherSettings(menu) => menu.view(&self.config),
             State::InstallPaper(menu) => menu.view(self.tick_timer),
-            State::ChangeLog => {
-                let back_msg = Message::MScreenOpen {
-                    message: None,
-                    clear_selection: true,
-                    is_server: None,
-                };
-                widget::scrollable(
-                    widget::column!(
-                        button_with_icon(icons::back(), "Skip", 16).on_press(back_msg.clone()),
-                        changelog(&self.config),
-                        button_with_icon(icons::back(), "Continue", 16).on_press(back_msg),
-                    )
-                    .padding(10)
-                    .spacing(10),
-                )
-                .style(LauncherTheme::style_scrollable_flat_extra_dark)
-                .height(Length::Fill)
-                .into()
-            }
+            State::ChangeLog => view_changelog(),
             State::Welcome(menu) => menu.view(&self.config),
             State::EditJarMods(menu) => menu.view(self.instance()),
             State::ImportModpack(progress) => {
@@ -148,11 +138,8 @@ impl Launcher {
                     .spacing(10)
                     .into()
             }
-            State::LogUploadResult { url } => {
-                view_log_upload_result(url, self.instance().is_server())
-            }
+            State::LogUploadResult { url } => view_log_upload_result(url),
             State::CreateShortcut(menu) => menu.view(&self.accounts_dropdown),
-
             State::LoginAlternate(menu) => menu.view(self.tick_timer),
             State::ExportInstance(menu) => menu.view(self.tick_timer),
 
@@ -161,6 +148,7 @@ impl Launcher {
             State::License(menu) => menu.view(),
             State::ExportMods(menu) => menu.view(),
             State::InstallForge(menu) => menu.view(),
+            #[cfg(feature = "auto_update")]
             State::UpdateFound(menu) => menu.view(),
             State::InstallOptifine(menu) => menu.view(),
             State::ManagePresets(menu) => menu.view(),

@@ -1,8 +1,8 @@
 use crate::{
     rate_limiter::lock,
-    store::{ModError, ModIndex},
+    store::{ModError, ModId, ModIndex},
 };
-use ql_core::{InstanceSelection, IoError, ModId, err, info, pt};
+use ql_core::{Instance, IoError, err, info, pt};
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -10,7 +10,7 @@ use std::{
 
 pub async fn delete_mods(
     ids: Vec<ModId>,
-    instance: InstanceSelection,
+    instance: Instance,
 ) -> Result<Vec<ModId>, ModError> {
     let _guard = lock().await;
 
@@ -70,7 +70,7 @@ pub async fn delete_mods(
                     mod_info.dependents.remove(&dependent);
                 }
             } else {
-                err!("Dependent {id} does not exist");
+                err!("Dependent {id:?} does not exist");
             }
         }
 
@@ -79,7 +79,7 @@ pub async fn delete_mods(
         for (mod_id, mod_info) in &index.mods {
             if !mod_info.manually_installed && mod_info.dependents.is_empty() {
                 pt!("Deleting dependency: {}", mod_info.name);
-                orphaned_mods.insert(ModId::from_index_str(mod_id));
+                orphaned_mods.insert(mod_id.clone());
             }
         }
 
@@ -116,7 +116,7 @@ async fn delete_mod(
     shaderpacks_dir: &Path,
     datapacks_dir: &Path,
 ) -> Result<(), ModError> {
-    if let Some(mod_info) = index.mods.remove(&id.get_index_str()) {
+    if let Some(mod_info) = index.mods.remove(id) {
         // Determine the correct directory based on project type
         let content_dir: &Path = match mod_info.project_type.as_str() {
             "resourcepack" => {
@@ -130,7 +130,6 @@ async fn delete_mod(
             "datapack" => datapacks_dir,
             _ => mods_dir, // "mod" or unknown defaults to mods
         };
-
         for file in &mod_info.files {
             if mod_info.enabled {
                 delete_file(content_dir, &file.filename).await?;
@@ -146,12 +145,12 @@ async fn delete_mod(
 
 async fn delete_file(mods_dir: &Path, file: &str) -> Result<(), ModError> {
     let path = mods_dir.join(file);
-    if let Err(err) = tokio::fs::remove_file(&path).await {
-        if let std::io::ErrorKind::NotFound = err.kind() {
+    if let Err(error) = tokio::fs::remove_file(&path).await {
+        if let std::io::ErrorKind::NotFound = error.kind() {
             err!("File does not exist, skipping: {path:?}");
         } else {
             let err = IoError::Io {
-                error: err.to_string(),
+                error,
                 path: path.clone(),
             };
             Err(err)?;

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use iced::Task;
 use ql_core::{
     IntoIoError, IntoStringError, LAUNCHER_DIR, err,
@@ -9,10 +11,11 @@ use ql_core::{
 };
 
 use crate::{
+    config::sidebar::SidebarSelection,
     message_handler::format_memory,
     state::{
-        ADD_JAR_NAME, CustomJarState, EditInstanceMessage, LaunchTab, Launcher, MainMenuMessage,
-        MenuCreateInstance, MenuEditInstance, MenuLaunch, Message, NONE_JAR_NAME,
+        ADD_JAR_NAME, AutoSaveKind, CustomJarState, EditInstanceMessage, LaunchTab, Launcher,
+        MainMenuMessage, MenuCreateInstance, MenuEditInstance, MenuLaunch, Message, NONE_JAR_NAME,
         OPEN_FOLDER_JAR_NAME, ProgressBar, REMOVE_JAR_NAME, State, dir_watch, get_entries,
     },
 };
@@ -126,15 +129,6 @@ impl Launcher {
             EditInstanceMessage::LoggingToggle(t) => iflet_config!(&mut self.state, config <- {
                 config.enable_logger = Some(t);
             }),
-            EditInstanceMessage::CloseLauncherToggle(t) => {
-                if let State::Launch(MenuLaunch {
-                    edit_instance: Some(menu),
-                    ..
-                }) = &mut self.state
-                {
-                    menu.config.close_on_start = Some(t);
-                }
-            }
             EditInstanceMessage::JavaArgsModeChanged(mode) => {
                 iflet_config!(&mut self.state, global_java_args_enable, {
                     *global_java_args_enable = Some(mode);
@@ -308,6 +302,7 @@ impl Launcher {
         {
             if let Some(jar) = &menu.config.custom_jar {
                 if !choices.contains(&jar.name) {
+                    self.autosave.remove(&AutoSaveKind::InstanceConfig);
                     menu.config.custom_jar = None;
                 }
             }
@@ -316,18 +311,14 @@ impl Launcher {
         if let Some(cx) = &mut self.custom_jar {
             cx.choices = choices;
         } else {
-            let (recv, watcher) = match dir_watch(LAUNCHER_DIR.join("custom_jars")) {
+            let watcher = match dir_watch(LAUNCHER_DIR.join("custom_jars")) {
                 Ok(n) => n,
                 Err(err) => {
                     err!("Couldn't load list of custom jars (2)! {err}");
                     return Task::none();
                 }
             };
-            self.custom_jar = Some(CustomJarState {
-                choices,
-                recv,
-                _watcher: watcher,
-            });
+            self.custom_jar = Some(CustomJarState { choices, watcher });
         }
 
         Task::none()
@@ -385,7 +376,8 @@ impl Launcher {
             return Ok(Task::none());
         }
 
-        if menu.old_instance_name == sanitized_name || menu.old_instance_name == menu.instance_name
+        if *menu.old_instance_name == sanitized_name
+            || *menu.old_instance_name == menu.instance_name
         {
             // Don't waste time talking to OS
             // and "renaming" instance if nothing has changed.
@@ -399,7 +391,7 @@ impl Launcher {
                 "instances"
             });
 
-        let old_path = instances_dir.join(&menu.old_instance_name);
+        let old_path = instances_dir.join(&*menu.old_instance_name);
         let new_path = instances_dir.join(&sanitized_name);
 
         if new_path.parent().is_none_or(|n| n != instances_dir) {
@@ -407,22 +399,58 @@ impl Launcher {
             return Ok(Task::none());
         }
 
-        menu.old_instance_name = sanitized_name.to_owned();
+        let old_name = menu.old_instance_name.clone();
+        menu.old_instance_name = Arc::from(sanitized_name.as_str());
         std::fs::rename(&old_path, &new_path)
             .path(&old_path)
             .strerr()?;
 
         let mut instance = self.selected_instance.clone().unwrap();
-        instance.set_name(sanitized_name);
+        instance.name = Arc::from(sanitized_name.as_str());
 
-        Ok(Task::perform(
-            get_entries(self.instance().is_server()),
-            move |n| {
-                Message::Multiple(vec![
-                    Message::CoreListLoaded(n),
-                    MainMenuMessage::InstanceSelected(instance.clone()).into(),
-                ])
-            },
-        ))
+        if let Some(s) = &mut self.config.sidebar {
+            s.rename(
+                &SidebarSelection::Instance(old_name, instance.kind),
+                &sanitized_name,
+            );
+        }
+
+        Ok(Task::perform(get_entries(self.instance().kind), move |n| {
+            Message::Multiple(vec![
+                Message::CoreListLoaded(n),
+                MainMenuMessage::InstanceSelected(instance.clone()).into(),
+            ])
+        }))
+    }
+}
+
+impl EditInstanceMessage {
+    pub fn edits_config(&self) -> bool {
+        match self {
+            EditInstanceMessage::ReinstallLibraries |
+            EditInstanceMessage::UpdateAssets |
+            EditInstanceMessage::RenameToggle |
+            EditInstanceMessage::ToggleSplitArg(_) |
+            EditInstanceMessage::RenameEdit(_) |
+            EditInstanceMessage::RenameApply | // ?
+            EditInstanceMessage::CustomJarLoaded(_) |
+            EditInstanceMessage::ConfigSaved(_) => false,
+
+            EditInstanceMessage::MemoryChanged(_) |
+            EditInstanceMessage::MemoryInputChanged(_) |
+            EditInstanceMessage::LoggingToggle(_) |
+            EditInstanceMessage::SetMainClass(_, _) |
+            EditInstanceMessage::JavaArgs(_) |
+            EditInstanceMessage::JavaArgsModeChanged(_) |
+            EditInstanceMessage::GameArgs(_) |
+            EditInstanceMessage::PreLaunchPrefix(_) |
+            EditInstanceMessage::PreLaunchPrefixModeChanged(_) |
+            EditInstanceMessage::JavaOverride(_) |
+            EditInstanceMessage::JavaOverrideVersion(_) |
+            EditInstanceMessage::WindowWidthChanged(_) |
+            EditInstanceMessage::WindowHeightChanged(_) |
+            EditInstanceMessage::CustomJarPathChanged(_) |
+            EditInstanceMessage::BrowseJavaOverride => true,
+        }
     }
 }
