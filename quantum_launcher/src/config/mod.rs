@@ -227,7 +227,7 @@ impl LauncherConfig {
     }
 
     pub fn update_sidebar(&mut self, instances: &[String], is_server: bool) {
-        let sidebar = self.sidebar.get_or_insert_with(SidebarConfig::default);
+        let sidebar = self.sidebar.get_or_insert_default();
         let kind = if is_server {
             InstanceKind::Server
         } else {
@@ -322,21 +322,19 @@ impl LauncherConfig {
     }
 
     pub fn c_window(&mut self) -> &mut WindowProperties {
-        self.window.get_or_insert_with(WindowProperties::default)
+        self.window.get_or_insert_default()
     }
 
     pub fn c_global(&mut self) -> &mut GlobalSettings {
-        self.global_settings
-            .get_or_insert_with(GlobalSettings::default)
+        self.global_settings.get_or_insert_default()
     }
 
     pub fn c_persistent(&mut self) -> &mut PersistentSettings {
-        self.persistent
-            .get_or_insert_with(PersistentSettings::default)
+        self.persistent.get_or_insert_default()
     }
 
     pub fn c_sidebar(&mut self) -> &mut SidebarConfig {
-        self.sidebar.get_or_insert_with(SidebarConfig::default)
+        self.sidebar.get_or_insert_default()
     }
 
     pub fn c_idle_fps(&self) -> u64 {

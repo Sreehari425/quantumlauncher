@@ -20,7 +20,6 @@ use iced::futures::executor::block_on;
 use iced::widget::scrollable::AbsoluteOffset;
 use ql_core::file_utils::exists;
 use ql_core::json::VersionDetails;
-use ql_core::json::instance_config::ModTypeInfo;
 use ql_core::read_log::{Diagnostic, ReadError};
 use ql_core::{
     GenericProgress, InstanceSelection, IntoIoError, IntoJsonError, IntoStringError, JsonFileError,
@@ -873,10 +872,7 @@ async fn copy_optifine_over(instance: &InstanceSelection) -> Result<(), String> 
     tokio::fs::copy(&installer_path, &new_path).await.strerr()?;
 
     let mut config = InstanceConfigJson::read(instance).await.strerr()?;
-    config
-        .mod_type_info
-        .get_or_insert_with(ModTypeInfo::default)
-        .optifine_jar = Some("optifine.jar".to_owned());
+    config.mod_type_info.get_or_insert_default().optifine_jar = Some("optifine.jar".to_owned());
     config.save(instance).await.strerr()?;
 
     Ok(())

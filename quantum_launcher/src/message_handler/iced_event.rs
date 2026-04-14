@@ -30,7 +30,7 @@ impl Launcher {
                     self.window_state.size = (size.width, size.height);
 
                     // Remember window height
-                    let window = self.config.window.get_or_insert_with(Default::default);
+                    let window = self.config.window.get_or_insert_default();
                     window.width = Some(size.width);
                     window.height = Some(size.height);
                     if window.save_window_size {

@@ -16,16 +16,11 @@ mod recommended;
 
 use crate::config::UiWindowDecorations;
 use crate::state::{
-    AutoSaveKind, GameLogMessage, InfoMessage, InstanceNotes, LauncherSettingsTab, MenuLaunch,
-    MenuLauncherSettings, MenuModDescription, ModDescriptionMessage, NotesMessage,
-};
-use crate::{
-    config::UiSettings,
-    state::{
-        self, InstallFabricMessage, InstallOptifineMessage, InstallPaperMessage, Launcher,
-        LauncherSettingsMessage, MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, Message,
-        ProgressBar, State, WindowMessage,
-    },
+    self, AutoSaveKind, GameLogMessage, InfoMessage, InstallFabricMessage, InstallOptifineMessage,
+    InstallPaperMessage, InstanceNotes, Launcher, LauncherSettingsMessage, LauncherSettingsTab,
+    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLaunch, MenuLauncherSettings,
+    MenuModDescription, Message, ModDescriptionMessage, NotesMessage, ProgressBar, State,
+    WindowMessage,
 };
 
 mod shortcuts;
@@ -278,10 +273,7 @@ impl Launcher {
                 }
             }
             LauncherSettingsMessage::UiOpacity(opacity) => {
-                self.config
-                    .ui
-                    .get_or_insert_with(UiSettings::default)
-                    .window_opacity = opacity;
+                self.config.ui.get_or_insert_default().window_opacity = opacity;
                 self.theme.alpha = opacity;
             }
             LauncherSettingsMessage::UiScaleApply => {
@@ -292,10 +284,7 @@ impl Launcher {
             }
             LauncherSettingsMessage::UiIdleFps(fps) => {
                 debug_assert!(fps > 0.0);
-                self.config
-                    .ui
-                    .get_or_insert_with(UiSettings::default)
-                    .idle_fps = Some(fps as u64);
+                self.config.ui.get_or_insert_default().idle_fps = Some(fps as u64);
             }
             LauncherSettingsMessage::ClearJavaInstalls => {
                 self.confirm_clear_java_installs();
@@ -355,10 +344,7 @@ impl Launcher {
                 self.config.c_persistent().write_mod_update_changelog = t;
             }
             LauncherSettingsMessage::AfterLaunchBehaviorChanged(behavior) => {
-                self.config
-                    .ui
-                    .get_or_insert_with(UiSettings::default)
-                    .after_game_opens = behavior;
+                self.config.ui.get_or_insert_default().after_game_opens = behavior;
                 self.autosave.remove(&AutoSaveKind::LauncherConfig);
             }
             LauncherSettingsMessage::DefaultMinecraftWidthChanged(input) => {
@@ -369,10 +355,7 @@ impl Launcher {
             }
             LauncherSettingsMessage::GlobalJavaArgs(msg) => {
                 let split = self.should_split_args();
-                msg.apply(
-                    self.config.extra_java_args.get_or_insert_with(Vec::new),
-                    split,
-                );
+                msg.apply(self.config.extra_java_args.get_or_insert_default(), split);
             }
             LauncherSettingsMessage::GlobalPreLaunchPrefix(msg) => {
                 let split = self.should_split_args();
@@ -380,7 +363,7 @@ impl Launcher {
                     self.config
                         .c_global()
                         .pre_launch_prefix
-                        .get_or_insert_with(Vec::new),
+                        .get_or_insert_default(),
                     split,
                 );
             }
@@ -390,10 +373,7 @@ impl Launcher {
                 } else {
                     UiWindowDecorations::System
                 };
-                self.config
-                    .ui
-                    .get_or_insert_with(UiSettings::default)
-                    .window_decorations = decor;
+                self.config.ui.get_or_insert_default().window_decorations = decor;
             }
             LauncherSettingsMessage::LoadedSystemTheme(res) => match res {
                 Ok(mode) => {
