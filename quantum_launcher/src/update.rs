@@ -83,6 +83,12 @@ impl Launcher {
             Message::DeleteInstance => return self.delete_instance_confirm(),
 
             Message::DiscordIPCRunStarted(c) => {
+                if !self.config.c_rpc_enabled() {
+                    if let Err(err) = block_on(c.close()) {
+                        err!(no_log, "{err}");
+                    }
+                    return Task::none();
+                }
                 self.discord_ipc_client = Some(c);
                 return self.set_custom_discord_presence();
             }

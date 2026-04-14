@@ -371,15 +371,17 @@ impl Launcher {
                     // Start on enable
                     return self.start_discord_ipc_run();
                 }
+
                 // On disable
                 let client = self.discord_ipc_client.clone();
-                self.is_presence_running = false;
 
-                tokio::spawn(async move {
+                block_on(async {
                     if let Some(c) = client {
-                        _ = c.close().await;
+                        let _ = c.close().await;
                     }
                 });
+
+                self.is_presence_running = false;
             }
             RpcMessage::DefaultChanged(op) => {
                 let rpc = self.config.discord_rpc.get_or_insert_default();
