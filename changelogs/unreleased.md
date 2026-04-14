@@ -13,7 +13,7 @@ TODO: Add screenshots
 # Discord Rich Presence
 
 - Added support for displaying your status in Discord through Rich Presence
-- Customizable, supports displaying different kinds of information (TODO)
+- Customizable, can display any text or info (game version/instance name) of your choice
 
 # UX
 

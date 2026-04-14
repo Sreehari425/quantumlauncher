@@ -113,7 +113,7 @@ impl Launcher {
             Task::none()
         };
 
-        let presence_task = if launcher.config.rich_presence.unwrap_or(true) {
+        let presence_task = if launcher.config.c_rpc_enabled() {
             launcher.start_discord_ipc_run()
         } else {
             Task::none()

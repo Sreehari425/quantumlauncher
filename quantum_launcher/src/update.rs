@@ -1,5 +1,5 @@
 use iced::{Task, futures::executor::block_on};
-use ql_core::{IntoIoError, IntoStringError, err, file_utils::DirItem, info};
+use ql_core::{IntoIoError, IntoStringError, err, file_utils::DirItem, info, pt};
 use std::fmt::Write;
 use tokio::io::AsyncWriteExt;
 
@@ -35,7 +35,7 @@ impl Launcher {
                     self.update_state_presence(LauncherSettingsTab::Presence);
                 }
 
-                info!("Rich presence has been set.");
+                pt!(no_log, "Rich presence has been set.");
             }
             Message::Nothing | Message::CoreCleanComplete(Ok(())) => {}
             Message::Error(err) => self.set_error(err),

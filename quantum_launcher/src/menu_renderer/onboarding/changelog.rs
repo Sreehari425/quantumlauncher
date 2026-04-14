@@ -3,7 +3,7 @@ use iced::widget::{self, column, text};
 use crate::{
     config::LauncherConfig,
     menu_renderer::{Element, tsubtitle},
-    state::LauncherSettingsMessage,
+    state::RpcMessage,
 };
 
 pub fn changelog(config: &LauncherConfig) -> Element<'static> {
@@ -11,10 +11,10 @@ pub fn changelog(config: &LauncherConfig) -> Element<'static> {
         text("Welcome to QuantumLauncher TBD!").size(40),
 
         column![
-            widget::toggler(config.rich_presence.unwrap_or(true))
+            widget::toggler(config.c_rpc_enabled())
                 .label("Enable Discord Rich Presence")
                 .on_toggle(
-                    |t| LauncherSettingsMessage::ToggleDiscordRichPresence(t).into()
+                    |t| RpcMessage::Toggle(t).into()
                 ),
             widget::text("Allow others to see your gameplay activity in Discord\nMore info below...")
                 .size(12)

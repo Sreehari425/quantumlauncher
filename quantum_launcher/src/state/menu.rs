@@ -565,15 +565,6 @@ pub struct MenuLauncherSettings {
     pub temp_scale: f64,
     pub selected_tab: LauncherSettingsTab,
     pub arg_split_by_space: bool,
-
-    pub is_presence_running: bool,
-    pub default_presence_details: String,
-    pub default_presence_state: String,
-
-    pub gameopen_presence_details: String,
-    pub gameopen_presence_state: String,
-    pub gameexit_presence_details: String,
-    pub gameexit_presence_state: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -590,7 +581,7 @@ impl std::fmt::Display for LauncherSettingsTab {
             LauncherSettingsTab::UserInterface => "Appearance",
             LauncherSettingsTab::Game => "Game",
             LauncherSettingsTab::About => "About",
-            LauncherSettingsTab::Presence => "Presence",
+            LauncherSettingsTab::Presence => "Discord Presence",
         })
     }
 }
@@ -609,8 +600,7 @@ impl LauncherSettingsTab {
 
     pub const fn prev(self) -> Self {
         match self {
-            Self::UserInterface => Self::UserInterface,
-            Self::Presence => Self::UserInterface,
+            Self::UserInterface | Self::Presence => Self::UserInterface,
             Self::Game => Self::Presence,
             Self::About => Self::Game,
         }

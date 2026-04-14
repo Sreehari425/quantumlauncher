@@ -157,49 +157,7 @@ impl Launcher {
                     }
                 }
 
-                let version_presence_task = {
-                    if self.config.rich_presence_events.unwrap_or(true)
-                        && let Some(gameopen_details) =
-                            self.config.rich_presence_gameopen_details.clone()
-                    {
-                        let selected_instance = selected_instance.clone();
-                        let client = self.discord_ipc_client.clone();
-
-                        let gameopen_state = self
-                            .config
-                            .rich_presence_gameopen_state
-                            .clone()
-                            .unwrap_or_default();
-
-                        Task::perform(
-                            async move {
-                                if let Ok(version_details) =
-                                    VersionDetails::load(&selected_instance).await
-                                {
-                                    if let Some(c) = client {
-                                        let instance = selected_instance.get_name();
-                                        let minecraft_vers = version_details.get_id();
-
-                                        let activity = Activity::new()
-                                            .details(
-                                                gameopen_details
-                                                    .substitute(instance, minecraft_vers),
-                                            )
-                                            .state(
-                                                gameopen_state.substitute(instance, minecraft_vers),
-                                            )
-                                            .build();
-
-                                        c.set_activity(activity).await.ok();
-                                    }
-                                }
-                            },
-                            |_| Message::Nothing,
-                        )
-                    } else {
-                        Task::none()
-                    }
-                };
+                let version_presence_task = self.rpc_game_update(&selected_instance, false);
 
                 let log_task = Task::perform(
                     async move {
@@ -232,13 +190,57 @@ impl Launcher {
                             .and_then(|id| iced::window::minimize(id, true));
                         return Task::batch([log_task, minimize_task, version_presence_task]);
                     }
-                };
+                }
 
                 return Task::batch([log_task, version_presence_task]);
             }
             Err(err) => self.set_error(err),
         }
         Task::none()
+    }
+
+    fn rpc_game_update(
+        &mut self,
+        selected_instance: &InstanceSelection,
+        exited: bool,
+    ) -> Task<Message> {
+        if !self.config.c_rpc_enabled() {
+            return Task::none();
+        }
+        let rpc_config = self.config.discord_rpc.get_or_insert_default();
+        let info = if exited {
+            &rpc_config.on_gameexit
+        } else {
+            &rpc_config.on_gameopen
+        };
+        let Some(gameexit_details) = info.top_text.clone() else {
+            println!("nvm 3");
+            return Task::none();
+        };
+
+        let selected_instance = selected_instance.clone();
+        let client = self.discord_ipc_client.clone();
+
+        let gameexit_state = info.bottom_text.clone();
+
+        Task::perform(
+            async move {
+                if let Ok(version_details) = VersionDetails::load(&selected_instance).await {
+                    if let Some(c) = client {
+                        let instance = selected_instance.get_name();
+                        let minecraft_vers = version_details.get_id();
+
+                        let activity = Activity::new()
+                            .details(gameexit_details.substitute(instance, minecraft_vers))
+                            .state(gameexit_state.substitute(instance, minecraft_vers))
+                            .build();
+
+                        _ = c.set_activity(activity).await;
+                    }
+                }
+            },
+            |()| Message::Nothing,
+        )
     }
 
     pub fn delete_instance_confirm(&mut self) -> Task<Message> {
@@ -397,41 +399,7 @@ impl Launcher {
             Self::read_game_logs(&process, instance, &mut self.logs, log_state);
         }
 
-        let instance = instance.clone();
-        let client = self.discord_ipc_client.clone();
-
-        if self.config.rich_presence_events.unwrap_or(true)
-            && let Some(gameexit_details) = self.config.rich_presence_gameexit_details.clone()
-        {
-            let gameexit_state = self
-                .config
-                .rich_presence_gameexit_state
-                .clone()
-                .unwrap_or_default();
-
-            Task::perform(
-                async move {
-                    let version_details = VersionDetails::load(&instance).await;
-
-                    if let Ok(details) = version_details
-                        && let Some(c) = client
-                    {
-                        let instance = instance.get_name();
-                        let minecraft_vers = details.get_id();
-
-                        let activity = Activity::new()
-                            .details(gameexit_details.substitute(instance, minecraft_vers))
-                            .state(gameexit_state.substitute(instance, minecraft_vers))
-                            .build();
-
-                        c.set_activity(activity).await.ok();
-                    }
-                },
-                |_| Message::Nothing,
-            )
-        } else {
-            Task::none()
-        }
+        self.rpc_game_update(instance, true)
     }
 
     pub fn start_discord_ipc_run(&self) -> Task<Message> {
@@ -442,7 +410,7 @@ impl Launcher {
         Task::perform(
             {
                 async move {
-                    runner.run(true).await.ok();
+                    _ = runner.run(true).await;
                     runner.clone_handle()
                 }
             },
@@ -451,29 +419,28 @@ impl Launcher {
     }
 
     pub fn set_custom_discord_presence(&self) -> Task<Message> {
-        if let Some(c) = self.discord_ipc_client.clone()
-            && let Some(details) = self.config.rich_presence_basic_details.clone()
-        {
-            let state = self.config.rich_presence_basic_state.clone();
+        let Some(c) = self.discord_ipc_client.clone() else {
+            return Task::none();
+        };
+        let rpc_config = self.config.discord_rpc.clone().unwrap_or_default();
+        let Some(top_text) = rpc_config.basic.top_text else {
+            return Task::none();
+        };
+        let bottom_text = rpc_config.basic.bottom_text;
 
-            Task::perform(
-                async move {
-                    let mut activity = Activity::new().details(details);
+        Task::perform(
+            async move {
+                let mut activity = Activity::new().details(top_text);
 
-                    if let Some(s) = state
-                        && !s.is_empty()
-                    {
-                        activity = activity.state(s);
-                    }
+                if !bottom_text.is_empty() {
+                    activity = activity.state(bottom_text);
+                }
 
-                    let built_activity = activity.build();
-                    c.set_activity(built_activity).await.ok();
-                },
-                |_| Message::DiscordIPCPresenceSet,
-            )
-        } else {
-            Task::none()
-        }
+                let built_activity = activity.build();
+                _ = c.set_activity(built_activity).await;
+            },
+            |()| Message::DiscordIPCPresenceSet,
+        )
     }
 
     pub fn update_mods(&mut self) -> Task<Message> {

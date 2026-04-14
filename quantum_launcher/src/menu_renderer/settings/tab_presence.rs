@@ -4,39 +4,43 @@ use iced::{
 };
 
 use crate::{
-    config::LauncherConfig,
+    config::{LauncherConfig, discord_rpc::RpcText},
     icons,
     menu_renderer::{Column, button_with_icon, checkered_list, tsubtitle},
-    state::{LauncherSettingsMessage, MenuLauncherSettings, Message},
+    state::{MenuLauncherSettings, RpcInnerMessage, RpcMessage},
 };
 
 impl MenuLauncherSettings {
-    pub(super) fn view_presence_tab<'a>(&'a self, config: &'a LauncherConfig) -> Column<'a> {
+    pub(super) fn view_presence_tab<'a>(
+        &'a self,
+        config: &'a LauncherConfig,
+        is_presence_running: bool,
+    ) -> Column<'a> {
+        let rpc_config = config.discord_rpc.clone().unwrap_or_default();
+
         checkered_list([
             column![
                 row![
                     widget::text("Discord Rich Presence").size(20).width(Length::Fill),
                     button_with_icon(icons::refresh_s(14), "Reset to Defaults", 14)
-                        .on_press_with(|| Message::LauncherSettings(LauncherSettingsMessage::ResetPresence)),
+                        .on_press_with(|| RpcMessage::ResetPresence.into()),
                 ]
             ],
 
             column![
-                widget::checkbox("Enable Broadcast", config.rich_presence.unwrap_or(true))
-                    .on_toggle(|n| Message::LauncherSettings(
-                        LauncherSettingsMessage::ToggleDiscordRichPresence(n)
-                    )),
+                widget::checkbox("Enable Broadcast", rpc_config.enable)
+                    .on_toggle(|n| RpcMessage::Toggle(n).into()),
                 widget::text("Sometimes toggling this option might take some time to apply the activity updates on Discord.").size(12).style(tsubtitle),
                 widget::Space::with_height(3),
                 widget::text("Please note that for all types of presences, the top text is mandatory. If not provided, the presence isn't set.").size(12).style(tsubtitle),
                 widget::Space::with_height(5),
-                    if self.is_presence_running {
+                    if is_presence_running {
                         row!(
                             icons::version_tick_s(13),
                             widget::Space::with_width(5),
                             widget::text("Synced!").size(13).style(tsubtitle)
                         )
-                    } else if config.rich_presence.unwrap_or(true) {
+                    } else if rpc_config.enable {
                         row!(
                             icons::clock_s(13),
                             widget::Space::with_width(5),
@@ -54,68 +58,71 @@ impl MenuLauncherSettings {
             .spacing(5),
 
             column![
-                widget::text(format!("Custom Presence: {}", if self.default_presence_details.is_empty() { "(Disabled)" } else { "" })),
-                widget::text("Changes will take effect on launcher restart or with the press of the button below.").size(12).style(tsubtitle),
-                widget::Space::with_height(5),
-                widget::text_input("(Mandatory) Top Text", &self.default_presence_details)
-                    .on_input(|v| Message::LauncherSettings(
-                        LauncherSettingsMessage::DefaultPresenceDetailsChanged(v)
-                    )),
-                widget::text_input("Bottom Text", &self.default_presence_state)
-                    .on_input(|v| Message::LauncherSettings(
-                        LauncherSettingsMessage::DefaultPresenceStateChanged(v)
-                    )),
-                if config.rich_presence.unwrap_or(true) {
-                    widget::column![
-                        widget::Space::with_height(5),
+                rpc_config.basic.view("Custom Presence", RpcMessage::DefaultChanged),
+                if rpc_config.enable {
+                    column![
                         button_with_icon(icons::discord_s(16), "Set Now", 12)
                             .padding([5, 10])
-                            .on_press(Message::LauncherSettings(LauncherSettingsMessage::SetPresenceNow))
-                    ]
+                            .on_press(RpcMessage::SetPresenceNow.into()),
+                        widget::text("Changes will take effect on launcher restart or with the press of the button above.").size(12).style(tsubtitle),
+                    ].spacing(5)
                 } else {
-                    widget::column![]
+                    column![]
                 },
-            ].spacing(5),
+            ].spacing(10),
 
             column![
                 widget::text("Toggles:"),
                 widget::Space::with_height(5),
-                widget::checkbox("Change presence during play/quit events", config.rich_presence_events.unwrap_or(true)).on_toggle(|n| Message::LauncherSettings(LauncherSettingsMessage::TogglePresenceEvents(n))),
+                widget::checkbox("Change presence during play/quit events", rpc_config.update_on_game_open)
+                    .on_toggle(|n| RpcMessage::TogglePresenceOnGameEvent(n).into()),
                 widget::text("Disabling this will ensure that only the custom rich presence set above stays alive when you run the launcher and/or play Minecraft.").size(12).style(tsubtitle),
 
             ].spacing(5),
 
-            if config.rich_presence_events.unwrap_or(true) {
+            if rpc_config.update_on_game_open {
                 widget::column![
                     widget::text("Event Presences:"),
                     widget::text("NOTE: You can use substitutes like ${instance} and ${version} for instance and version names respectively.").size(12).style(tsubtitle),
                     widget::Space::with_height(6),
-                    widget::text(format!("Game Launch {}", if self.gameopen_presence_details.is_empty() { "(Disabled)" } else { "" })).size(14),
+                    rpc_config.on_gameopen.view("Game Launch", RpcMessage::GameOpen),
                     widget::Space::with_height(3),
-                    widget::text_input("(Mandatory) Top Text", &self.gameopen_presence_details)
-                        .on_input(|v| Message::LauncherSettings(
-                            LauncherSettingsMessage::GameOpenPresenceDetailsChanged(v)
-                        )),
-                    widget::text_input("Bottom Text", &self.gameopen_presence_state)
-                        .on_input(|v| Message::LauncherSettings(
-                            LauncherSettingsMessage::GameOpenPresenceStateChanged(v)
-                        )),
-                    widget::Space::with_height(3),
-                    widget::text(format!("Game Exit {}", if self.gameexit_presence_details.is_empty() { "(Disabled)" } else { "" })).size(14),
-                    widget::Space::with_height(3),
-                    widget::text_input("(Mandatory) Top Text", &self.gameexit_presence_details)
-                        .on_input(|v| Message::LauncherSettings(
-                            LauncherSettingsMessage::GameExitPresenceDetailsChanged(v)
-                        )),
-                    widget::text_input("Bottom Text", &self.gameexit_presence_state)
-                        .on_input(|v| Message::LauncherSettings(
-                            LauncherSettingsMessage::GameExitPresenceStateChanged(v)
-                        )),
-
+                    rpc_config.on_gameexit.view("Game Exit", RpcMessage::GameExit),
                 ].spacing(5)
             } else {
                 widget::column![]
             }
         ])
+    }
+}
+
+impl RpcText {
+    fn view<'a>(
+        &self,
+        label: &str,
+        m: impl Fn(RpcInnerMessage) -> RpcMessage + 'a + Clone,
+    ) -> Column<'a> {
+        let m2 = m.clone();
+        column![
+            widget::text(format!(
+                "{label} {}",
+                if self.top_text.is_none() {
+                    "(Disabled)"
+                } else {
+                    ""
+                }
+            )),
+            widget::Space::with_height(0),
+            widget::text_input(
+                "(Mandatory) Top Text",
+                self.top_text.as_deref().unwrap_or_default()
+            )
+            .size(14)
+            .on_input(move |v| m2(RpcInnerMessage::TopTextChanged(v)).into()),
+            widget::text_input("Bottom Text", &self.bottom_text)
+                .size(13)
+                .on_input(move |v| m(RpcInnerMessage::BottomTextChanged(v)).into()),
+        ]
+        .spacing(5)
     }
 }

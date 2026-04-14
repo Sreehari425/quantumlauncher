@@ -1,7 +1,10 @@
 use std::{collections::HashSet, path::PathBuf, process::ExitStatus};
 
 use crate::{
-    config::sidebar::{FolderId, SDragLocation, SidebarSelection},
+    config::{
+        discord_rpc::RpcText,
+        sidebar::{FolderId, SDragLocation, SidebarSelection},
+    },
     message_handler::ForgeKind,
     state::{InfoMessage, LaunchModal, MenuEditModsModal},
     stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
@@ -288,17 +291,7 @@ pub enum LauncherSettingsMessage {
     ChangeTab(LauncherSettingsTab),
     DefaultMinecraftWidthChanged(String),
     DefaultMinecraftHeightChanged(String),
-
-    ToggleDiscordRichPresence(bool),
-    DefaultPresenceDetailsChanged(String),
-    DefaultPresenceStateChanged(String),
-    TogglePresenceEvents(bool),
-    GameOpenPresenceDetailsChanged(String),
-    GameOpenPresenceStateChanged(String),
-    GameExitPresenceDetailsChanged(String),
-    GameExitPresenceStateChanged(String),
-    SetPresenceNow,
-    ResetPresence,
+    Rpc(RpcMessage),
 
     ToggleAntialiasing(bool),
     ToggleWindowSize(bool),
@@ -310,6 +303,36 @@ pub enum LauncherSettingsMessage {
 
     GlobalJavaArgs(ListMessage),
     GlobalPreLaunchPrefix(ListMessage),
+}
+
+#[derive(Debug, Clone)]
+pub enum RpcMessage {
+    Toggle(bool),
+    DefaultChanged(RpcInnerMessage),
+    TogglePresenceOnGameEvent(bool),
+    GameOpen(RpcInnerMessage),
+    GameExit(RpcInnerMessage),
+    SetPresenceNow,
+    ResetPresence,
+}
+
+#[derive(Debug, Clone)]
+pub enum RpcInnerMessage {
+    TopTextChanged(String),
+    BottomTextChanged(String),
+}
+
+impl RpcText {
+    pub fn apply(&mut self, msg: RpcInnerMessage) {
+        match msg {
+            RpcInnerMessage::TopTextChanged(text) => {
+                self.top_text = (!text.is_empty()).then_some(text);
+            }
+            RpcInnerMessage::BottomTextChanged(text) => {
+                self.bottom_text = text;
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -556,3 +579,15 @@ from_m!(GameLog, GameLogMessage);
 from_m!(Window, WindowMessage);
 from_m!(Shortcut, ShortcutMessage);
 from_m!(ModDescription, ModDescriptionMessage);
+
+impl From<RpcMessage> for LauncherSettingsMessage {
+    fn from(value: RpcMessage) -> Self {
+        Self::Rpc(value)
+    }
+}
+
+impl From<RpcMessage> for Message {
+    fn from(value: RpcMessage) -> Self {
+        Self::LauncherSettings(value.into())
+    }
+}

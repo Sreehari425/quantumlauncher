@@ -1,3 +1,4 @@
+use crate::config::discord_rpc::RpcConfig;
 use crate::config::sidebar::{InstanceKind, SidebarConfig, SidebarNode, SidebarNodeKind};
 use crate::stylesheet::styles::{LauncherTheme, LauncherThemeColor, LauncherThemeLightness};
 use crate::{WINDOW_HEIGHT, WINDOW_WIDTH};
@@ -11,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::{collections::HashMap, path::Path};
 
+pub mod discord_rpc;
 pub mod sidebar;
 
 pub const SIDEBAR_WIDTH: f32 = 0.33;
@@ -89,24 +91,6 @@ pub struct LauncherConfig {
     // Since: v0.4.2
     pub window: Option<WindowProperties>,
 
-    /// Whether to enable Discord Rich Presence
-    /// support or not.
-    ///
-    /// Default: `true`
-    /// Since: TBD
-    pub rich_presence: Option<bool>,
-    /// The details for the basic/initial rich presence activity (top text).
-    pub rich_presence_basic_details: Option<String>,
-    /// The state for the basic/initial rich presence activity (bottom text).
-    pub rich_presence_basic_state: Option<String>,
-    /// Whether to change rich presence with instance open/exit events.
-    pub rich_presence_events: Option<bool>,
-    // Presence attributes for game open/exit events.
-    pub rich_presence_gameopen_details: Option<String>,
-    pub rich_presence_gameopen_state: Option<String>,
-    pub rich_presence_gameexit_details: Option<String>,
-    pub rich_presence_gameexit_state: Option<String>,
-
     /// Settings that apply both on a per-instance basis and with global overrides.
     // Since: v0.4.2
     pub global_settings: Option<GlobalSettings>,
@@ -118,19 +102,13 @@ pub struct LauncherConfig {
     pub persistent: Option<PersistentSettings>,
     // Since: v0.5.1
     pub sidebar: Option<SidebarConfig>,
+    // Since: TBD
+    pub discord_rpc: Option<RpcConfig>,
 
     /// Preserve fields when downgrading
     #[serde(flatten)]
     _extra: HashMap<String, serde_json::Value>,
 }
-
-// Discord Rich Presence constants.
-const RICH_PRESENCE_BASIC_DETAILS: &str = "Launcher initialized!";
-const RICH_PRESENCE_BASIC_STATE: &str = "";
-const RICH_PRESENCE_GAMEOPEN_DETAIILS: &str = "Minecraft v${version}";
-const RICH_PRESENCE_GAMEOPEN_STATE: &str = "Instance name: ${instance}";
-const RICH_PRESENCE_GAMEEXIT_DETAILS: &str = "Just quit game";
-const RICH_PRESENCE_GAMEEXIT_STATE: &str = "Minecraft v${version}";
 
 impl Default for LauncherConfig {
     fn default() -> Self {
@@ -144,14 +122,6 @@ impl Default for LauncherConfig {
             ui_scale: None,
             java_installs: Some(Vec::new()),
             ui_antialiasing: Some(true),
-            rich_presence: Some(true),
-            rich_presence_basic_details: Some(RICH_PRESENCE_BASIC_DETAILS.to_owned()),
-            rich_presence_basic_state: Some(RICH_PRESENCE_BASIC_STATE.to_owned()),
-            rich_presence_events: Some(true),
-            rich_presence_gameopen_details: Some(RICH_PRESENCE_GAMEOPEN_DETAIILS.to_owned()),
-            rich_presence_gameopen_state: Some(RICH_PRESENCE_GAMEOPEN_STATE.to_owned()),
-            rich_presence_gameexit_details: Some(RICH_PRESENCE_GAMEEXIT_DETAILS.to_owned()),
-            rich_presence_gameexit_state: Some(RICH_PRESENCE_GAMEEXIT_STATE.to_owned()),
             account_selected: None,
             window: None,
             global_settings: None,
@@ -159,6 +129,7 @@ impl Default for LauncherConfig {
             ui: None,
             persistent: None,
             sidebar: None,
+            discord_rpc: None,
             _extra: HashMap::new(),
         }
     }
@@ -216,14 +187,7 @@ impl LauncherConfig {
 
     /// Resets the Discord Rich Presence configuration to default.
     pub fn reset_presence(&mut self) {
-        self.rich_presence = Some(true);
-        self.rich_presence_basic_details = Some(RICH_PRESENCE_BASIC_DETAILS.to_owned());
-        self.rich_presence_basic_state = Some(RICH_PRESENCE_BASIC_STATE.to_owned());
-        self.rich_presence_events = Some(true);
-        self.rich_presence_gameopen_details = Some(RICH_PRESENCE_GAMEOPEN_DETAIILS.to_owned());
-        self.rich_presence_gameopen_state = Some(RICH_PRESENCE_GAMEOPEN_STATE.to_owned());
-        self.rich_presence_gameexit_details = Some(RICH_PRESENCE_GAMEEXIT_DETAILS.to_owned());
-        self.rich_presence_gameexit_state = Some(RICH_PRESENCE_GAMEEXIT_STATE.to_owned());
+        self.discord_rpc = Some(RpcConfig::default());
     }
 
     pub fn update_sidebar(&mut self, instances: &[String], is_server: bool) {
@@ -352,6 +316,10 @@ impl LauncherConfig {
             debug_assert!(false, "idle FPS shouldn't be zero");
             IDLE_FPS
         }
+    }
+
+    pub fn c_rpc_enabled(&self) -> bool {
+        self.discord_rpc.as_ref().map_or(false, |n| n.enable)
     }
 }
 

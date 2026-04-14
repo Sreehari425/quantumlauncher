@@ -19,8 +19,8 @@ use crate::state::{
     self, AutoSaveKind, GameLogMessage, InfoMessage, InstallFabricMessage, InstallOptifineMessage,
     InstallPaperMessage, InstanceNotes, Launcher, LauncherSettingsMessage, LauncherSettingsTab,
     MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLaunch, MenuLauncherSettings,
-    MenuModDescription, Message, ModDescriptionMessage, NotesMessage, ProgressBar, State,
-    WindowMessage,
+    MenuModDescription, Message, ModDescriptionMessage, NotesMessage, ProgressBar, RpcMessage,
+    State, WindowMessage,
 };
 
 mod shortcuts;
@@ -305,30 +305,6 @@ impl Launcher {
             LauncherSettingsMessage::ToggleAntialiasing(t) => {
                 self.config.ui_antialiasing = Some(t);
             }
-            LauncherSettingsMessage::ToggleDiscordRichPresence(t) => {
-                self.config.rich_presence = Some(t);
-
-                if t {
-                    return self.start_discord_ipc_run();
-                } else {
-                    let client = self.discord_ipc_client.clone();
-                    self.is_presence_running = false;
-
-                    tokio::spawn(async move {
-                        if let Some(c) = client {
-                            c.close().await.ok();
-                        }
-                    });
-
-                    if let State::LauncherSettings(MenuLauncherSettings {
-                        selected_tab: LauncherSettingsTab::Presence,
-                        ..
-                    }) = &self.state
-                    {
-                        self.update_state_presence(LauncherSettingsTab::Presence);
-                    }
-                }
-            }
             LauncherSettingsMessage::ToggleWindowSize(t) => {
                 self.config.c_window().save_window_size = t;
             }
@@ -391,40 +367,58 @@ impl Launcher {
                     err!(no_log, "while loading system theme: {err}");
                 }
             },
-            LauncherSettingsMessage::TogglePresenceEvents(t) => {
-                self.config.rich_presence_events = Some(t);
+            LauncherSettingsMessage::Rpc(msg) => return self.update_rpc(msg),
+        }
+        Task::none()
+    }
+
+    fn update_rpc(&mut self, msg: RpcMessage) -> Task<Message> {
+        match msg {
+            RpcMessage::Toggle(enable) => {
+                let rpc = self.config.discord_rpc.get_or_insert_default();
+                rpc.enable = enable;
+
+                if enable {
+                    // Start on enable
+                    return self.start_discord_ipc_run();
+                }
+                // On disable
+                let client = self.discord_ipc_client.clone();
+                self.is_presence_running = false;
+
+                tokio::spawn(async move {
+                    if let Some(c) = client {
+                        _ = c.close().await;
+                    }
+                });
+
+                if let State::LauncherSettings(MenuLauncherSettings {
+                    selected_tab: LauncherSettingsTab::Presence,
+                    ..
+                }) = &self.state
+                {
+                    self.update_state_presence(LauncherSettingsTab::Presence);
+                }
             }
-            LauncherSettingsMessage::GameOpenPresenceDetailsChanged(t) => {
-                self.config.rich_presence_gameopen_details =
-                    if t.is_empty() { None } else { Some(t) };
-                self.update_state_presence(state::LauncherSettingsTab::Presence);
+            RpcMessage::DefaultChanged(op) => {
+                let rpc = self.config.discord_rpc.get_or_insert_default();
+                rpc.basic.apply(op);
             }
-            LauncherSettingsMessage::GameOpenPresenceStateChanged(t) => {
-                self.config.rich_presence_gameopen_state =
-                    if t.is_empty() { None } else { Some(t) };
-                self.update_state_presence(state::LauncherSettingsTab::Presence);
+            RpcMessage::TogglePresenceOnGameEvent(t) => {
+                let rpc = self.config.discord_rpc.get_or_insert_default();
+                rpc.update_on_game_open = t;
             }
-            LauncherSettingsMessage::GameExitPresenceDetailsChanged(t) => {
-                self.config.rich_presence_gameexit_details =
-                    if t.is_empty() { None } else { Some(t) };
-                self.update_state_presence(state::LauncherSettingsTab::Presence);
+            RpcMessage::GameOpen(op) => {
+                let rpc = self.config.discord_rpc.get_or_insert_default();
+                rpc.on_gameopen.apply(op);
             }
-            LauncherSettingsMessage::GameExitPresenceStateChanged(t) => {
-                self.config.rich_presence_gameexit_state =
-                    if t.is_empty() { None } else { Some(t) };
-                self.update_state_presence(state::LauncherSettingsTab::Presence);
+            RpcMessage::GameExit(op) => {
+                let rpc = self.config.discord_rpc.get_or_insert_default();
+                rpc.on_gameexit.apply(op);
             }
-            LauncherSettingsMessage::SetPresenceNow => return self.set_custom_discord_presence(),
-            LauncherSettingsMessage::DefaultPresenceDetailsChanged(t) => {
-                self.config.rich_presence_basic_details = if t.is_empty() { None } else { Some(t) };
-                self.update_state_presence(state::LauncherSettingsTab::Presence);
-            }
-            LauncherSettingsMessage::ResetPresence => {
+            RpcMessage::SetPresenceNow => return self.set_custom_discord_presence(),
+            RpcMessage::ResetPresence => {
                 self.config.reset_presence();
-                self.update_state_presence(state::LauncherSettingsTab::Presence);
-            }
-            LauncherSettingsMessage::DefaultPresenceStateChanged(t) => {
-                self.config.rich_presence_basic_state = if t.is_empty() { None } else { Some(t) };
                 self.update_state_presence(state::LauncherSettingsTab::Presence);
             }
         }
@@ -436,37 +430,6 @@ impl Launcher {
             temp_scale: self.config.ui_scale.unwrap_or(1.0),
             selected_tab: tab,
             arg_split_by_space: true,
-            is_presence_running: self.is_presence_running,
-            default_presence_details: self
-                .config
-                .rich_presence_basic_details
-                .clone()
-                .unwrap_or_default(),
-            default_presence_state: self
-                .config
-                .rich_presence_basic_state
-                .clone()
-                .unwrap_or_default(),
-            gameopen_presence_details: self
-                .config
-                .rich_presence_gameopen_details
-                .clone()
-                .unwrap_or_default(),
-            gameopen_presence_state: self
-                .config
-                .rich_presence_gameopen_state
-                .clone()
-                .unwrap_or_default(),
-            gameexit_presence_details: self
-                .config
-                .rich_presence_gameexit_details
-                .clone()
-                .unwrap_or_default(),
-            gameexit_presence_state: self
-                .config
-                .rich_presence_gameexit_state
-                .clone()
-                .unwrap_or_default(),
         });
     }
 
