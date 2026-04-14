@@ -1,16 +1,18 @@
 use crate::config::discord_rpc::RpcConfig;
-use crate::config::sidebar::{InstanceKind, SidebarConfig, SidebarNode, SidebarNodeKind};
+use crate::config::sidebar::{SidebarConfig, SidebarNode, SidebarNodeKind};
 use crate::stylesheet::styles::{LauncherTheme, LauncherThemeColor, LauncherThemeLightness};
 use crate::{WINDOW_HEIGHT, WINDOW_WIDTH};
-use ql_core::ListEntryKind;
-use ql_core::json::GlobalSettings;
 use ql_core::{
-    IntoIoError, IntoJsonError, JsonFileError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME, err,
+    InstanceKind, IntoIoError, IntoJsonError, JsonFileError, LAUNCHER_DIR, LAUNCHER_VERSION_NAME,
+    ListEntryKind, err, json::GlobalSettings,
 };
 use ql_instances::auth::{AccountData, AccountType};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::{collections::HashMap, path::Path};
+use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+};
 
 pub mod discord_rpc;
 pub mod sidebar;
@@ -104,6 +106,10 @@ pub struct LauncherConfig {
     pub sidebar: Option<SidebarConfig>,
     // Since: TBD
     pub discord_rpc: Option<RpcConfig>,
+    /// Time of last auto-update check result, in seconds since the Unix epoch.
+    // Since: TBD
+    #[cfg(feature = "auto_update")]
+    pub last_update_check: Option<u64>,
 
     /// Preserve fields when downgrading
     #[serde(flatten)]
@@ -131,6 +137,8 @@ impl Default for LauncherConfig {
             sidebar: None,
             discord_rpc: None,
             _extra: HashMap::new(),
+            #[cfg(feature = "auto_update")]
+            last_update_check: None,
         }
     }
 }
@@ -190,27 +198,24 @@ impl LauncherConfig {
         self.discord_rpc = Some(RpcConfig::default());
     }
 
-    pub fn update_sidebar(&mut self, instances: &[String], is_server: bool) {
-        let sidebar = self.sidebar.get_or_insert_default();
-        let kind = if is_server {
-            InstanceKind::Server
-        } else {
-            InstanceKind::Client
-        };
+    pub fn update_sidebar(&mut self, instances: &[String], kind: InstanceKind) {
+        let sidebar = self.sidebar.get_or_insert_with(SidebarConfig::default);
 
         // Remove nonexistent instances
         sidebar.retain_instances(|node| match &node.kind {
             SidebarNodeKind::Instance(instance_kind) => {
-                *instance_kind == kind && instances.contains(&node.name)
+                (*instance_kind == kind && instances.iter().any(|n| n == &*node.name))
+                    || (*instance_kind != kind)
             }
             SidebarNodeKind::Folder { .. } => true,
         });
         // Add new instances
         for instance in instances {
             if !sidebar.contains_instance(instance, kind) {
-                sidebar
-                    .list
-                    .push(SidebarNode::new_instance(instance.clone(), kind));
+                sidebar.list.push(SidebarNode::new_instance(
+                    Arc::from(instance.as_str()),
+                    kind,
+                ));
             }
         }
     }
@@ -319,7 +324,30 @@ impl LauncherConfig {
     }
 
     pub fn c_rpc_enabled(&self) -> bool {
-        self.discord_rpc.as_ref().map_or(false, |n| n.enable)
+        self.discord_rpc.as_ref().is_some_and(|n| n.enable)
+    }
+
+    #[cfg(feature = "auto_update")]
+    pub fn should_update_check(&self) -> bool {
+        const INTERVAL_SECS: u64 = 60 * 60;
+
+        if let Some(last) = self.last_update_check {
+            if let Ok(now) = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+                let elapsed = now.as_secs().saturating_sub(last);
+                return elapsed >= INTERVAL_SECS;
+            }
+        }
+        true
+    }
+
+    #[cfg(feature = "auto_update")]
+    pub fn update_set_now(&mut self) {
+        self.last_update_check = Some(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+        );
     }
 }
 
@@ -493,9 +521,10 @@ pub enum UiWindowDecorations {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PersistentSettings {
-    pub selected_instance: Option<String>,
-    pub selected_server: Option<String>,
+    pub selected_instance: Option<Arc<str>>,
     pub selected_remembered: bool,
+    // Since: TBD
+    pub selected_instance_kind: Option<InstanceKind>,
 
     #[serde(default = "default_true")]
     pub write_mod_update_changelog: bool,
@@ -511,7 +540,7 @@ impl Default for PersistentSettings {
     fn default() -> Self {
         Self {
             selected_instance: None,
-            selected_server: None,
+            selected_instance_kind: None,
             selected_remembered: true,
             write_mod_update_changelog: true,
             create_instance_filters: None,

@@ -1,5 +1,5 @@
 use iced::{Task, futures::executor::block_on};
-use ql_core::{IntoIoError, IntoStringError, err, file_utils::DirItem, info, pt};
+use ql_core::{InstanceKind, IntoIoError, IntoStringError, err, file_utils::DirItem, info, pt};
 use std::fmt::Write;
 use tokio::io::AsyncWriteExt;
 
@@ -10,9 +10,10 @@ use owo_colors::OwoColorize;
 use crate::launcher_update::UpdateCheckInfo;
 use crate::{
     state::{
-        AutoSaveKind, CustomJarState, GameProcess, InfoMessage, LaunchTab, Launcher,
+        AutoSaveKind, CustomJarState, DirWatcher, GameProcess, InfoMessage, LaunchTab, Launcher,
         LauncherSettingsMessage, LauncherSettingsTab, ManageModsMessage, MenuExportInstance,
         MenuLaunch, MenuLauncherSettings, MenuLicense, MenuWelcome, Message, ProgressBar, State,
+        dir_watch, get_entries,
     },
     stylesheet::styles::LauncherThemeLightness,
 };
@@ -20,23 +21,6 @@ use crate::{
 impl Launcher {
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::DiscordIPCRunStarted(c) => {
-                self.discord_ipc_client = Some(c);
-                return self.set_custom_discord_presence();
-            }
-            Message::DiscordIPCPresenceSet => {
-                self.is_presence_running = true;
-
-                if let State::LauncherSettings(MenuLauncherSettings {
-                    selected_tab: LauncherSettingsTab::Presence,
-                    ..
-                }) = &self.state
-                {
-                    self.update_state_presence(LauncherSettingsTab::Presence);
-                }
-
-                pt!(no_log, "Rich presence has been set.");
-            }
             Message::Nothing | Message::CoreCleanComplete(Ok(())) => {}
             Message::Error(err) => self.set_error(err),
             Message::Multiple(msgs) => {
@@ -99,21 +83,32 @@ impl Launcher {
             Message::DeleteInstanceMenu => self.go_to_delete_instance_menu(),
             Message::DeleteInstance => return self.delete_instance_confirm(),
 
+            Message::DiscordIPCRunStarted(c) => {
+                self.discord_ipc_client = Some(c);
+                return self.set_custom_discord_presence();
+            }
+            Message::DiscordIPCPresenceSet => {
+                self.is_presence_running = true;
+
+                if let State::LauncherSettings(MenuLauncherSettings {
+                    selected_tab: LauncherSettingsTab::Presence,
+                    ..
+                }) = &self.state
+                {
+                    self.update_state_presence(LauncherSettingsTab::Presence);
+                }
+
+                pt!(no_log, "Rich presence has been set.");
+            }
+
             Message::MScreenOpen {
                 message,
                 clear_selection,
-                is_server,
             } => {
-                let is_server = is_server.unwrap_or(self.server_selected());
                 if clear_selection {
                     self.unselect_instance();
                 }
-
-                return if is_server {
-                    self.go_to_server_manage_menu(message)
-                } else {
-                    self.go_to_launch_screen(message)
-                };
+                return self.go_to_main_menu(message);
             }
             Message::EditInstance(message) => {
                 if message.edits_config() {
@@ -170,11 +165,19 @@ impl Launcher {
                 let custom_jars_changed = self
                     .custom_jar
                     .as_ref()
-                    .and_then(|n| n.recv.try_recv().ok())
-                    .is_some();
+                    .is_some_and(|n| n.watcher.has_changed());
+
                 if custom_jars_changed {
                     tasks.push(CustomJarState::load());
                 }
+
+                let mut watch_reload = |watcher: Option<&DirWatcher>, kind| {
+                    if watcher.is_some_and(DirWatcher::has_changed) {
+                        tasks.push(Task::perform(get_entries(kind), Message::CoreListLoaded));
+                    }
+                };
+                watch_reload(self.client_watcher.as_ref(), InstanceKind::Client);
+                watch_reload(self.server_watcher.as_ref(), InstanceKind::Server);
 
                 return Task::batch(tasks);
             }
@@ -202,6 +205,8 @@ impl Launcher {
             #[cfg(feature = "auto_update")]
             Message::UpdateCheckResult(res) => match res {
                 Ok(UpdateCheckInfo::UpToDate) => {
+                    self.config.update_set_now();
+                    self.autosave.remove(&AutoSaveKind::LauncherConfig);
                     ql_core::pt!(no_log, "{}", "Latest version".bright_black());
                 }
                 Ok(UpdateCheckInfo::NewVersion { url }) => {
@@ -250,8 +255,8 @@ impl Launcher {
                     _ = block_on(future);
                 }
             }
-            Message::CoreListLoaded(Ok((list, is_server))) => {
-                self.core_list_loaded(list, is_server);
+            Message::CoreListLoaded(Ok((list, kind))) => {
+                self.core_list_loaded(list, kind);
             }
             Message::CoreCopyText(txt) => {
                 return iced::clipboard::write(txt);
@@ -421,25 +426,41 @@ impl Launcher {
         Task::none()
     }
 
-    fn core_list_loaded(&mut self, list: Vec<String>, is_server: bool) {
-        self.config.update_sidebar(&list, is_server);
+    fn core_list_loaded(&mut self, list: Vec<String>, kind: InstanceKind) {
+        self.config.update_sidebar(&list, kind);
         self.autosave.remove(&AutoSaveKind::LauncherConfig);
 
         let persistent = self.config.c_persistent();
-        if is_server {
-            if let Some(n) = &persistent.selected_server {
-                if !list.contains(n) {
-                    self.unselect_instance();
+
+        let p_kind = persistent
+            .selected_instance_kind
+            .unwrap_or(InstanceKind::Client);
+        if p_kind == kind
+            && persistent
+                .selected_instance
+                .as_ref()
+                .is_some_and(|p| !list.iter().any(|n| n == &**p))
+        {
+            // The previously selected instance no longer exists
+            self.unselect_instance();
+        }
+
+        let (self_list, self_watcher) = match kind {
+            InstanceKind::Client => (&mut self.client_list, &mut self.client_watcher),
+            InstanceKind::Server => (&mut self.server_list, &mut self.server_watcher),
+        };
+        *self_list = Some(list);
+
+        if self_watcher.is_none() {
+            let dir = kind.get_root_directory();
+            let watcher = match dir_watch(dir) {
+                Ok(n) => n,
+                Err(err) => {
+                    err!("Couldn't start dir watcher! {err}");
+                    return;
                 }
-            }
-            self.server_list = Some(list);
-        } else {
-            if let Some(n) = &persistent.selected_instance {
-                if !list.contains(n) {
-                    self.unselect_instance();
-                }
-            }
-            self.client_list = Some(list);
+            };
+            *self_watcher = Some(watcher);
         }
     }
 
