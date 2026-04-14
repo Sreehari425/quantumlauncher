@@ -48,7 +48,7 @@ impl MenuLauncherSettings {
                         tab,
                         &self.selected_tab,
                         text,
-                        LauncherSettingsMessage::ChangeTab(*tab).into(),
+                        LauncherSettingsMessage::Open(*tab).into(),
                     )
                 })
             )
@@ -90,9 +90,7 @@ pub fn get_theme_selector() -> widget::Row<'static, Message, LauncherTheme> {
                 }
                 .style_button(s, StyleButton::Round)
             })
-            .on_press(Message::LauncherSettings(
-                LauncherSettingsMessage::ColorSchemePicked(*color),
-            ))
+            .on_press(LauncherSettingsMessage::ColorSchemePicked(*color).into())
             .into()
     }))
     .spacing(5)

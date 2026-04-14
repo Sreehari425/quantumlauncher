@@ -9,8 +9,9 @@ use crate::{
     config::LauncherConfig,
     icons,
     state::{
-        AccountMessage, InfoMessageKind, InstallModsMessage, LauncherSettingsMessage, LicenseTab,
-        ManageModsMessage, MenuCurseforgeManualDownload, MenuLicense, Message, ProgressBar,
+        AccountMessage, InfoMessageKind, InstallModsMessage, LauncherSettingsMessage,
+        LauncherSettingsTab, LicenseTab, ManageModsMessage, MenuCurseforgeManualDownload,
+        MenuLicense, Message, ProgressBar,
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
@@ -365,9 +366,7 @@ pub fn get_mode_selector(config: &LauncherConfig) -> Element<'static> {
                 .into()
         } else {
             widget::button(row![icon, name].spacing(5))
-                .on_press(Message::LauncherSettings(
-                    LauncherSettingsMessage::ThemePicked(*n),
-                ))
+                .on_press(LauncherSettingsMessage::ThemePicked(*n).into())
                 .into()
         }
     }))
@@ -442,11 +441,7 @@ impl MenuLicense {
                 "MenuLicense:sidebar",
                 Some(
                     back_button()
-                        .on_press(Message::LauncherSettings(
-                            LauncherSettingsMessage::ChangeTab(
-                                crate::state::LauncherSettingsTab::About
-                            ),
-                        ))
+                        .on_press(LauncherSettingsMessage::Open(LauncherSettingsTab::About).into())
                         .into()
                 ),
                 LicenseTab::ALL.iter().map(|tab| {

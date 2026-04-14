@@ -277,7 +277,7 @@ pub enum AccountMessage {
 
 #[derive(Debug, Clone)]
 pub enum LauncherSettingsMessage {
-    Open,
+    Open(LauncherSettingsTab),
     LoadedSystemTheme(Res<dark_light::Mode>),
     ThemePicked(LauncherThemeLightness),
     ColorSchemePicked(LauncherThemeColor),
@@ -287,7 +287,6 @@ pub enum LauncherSettingsMessage {
     UiIdleFps(f64),
     ClearJavaInstalls,
     ClearJavaInstallsConfirm,
-    ChangeTab(LauncherSettingsTab),
     DefaultMinecraftWidthChanged(String),
     DefaultMinecraftHeightChanged(String),
     Rpc(RpcMessage),

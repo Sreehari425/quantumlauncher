@@ -579,8 +579,9 @@ pub struct MenuLauncherSettings {
     pub arg_split_by_space: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum LauncherSettingsTab {
+    #[default]
     UserInterface,
     Presence,
     Game,

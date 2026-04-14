@@ -18,9 +18,8 @@ use crate::config::UiWindowDecorations;
 use crate::state::{
     self, AutoSaveKind, GameLogMessage, InfoMessage, InstallFabricMessage, InstallOptifineMessage,
     InstallPaperMessage, InstanceNotes, Launcher, LauncherSettingsMessage, LauncherSettingsTab,
-    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLaunch, MenuLauncherSettings,
-    MenuModDescription, Message, ModDescriptionMessage, NotesMessage, ProgressBar, RpcMessage,
-    State, WindowMessage,
+    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLaunch, MenuModDescription,
+    Message, ModDescriptionMessage, NotesMessage, ProgressBar, RpcMessage, State, WindowMessage,
 };
 
 mod shortcuts;
@@ -258,8 +257,8 @@ impl Launcher {
                 self.config.ui_mode = Some(theme);
                 self.theme.lightness = theme;
             }
-            LauncherSettingsMessage::Open => {
-                self.go_to_launcher_settings();
+            LauncherSettingsMessage::Open(tab) => {
+                self.go_to_launcher_settings(tab);
             }
             LauncherSettingsMessage::ColorSchemePicked(color) => {
                 self.config.ui_theme = Some(color);
@@ -289,16 +288,8 @@ impl Launcher {
             }
             LauncherSettingsMessage::ClearJavaInstallsConfirm => {
                 return Task::perform(ql_instances::delete_java_installs(), |()| {
-                    Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(
-                        state::LauncherSettingsTab::Game,
-                    ))
+                    LauncherSettingsMessage::Open(LauncherSettingsTab::Game).into()
                 });
-            }
-            LauncherSettingsMessage::ChangeTab(tab) => {
-                self.go_to_launcher_settings();
-                if let State::LauncherSettings(menu) = &mut self.state {
-                    menu.selected_tab = tab;
-                }
             }
             LauncherSettingsMessage::ToggleAntialiasing(t) => {
                 self.config.ui_antialiasing = Some(t);
@@ -389,14 +380,6 @@ impl Launcher {
                         _ = c.close().await;
                     }
                 });
-
-                if let State::LauncherSettings(MenuLauncherSettings {
-                    selected_tab: LauncherSettingsTab::Presence,
-                    ..
-                }) = &self.state
-                {
-                    self.update_state_presence(LauncherSettingsTab::Presence);
-                }
             }
             RpcMessage::DefaultChanged(op) => {
                 let rpc = self.config.discord_rpc.get_or_insert_default();
@@ -417,18 +400,9 @@ impl Launcher {
             RpcMessage::SetPresenceNow => return self.set_custom_discord_presence(),
             RpcMessage::ResetPresence => {
                 self.config.reset_presence();
-                self.update_state_presence(state::LauncherSettingsTab::Presence);
             }
         }
         Task::none()
-    }
-
-    pub fn update_state_presence(&mut self, tab: state::LauncherSettingsTab) {
-        self.state = State::LauncherSettings(state::MenuLauncherSettings {
-            temp_scale: self.config.ui_scale.unwrap_or(1.0),
-            selected_tab: tab,
-            arg_split_by_space: true,
-        });
     }
 
     pub fn should_split_args(&self) -> bool {
@@ -450,15 +424,16 @@ impl Launcher {
             msg1: "delete auto-installed Java files".to_owned(),
             msg2: "They will get reinstalled automatically as needed".to_owned(),
             yes: LauncherSettingsMessage::ClearJavaInstallsConfirm.into(),
-            no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Game).into(),
+            no: LauncherSettingsMessage::Open(LauncherSettingsTab::Game).into(),
         }
     }
 
-    pub fn go_to_launcher_settings(&mut self) {
-        if let State::LauncherSettings(_) = &self.state {
-            return;
-        }
-        self.update_state_presence(state::LauncherSettingsTab::UserInterface);
+    pub fn go_to_launcher_settings(&mut self, selected_tab: LauncherSettingsTab) {
+        self.state = State::LauncherSettings(state::MenuLauncherSettings {
+            temp_scale: self.config.ui_scale.unwrap_or(1.0),
+            selected_tab,
+            arg_split_by_space: true,
+        });
     }
 
     pub fn update_install_paper(&mut self, msg: InstallPaperMessage) -> Task<Message> {

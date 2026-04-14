@@ -42,11 +42,10 @@ impl Launcher {
                     // after changing UI scale
                     if let State::GenericMessage(msg) = &self.state {
                         if msg == MSG_RESIZE {
-                            return self.update(Message::LauncherSettings(
-                                LauncherSettingsMessage::ChangeTab(
-                                    LauncherSettingsTab::UserInterface,
-                                ),
-                            ));
+                            return self.update(
+                                LauncherSettingsMessage::Open(LauncherSettingsTab::UserInterface)
+                                    .into(),
+                            );
                         }
                     }
                 }
@@ -171,20 +170,18 @@ impl Launcher {
                 ("3", ctrl, alt, _, State::Launch(_)) if ctrl | alt => {
                     MainMenuMessage::ChangeTab(LaunchTab::Log).into()
                 }
-                (",", true, _, _, State::Launch(_)) => LauncherSettingsMessage::Open.into(),
+                (",", true, _, _, State::Launch(_)) => {
+                    LauncherSettingsMessage::Open(LauncherSettingsTab::default()).into()
+                }
 
                 _ => Message::Nothing,
             };
             return Task::done(msg);
         } else if let State::LauncherSettings(menu) = &mut self.state {
             if let Key::Named(Named::ArrowUp) = key {
-                return Task::done(Message::LauncherSettings(
-                    LauncherSettingsMessage::ChangeTab(menu.selected_tab.prev()),
-                ));
+                return Task::done(LauncherSettingsMessage::Open(menu.selected_tab.prev()).into());
             } else if let Key::Named(Named::ArrowDown) = key {
-                return Task::done(Message::LauncherSettings(
-                    LauncherSettingsMessage::ChangeTab(menu.selected_tab.next()),
-                ));
+                return Task::done(LauncherSettingsMessage::Open(menu.selected_tab.next()).into());
             }
         } else if let State::License(menu) = &mut self.state {
             if let Key::Named(Named::ArrowUp) = key {
@@ -336,10 +333,7 @@ impl Launcher {
 
             State::License(_) => {
                 if affect {
-                    if let State::LauncherSettings(_) = &self.state {
-                    } else {
-                        self.update_state_presence(LauncherSettingsTab::About);
-                    }
+                    self.go_to_launcher_settings(LauncherSettingsTab::About);
                 }
                 return (true, Task::none());
             }

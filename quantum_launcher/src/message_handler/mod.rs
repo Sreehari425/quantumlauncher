@@ -201,7 +201,6 @@ impl Launcher {
             &rpc_config.on_gameopen
         };
         let Some(gameexit_details) = info.top_text.clone() else {
-            println!("nvm 3");
             return Task::none();
         };
 
