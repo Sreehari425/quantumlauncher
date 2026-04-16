@@ -10,7 +10,7 @@ use crate::{
     },
     tick::sort_dependencies,
 };
-use filthy_rich::{Activity, DiscordIPCRunner};
+use filthy_rich::{PresenceRunner, types::Activity};
 use iced::{Task, futures::executor::block_on, widget::scrollable::AbsoluteOffset};
 use ql_core::{
     GenericProgress, Instance, InstanceKind, IntoIoError, IntoJsonError, IntoStringError,
@@ -394,7 +394,7 @@ impl Launcher {
     pub fn start_discord_ipc_run(&self) -> Task<Message> {
         const DISCORD_CLIENT_ID: &str = "1468876407756029965";
 
-        let mut runner = DiscordIPCRunner::new(DISCORD_CLIENT_ID);
+        let mut runner = PresenceRunner::new(DISCORD_CLIENT_ID);
 
         Task::perform(
             {

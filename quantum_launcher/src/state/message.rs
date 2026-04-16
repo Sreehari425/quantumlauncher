@@ -9,7 +9,7 @@ use crate::{
     state::{InfoMessage, LaunchModal, MenuEditModsModal, SidebarScroll},
     stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
 };
-use filthy_rich::DiscordIPCClient;
+use filthy_rich::PresenceClient;
 use iced::widget::{self, scrollable::AbsoluteOffset};
 use ql_core::{
     Instance, InstanceKind, LaunchedProcess, ListEntry, Loader,
@@ -465,7 +465,7 @@ pub enum Message {
     Window(WindowMessage),
     Shortcut(ShortcutMessage),
 
-    DiscordIPCRunStarted(Option<DiscordIPCClient>),
+    DiscordIPCRunStarted(Option<PresenceClient>),
     DiscordIPCPresenceSet,
 
     ManageMods(ManageModsMessage),
