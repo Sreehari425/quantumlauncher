@@ -399,8 +399,11 @@ impl Launcher {
         Task::perform(
             {
                 async move {
-                    _ = runner.run(true).await;
-                    runner.clone_handle()
+                    if runner.run(true).await.is_ok() {
+                        Some(runner.clone_handle())
+                    } else {
+                        None
+                    }
                 }
             },
             Message::DiscordIPCRunStarted,

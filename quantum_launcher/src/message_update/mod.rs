@@ -382,6 +382,7 @@ impl Launcher {
                 });
 
                 self.is_presence_running = false;
+                self.discord_ipc_client = None;
             }
             RpcMessage::DefaultChanged(op) => {
                 let rpc = self.config.discord_rpc.get_or_insert_default();

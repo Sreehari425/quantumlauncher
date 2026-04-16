@@ -465,7 +465,7 @@ pub enum Message {
     Window(WindowMessage),
     Shortcut(ShortcutMessage),
 
-    DiscordIPCRunStarted(DiscordIPCClient),
+    DiscordIPCRunStarted(Option<DiscordIPCClient>),
     DiscordIPCPresenceSet,
 
     ManageMods(ManageModsMessage),
