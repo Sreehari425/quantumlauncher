@@ -1,5 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
+    path::PathBuf,
+    sync::Arc,
     time::Instant,
 };
 
@@ -18,16 +20,22 @@ use iced::{
     widget::{self, scrollable::AbsoluteOffset},
 };
 use ql_core::{
-    DownloadProgress, GenericProgress, InstanceSelection, IntoStringError, ListEntry, ModId,
-    OptifineUniqueVersion, SelectedMod, StoreBackendType,
+    DownloadProgress, GenericProgress, Instance, InstanceKind, IntoStringError, ListEntry,
+    OptifineUniqueVersion,
     file_utils::DirItem,
     jarmod::JarMods,
     json::{InstanceConfigJson, VersionDetails, instance_config::MainClassMode},
 };
-use ql_mod_manager::loaders::paper::PaperVersion;
+use ql_mod_manager::{
+    loaders::paper::PaperVersion,
+    store::{Category, SearchMod},
+};
 use ql_mod_manager::{
     loaders::{self, forge::ForgeInstallProgress, optifine::OptifineInstallProgress},
-    store::{CurseforgeNotAllowed, ModConfig, ModIndex, QueryType, RecommendedMod, SearchResult},
+    store::{
+        CurseforgeNotAllowed, ModConfig, ModId, ModIndex, QueryType, RecommendedMod, SearchResult,
+        SelectedMod, StoreBackendType,
+    },
 };
 
 use crate::state::ImageState;
@@ -44,15 +52,11 @@ pub enum LaunchTab {
 
 impl std::fmt::Display for LaunchTab {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                LaunchTab::Buttons => "Play",
-                LaunchTab::Log => "Logs",
-                LaunchTab::Edit => "Edit",
-            }
-        )
+        f.write_str(match self {
+            LaunchTab::Buttons => "Play",
+            LaunchTab::Log => "Logs",
+            LaunchTab::Edit => "Edit",
+        })
     }
 }
 
@@ -61,7 +65,7 @@ pub enum LaunchModal {
     InstanceOptions,
 
     // Sidebar
-    SCtxMenu(Option<(SidebarSelection, String)>, (f32, f32)),
+    SCtxMenu(Option<(SidebarSelection, Arc<str>)>, (f32, f32)),
     SDragging {
         being_dragged: SidebarSelection,
         dragged_to: Option<SDragLocation>,
@@ -95,7 +99,7 @@ pub struct LogState {
 
 /// The home screen of the launcher.
 pub struct MenuLaunch {
-    pub message: String,
+    pub message: Option<InfoMessage>,
     pub login_progress: Option<ProgressBar<GenericProgress>>,
     pub tab: LaunchTab,
     pub edit_instance: Option<MenuEditInstance>,
@@ -103,24 +107,38 @@ pub struct MenuLaunch {
     pub log_state: Option<LogState>,
     pub modal: Option<LaunchModal>,
 
-    pub sidebar_scroll_total: f32,
-    pub sidebar_scroll_offset: f32,
-    pub sidebar_scroll_bounds: Option<Rectangle>,
+    pub sidebar_scroll: SidebarScroll,
     pub sidebar_grid_state: widget::pane_grid::State<bool>,
     sidebar_split: Option<widget::pane_grid::Split>,
 
-    pub is_viewing_server: bool,
     pub is_uploading_mclogs: bool,
 }
 
 impl Default for MenuLaunch {
     fn default() -> Self {
-        Self::with_message(String::new())
+        Self::new(None)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct SidebarScroll {
+    pub remaining: f32,
+    pub offset: f32,
+    pub bounds: Option<Rectangle>,
+}
+
+impl Default for SidebarScroll {
+    fn default() -> Self {
+        Self {
+            remaining: 100.0,
+            offset: 0.0,
+            bounds: None,
+        }
     }
 }
 
 impl MenuLaunch {
-    pub fn with_message(message: String) -> Self {
+    pub fn new(message: Option<InfoMessage>) -> Self {
         let (mut sidebar_grid_state, pane) = widget::pane_grid::State::new(true);
         let sidebar_split = if let Some((_, split)) =
             sidebar_grid_state.split(widget::pane_grid::Axis::Vertical, pane, false)
@@ -135,10 +153,7 @@ impl MenuLaunch {
             tab: LaunchTab::default(),
             edit_instance: None,
             login_progress: None,
-            sidebar_scroll_total: 100.0,
-            sidebar_scroll_offset: 0.0,
-            sidebar_scroll_bounds: None,
-            is_viewing_server: false,
+            sidebar_scroll: SidebarScroll::default(),
             sidebar_grid_state,
             log_state: None,
             is_uploading_mclogs: false,
@@ -154,7 +169,7 @@ impl MenuLaunch {
         }
     }
 
-    pub fn reload_notes(&mut self, instance: InstanceSelection) -> Task<Message> {
+    pub fn reload_notes(&mut self, instance: Instance) -> Task<Message> {
         self.notes = None;
         Task::perform(ql_instances::notes::read(instance), |n| {
             NotesMessage::Loaded(n.strerr()).into()
@@ -180,7 +195,7 @@ pub struct MenuEditInstance {
     // Renaming Instance:
     pub is_editing_name: bool,
     pub instance_name: String,
-    pub old_instance_name: String,
+    pub old_instance_name: Arc<str>,
     // Changing RAM:
     pub slider_value: f32,
     pub slider_text: String,
@@ -265,6 +280,8 @@ pub struct MenuEditMods {
     pub update_check_handle: Option<iced::task::Handle>,
     pub available_updates: Vec<(ModId, String, bool)>,
 
+    pub info_message: Option<InfoMessage>,
+
     pub list_scroll: AbsoluteOffset,
     /// Index of the item selected before pressing shift
     pub list_shift_index: Option<usize>,
@@ -276,6 +293,35 @@ pub struct MenuEditMods {
 }
 
 #[derive(Debug, Clone)]
+pub enum InfoMessageKind {
+    Success,
+    AtPath(PathBuf),
+    Error,
+}
+
+#[derive(Debug, Clone)]
+pub struct InfoMessage {
+    pub text: String,
+    pub kind: InfoMessageKind,
+}
+
+impl InfoMessage {
+    pub fn error(text: impl ToString) -> Self {
+        Self {
+            text: text.to_string(),
+            kind: InfoMessageKind::Error,
+        }
+    }
+
+    pub fn success(text: impl ToString) -> Self {
+        Self {
+            text: text.to_string(),
+            kind: InfoMessageKind::Success,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum MenuEditModsModal {
     Submenu,
     RightClick(ModId, (f32, f32)),
@@ -284,7 +330,7 @@ pub enum MenuEditModsModal {
 impl MenuEditMods {
     pub fn update_locally_installed_mods(
         idx: &ModIndex,
-        selected_instance: &InstanceSelection,
+        selected_instance: &Instance,
     ) -> Task<Message> {
         let mut blacklist = Vec::new();
         for mod_info in idx.mods.values() {
@@ -304,13 +350,13 @@ impl MenuEditMods {
     /// - The filenames of local mods
     ///
     /// ...respectively, from the mods selected in the mod menu.
-    pub fn get_kinds_of_ids(&self) -> (Vec<String>, Vec<String>) {
+    pub fn get_kinds_of_ids(&self) -> (Vec<ModId>, Vec<String>) {
         let ids_downloaded = self
             .selected_mods
             .iter()
             .filter_map(|s_mod| {
                 if let SelectedMod::Downloaded { id, .. } = s_mod {
-                    Some(id.get_index_str())
+                    Some(id.clone())
                 } else {
                     None
                 }
@@ -371,9 +417,9 @@ pub enum MenuCreateInstance {
 
 pub struct MenuCreateInstanceChoosing {
     pub _loading_list_handle: iced::task::Handle,
-    pub list: Option<Vec<ListEntry>>,
+    pub list: Result<Option<Vec<ListEntry>>, String>,
     // UI:
-    pub is_server: bool,
+    pub kind: InstanceKind,
     pub search_box: String,
     pub show_category_dropdown: bool,
     pub selected_categories: HashSet<ql_core::ListEntryKind>,
@@ -443,6 +489,7 @@ pub struct MenuModsDownload {
     pub query: String,
     pub results: Option<SearchResult>,
     pub description: Option<MarkState>,
+    pub categories: ModCategoryState,
 
     pub mod_descriptions: HashMap<ModId, String>,
     pub mods_download_in_progress: HashMap<ModId, (String, ModOperation)>,
@@ -456,6 +503,7 @@ pub struct MenuModsDownload {
 
     pub backend: StoreBackendType,
     pub query_type: QueryType,
+    pub force_open_source: bool,
 
     /// This is for the loading of continuation of the search,
     /// i.e. when you scroll down and more stuff appears
@@ -485,7 +533,42 @@ impl MenuModsDownload {
         self.description = Some(description);
 
         for img in imgs {
-            images.queue(&img);
+            images.queue(&img, false);
+        }
+    }
+}
+
+pub struct ModCategoryState {
+    pub categories: Result<Vec<Category>, String>,
+    pub selected: HashSet<String>,
+    /// Whether to search for mods containing *all*
+    /// the categories, instead of just any of them.
+    ///
+    /// Only works in modrinth, no effect on curseforge
+    pub use_all: bool,
+}
+
+impl Default for ModCategoryState {
+    fn default() -> Self {
+        Self {
+            categories: Ok(Vec::new()),
+            selected: HashSet::new(),
+            use_all: true,
+        }
+    }
+}
+
+impl ModCategoryState {
+    pub fn reset(&mut self) {
+        self.categories = Ok(Vec::new());
+        self.selected.clear();
+    }
+
+    pub fn toggle(&mut self, slug: &str) {
+        if self.selected.contains(slug) {
+            self.selected.remove(slug);
+        } else {
+            self.selected.insert(slug.to_string());
         }
     }
 }
@@ -510,46 +593,38 @@ pub struct TempPaths {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LauncherSettingsTab {
     UserInterface,
-    Internal,
+    Game,
     Location,
     About,
 }
 
 impl std::fmt::Display for LauncherSettingsTab {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                LauncherSettingsTab::UserInterface => "Appearance",
-                LauncherSettingsTab::Internal => "Game",
-                LauncherSettingsTab::Location => "Location",
-                LauncherSettingsTab::About => "About",
-            }
-        )
+        f.write_str(match self {
+            LauncherSettingsTab::UserInterface => "Appearance",
+            LauncherSettingsTab::Game => "Game",
+            LauncherSettingsTab::Location => "Location",
+            LauncherSettingsTab::About => "About",
+        })
     }
 }
 
 impl LauncherSettingsTab {
-    pub const ALL: &'static [Self] = &[
-        Self::UserInterface,
-        Self::Internal,
-        Self::Location,
-        Self::About,
-    ];
+    pub const ALL: &'static [Self] =
+        &[Self::UserInterface, Self::Game, Self::Location, Self::About];
 
     pub const fn next(self) -> Self {
         match self {
-            Self::UserInterface => Self::Internal,
-            Self::Internal => Self::Location,
+            Self::UserInterface => Self::Game,
+            Self::Game => Self::Location,
             Self::Location | Self::About => Self::About,
         }
     }
 
     pub const fn prev(self) -> Self {
         match self {
-            Self::UserInterface | Self::Internal => Self::UserInterface,
-            Self::Location => Self::Internal,
+            Self::UserInterface | Self::Game => Self::UserInterface,
+            Self::Location => Self::Game,
             Self::About => Self::Location,
         }
     }
@@ -626,6 +701,13 @@ pub struct MenuLoginMS {
     pub _cancel_handle: iced::task::Handle,
 }
 
+pub struct MenuModDescription {
+    pub description: Result<Option<MarkState>, String>,
+    pub details: Option<SearchMod>,
+    pub mod_id: ModId,
+    pub _handle: [iced::task::Handle; 2],
+}
+
 /// The enum that represents which menu is opened currently.
 pub enum State {
     /// Default home screen
@@ -674,6 +756,7 @@ pub enum State {
     InstallJava,
 
     ModsDownload(MenuModsDownload),
+    ModDescription(MenuModDescription),
     LauncherSettings(MenuLauncherSettings),
     ManagePresets(MenuEditPresets),
     RecommendedMods(MenuRecommendedMods),

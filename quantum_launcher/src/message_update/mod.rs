@@ -4,7 +4,7 @@ use std::path::Path;
 use frostmark::MarkState;
 use iced::{Task, futures::executor::block_on, widget::text_editor};
 use ql_core::{IntoStringError, Loader, OptifineUniqueVersion, err};
-use ql_mod_manager::loaders;
+use ql_mod_manager::{loaders, store};
 
 mod accounts;
 mod create_instance;
@@ -16,7 +16,10 @@ mod presets;
 mod recommended;
 
 use crate::config::UiWindowDecorations;
-use crate::state::{GameLogMessage, InstanceNotes, MenuLaunch, NotesMessage};
+use crate::state::{
+    AutoSaveKind, GameLogMessage, InfoMessage, InstanceNotes, MenuLaunch, MenuModDescription,
+    ModDescriptionMessage, NotesMessage,
+};
 use crate::{
     config::UiSettings,
     state::{
@@ -34,7 +37,10 @@ impl Launcher {
     pub fn update_install_fabric(&mut self, message: InstallFabricMessage) -> Task<Message> {
         match message {
             InstallFabricMessage::End(result) => match result {
-                Ok(()) => return self.go_to_edit_mods_menu(),
+                Ok(()) => {
+                    return self
+                        .go_to_edit_mods_menu(Some(InfoMessage::success("Installed Fabric")));
+                }
                 Err(err) => self.set_error(err),
             },
             InstallFabricMessage::VersionSelected(selection) => {
@@ -182,7 +188,8 @@ impl Launcher {
                 if let Err(err) = result {
                     self.set_error(err);
                 } else {
-                    return self.go_to_edit_mods_menu();
+                    return self
+                        .go_to_edit_mods_menu(Some(InfoMessage::success("Installed Optifine")));
                 }
             }
         }
@@ -193,8 +200,7 @@ impl Launcher {
         let (p_sender, p_recv) = std::sync::mpsc::channel();
         let (j_sender, j_recv) = std::sync::mpsc::channel();
 
-        let instance = self.instance();
-        let instance_name = instance.get_name().to_owned();
+        let instance = self.instance().clone();
         debug_assert!(!instance.is_server());
 
         let optifine_unique_version =
@@ -205,7 +211,7 @@ impl Launcher {
             {
                 *optifine_unique_version
             } else {
-                block_on(OptifineUniqueVersion::get(instance))
+                block_on(OptifineUniqueVersion::get(&instance))
             };
 
         let delete_installer = if let State::InstallOptifine(MenuInstallOptifine::Choosing {
@@ -225,12 +231,11 @@ impl Launcher {
         });
 
         let installer_path = installer_path.to_owned();
-
         Task::perform(
             // OptiFine does not support servers
             // so it's safe to assume we've selected an instance.
             loaders::optifine::install(
-                instance_name,
+                instance,
                 installer_path.clone(),
                 Some(p_sender),
                 Some(j_sender),
@@ -325,7 +330,7 @@ impl Launcher {
             LauncherSettingsMessage::ClearJavaInstallsConfirm => {
                 return Task::perform(ql_instances::delete_java_installs(), |()| {
                     Message::LauncherSettings(LauncherSettingsMessage::ChangeTab(
-                        state::LauncherSettingsTab::Internal,
+                        state::LauncherSettingsTab::Game,
                     ))
                 });
             }
@@ -347,8 +352,18 @@ impl Launcher {
                 persistent.selected_remembered = t;
                 if !t {
                     persistent.selected_instance = None;
-                    persistent.selected_server = None;
+                    persistent.selected_instance_kind = None;
                 }
+            }
+            LauncherSettingsMessage::ToggleModUpdateChangelog(t) => {
+                self.config.c_persistent().write_mod_update_changelog = t;
+            }
+            LauncherSettingsMessage::AfterLaunchBehaviorChanged(behavior) => {
+                self.config
+                    .ui
+                    .get_or_insert_with(UiSettings::default)
+                    .after_game_opens = behavior;
+                self.autosave.remove(&AutoSaveKind::LauncherConfig);
             }
             LauncherSettingsMessage::DefaultMinecraftWidthChanged(input) => {
                 self.config.c_global().window_width = input.trim().parse::<u32>().ok();
@@ -661,7 +676,7 @@ impl Launcher {
             msg1: "delete auto-installed Java files".to_owned(),
             msg2: "They will get reinstalled automatically as needed".to_owned(),
             yes: LauncherSettingsMessage::ClearJavaInstallsConfirm.into(),
-            no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Internal).into(),
+            no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Game).into(),
         }
     }
 
@@ -714,7 +729,9 @@ impl Launcher {
                         |n| Message::InstallPaper(InstallPaperMessage::VersionsLoaded(n.strerr())),
                     )
                     .abortable();
-                    self.state = State::InstallPaper(MenuInstallPaper::Loading { _handle: handle });
+                    self.state = State::InstallPaper(MenuInstallPaper::Loading {
+                        _handle: handle.abort_on_drop(),
+                    });
                     return task;
                 }
             }
@@ -738,7 +755,8 @@ impl Launcher {
                 if let Err(err) = res {
                     self.set_error(err);
                 } else {
-                    return self.go_to_edit_mods_menu();
+                    return self
+                        .go_to_edit_mods_menu(Some(InfoMessage::success("Installed Paper")));
                 }
             }
         }
@@ -892,6 +910,51 @@ impl Launcher {
                     };
                 }
             },
+        }
+        Task::none()
+    }
+
+    pub fn update_mod_description(&mut self, msg: ModDescriptionMessage) -> Task<Message> {
+        match msg {
+            ModDescriptionMessage::Open(mod_id) => {
+                // Load metadata/details
+                let id = mod_id.clone();
+                let (load_details, h1) =
+                    Task::perform(async move { store::get_info(&id).await }, |res| {
+                        ModDescriptionMessage::LoadedDetails(res.strerr()).into()
+                    })
+                    .abortable();
+
+                // Load long description (HTML/Markdown)
+                let id = mod_id.clone();
+                let (load_description, h2) =
+                    Task::perform(async move { store::get_description(id).await }, |res| {
+                        ModDescriptionMessage::LoadedDescription(res.map(|n| n.1).strerr()).into()
+                    })
+                    .abortable();
+
+                self.state = State::ModDescription(MenuModDescription {
+                    description: Ok(None),
+                    details: None,
+                    mod_id,
+                    _handle: [h1.abort_on_drop(), h2.abort_on_drop()],
+                });
+
+                return Task::batch([load_details, load_description]);
+            }
+            ModDescriptionMessage::LoadedDetails(details) => match details {
+                Ok(details) => {
+                    if let State::ModDescription(menu) = &mut self.state {
+                        menu.details = Some(details);
+                    }
+                }
+                Err(err) => self.set_error(err),
+            },
+            ModDescriptionMessage::LoadedDescription(desc) => {
+                if let State::ModDescription(menu) = &mut self.state {
+                    menu.description = desc.map(|n| Some(MarkState::with_html_and_markdown(&n)));
+                }
+            }
         }
         Task::none()
     }

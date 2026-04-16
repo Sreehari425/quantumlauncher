@@ -1,11 +1,11 @@
 use std::{
     path::PathBuf,
-    sync::{LazyLock, RwLock},
+    sync::{Arc, LazyLock, RwLock},
 };
 
 use clap::{Parser, Subcommand};
 use owo_colors::{OwoColorize, Style};
-use ql_core::{LAUNCHER_VERSION_NAME, REDACT_SENSITIVE_INFO, WEBSITE, err};
+use ql_core::{InstanceKind, LAUNCHER_VERSION_NAME, REDACT_SENSITIVE_INFO, WEBSITE, err};
 
 use crate::{
     cli::helpers::render_row,
@@ -73,7 +73,7 @@ enum QSubCommand {
     },
     #[command(about = "Launches an instance")]
     Launch {
-        instance_name: String,
+        instance_name: Arc<str>,
         #[arg(help = "Username to play with")]
         username: String,
 
@@ -234,6 +234,12 @@ pub fn start_cli(
         unsafe { std::env::set_var("QLDIR", p) };
     }
 
+    let kind = if cli.server {
+        InstanceKind::Server
+    } else {
+        InstanceKind::Client
+    };
+
     if let Some(subcommand) = cli.command {
         if is_dir_err && cli.dir.is_none() {
             std::process::exit(1);
@@ -250,7 +256,7 @@ pub fn start_cli(
                     instance_name,
                     version,
                     skip_assets,
-                    cli.server,
+                    kind,
                 )));
             }
             QSubCommand::Launch {
@@ -261,10 +267,10 @@ pub fn start_cli(
                 account_type,
             } => {
                 let res = runtime.block_on(command::launch_instance(
-                    instance_name,
+                    &instance_name,
                     username,
                     use_account,
-                    cli.server,
+                    kind,
                     show_progress,
                     account_type.as_deref(),
                 ));
@@ -284,18 +290,18 @@ pub fn start_cli(
             }
 
             QSubCommand::ListAvailableVersions => {
-                command::list_available_versions();
+                command::list_available_versions(kind);
                 std::process::exit(0);
             }
             QSubCommand::Delete {
                 instance_name,
                 force,
-            } => quit(command::delete_instance(instance_name, force)),
+            } => quit(command::delete_instance(&instance_name, force, kind)),
             QSubCommand::ListInstalled { properties } => {
-                quit(command::list_instances(properties.as_deref(), cli.server));
+                quit(command::list_instances(properties.as_deref(), kind));
             }
             QSubCommand::Loader(cmd) => {
-                quit(runtime.block_on(command::loader(cmd, cli.server)));
+                quit(runtime.block_on(command::loader(cmd, kind)));
             }
         }
     } else {
