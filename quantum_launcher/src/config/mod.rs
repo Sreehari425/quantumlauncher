@@ -103,7 +103,7 @@ pub struct LauncherConfig {
     pub persistent: Option<PersistentSettings>,
     // Since: v0.5.1
     pub sidebar: Option<SidebarConfig>,
-    // Since: v0.5.1
+    // Since: TBD
     pub launcher_render: Option<GraphicsBackend>,
     pub ignore_backend_qldir: Option<bool>,
     /// Whether to enable automatic Safe Mode on crash.
