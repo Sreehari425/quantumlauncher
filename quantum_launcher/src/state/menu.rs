@@ -589,9 +589,11 @@ pub struct TempPaths {
     pub system_redirect_flags: HashSet<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum LauncherSettingsTab {
+    #[default]
     UserInterface,
+    Presence,
     Game,
     Location,
     About,
@@ -604,17 +606,19 @@ impl std::fmt::Display for LauncherSettingsTab {
             LauncherSettingsTab::Game => "Game",
             LauncherSettingsTab::Location => "Location",
             LauncherSettingsTab::About => "About",
+            LauncherSettingsTab::Presence => "Discord Presence",
         })
     }
 }
 
 impl LauncherSettingsTab {
     pub const ALL: &'static [Self] =
-        &[Self::UserInterface, Self::Game, Self::Location, Self::About];
+        &[Self::UserInterface, Self::Presence, Self::Game, Self::Location, Self::About];
 
     pub const fn next(self) -> Self {
         match self {
-            Self::UserInterface => Self::Game,
+            Self::UserInterface => Self::Presence,
+            Self::Presence => Self::Game,
             Self::Game => Self::Location,
             Self::Location | Self::About => Self::About,
         }
@@ -622,7 +626,8 @@ impl LauncherSettingsTab {
 
     pub const fn prev(self) -> Self {
         match self {
-            Self::UserInterface | Self::Game => Self::UserInterface,
+            Self::UserInterface | Self::Presence => Self::UserInterface,
+            Self::Game => Self::Presence,
             Self::Location => Self::Game,
             Self::About => Self::Location,
         }

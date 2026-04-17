@@ -1,11 +1,15 @@
 use std::{collections::HashSet, path::PathBuf, process::ExitStatus};
 
 use crate::{
-    config::sidebar::{FolderId, SDragLocation, SidebarSelection},
+    config::{
+        discord_rpc::RpcText,
+        sidebar::{FolderId, SDragLocation, SidebarSelection},
+    },
     message_handler::ForgeKind,
     state::{GraphicsBackend, InfoMessage, LaunchModal, MenuEditModsModal, SidebarScroll},
     stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
 };
+use filthy_rich::PresenceClient;
 use iced::widget::{self, scrollable::AbsoluteOffset};
 use ql_core::{
     Instance, InstanceKind, LaunchedProcess, ListEntry, Loader,
@@ -273,7 +277,7 @@ pub enum AccountMessage {
 
 #[derive(Debug, Clone)]
 pub enum LauncherSettingsMessage {
-    Open,
+    Open(LauncherSettingsTab),
     LoadedSystemTheme(Res<dark_light::Mode>),
     ThemePicked(LauncherThemeLightness),
     ColorSchemePicked(LauncherThemeColor),
@@ -284,9 +288,9 @@ pub enum LauncherSettingsMessage {
     ClearJavaInstalls,
     ClearJavaInstallsConfirm,
     ApplyRestart,
-    ChangeTab(LauncherSettingsTab),
     DefaultMinecraftWidthChanged(String),
     DefaultMinecraftHeightChanged(String),
+    Rpc(RpcMessage),
 
     ToggleAntialiasing(bool),
     ToggleWindowSize(bool),
@@ -318,6 +322,36 @@ pub enum LauncherSettingsMessage {
 pub enum PathKind {
     Portable,
     SystemRedirect,
+}
+
+#[derive(Debug, Clone)]
+pub enum RpcMessage {
+    Toggle(bool),
+    DefaultChanged(RpcInnerMessage),
+    TogglePresenceOnGameEvent(bool),
+    GameOpen(RpcInnerMessage),
+    GameExit(RpcInnerMessage),
+    SetPresenceNow,
+    ResetPresence,
+}
+
+#[derive(Debug, Clone)]
+pub enum RpcInnerMessage {
+    TopTextChanged(String),
+    BottomTextChanged(String),
+}
+
+impl RpcText {
+    pub fn apply(&mut self, msg: RpcInnerMessage) {
+        match msg {
+            RpcInnerMessage::TopTextChanged(text) => {
+                self.top_text = (!text.is_empty()).then_some(text);
+            }
+            RpcInnerMessage::BottomTextChanged(text) => {
+                self.bottom_text = text;
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -452,6 +486,9 @@ pub enum Message {
     Window(WindowMessage),
     Shortcut(ShortcutMessage),
 
+    DiscordIPCRunStarted(Option<PresenceClient>),
+    DiscordIPCPresenceSet,
+
     ManageMods(ManageModsMessage),
     ManageJarMods(ManageJarModsMessage),
     InstallMods(InstallModsMessage),
@@ -556,3 +593,15 @@ from_m!(GameLog, GameLogMessage);
 from_m!(Window, WindowMessage);
 from_m!(Shortcut, ShortcutMessage);
 from_m!(ModDescription, ModDescriptionMessage);
+
+impl From<RpcMessage> for LauncherSettingsMessage {
+    fn from(value: RpcMessage) -> Self {
+        Self::Rpc(value)
+    }
+}
+
+impl From<RpcMessage> for Message {
+    fn from(value: RpcMessage) -> Self {
+        Self::LauncherSettings(value.into())
+    }
+}

@@ -1,3 +1,4 @@
+use crate::config::discord_rpc::RpcConfig;
 use crate::config::sidebar::{SidebarConfig, SidebarNode, SidebarNodeKind};
 use crate::state::GraphicsBackend;
 use crate::stylesheet::styles::{LauncherTheme, LauncherThemeColor, LauncherThemeLightness};
@@ -14,6 +15,7 @@ use std::{
     path::Path,
 };
 
+pub mod discord_rpc;
 pub mod sidebar;
 
 pub const SIDEBAR_WIDTH: f32 = 0.33;
@@ -105,9 +107,13 @@ pub struct LauncherConfig {
     pub sidebar: Option<SidebarConfig>,
     // Since: TBD
     pub launcher_render: Option<GraphicsBackend>,
+    // Since: TBD
     pub ignore_backend_qldir: Option<bool>,
     /// Whether to enable automatic Safe Mode on crash.
+    // Since: TBD
     pub enable_safe_mode: Option<bool>,
+    // Since: TBD
+    pub discord_rpc: Option<RpcConfig>,
     /// Time of last auto-update check result, in seconds since the Unix epoch.
     // Since: TBD
     #[cfg(feature = "auto_update")]
@@ -140,6 +146,7 @@ impl Default for LauncherConfig {
             launcher_render: None,
             ignore_backend_qldir: None,
             enable_safe_mode: Some(true),
+            discord_rpc: None,
             _extra: HashMap::new(),
             #[cfg(feature = "auto_update")]
             last_update_check: None,
@@ -195,6 +202,11 @@ impl LauncherConfig {
             .await
             .path(config_path)?;
         Ok(())
+    }
+
+    /// Resets the Discord Rich Presence configuration to default.
+    pub fn reset_presence(&mut self) {
+        self.discord_rpc = Some(RpcConfig::default());
     }
 
     pub fn update_sidebar(&mut self, instances: &[String], kind: InstanceKind) {
@@ -293,21 +305,19 @@ impl LauncherConfig {
     }
 
     pub fn c_window(&mut self) -> &mut WindowProperties {
-        self.window.get_or_insert_with(WindowProperties::default)
+        self.window.get_or_insert_default()
     }
 
     pub fn c_global(&mut self) -> &mut GlobalSettings {
-        self.global_settings
-            .get_or_insert_with(GlobalSettings::default)
+        self.global_settings.get_or_insert_default()
     }
 
     pub fn c_persistent(&mut self) -> &mut PersistentSettings {
-        self.persistent
-            .get_or_insert_with(PersistentSettings::default)
+        self.persistent.get_or_insert_default()
     }
 
     pub fn c_sidebar(&mut self) -> &mut SidebarConfig {
-        self.sidebar.get_or_insert_with(SidebarConfig::default)
+        self.sidebar.get_or_insert_default()
     }
 
     pub fn c_idle_fps(&self) -> u64 {
@@ -378,6 +388,11 @@ impl LauncherConfig {
         self.ignore_backend_qldir = Some(true);
         true
     }
+
+    pub fn c_rpc_enabled(&self) -> bool {
+        self.discord_rpc.as_ref().is_some_and(|n| n.enable)
+    }
+
     #[cfg(feature = "auto_update")]
     pub fn should_update_check(&self) -> bool {
         const INTERVAL_SECS: u64 = 60 * 60;
@@ -508,7 +523,7 @@ pub struct UiSettings {
     pub idle_fps: Option<u64>,
     /// When the game is launched, the launcher can either
     /// minimize itself, close itself, or do nothing (default).
-    // Since: v0.5.2
+    // Since: TBD
     #[serde(default)]
     pub after_game_opens: AfterLaunchBehavior,
     #[serde(flatten)]
