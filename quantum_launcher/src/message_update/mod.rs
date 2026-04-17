@@ -313,7 +313,8 @@ impl Launcher {
             LauncherSettingsMessage::ToggleSafeModeConfirm(t) => {
                 self.config.enable_safe_mode = Some(t);
                 self.autosave.remove(&state::AutoSaveKind::LauncherConfig);
-                return self.go_to_launcher_settings();
+                // The toggle is in UI tab
+                return self.go_to_launcher_settings(LauncherSettingsTab::UserInterface);
             }
             LauncherSettingsMessage::ClearJavaInstallsConfirm => {
                 return Task::perform(ql_instances::delete_java_installs(), |()| {
@@ -426,8 +427,7 @@ impl Launcher {
                     msg1,
                     msg2,
                     yes: LauncherSettingsMessage::EnablePortableModeConfirm(path, flags).into(),
-                    no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
-                        .into(),
+                    no: LauncherSettingsMessage::Open(state::LauncherSettingsTab::Location).into(),
                 };
             }
             LauncherSettingsMessage::EnablePortableModeConfirm(path, flags) => {
@@ -448,7 +448,7 @@ impl Launcher {
                     msg2: "The launcher will store data in the system data directory instead.\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart."
                         .to_owned(),
                     yes: LauncherSettingsMessage::DisablePortableModeConfirm.into(),
-                    no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
+                    no: LauncherSettingsMessage::Open(state::LauncherSettingsTab::Location)
                         .into(),
                 };
             }
@@ -502,10 +502,8 @@ impl Launcher {
                     msg2: "The launcher will restart to apply the new rendering backend."
                         .to_owned(),
                     yes: LauncherSettingsMessage::ApplyRestart.into(),
-                    no: LauncherSettingsMessage::ChangeTab(
-                        state::LauncherSettingsTab::UserInterface,
-                    )
-                    .into(),
+                    no: LauncherSettingsMessage::Open(state::LauncherSettingsTab::UserInterface)
+                        .into(),
                 };
             }
             LauncherSettingsMessage::EnableSystemRedirect => {
@@ -576,8 +574,7 @@ impl Launcher {
                     msg1,
                     msg2,
                     yes: LauncherSettingsMessage::EnableSystemRedirectConfirm(path, flags).into(),
-                    no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
-                        .into(),
+                    no: LauncherSettingsMessage::Open(state::LauncherSettingsTab::Location).into(),
                 };
             }
             LauncherSettingsMessage::EnableSystemRedirectConfirm(path, flags) => {
@@ -597,7 +594,7 @@ impl Launcher {
                     msg1: "disable system-wide redirection".to_owned(),
                     msg2: "The launcher will stop reading data globally from the system data directory. Your existing data will NOT be moved.\n\nThe launcher will automatically restart.".to_owned(),
                     yes: LauncherSettingsMessage::DisableSystemRedirectConfirm.into(),
-                    no: LauncherSettingsMessage::ChangeTab(state::LauncherSettingsTab::Location)
+                    no: LauncherSettingsMessage::Open(state::LauncherSettingsTab::Location)
                         .into(),
                 };
             }
@@ -622,6 +619,7 @@ impl Launcher {
                         }
                     }
                 }
+            }
             LauncherSettingsMessage::Rpc(msg) => return self.update_rpc(msg),
         }
         Task::none()
@@ -697,7 +695,7 @@ impl Launcher {
         }
     }
 
-    pub fn go_to_launcher_settings(&mut self, selected_tab: LauncherSettingsTab) {
+    pub fn go_to_launcher_settings(&mut self, selected_tab: LauncherSettingsTab) -> Task<Message> {
         if let State::LauncherSettings(menu) = &self.state {
             if menu.selected_tab == selected_tab {
                 return Task::none();

@@ -12,7 +12,7 @@ use crate::{
 pub(super) fn view(menu: &MenuLauncherSettings) -> Column<'_> {
     let t = |s| widget::text(s).size(12).style(tsubtitle);
 
-    let current_dir_text = widget::text(format!("{}", redact_path(&LAUNCHER_DIR)))
+    let current_dir_text = widget::text(redact_path(&LAUNCHER_DIR))
         .size(14)
         .font(crate::menu_renderer::FONT_MONO);
 
