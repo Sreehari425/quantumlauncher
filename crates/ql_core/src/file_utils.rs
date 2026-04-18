@@ -103,6 +103,7 @@ pub fn get_launcher_dir() -> Result<PathBuf, IoError> {
     Ok(launcher_directory)
 }
 
+#[cfg(unix)]
 fn expand_tilde(path: &str) -> Option<PathBuf> {
     let home = dirs::home_dir()?;
     if path == "~" {
@@ -111,6 +112,11 @@ fn expand_tilde(path: &str) -> Option<PathBuf> {
     if let Some(stripped) = path.strip_prefix("~/") {
         return Some(home.join(stripped));
     }
+    None
+}
+
+#[cfg(not(unix))]
+fn expand_tilde(_path: &str) -> Option<PathBuf> {
     None
 }
 
