@@ -124,8 +124,13 @@ fn view_portable_mode_section(menu: &MenuLauncherSettings) -> Column<'_> {
             .size(13)
             .font(crate::menu_renderer::FONT_MONO)
             .width(Length::FillPortion(3)),
+            button_with_icon(icons::folder_s(12), "Browse", 12)
+                .padding([5, 10])
+                .on_press(Message::LauncherSettings(
+                    LauncherSettingsMessage::PickPortablePath,
+                )),
         ]
-        .spacing(10)
+        .spacing(8)
         .align_y(Alignment::Center);
 
         if has_changes {
@@ -254,8 +259,13 @@ fn view_system_redirect_section(menu: &MenuLauncherSettings) -> Column<'_> {
                 .size(13)
                 .font(crate::menu_renderer::FONT_MONO)
                 .width(Length::FillPortion(3)),
+            button_with_icon(icons::folder_s(12), "Browse", 12)
+                .padding([5, 10])
+                .on_press(Message::LauncherSettings(
+                    LauncherSettingsMessage::PickSystemRedirectPath,
+                )),
         ]
-        .spacing(10)
+        .spacing(8)
         .align_y(Alignment::Center);
 
         if has_changes {

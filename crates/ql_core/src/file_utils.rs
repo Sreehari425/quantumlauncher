@@ -3,7 +3,7 @@ use std::{
     ffi::OsStr,
     io::{Cursor, Write},
     path::{MAIN_SEPARATOR, Path, PathBuf},
-    sync::LazyLock,
+    sync::{LazyLock, Mutex},
 };
 
 use flate2::read::GzDecoder;
@@ -32,6 +32,24 @@ use crate::{IntoIoError, JsonDownloadError, download, error::IoError};
 #[allow(clippy::doc_markdown)]
 pub static LAUNCHER_DIR: LazyLock<PathBuf> = LazyLock::new(|| get_launcher_dir().unwrap());
 
+static PORTABLE_WARNING: LazyLock<Mutex<Option<String>>> =
+    LazyLock::new(|| Mutex::new(None));
+
+fn set_portable_warning(message: impl Into<String>) -> bool {
+    if let Ok(mut warning) = PORTABLE_WARNING.lock() {
+        if warning.is_none() {
+            *warning = Some(message.into());
+            return true;
+        }
+    }
+    false
+}
+
+#[must_use]
+pub fn take_portable_warning() -> Option<String> {
+    PORTABLE_WARNING.lock().ok().and_then(|mut warning| warning.take())
+}
+
 /// Returns the path to the QuantumLauncher root folder.
 ///
 /// This uses the current dir or executable location (portable mode)
@@ -46,9 +64,11 @@ pub static LAUNCHER_DIR: LazyLock<PathBuf> = LazyLock::new(|| get_launcher_dir()
 /// - if the launcher directory could not be created (permissions issue)
 #[allow(clippy::doc_markdown)]
 pub fn get_launcher_dir() -> Result<PathBuf, IoError> {
+    let mut allow_fallback = false;
     let launcher_directory = if let Ok(n) = std::env::var("QL_DIR").or(std::env::var("QLDIR")) {
         canonicalize_s(&n)
     } else if let Some(n) = check_qlportable_file() {
+        allow_fallback = true;
         canonicalize_s(&n.path)
     } else {
         dirs::data_dir()
@@ -56,8 +76,42 @@ pub fn get_launcher_dir() -> Result<PathBuf, IoError> {
             .join("QuantumLauncher")
     };
 
-    std::fs::create_dir_all(&launcher_directory).path(&launcher_directory)?;
+    if let Err(err) = std::fs::create_dir_all(&launcher_directory).path(&launcher_directory) {
+        if allow_fallback {
+            if let IoError::Io { error, .. } = &err {
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::PermissionDenied | std::io::ErrorKind::ReadOnlyFilesystem
+                ) {
+                    if let Some(fallback_dir) = dirs::data_dir().map(|d| d.join("QuantumLauncher"))
+                    {
+                        if std::fs::create_dir_all(&fallback_dir).path(&fallback_dir).is_ok() {
+                            let warning = "Portable data path is read-only. Portable mode was disabled and the system data directory is being used instead.";
+                            if set_portable_warning(warning) {
+                                eprintln!("{warning}");
+                            }
+                            return Ok(fallback_dir);
+                        }
+                    }
+                }
+            }
+        }
+
+        return Err(err);
+    }
+
     Ok(launcher_directory)
+}
+
+fn expand_tilde(path: &str) -> Option<PathBuf> {
+    let home = dirs::home_dir()?;
+    if path == "~" {
+        return Some(home);
+    }
+    if let Some(stripped) = path.strip_prefix("~/") {
+        return Some(home.join(stripped));
+    }
+    None
 }
 
 /// Deletes the `running` sentinel file if it exists.
@@ -177,6 +231,7 @@ pub fn create_portable_file(path: String, flags: HashSet<String>) -> Result<(), 
             error: std::io::Error::other("Could not determine executable directory"),
             path: PathBuf::from("<exe parent>"),
         })?;
+    ensure_qldir_target_dir(&exe_dir, &path, &flags, false)?;
     let qldir_path = exe_dir.join(PORTABLE_FILENAME);
     let mut contents = path;
     if !flags.is_empty() {
@@ -204,6 +259,7 @@ pub fn create_system_redirect_file(path: String, flags: HashSet<String>) -> Resu
         std::fs::create_dir_all(&data_dir).path(&data_dir)?;
     }
 
+    ensure_qldir_target_dir(&data_dir, &path, &flags, true)?;
     let qldir_path = data_dir.join(PORTABLE_FILENAME);
     let mut contents = path;
     if !flags.is_empty() {
@@ -211,6 +267,43 @@ pub fn create_system_redirect_file(path: String, flags: HashSet<String>) -> Resu
         contents.push_str(&flags.into_iter().collect::<Vec<_>>().join(","));
     }
     std::fs::write(&qldir_path, contents).path(&qldir_path)
+}
+
+fn ensure_qldir_target_dir(
+    place: &Path,
+    path: &str,
+    flags: &HashSet<String>,
+    relative_from_parent: bool,
+) -> Result<(), IoError> {
+    let mut join_dir = !flags.contains("top");
+    let target = if let Some(expanded) = expand_tilde(path) {
+        expanded
+    } else if path == "." {
+        join_dir = false;
+        place.to_owned()
+    } else if path.is_empty() && !relative_from_parent {
+        place.to_owned()
+    } else {
+        let path_buf = PathBuf::from(path);
+        if path_buf.is_relative() {
+            let base_dir = if relative_from_parent {
+                place.parent().unwrap_or(place)
+            } else {
+                place
+            };
+            base_dir.join(path_buf)
+        } else {
+            path_buf
+        }
+    };
+
+    let target = if join_dir {
+        target.join("QuantumLauncher")
+    } else {
+        target
+    };
+
+    std::fs::create_dir_all(&target).path(&target)
 }
 
 /// Deletes the `qldir.txt` file from beside the executable.
@@ -290,16 +383,25 @@ fn check_qlportable_file() -> Option<QlDirInfo> {
 
         let mut join_dir = !flags.contains("top");
 
-        let path = if let (Some(stripped), Some(home)) = (path.strip_prefix("~"), dirs::home_dir())
-        {
-            home.join(stripped)
+        let path = if let Some(expanded) = expand_tilde(&path) {
+            expanded
         } else if path == "." {
             join_dir = false;
             place
         } else if path.is_empty() && i < 2 {
             place
         } else {
-            PathBuf::from(&path)
+            let path_buf = PathBuf::from(&path);
+            if path_buf.is_relative() {
+                let base_dir = if i >= 2 {
+                    place.parent().unwrap_or(&place)
+                } else {
+                    &place
+                };
+                base_dir.join(path_buf)
+            } else {
+                path_buf
+            }
         };
 
         return Some(if join_dir {

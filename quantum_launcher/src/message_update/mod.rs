@@ -20,7 +20,8 @@ use crate::state::{
     self, AutoSaveKind, GameLogMessage, InfoMessage, InstallFabricMessage, InstallOptifineMessage,
     InstallPaperMessage, InstanceNotes, Launcher, LauncherSettingsMessage, LauncherSettingsTab,
     MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLaunch, MenuModDescription,
-    Message, ModDescriptionMessage, NotesMessage, ProgressBar, RpcMessage, State, WindowMessage,
+    Message, ModDescriptionMessage, NotesMessage, PathKind, ProgressBar, RpcMessage, State,
+    WindowMessage,
 };
 
 mod shortcuts;
@@ -464,6 +465,19 @@ impl Launcher {
                 ql_core::file_utils::cleanup_running_file();
                 std::process::exit(0);
             }
+            LauncherSettingsMessage::PickPortablePath => {
+                if let Some(path) = rfd::FileDialog::new()
+                    .set_title("Select Portable Data Folder")
+                    .pick_folder()
+                {
+                    return self.update(Message::LauncherSettings(
+                        LauncherSettingsMessage::SetTempPath(
+                            PathKind::Portable,
+                            path.to_string_lossy().into_owned(),
+                        ),
+                    ));
+                }
+            }
             LauncherSettingsMessage::PortableModeStatusLoaded(status) => {
                 if let State::LauncherSettings(menu) = &mut self.state {
                     menu.portable_mode_status = status.clone();
@@ -609,6 +623,19 @@ impl Launcher {
                 }
                 ql_core::file_utils::cleanup_running_file();
                 std::process::exit(0);
+            }
+            LauncherSettingsMessage::PickSystemRedirectPath => {
+                if let Some(path) = rfd::FileDialog::new()
+                    .set_title("Select System Redirect Folder")
+                    .pick_folder()
+                {
+                    return self.update(Message::LauncherSettings(
+                        LauncherSettingsMessage::SetTempPath(
+                            PathKind::SystemRedirect,
+                            path.to_string_lossy().into_owned(),
+                        ),
+                    ));
+                }
             }
             LauncherSettingsMessage::SetTempPath(kind, path) => {
                 if let State::LauncherSettings(menu) = &mut self.state {

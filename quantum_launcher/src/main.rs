@@ -28,7 +28,7 @@ use std::{borrow::Cow, time::Duration};
 use config::LauncherConfig;
 use iced::{Settings, Task};
 use owo_colors::OwoColorize;
-use state::{Launcher, Message, get_entries};
+use state::{InfoMessage, Launcher, Message, get_entries};
 
 use ql_core::{
     InstanceKind, IntoStringError, JsonFileError, constants::OS_NAME, err, file_utils, info, pt,
@@ -116,6 +116,12 @@ impl Launcher {
 
         let mut launcher = Launcher::load_new(is_new_user, config, is_safe_mode)
             .unwrap_or_else(Launcher::with_error);
+
+        if let Some(warning) = file_utils::take_portable_warning() {
+            if let State::Launch(menu) = &mut launcher.state {
+                menu.message = Some(InfoMessage::error(warning));
+            }
+        }
         // let mut launcher = Launcher::with_error("test");
 
         let load_notes_command = if let (Some(instance), State::Launch(menu)) =
