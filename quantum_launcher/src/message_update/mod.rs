@@ -592,7 +592,7 @@ impl Launcher {
             LauncherSettingsMessage::DisableSystemRedirect => {
                 self.state = State::ConfirmAction {
                     msg1: "disable system-wide redirection".to_owned(),
-                    msg2: "The launcher will stop reading data globally from the system data directory. Your existing data will NOT be moved.\n\nThe launcher will automatically restart.".to_owned(),
+                    msg2: "The launcher will stop reading data globally from the system data directory.\nYour existing data will NOT be moved automatically.\n\nThe launcher will automatically restart.".to_owned(),
                     yes: LauncherSettingsMessage::DisableSystemRedirectConfirm.into(),
                     no: LauncherSettingsMessage::Open(state::LauncherSettingsTab::Location)
                         .into(),
