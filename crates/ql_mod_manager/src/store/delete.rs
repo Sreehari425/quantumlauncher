@@ -42,6 +42,8 @@ pub async fn delete_mods(
         .await?;
     }
 
+    // Remove all orphaned mods (dependencies)
+
     let mut has_been_removed;
     // let mut iteration = 0;
     loop {

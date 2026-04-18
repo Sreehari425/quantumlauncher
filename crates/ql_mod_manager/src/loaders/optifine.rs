@@ -112,6 +112,7 @@ pub async fn install(
         Some(OptifineUniqueVersion::Forge) => {
             let dest = instance_path.join(".minecraft/mods");
             tokio::fs::create_dir_all(&dest).await.path(&dest)?;
+
             let filename = path_to_installer
                 .file_name()
                 .and_then(OsStr::to_str)
@@ -120,11 +121,13 @@ pub async fn install(
             tokio::fs::copy(&path_to_installer, &dest)
                 .await
                 .path(&path_to_installer)?;
+
             config
                 .mod_type_info
                 .get_or_insert_with(ModTypeInfo::default)
                 .optifine_jar = Some(filename.to_owned());
             config.save_to_dir(&instance_path).await?;
+
             return Ok(());
         }
         Some(_) => {

@@ -413,7 +413,7 @@ impl MenuEditMods {
             })
             .collect();
 
-        let ids_local: Vec<String> = self
+        let ids_local = self
             .selected_mods
             .iter()
             .filter_map(|s_mod| {
@@ -424,6 +424,7 @@ impl MenuEditMods {
                 }
             })
             .collect();
+
         (ids_downloaded, ids_local)
     }
 

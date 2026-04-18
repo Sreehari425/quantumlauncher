@@ -373,6 +373,7 @@ pub fn sort_dependencies(
             file_name: n.clone(),
         }))
         .collect();
+
     entries.sort_by(|val1, val2| match (val1, val2) {
         (
             ModListEntry::Downloaded { config, .. },
@@ -384,6 +385,7 @@ pub fn sort_dependencies(
             (true, false) => Ordering::Less,
             (false, true) => Ordering::Greater,
         },
+
         (ModListEntry::Downloaded { config, .. }, ModListEntry::Local { .. }) => {
             if config.manually_installed {
                 Ordering::Less

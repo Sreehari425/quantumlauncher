@@ -278,8 +278,8 @@ impl Preset {
     }
 }
 
-async fn get_instance_type(instance_name: &Instance) -> Result<Loader, ModError> {
-    let config = InstanceConfigJson::read(instance_name).await?;
+async fn get_instance_type(instance: &Instance) -> Result<Loader, ModError> {
+    let config = InstanceConfigJson::read(instance).await?;
     Ok(config.mod_type)
 }
 
@@ -300,8 +300,8 @@ fn add_downloaded_mod_to_entries(
     }
 }
 
-async fn get_minecraft_version(instance_name: &Instance) -> Result<String, ModError> {
-    let version_json = VersionDetails::load(instance_name).await?;
+async fn get_minecraft_version(instance: &Instance) -> Result<String, ModError> {
+    let version_json = VersionDetails::load(instance).await?;
     let minecraft_version = version_json.get_id().to_owned();
     Ok(minecraft_version)
 }

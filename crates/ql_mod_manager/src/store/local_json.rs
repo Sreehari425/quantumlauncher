@@ -53,23 +53,18 @@ impl ModIndex {
         Ok(index)
     }
 
-    pub async fn save(
-        &mut self,
-        selected_instance: &Instance,
-    ) -> Result<(), JsonFileError> {
-        let index_dir = selected_instance
-            .get_dot_minecraft_path()
-            .join("mod_index.json");
+    pub async fn save(&mut self, instance: &Instance) -> Result<(), JsonFileError> {
+        let index_dir = instance.get_dot_minecraft_path().join("mod_index.json");
 
         let index_str = serde_json::to_string(&self).json_to()?;
         fs::write(&index_dir, &index_str).await.path(index_dir)?;
         Ok(())
     }
 
-    fn new(instance_name: &Instance) -> Self {
+    fn new(instance: &Instance) -> Self {
         Self {
             mods: HashMap::new(),
-            is_server: Some(instance_name.is_server()),
+            is_server: Some(instance.is_server()),
         }
     }
 
@@ -210,7 +205,6 @@ async fn load_inner(selected_instance: &Instance) -> Result<ModIndex, JsonFileEr
         Ok(index) if !index.trim().is_empty() => {
             return Ok(serde_json::from_str::<ModIndex>(&index).json(index)?);
         }
-        Ok(_) => {}
         Err(e) if e.kind() != ErrorKind::NotFound => {
             return Err(e.path(index_path).into());
         }
