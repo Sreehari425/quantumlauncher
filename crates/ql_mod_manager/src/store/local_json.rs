@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     io::ErrorKind,
-    path::Path,
+    sync::Arc,
 };
 
 use ql_core::{
@@ -10,13 +10,13 @@ use ql_core::{
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 
-use crate::store::ModId;
+use crate::store::{DirStructure, ModId, QueryType};
 
 use super::StoreBackendType;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ModConfig {
-    pub name: String,
+    pub name: Arc<str>,
     pub manually_installed: bool,
     pub installed_version: String,
     pub version_release_time: String,
@@ -30,14 +30,8 @@ pub struct ModConfig {
     pub supported_versions: Vec<String>,
     pub dependencies: HashSet<ModId>,
     pub dependents: HashSet<ModId>,
-    /// Type of content: "mod", "resourcepack", "shader", "datapack"
-    /// Defaults to "mod" for backwards compatibility with older indices.
-    #[serde(default = "default_project_type")]
-    pub project_type: String,
-}
-
-fn default_project_type() -> String {
-    "mod".to_owned()
+    #[serde(default = "QueryType::default")]
+    pub project_type: QueryType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -68,28 +62,18 @@ impl ModIndex {
         }
     }
 
-    pub async fn fix(&mut self, selected_instance: &Instance) -> Result<(), IoError> {
-        let dot_mc_dir = selected_instance.get_dot_minecraft_path();
-        let mods_dir = dot_mc_dir.join("mods");
+    pub async fn fix(&mut self, instance: &Instance) -> Result<(), IoError> {
+        let mc_dir = instance.get_dot_minecraft_path();
+        let mods_dir = mc_dir.join("mods");
         if !exists(&mods_dir).await {
             fs::create_dir(&mods_dir).await.path(&mods_dir)?;
             self.mods.clear();
             return Ok(());
         }
 
-        let resourcepacks_dir = dot_mc_dir.join("resourcepacks");
-        let shaderpacks_dir = dot_mc_dir.join("shaderpacks");
-        let datapacks_dir = dot_mc_dir.join("datapacks");
-        // Old texture packs dir for legacy versions
-        let texturepacks_dir = dot_mc_dir.join("texturepacks");
+        let dirs = DirStructure::new(instance, None).await?;
 
-        self.fix_nonexistent_mods(
-            &mods_dir,
-            &resourcepacks_dir,
-            &shaderpacks_dir,
-            &datapacks_dir,
-            &texturepacks_dir,
-        );
+        self.fix_nonexistent_mods(&dirs);
         self.fix_cf_modpack_id_bug();
 
         Ok(())
@@ -106,36 +90,19 @@ impl ModIndex {
         let mut drained_mods = Vec::new();
         for id in drained_ids {
             if let Some(mod_cfg) = self.mods.remove(&id) {
-                drained_mods.push((ModId::Curseforge(id.get_internal_id().to_owned()), mod_cfg));
+                drained_mods.push((ModId::Curseforge(id.get_internal_id()), mod_cfg));
             }
         }
         self.mods.extend(drained_mods);
     }
 
-    fn fix_nonexistent_mods(
-        &mut self,
-        mods_dir: &Path,
-        resourcepacks_dir: &Path,
-        shaderpacks_dir: &Path,
-        datapacks_dir: &Path,
-        texturepacks_dir: &Path,
-    ) {
+    fn fix_nonexistent_mods(&mut self, dirs: &DirStructure) {
         let mut removed_ids = Vec::new();
         let mut remove_dependents = Vec::new();
 
         for (id, mod_cfg) in &mut self.mods {
-            // Determine the correct directory based on project type
-            let content_dir = match mod_cfg.project_type.as_str() {
-                "resourcepack" => {
-                    if resourcepacks_dir.exists() {
-                        resourcepacks_dir
-                    } else {
-                        texturepacks_dir
-                    }
-                }
-                "shader" => shaderpacks_dir,
-                "datapack" => datapacks_dir,
-                _ => mods_dir, // "mod" or unknown defaults to mods
+            let Ok(content_dir) = dirs.get(mod_cfg.project_type) else {
+                continue; // a modpack somehow ended up here, ignore to be safe
             };
 
             mod_cfg.files.retain(|file| {

@@ -1,5 +1,5 @@
 use iced::{Length, widget};
-use ql_mod_manager::store::{ModId, SelectedMod};
+use ql_mod_manager::store::{LocalMod, ModId, QueryType, SelectedMod};
 
 use crate::{
     icons,
@@ -159,7 +159,7 @@ impl MenuExportMods {
                             widget::text("-")
                                 .size(13)
                                 .style(|theme: &LauncherTheme| theme.style_text(Color::Mid)),
-                            underline(widget::text(name).size(13), Color::Light),
+                            underline(widget::text(&**name).size(13), Color::Light),
                             widget::text("→").size(13).style(tsubtitle)
                         ]
                         .height(Length::Fill)
@@ -176,11 +176,15 @@ impl MenuExportMods {
 
                     preview_elements.push(link_element.into());
                 }
-                SelectedMod::Local { file_name } => {
+                SelectedMod::Local(LocalMod(file_name, project_type)) => {
+                    if *project_type != QueryType::Mods {
+                        continue;
+                    }
+
                     let display_name = file_name
                         .strip_suffix(".jar")
                         .or_else(|| file_name.strip_suffix(".zip"))
-                        .unwrap_or(file_name.as_str());
+                        .unwrap_or(file_name);
 
                     let text_element = widget::row![
                         widget::Space::with_width(5),

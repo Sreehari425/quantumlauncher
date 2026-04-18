@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    sync::mpsc::Sender,
+    sync::{Arc, mpsc::Sender},
 };
 
 use ql_core::{
@@ -89,7 +89,14 @@ impl PackFile {
         }
 
         download(&url).user_agent_ql().path(&path).await?;
-        add_to_index(index, self.projectID.to_string(), &mod_info, query, url).await;
+        add_to_index(
+            index,
+            Arc::from(self.projectID.to_string()),
+            &mod_info,
+            query,
+            url,
+        )
+        .await;
 
         send_progress(sender, i, len, &mod_info).await;
         Ok(())
@@ -114,7 +121,7 @@ impl PackFile {
 
 async fn add_to_index(
     index: &Mutex<ModIndex>,
-    project_id: String,
+    project_id: Arc<str>,
     mod_info: &curseforge::Mod,
     query: CurseforgeFileQuery,
     url: String,
@@ -148,7 +155,7 @@ async fn add_to_index(
                     .collect(),
                 dependencies: HashSet::new(),
                 dependents: HashSet::new(),
-                project_type: "mod".to_owned(),
+                project_type: QueryType::Mods,
             },
         );
     }
@@ -221,13 +228,13 @@ pub async fn install(
 
     let i = Mutex::new(0);
     let mod_index = Mutex::new(ModIndex::load(instance).await?);
-    let dirs = DirStructure::new(instance, json).await?;
+    let dirs = DirStructure::new(instance, Some(json)).await?;
 
     let cache: HashMap<i32, curseforge::Mod> = {
-        let project_ids: Vec<String> = index
+        let project_ids: Vec<Arc<str>> = index
             .files
             .iter()
-            .map(|n| n.projectID.to_string())
+            .map(|n| Arc::from(n.projectID.to_string()))
             .collect();
         CFSearchResult::get_from_ids(&project_ids)
             .await?

@@ -85,7 +85,7 @@ fn build_changelog_entries(mod_index: &ModIndex, updates: &[(ModId, String)]) ->
         .map(|(mod_id, new_version)| {
             let (name, old_version) = match mod_index.mods.get(mod_id) {
                 Some(mod_cfg) => (mod_cfg.name.clone(), mod_cfg.installed_version.clone()),
-                None => (mod_id.get_internal_id().to_owned(), String::new()),
+                None => (mod_id.get_internal_id(), String::new()),
             };
 
             let name = trim(&name);
@@ -106,9 +106,7 @@ fn trim(value: &str) -> &str {
     }
 }
 
-pub async fn check_for_updates(
-    instance: Instance,
-) -> Result<Vec<(ModId, String)>, ModError> {
+pub async fn check_for_updates(instance: Instance) -> Result<Vec<(ModId, String)>, ModError> {
     let index = ModIndex::load(&instance).await?;
     let version_json = VersionDetails::load(&instance).await?;
     let config = InstanceConfigJson::read(&instance).await?;

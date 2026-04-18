@@ -2,6 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     io::{Cursor, Read, Write},
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use owo_colors::OwoColorize;
@@ -13,7 +14,9 @@ use ql_core::{
 use serde::{Deserialize, Serialize};
 use zip::ZipWriter;
 
-use crate::store::{ModConfig, ModError, ModId, ModIndex, SelectedMod, install_modpack};
+use crate::store::{
+    LocalMod, ModConfig, ModError, ModId, ModIndex, QueryType, SelectedMod, install_modpack,
+};
 
 #[must_use]
 #[derive(Debug, Clone, Default)]
@@ -57,7 +60,7 @@ pub struct Preset {
     pub instance_type: Loader,
     #[serde(rename = "entries_modrinth")]
     pub entries_downloaded: HashMap<ModId, ModConfig>,
-    pub entries_local: Vec<String>,
+    pub entries_local: Vec<Arc<str>>,
 }
 
 impl Preset {
@@ -94,19 +97,22 @@ impl Preset {
         let index = ModIndex::load(&instance).await?;
 
         let mut entries_downloaded = HashMap::new();
-        let mut entries_local: Vec<(String, Vec<u8>)> = Vec::new();
+        let mut entries_local: Vec<(Arc<str>, Vec<u8>)> = Vec::new();
 
         for entry in selected_mods {
             match entry {
                 SelectedMod::Downloaded { id, .. } => {
                     add_downloaded_mod_to_entries(&mut entries_downloaded, &index, &id);
                 }
-                SelectedMod::Local { file_name } => {
+                SelectedMod::Local(LocalMod(file_name, kind)) => {
+                    if kind != QueryType::Mods {
+                        continue;
+                    }
                     if is_already_covered(&index, &file_name) {
                         continue;
                     }
 
-                    let entry = mods_dir.join(&file_name);
+                    let entry = mods_dir.join(&*file_name);
                     let mod_bytes = tokio::fs::read(&entry).await.path(&entry)?;
                     entries_local.push((file_name.clone(), mod_bytes));
                 }
@@ -127,7 +133,7 @@ impl Preset {
         for (name, bytes) in entries_local {
             zip.start_file(&name, zip::write::FileOptions::<()>::default())?;
             zip.write_all(&bytes)
-                .map_err(|n| ModError::ZipIoError(n, name.clone()))?;
+                .map_err(|n| ModError::ZipIoError(n, name.to_string()))?;
         }
 
         if include_config && config_dir.is_dir() {
@@ -199,8 +205,7 @@ impl Preset {
                 {
                     Some(n) => {
                         if !n.is_empty() {
-                            let incompatible =
-                                n.iter().map(|n| n.name.as_str()).collect::<Vec<_>>();
+                            let incompatible = n.iter().map(|n| &*n.name).collect::<Vec<_>>();
                             err!(
                                 "Curseforge has blocked downloading these mods: {incompatible:?}\n\nPlease install them manually"
                             );
@@ -353,9 +358,9 @@ async fn add_dir_to_zip_recursive(
     Ok(())
 }
 
-fn is_already_covered(index: &ModIndex, mod_name: &String) -> bool {
+fn is_already_covered(index: &ModIndex, mod_name: &str) -> bool {
     for config in index.mods.values() {
-        if config.files.iter().any(|n| n.filename == *mod_name) {
+        if config.files.iter().any(|n| n.filename == mod_name) {
             return true;
         }
     }

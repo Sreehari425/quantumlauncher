@@ -9,7 +9,7 @@ use ql_core::{
     Instance, IntoIoError, IntoJsonError, IntoStringError, JsonFileError, constants::OS_NAME,
     json::InstanceConfigJson,
 };
-use ql_mod_manager::store::{ModConfig, ModId, ModIndex};
+use ql_mod_manager::store::{LocalMod, ModConfig, ModId, ModIndex};
 
 use crate::state::{
     AutoSaveKind, EditInstanceMessage, GameProcess, InstallModsMessage, InstanceLog, LaunchModal,
@@ -361,7 +361,7 @@ impl MenuModsDownload {
 
 pub fn sort_dependencies(
     downloaded_mods: &HashMap<ModId, ModConfig>,
-    locally_installed_mods: &HashSet<String>,
+    locally_installed_mods: &HashSet<LocalMod>,
 ) -> Vec<ModListEntry> {
     let mut entries: Vec<ModListEntry> = downloaded_mods
         .iter()
@@ -369,9 +369,7 @@ pub fn sort_dependencies(
             id: id.clone(),
             config: Box::new(c.clone()),
         })
-        .chain(locally_installed_mods.iter().map(|n| ModListEntry::Local {
-            file_name: n.clone(),
-        }))
+        .chain(locally_installed_mods.iter().map(ModListEntry::from))
         .collect();
 
     entries.sort_by(|val1, val2| match (val1, val2) {
@@ -381,9 +379,12 @@ pub fn sort_dependencies(
                 config: config2, ..
             },
         ) => match (config.manually_installed, config2.manually_installed) {
-            (true, true) | (false, false) => config.name.cmp(&config2.name),
             (true, false) => Ordering::Less,
             (false, true) => Ordering::Greater,
+            _ => match config.project_type.cmp(&config2.project_type) {
+                Ordering::Equal => config.name.cmp(&config2.name),
+                other => other,
+            },
         },
 
         (ModListEntry::Downloaded { config, .. }, ModListEntry::Local { .. }) => {
@@ -400,12 +401,11 @@ pub fn sort_dependencies(
                 Ordering::Less
             }
         }
-        (
-            ModListEntry::Local { file_name },
-            ModListEntry::Local {
-                file_name: file_name2,
-            },
-        ) => file_name.cmp(file_name2),
+
+        (ModListEntry::Local(l1), ModListEntry::Local(l2)) => match l1.1.cmp(&l2.1) {
+            Ordering::Equal => l1.0.cmp(&l2.0),
+            other => other,
+        },
     });
 
     entries

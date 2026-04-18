@@ -98,7 +98,7 @@ impl Launcher {
             return widget::Column::new().into();
         };
 
-        let view = self.create_folder_view(node, folder);
+        let view = Self::create_folder_view(node, folder);
 
         match mode {
             NodeMode::InTree(nesting) => {
@@ -274,7 +274,6 @@ impl Launcher {
     }
 
     fn create_folder_view<'a>(
-        &self,
         node: &'a SidebarNode,
         folder: &SidebarFolder,
     ) -> widget::Stack<'a, Message, LauncherTheme> {

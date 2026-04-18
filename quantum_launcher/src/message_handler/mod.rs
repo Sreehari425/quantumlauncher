@@ -25,7 +25,9 @@ use ql_core::{
 };
 use ql_core::{InstanceKind, LaunchedProcess, info, pt};
 use ql_instances::auth::AccountData;
+use ql_mod_manager::store::{LocalMod, QueryType};
 use ql_mod_manager::{loaders, store::ModIndex};
+use std::sync::Arc;
 use std::{
     collections::HashSet,
     ffi::OsStr,
@@ -284,7 +286,7 @@ impl Launcher {
                 width_name: 220.0,
                 list_shift_index: None,
                 list_scroll: AbsoluteOffset::default(),
-                content_filter: Default::default(),
+                content_filter: None,
             });
 
             Ok(Task::batch([update_local_mods_task]))
@@ -642,29 +644,49 @@ impl Launcher {
 }
 
 pub async fn get_locally_installed_mods(
-    selected_instance: PathBuf,
+    dot_mc: PathBuf,
     blacklist: Vec<String>,
-) -> HashSet<String> {
-    let mods_dir_path = selected_instance.join("mods");
-
-    let Ok(mut dir) = tokio::fs::read_dir(&mods_dir_path).await else {
-        err!("Error reading mods directory");
-        return HashSet::new();
-    };
+) -> HashSet<LocalMod> {
+    let dirs = [
+        ("mods", QueryType::Mods),
+        ("resourcepacks", QueryType::ResourcePacks),
+        ("texturepacks", QueryType::ResourcePacks),
+        ("shaderpacks", QueryType::Shaders),
+        ("datapacks", QueryType::DataPacks),
+    ];
     let mut set = HashSet::new();
-    while let Ok(Some(entry)) = dir.next_entry().await {
-        let path = entry.path();
-        let Some(file_name) = path.file_name().and_then(OsStr::to_str) else {
-            continue;
+
+    for (dir, project_type) in dirs {
+        let mods_dir_path = dot_mc.join(dir);
+
+        let mut dir = match tokio::fs::read_dir(&mods_dir_path).await {
+            Ok(dir) => dir,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                continue;
+            }
+            Err(err) => {
+                err!("While reading {dir} directory: {err}");
+                continue;
+            }
         };
-        if blacklist.contains(&file_name.to_owned()) {
-            continue;
-        }
-        let Some(extension) = path.extension() else {
-            continue;
-        };
-        if extension == "jar" || extension == "disabled" {
-            set.insert(file_name.to_owned());
+
+        while let Ok(Some(entry)) = dir.next_entry().await {
+            let path = entry.path();
+            let Some(file_name) = path.file_name().and_then(OsStr::to_str) else {
+                continue;
+            };
+            if blacklist.contains(&file_name.to_owned()) {
+                continue;
+            }
+            let Some(extension) = path.extension() else {
+                continue;
+            };
+            if extension.eq_ignore_ascii_case("jar")
+                || extension.eq_ignore_ascii_case("zip")
+                || extension.eq_ignore_ascii_case("disabled")
+            {
+                set.insert(LocalMod(Arc::from(file_name), project_type));
+            }
         }
     }
     set
@@ -708,7 +730,7 @@ async fn copy_optifine_over(instance: &Instance) -> Result<(), String> {
     config
         .mod_type_info
         .get_or_insert_with(ModTypeInfo::default)
-        .optifine_jar = Some("optifine.jar".to_owned());
+        .optifine_jar = Some(Arc::from("optifine.jar"));
     config.save(instance).await.strerr()?;
 
     Ok(())

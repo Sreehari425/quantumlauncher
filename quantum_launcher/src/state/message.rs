@@ -1,4 +1,4 @@
-use std::{collections::HashSet, path::PathBuf, process::ExitStatus};
+use std::{collections::HashSet, path::PathBuf, process::ExitStatus, sync::Arc};
 
 use crate::{
     config::sidebar::{FolderId, SDragLocation, SidebarSelection},
@@ -21,8 +21,8 @@ use ql_instances::auth::{
 use ql_mod_manager::{
     loaders::{fabric, paper::PaperVersion},
     store::{
-        Category, CurseforgeNotAllowed, ModId, ModIndex, QueryType, RecommendedMod, SearchMod,
-        SearchResult, StoreBackendType,
+        Category, CurseforgeNotAllowed, LocalMod, ModId, ModIndex, QueryType, RecommendedMod,
+        SearchMod, SearchResult, StoreBackendType,
     },
 };
 
@@ -109,19 +109,20 @@ pub enum ManageModsMessage {
     Open,
     ListScrolled(AbsoluteOffset),
     /// Simple, dumb selection
-    SelectEnsure(String, Option<ModId>),
+    SelectEnsure(Arc<str>, Option<ModId>, QueryType),
     /// More nuanced selection with ctrl/shift multi-select
-    SelectMod(String, Option<ModId>),
+    SelectMod(Arc<str>, Option<ModId>, QueryType),
 
     DeleteSelected,
-    DeleteOptiforge(String),
+    DeleteOptiforge(Arc<str>),
     DeleteFinished(Res<Vec<ModId>>),
     LocalDeleteFinished(Res),
-    LocalIndexLoaded(HashSet<String>),
+    LocalIndexLoaded(HashSet<LocalMod>),
 
     ToggleSelected,
     ToggleFinished(Res),
     ToggleOne(ModId),
+    ToggleOneLocal(LocalMod),
 
     UpdateCheck,
     UpdateCheckResult(Res<Vec<(ModId, String)>>),
@@ -139,7 +140,7 @@ pub enum ManageModsMessage {
     SetModal(Option<MenuEditModsModal>),
     RightClick(ModId),
     SetSearch(Option<String>),
-    SetContentFilter(super::ContentFilter),
+    SetContentFilter(Option<QueryType>),
 
     ExportMenuOpen,
     CurseforgeManualToggleDelete(bool),
@@ -206,8 +207,8 @@ pub enum InstallOptifineMessage {
 #[derive(Debug, Clone)]
 pub enum EditPresetsMessage {
     Open,
-    ToggleCheckbox((String, ModId), bool),
-    ToggleCheckboxLocal(String, bool),
+    ToggleCheckbox(Arc<str>, ModId, bool),
+    ToggleCheckboxLocal(LocalMod, bool),
     ToggleIncludeConfig(bool),
     SelectAll,
     BuildYourOwn,

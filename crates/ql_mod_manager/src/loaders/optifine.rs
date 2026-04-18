@@ -3,7 +3,7 @@ use std::{
     fmt::Display,
     path::{Path, PathBuf},
     process::Command,
-    sync::mpsc::Sender,
+    sync::{Arc, mpsc::Sender},
 };
 
 use ql_core::{
@@ -125,7 +125,7 @@ pub async fn install(
             config
                 .mod_type_info
                 .get_or_insert_with(ModTypeInfo::default)
-                .optifine_jar = Some(filename.to_owned());
+                .optifine_jar = Some(Arc::from(filename));
             config.save_to_dir(&instance_path).await?;
 
             return Ok(());

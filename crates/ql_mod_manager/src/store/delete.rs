@@ -1,6 +1,6 @@
 use crate::{
     rate_limiter::lock,
-    store::{ModError, ModId, ModIndex},
+    store::{DirStructure, ModError, ModId, ModIndex},
 };
 use ql_core::{Instance, IoError, err, info, pt};
 use std::{
@@ -8,10 +8,7 @@ use std::{
     path::Path,
 };
 
-pub async fn delete_mods(
-    ids: Vec<ModId>,
-    instance: Instance,
-) -> Result<Vec<ModId>, ModError> {
+pub async fn delete_mods(ids: Vec<ModId>, instance: Instance) -> Result<Vec<ModId>, ModError> {
     let _guard = lock().await;
 
     if ids.is_empty() {
@@ -20,26 +17,11 @@ pub async fn delete_mods(
 
     info!("Deleting content:");
     let mut index = ModIndex::load(&instance).await?;
-
-    let dot_mc_dir = instance.get_dot_minecraft_path();
-    let mods_dir = dot_mc_dir.join("mods");
-    let resourcepacks_dir = dot_mc_dir.join("resourcepacks");
-    let texturepacks_dir = dot_mc_dir.join("texturepacks");
-    let shaderpacks_dir = dot_mc_dir.join("shaderpacks");
-    let datapacks_dir = dot_mc_dir.join("datapacks");
+    let dirs = DirStructure::new(&instance, None).await?;
 
     for id in &ids {
         pt!("Deleting: {id:?}");
-        delete_mod(
-            &mut index,
-            id,
-            &mods_dir,
-            &resourcepacks_dir,
-            &texturepacks_dir,
-            &shaderpacks_dir,
-            &datapacks_dir,
-        )
-        .await?;
+        delete_mod(&mut index, id, &dirs).await?;
     }
 
     // Remove all orphaned mods (dependencies)
@@ -87,16 +69,7 @@ pub async fn delete_mods(
 
         for orphan in orphaned_mods {
             has_been_removed = true;
-            delete_mod(
-                &mut index,
-                &orphan,
-                &mods_dir,
-                &resourcepacks_dir,
-                &texturepacks_dir,
-                &shaderpacks_dir,
-                &datapacks_dir,
-            )
-            .await?;
+            delete_mod(&mut index, &orphan, &dirs).await?;
         }
 
         if !has_been_removed {
@@ -109,34 +82,17 @@ pub async fn delete_mods(
     Ok(ids)
 }
 
-async fn delete_mod(
-    index: &mut ModIndex,
-    id: &ModId,
-    mods_dir: &Path,
-    resourcepacks_dir: &Path,
-    texturepacks_dir: &Path,
-    shaderpacks_dir: &Path,
-    datapacks_dir: &Path,
-) -> Result<(), ModError> {
+async fn delete_mod(index: &mut ModIndex, id: &ModId, dirs: &DirStructure) -> Result<(), ModError> {
     if let Some(mod_info) = index.mods.remove(id) {
-        // Determine the correct directory based on project type
-        let content_dir: &Path = match mod_info.project_type.as_str() {
-            "resourcepack" => {
-                if resourcepacks_dir.exists() {
-                    resourcepacks_dir
-                } else {
-                    texturepacks_dir
-                }
-            }
-            "shader" => shaderpacks_dir,
-            "datapack" => datapacks_dir,
-            _ => mods_dir, // "mod" or unknown defaults to mods
+        let Ok(content_dir) = dirs.get(mod_info.project_type) else {
+            debug_assert!(false, "modpack ended up in mod index");
+            return Ok(());
         };
         for file in &mod_info.files {
             if mod_info.enabled {
-                delete_file(content_dir, &file.filename).await?;
+                delete_file(&content_dir, &file.filename).await?;
             } else {
-                delete_file(content_dir, &format!("{}.disabled", file.filename)).await?;
+                delete_file(&content_dir, &format!("{}.disabled", file.filename)).await?;
             }
         }
     } else {

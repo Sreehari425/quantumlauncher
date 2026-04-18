@@ -28,7 +28,7 @@ use ql_core::{
 };
 use ql_mod_manager::{
     loaders::paper::PaperVersion,
-    store::{Category, SearchMod},
+    store::{Category, LocalMod, SearchMod},
 };
 use ql_mod_manager::{
     loaders::{self, forge::ForgeInstallProgress, optifine::OptifineInstallProgress},
@@ -214,7 +214,7 @@ pub enum SelectedState {
 #[derive(Debug, Clone)]
 pub enum ModListEntry {
     Downloaded { id: ModId, config: Box<ModConfig> },
-    Local { file_name: String },
+    Local(LocalMod),
 }
 
 impl ModListEntry {
@@ -227,33 +227,25 @@ impl ModListEntry {
 
     pub fn name(&self) -> &str {
         match self {
-            ModListEntry::Local { file_name } => file_name,
+            ModListEntry::Local(l) => &l.0,
             ModListEntry::Downloaded { config, .. } => &config.name,
         }
     }
 
     /// Returns the project type ("mod", "resourcepack", "shader", "datapack")
     /// Local files are assumed to be mods.
-    pub fn project_type(&self) -> &str {
+    pub fn project_type(&self) -> QueryType {
         match self {
-            ModListEntry::Local { .. } => "mod",
-            ModListEntry::Downloaded { config, .. } => &config.project_type,
+            ModListEntry::Local(l) => l.1,
+            ModListEntry::Downloaded { config, .. } => config.project_type,
         }
-    }
-
-    /// Returns true if this entry can be toggled (disabled/enabled).
-    /// Only mods support toggling.
-    pub fn can_toggle(&self) -> bool {
-        self.project_type() == "mod"
     }
 }
 
 impl From<ModListEntry> for SelectedMod {
     fn from(value: ModListEntry) -> Self {
         match value {
-            ModListEntry::Local { file_name } => SelectedMod::Local {
-                file_name: file_name.clone(),
-            },
+            ModListEntry::Local(l) => SelectedMod::Local(l),
             ModListEntry::Downloaded { id, config } => SelectedMod::Downloaded {
                 name: config.name.clone(),
                 id: id.clone(),
@@ -269,44 +261,21 @@ impl PartialEq<ModListEntry> for SelectedMod {
                 SelectedMod::Downloaded { name, id },
                 ModListEntry::Downloaded { id: id2, config },
             ) => id == id2 && *name == config.name,
-            (SelectedMod::Local { file_name }, ModListEntry::Local { file_name: name2 }) => {
-                file_name == name2
-            }
+            (SelectedMod::Local(l1), ModListEntry::Local(l2)) => l1 == l2,
             _ => false,
         }
     }
 }
 
-/// Filter for content types in the mods menu
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum ContentFilter {
-    #[default]
-    All,
-    Mods,
-    ResourcePacks,
-    Shaders,
-    DataPacks,
+impl From<LocalMod> for ModListEntry {
+    fn from(l: LocalMod) -> Self {
+        ModListEntry::Local(l)
+    }
 }
 
-impl ContentFilter {
-    pub fn matches(&self, project_type: &str) -> bool {
-        match self {
-            ContentFilter::All => true,
-            ContentFilter::Mods => project_type == "mod",
-            ContentFilter::ResourcePacks => project_type == "resourcepack",
-            ContentFilter::Shaders => project_type == "shader",
-            ContentFilter::DataPacks => project_type == "datapack",
-        }
-    }
-
-    pub fn label(&self) -> &'static str {
-        match self {
-            ContentFilter::All => "All",
-            ContentFilter::Mods => "Mods",
-            ContentFilter::ResourcePacks => "Resource Packs",
-            ContentFilter::Shaders => "Shaders",
-            ContentFilter::DataPacks => "Data Packs",
-        }
+impl From<&LocalMod> for ModListEntry {
+    fn from(l: &LocalMod) -> Self {
+        ModListEntry::Local(l.clone())
     }
 }
 
@@ -318,7 +287,7 @@ pub struct MenuEditMods {
     // TODO: Use this for dynamically adjusting installable loader buttons
     pub version_json: Box<VersionDetails>,
 
-    pub locally_installed_mods: HashSet<String>,
+    pub locally_installed_mods: HashSet<LocalMod>,
     pub sorted_mods_list: Vec<ModListEntry>,
 
     pub selected_mods: HashSet<SelectedMod>,
@@ -338,7 +307,25 @@ pub struct MenuEditMods {
     pub search: Option<String>,
 
     pub width_name: f32,
-    pub content_filter: ContentFilter,
+    pub content_filter: Option<QueryType>,
+}
+
+impl MenuEditMods {
+    pub fn toggle_local_mods_in_ui(&mut self, ids_local: &[LocalMod]) {
+        self.selected_mods.retain(|n| {
+            if let SelectedMod::Local(l) = n {
+                !ids_local.contains(l)
+            } else {
+                true
+            }
+        });
+        self.selected_mods.extend(ids_local.iter().map(|n| {
+            SelectedMod::Local(LocalMod(
+                Arc::from(ql_mod_manager::store::flip_filename(&n.0)),
+                n.1,
+            ))
+        }));
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -400,7 +387,7 @@ impl MenuEditMods {
     /// - The filenames of local mods
     ///
     /// ...respectively, from the mods selected in the mod menu.
-    pub fn get_kinds_of_ids(&self) -> (Vec<ModId>, Vec<String>) {
+    pub fn get_kinds_of_ids(&self) -> (Vec<ModId>, Vec<LocalMod>) {
         let ids_downloaded = self
             .selected_mods
             .iter()
@@ -416,13 +403,9 @@ impl MenuEditMods {
         let ids_local = self
             .selected_mods
             .iter()
-            .filter_map(|s_mod| {
-                if let SelectedMod::Local { file_name } = s_mod {
-                    Some(file_name.clone())
-                } else {
-                    None
-                }
-            })
+            .filter_map(SelectedMod::local)
+            .filter(|n| n.1.is_toggleable())
+            .cloned()
             .collect();
 
         (ids_downloaded, ids_local)
@@ -543,7 +526,7 @@ pub struct MenuModsDownload {
     pub categories: ModCategoryState,
 
     pub mod_descriptions: HashMap<ModId, String>,
-    pub mods_download_in_progress: HashMap<ModId, (String, ModOperation)>,
+    pub mods_download_in_progress: HashMap<ModId, (Arc<str>, ModOperation)>,
     pub opened_mod: Option<usize>,
     pub latest_load: Instant,
     pub scroll_offset: AbsoluteOffset,

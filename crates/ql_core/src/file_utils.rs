@@ -13,7 +13,7 @@ use thiserror::Error;
 use walkdir::WalkDir;
 use zip::{ZipArchive, ZipWriter, write::FileOptions};
 
-use crate::{IntoIoError, IntoJsonError, JsonDownloadError, download, error::IoError};
+use crate::{IntoIoError, JsonDownloadError, download, error::IoError};
 
 /// The path to the QuantumLauncher root folder.
 ///
@@ -200,11 +200,11 @@ pub async fn download_file_to_json<T: DeserializeOwned>(
     url: &str,
     user_agent: bool,
 ) -> Result<T, JsonDownloadError> {
-    let text = download_file_to_string(url, user_agent).await?;
-    if text.trim().is_empty() {
-        return Err(JsonDownloadError::EmptyResponse(url.to_owned()));
+    let mut r = download(url);
+    if user_agent {
+        r = r.user_agent_ql();
     }
-    Ok(serde_json::from_str(&text).json(text)?)
+    r.json().await
 }
 
 /// Downloads a file from the given URL into a `Vec<u8>`.

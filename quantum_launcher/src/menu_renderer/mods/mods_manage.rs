@@ -1,9 +1,3 @@
-use iced::{
-    Alignment, Length,
-    widget::{self, column, row, tooltip::Position},
-};
-use ql_core::{Instance, InstanceKind, Loader, json::InstanceConfigJson};
-use ql_mod_manager::store::SelectedMod;
 use crate::{
     icons,
     menu_renderer::{
@@ -13,13 +7,22 @@ use crate::{
     },
     message_handler::ForgeKind,
     state::{
-        ContentFilter, EditPresetsMessage, ImageState, InstallFabricMessage, InstallModsMessage,
+        EditPresetsMessage, ImageState, InstallFabricMessage, InstallModsMessage,
         InstallOptifineMessage, InstallPaperMessage, ManageJarModsMessage, ManageModsMessage,
         MenuEditMods, MenuEditModsModal, Message, ModDescriptionMessage, ModListEntry,
         SelectedState,
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
+use iced::{
+    Alignment, Length,
+    widget::{self, column, row, tooltip::Position},
+};
+use ql_core::{
+    Instance, InstanceKind, Loader,
+    json::{InstanceConfigJson, V_LAST_TEXTUREPACK},
+};
+use ql_mod_manager::store::{QueryType, SelectedMod};
 
 pub const MODS_SIDEBAR_WIDTH: u16 = 190;
 
@@ -104,28 +107,30 @@ impl MenuEditMods {
             .into()
         } else if let Some(MenuEditModsModal::FolderMenu) = &self.modal {
             let folder_menu = widget::column![
-                ctx_button(icons::folder_s(CTXI_SIZE), "Open Mods Folder").on_press_with(|| {
+                ctx_button(icons::folder_s(CTXI_SIZE), "Mods Folder").on_press_with(|| {
                     Message::CoreOpenPath(selected_instance.get_dot_minecraft_path().join("mods"))
                 }),
-                ctx_button(icons::folder_s(CTXI_SIZE), "Open Resource Packs Folder").on_press_with(
-                    || Message::CoreOpenPath(
+                ctx_button(icons::folder_s(CTXI_SIZE), "Resource Packs Folder").on_press_with(
+                    || Message::CoreOpenPath(selected_instance.get_dot_minecraft_path().join(
+                        if self.version_json.is_before_or_eq(V_LAST_TEXTUREPACK) {
+                            "texturepacks"
+                        } else {
+                            "resourcepacks"
+                        }
+                    ))
+                ),
+                ctx_button(icons::folder_s(CTXI_SIZE), "Shaders Folder").on_press_with(|| {
+                    Message::CoreOpenPath(
                         selected_instance
                             .get_dot_minecraft_path()
-                            .join("resourcepacks")
+                            .join("shaderpacks"),
                     )
-                ),
-                ctx_button(icons::folder_s(CTXI_SIZE), "Open Shader Packs Folder").on_press_with(
-                    || Message::CoreOpenPath(
-                        selected_instance
-                            .get_dot_minecraft_path()
-                            .join("shaderpacks")
+                }),
+                ctx_button(icons::folder_s(CTXI_SIZE), "Datapacks Folder").on_press_with(|| {
+                    Message::CoreOpenPath(
+                        selected_instance.get_dot_minecraft_path().join("datapacks"),
                     )
-                ),
-                ctx_button(icons::folder_s(CTXI_SIZE), "Open Data Packs Folder").on_press_with(
-                    || Message::CoreOpenPath(
-                        selected_instance.get_dot_minecraft_path().join("datapacks")
-                    )
-                ),
+                }),
             ]
             .spacing(4);
 
@@ -135,7 +140,7 @@ impl MenuEditMods {
                     widget::Space::with_width(30),
                     widget::column![
                         widget::Space::with_height(40),
-                        ctxbox(folder_menu).width(220)
+                        ctxbox(folder_menu).width(200)
                     ]
                 ]
             )
@@ -150,19 +155,20 @@ impl MenuEditMods {
         selected_instance: &'a Instance,
         tick_timer: usize,
     ) -> widget::Scrollable<'a, Message, LauncherTheme> {
+        let open_folders = button_with_icon(icons::folder_s(14), "Open", 14).on_press(
+            ManageModsMessage::SetModal(if let Some(MenuEditModsModal::FolderMenu) = self.modal {
+                None
+            } else {
+                Some(MenuEditModsModal::FolderMenu)
+            })
+            .into(),
+        );
+
         widget::scrollable(
             column![
                 row![
                     back_button().on_press(back_to_launch_screen(None)),
-                    tooltip(
-                        button_with_icon(icons::folder_s(14), "Open", 14).on_press(
-                            Message::ManageMods(ManageModsMessage::SetModal(Some(
-                                MenuEditModsModal::FolderMenu,
-                            ))),
-                        ),
-                        widget::text("Open Folders").size(12),
-                        Position::Bottom
-                    )
+                    open_folders,
                 ]
                 .spacing(5),
                 self.get_mod_installer_buttons(selected_instance.kind),
@@ -199,12 +205,7 @@ impl MenuEditMods {
                 widget::text("Mod Updates Available!").size(15),
                 widget::column(self.available_updates.iter().enumerate().map(
                     |(i, (id, update_name, is_enabled))| {
-                        let title = self
-                            .mods
-                            .mods
-                            .get(id)
-                            .map(|n| n.name.clone())
-                            .unwrap_or_default();
+                        let title = self.mods.mods.get(id).map(|n| &*n.name).unwrap_or_default();
 
                         let toggle = move |b| ManageModsMessage::UpdateCheckToggle(i, b).into();
 
@@ -308,7 +309,7 @@ impl MenuEditMods {
         if let Some(optifine) = config
             .mod_type_info
             .as_ref()
-            .and_then(|n| n.optifine_jar.as_deref())
+            .and_then(|n| n.optifine_jar.clone())
         {
             widget::button(
                 row![
@@ -319,10 +320,12 @@ impl MenuEditMods {
                 .spacing(11)
                 .padding(2),
             )
-            .on_press(Message::UninstallLoaderConfirm(
-                Box::new(ManageModsMessage::DeleteOptiforge(optifine.to_owned()).into()),
-                Loader::OptiFine,
-            ))
+            .on_press_with(move || {
+                Message::UninstallLoaderConfirm(
+                    Box::new(ManageModsMessage::DeleteOptiforge(optifine.clone()).into()),
+                    Loader::OptiFine,
+                )
+            })
         } else {
             widget::button(widget::text("Install OptiFine with Forge").size(14))
                 .on_press(InstallOptifineMessage::ScreenOpen.into())
@@ -358,6 +361,20 @@ impl MenuEditMods {
             .into();
         }
 
+        let hamburger_dropdown = widget::button(
+            row![icons::lines_s(12)]
+                .align_y(Alignment::Center)
+                .padding(1),
+        );
+
+        let hamburger_dropdown = if let Some(MenuEditModsModal::Submenu) = self.modal {
+            hamburger_dropdown.on_press(ManageModsMessage::SetModal(None).into())
+        } else {
+            hamburger_dropdown
+                .on_press(ManageModsMessage::SetModal(Some(MenuEditModsModal::Submenu)).into())
+                .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
+        };
+
         widget::container(
             column![
                 widget::Column::new()
@@ -374,16 +391,7 @@ impl MenuEditMods {
                     )
                     .push(
                         row![
-                            // Hamburger dropdown
-                            widget::button(
-                                row![icons::lines_s(12)]
-                                    .align_y(Alignment::Center)
-                                    .padding(1),
-                            )
-                            .style(|t: &LauncherTheme, s| {
-                                t.style_button(s, StyleButton::RoundDark)
-                            })
-                            .on_press(ManageModsMessage::SetModal(self.modal.is_none().then_some(MenuEditModsModal::Submenu)).into()),
+                            hamburger_dropdown,
 
                             // Search button
                             widget::button(
@@ -412,9 +420,8 @@ impl MenuEditMods {
 
                             subbutton_with_icon(icons::bin_s(12), "Delete")
                             .on_press_maybe((!self.selected_mods.is_empty()).then_some(ManageModsMessage::DeleteSelected.into())),
-                            // Toggle button - only enabled when all selected items are mods
                             subbutton_with_icon(icons::toggleoff_s(12), "Toggle")
-                            .on_press_maybe(self.can_toggle_selection().then_some(ManageModsMessage::ToggleSelected.into())),
+                                .on_press(ManageModsMessage::ToggleSelected.into()),
                             subbutton_with_icon(icons::deselectall_s(12), if matches!(self.selected_state, SelectedState::All) {
                                 "Unselect All"
                             } else {
@@ -427,25 +434,7 @@ impl MenuEditMods {
                     )
                     // Content filter row
                     .push(
-                        widget::row(
-                            [ContentFilter::All, ContentFilter::Mods, ContentFilter::ResourcePacks, ContentFilter::Shaders, ContentFilter::DataPacks]
-                                .into_iter()
-                                .map(|filter| {
-                                    let is_selected = self.content_filter == filter;
-                                    widget::button(widget::text(filter.label()).size(11))
-                                        .style(move |t: &LauncherTheme, s| {
-                                            t.style_button(s, if is_selected {
-                                                StyleButton::Round
-                                            } else {
-                                                StyleButton::RoundDark
-                                            })
-                                        })
-                                        .on_press(Message::ManageMods(ManageModsMessage::SetContentFilter(filter)))
-                                        .into()
-                                })
-                        )
-                        .spacing(3)
-                        .wrap()
+                        self.get_content_filters()
                     )
                     .push(
                         if self.selected_mods.is_empty() {
@@ -456,18 +445,6 @@ impl MenuEditMods {
                         .size(12)
                         .style(|t: &LauncherTheme| t.style_text(Color::Mid))
                     )
-                    .push_maybe((!self.selected_mods.is_empty() && !self.can_toggle_selection()).then_some(
-                        widget::row![
-                            icons::warn_s(12),
-                            widget::text(
-                                "Only mods can be disabled. Resource packs, shaders, and data packs are not toggleable."
-                            )
-                            .size(12)
-                            .style(|t: &LauncherTheme| t.style_text(Color::SecondLight))
-                        ]
-                        .spacing(6)
-                        .align_y(Alignment::Center)
-                    ))
                     .push_maybe(self.search.as_ref().map(|search|
                         widget::text_input("Search...", search).size(14).on_input(|msg|
                             ManageModsMessage::SetSearch(Some(msg)).into()
@@ -482,17 +459,41 @@ impl MenuEditMods {
         .into()
     }
 
-    /// Check if all selected items can be toggled (i.e., are mods)
-    fn can_toggle_selection(&self) -> bool {
-        if self.selected_mods.is_empty() {
-            return false;
+    fn get_content_filters(&self) -> Element<'_> {
+        fn query_button(
+            label: widget::Text<'_, LauncherTheme>,
+            is_selected: bool,
+            filter: Option<QueryType>,
+        ) -> widget::Button<'_, Message, LauncherTheme> {
+            widget::button(label.size(12))
+                .padding([4, 8])
+                .style(move |t: &LauncherTheme, s| {
+                    t.style_button(
+                        s,
+                        if is_selected {
+                            StyleButton::Round
+                        } else {
+                            StyleButton::RoundDark
+                        },
+                    )
+                })
+                .on_press(Message::ManageMods(ManageModsMessage::SetContentFilter(
+                    filter,
+                )))
         }
-        self.selected_mods.iter().all(|selected| {
-            self.sorted_mods_list
-                .iter()
-                .find(|entry| selected == *entry)
-                .map_or(false, |entry| entry.can_toggle())
-        })
+
+        row![query_button(
+            widget::text("All"),
+            self.content_filter.is_none(),
+            None
+        )]
+        .extend(QueryType::ALL.iter().map(|filter| {
+            let is_selected = self.content_filter.is_some_and(|n| n == *filter);
+            query_button(widget::text(filter.to_string()), is_selected, Some(*filter)).into()
+        }))
+        .spacing(5)
+        .wrap()
+        .into()
     }
 
     fn get_mod_list_contents<'a>(
@@ -504,11 +505,9 @@ impl MenuEditMods {
             self.sorted_mods_list
                 .iter()
                 .filter(|n| {
-                    // Filter by content type
-                    if !self.content_filter.matches(n.project_type()) {
+                    if self.content_filter.is_some_and(|f| f != n.project_type()) {
                         return false;
                     }
-                    // Filter by search query
                     let Some(search) = &self.search else {
                         return true;
                     };
@@ -563,27 +562,21 @@ impl MenuEditMods {
                         no_icon
                     };
 
-                    let can_toggle = entry.can_toggle();
-                    let toggle: Element = if can_toggle {
+                    let toggle: Element = if entry.project_type().is_toggleable() {
                         widget::toggler(is_enabled)
                             .on_toggle(move |_| ManageModsMessage::ToggleOne(id.clone()).into())
                             .size(14)
                             .into()
                     } else {
-                        tooltip(
-                            widget::toggler(is_enabled).size(14),
-                            "Only mods can be disabled",
-                            Position::FollowCursor,
-                        )
-                        .into()
+                        widget::Space::with_width(10).into()
                     };
 
-                    let checkbox = select_box(
+                    let entry = select_box(
                         widget::row![
                             toggle,
                             image,
                             widget::Space::with_width(1),
-                            widget::text(&config.name)
+                            widget::text(&*config.name)
                                 .shaping(widget::text::Shaping::Advanced)
                                 .style(move |t: &LauncherTheme| {
                                     t.style_text(if is_enabled {
@@ -623,13 +616,18 @@ impl MenuEditMods {
                         .padding(PADDING)
                         .spacing(SPACING),
                         is_selected,
-                        ManageModsMessage::SelectMod(config.name.clone(), Some(id.clone())).into(),
+                        ManageModsMessage::SelectMod(
+                            config.name.clone(),
+                            Some(id.clone()),
+                            config.project_type,
+                        )
+                        .into(),
                     )
                     .padding(0);
 
                     let rightclick = ManageModsMessage::RightClick(id.clone()).into();
 
-                    widget::mouse_area(checkbox)
+                    widget::mouse_area(entry)
                         .on_right_press(if self.selected_mods.len() > 1 && self.is_selected(id) {
                             rightclick
                         } else {
@@ -637,6 +635,7 @@ impl MenuEditMods {
                                 ManageModsMessage::SelectEnsure(
                                     config.name.clone(),
                                     Some(id.clone()),
+                                    config.project_type,
                                 )
                                 .into(),
                                 rightclick,
@@ -648,7 +647,7 @@ impl MenuEditMods {
                         widget::text("(dependency) ")
                             .size(12)
                             .style(|t: &LauncherTheme| t.style_text(Color::Mid)),
-                        widget::text(&config.name)
+                        widget::text(&*config.name)
                             .shaping(widget::text::Shaping::Advanced)
                             .size(13)
                             .style(tsubtitle)
@@ -657,38 +656,77 @@ impl MenuEditMods {
                     .into()
                 }
             }
-            ModListEntry::Local { file_name } => {
+            ModListEntry::Local(local) => {
+                let file_name = &*local.0;
+                let project_type = local.1;
+
                 let is_enabled = !file_name.ends_with(".disabled");
-                let is_selected = self.selected_mods.contains(&SelectedMod::Local {
-                    file_name: file_name.clone(),
-                });
+                let is_selected = self
+                    .selected_mods
+                    .contains(&SelectedMod::Local(local.clone()));
+
+                let toggle: Element = if project_type.is_toggleable() {
+                    widget::toggler(is_enabled)
+                        .on_toggle(move |_| ManageModsMessage::ToggleOneLocal(local.clone()).into())
+                        .size(14)
+                        .into()
+                } else {
+                    widget::Space::with_width(36).into()
+                };
+
+                let label = format!(
+                    "{}{}",
+                    file_name.strip_suffix(".disabled").unwrap_or(file_name),
+                    match project_type {
+                        QueryType::Mods => "",
+                        QueryType::Shaders => " (shader)",
+                        QueryType::ModPacks => " (modpack)",
+                        QueryType::DataPacks => " (datapack)",
+                        QueryType::ResourcePacks => " (resourcepack)",
+                    }
+                );
+                let label_len = label.len();
 
                 let checkbox = select_box(
                     row![
-                        no_icon,
-                        widget::text(
-                            file_name
-                                .strip_suffix(".disabled")
-                                .unwrap_or(file_name)
-                                .to_owned(),
-                        )
-                        .font(FONT_MONO)
-                        .shaping(widget::text::Shaping::Advanced)
-                        .style(move |t: &LauncherTheme| {
-                            t.style_text(if is_enabled {
-                                Color::SecondLight
-                            } else {
-                                Color::Mid
+                        toggle,
+                        widget::text(label)
+                            .font(FONT_MONO)
+                            .shaping(widget::text::Shaping::Advanced)
+                            .style(move |t: &LauncherTheme| {
+                                t.style_text(if is_enabled {
+                                    Color::SecondLight
+                                } else {
+                                    Color::Mid
+                                })
                             })
-                        })
-                        .size(14)
+                            .size(13)
                     ]
+                    .push_maybe({
+                        // Measure the length of the text
+                        // then from there measure the space it would occupy
+                        // (only possible because monospace font)
+
+                        // This is for finding the filler space
+                        //
+                        // ║ some_mod.jar              ║
+                        // ║ some_other_mod.jar        ║
+                        //
+                        //  ╙═╦═══════════════╜  ╙═╦═══╜
+                        //  Measured by:         What we want
+                        //  `label_len`          to find
+
+                        let measured: f32 = (label_len as f32) * 7.2;
+                        let occupied = measured + PADDING.left + PADDING.right + 100.0;
+                        let space = size.width - occupied;
+                        (space > 0.0).then_some(widget::Space::with_width(space))
+                    })
+                    .padding(PADDING)
                     .spacing(SPACING),
                     is_selected,
-                    ManageModsMessage::SelectMod(file_name.clone(), None).into(),
+                    ManageModsMessage::SelectMod(local.0.clone(), None, project_type).into(),
                 )
-                .padding(PADDING)
-                .width(size.width);
+                .padding(0);
 
                 if is_enabled {
                     checkbox.into()

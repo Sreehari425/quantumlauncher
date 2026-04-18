@@ -2,7 +2,7 @@ use iced::{Task, widget};
 use iced::{futures::executor::block_on, keyboard::Modifiers};
 use ql_core::file_utils::exists;
 use ql_core::{Instance, IntoIoError, IntoStringError, err, jarmod::JarMods};
-use ql_mod_manager::store::{ModId, ModIndex, SelectedMod};
+use ql_mod_manager::store::{DirStructure, LocalMod, ModId, ModIndex, QueryType, SelectedMod};
 use std::{collections::HashSet, path::PathBuf};
 
 use crate::state::{
@@ -27,11 +27,11 @@ impl Launcher {
                     menu.list_scroll = offset;
                 }
             }
-            ManageModsMessage::SelectEnsure(name, id) => {
+            ManageModsMessage::SelectEnsure(name, id, project_type) => {
                 let State::EditMods(menu) = &mut self.state else {
                     return Task::none();
                 };
-                let selected_mod = SelectedMod::from_pair(name, id);
+                let selected_mod = SelectedMod::new(name, id, project_type);
                 menu.list_shift_index = Some(menu.index(&selected_mod));
                 menu.shift_selected_mods.clear();
                 menu.selected_mods.clear();
@@ -39,12 +39,12 @@ impl Launcher {
                 menu.update_selected_state();
                 return menu.scroll_fix();
             }
-            ManageModsMessage::SelectMod(name, id) => {
+            ManageModsMessage::SelectMod(name, id, project_type) => {
                 let State::EditMods(menu) = &mut self.state else {
                     return Task::none();
                 };
 
-                let selected_mod = SelectedMod::from_pair(name, id);
+                let selected_mod = SelectedMod::new(name, id, project_type);
 
                 let pressed_ctrl = self.modifiers_pressed.contains(Modifiers::COMMAND);
                 let pressed_shift = self.modifiers_pressed.contains(Modifiers::SHIFT);
@@ -67,43 +67,41 @@ impl Launcher {
             }
             ManageModsMessage::DeleteSelected => {
                 if let State::EditMods(menu) = &mut self.state {
-                    let selected_instance = self.selected_instance.clone().unwrap();
-                    let mods_dir = selected_instance.get_dot_minecraft_path().join("mods");
-                    let command = Self::get_delete_mods_command(selected_instance, menu);
+                    let instance = self.selected_instance.clone().unwrap();
+                    let delete_downloaded_command =
+                        Self::get_delete_mods_command(instance.clone(), menu);
 
-                    let local_mods_paths: Vec<&String> = menu
+                    let local_mods: Vec<LocalMod> = menu
                         .selected_mods
                         .iter()
-                        .filter_map(|s_mod| {
-                            if let SelectedMod::Local { file_name } = s_mod {
-                                Some(file_name)
-                            } else {
-                                None
-                            }
-                        })
+                        .filter_map(|m| m.local().cloned())
                         .collect();
-                    for path in &local_mods_paths {
-                        menu.locally_installed_mods.remove(*path);
+
+                    for l in &local_mods {
+                        menu.locally_installed_mods.remove(l);
                     }
-                    let delete_local_command = Task::batch(
-                        local_mods_paths
-                            .into_iter()
-                            .map(|n| mods_dir.join(n))
-                            .map(delete_file_wrapper)
-                            .map(|n| {
-                                Task::perform(n, |n| {
-                                    ManageModsMessage::LocalDeleteFinished(n).into()
-                                })
-                            }),
+
+                    let delete_local_command = Task::perform(
+                        async move {
+                            let dirs = DirStructure::new(&instance, None).await.strerr()?;
+                            for l in local_mods {
+                                let Ok(dir) = dirs.get(l.1) else { continue };
+                                let path = dir.join(&*l.0);
+                                delete_file_wrapper(path).await?;
+                            }
+                            Ok(())
+                        },
+                        |n| ManageModsMessage::LocalDeleteFinished(n).into(),
                     );
 
-                    return Task::batch([command, delete_local_command]);
+                    return Task::batch([delete_downloaded_command, delete_local_command]);
                 }
             }
             ManageModsMessage::DeleteOptiforge(name) => {
                 let mods_dir = self.get_selected_dot_minecraft_dir().unwrap().join("mods");
                 if let State::EditMods(menu) = &mut self.state {
-                    menu.locally_installed_mods.remove(&name);
+                    menu.locally_installed_mods
+                        .remove(&LocalMod(name.clone(), QueryType::Mods));
                     if let Some(mod_info) = &mut menu.config.mod_type_info {
                         if mod_info.optifine_jar.as_ref().is_some_and(|n| n == &name) {
                             mod_info.optifine_jar = None;
@@ -115,7 +113,7 @@ impl Launcher {
                         }
                     }
                 }
-                return Task::perform(delete_file_wrapper(mods_dir.join(&name)), |n| {
+                return Task::perform(delete_file_wrapper(mods_dir.join(&*name)), |n| {
                     ManageModsMessage::LocalDeleteFinished(n).into()
                 });
             }
@@ -227,11 +225,11 @@ impl Launcher {
                                             id: id.clone(),
                                         })
                                 })
-                                .chain(menu.locally_installed_mods.iter().map(|n| {
-                                    SelectedMod::Local {
-                                        file_name: n.clone(),
-                                    }
-                                }))
+                                .chain(
+                                    menu.locally_installed_mods
+                                        .iter()
+                                        .map(|n| SelectedMod::Local(n.clone())),
+                                )
                                 .collect();
                             menu.selected_state = SelectedState::All;
                         }
@@ -256,11 +254,11 @@ impl Launcher {
                                             id: id.clone(),
                                         })
                                 })
-                                .chain(menu.locally_installed_mods.iter().map(|n| {
-                                    SelectedMod::Local {
-                                        file_name: n.clone(),
-                                    }
-                                }))
+                                .chain(
+                                    menu.locally_installed_mods
+                                        .iter()
+                                        .map(|n| SelectedMod::Local(n.clone())),
+                                )
                                 .collect()
                         } else {
                             menu.selected_mods.clone()
@@ -275,6 +273,7 @@ impl Launcher {
             }
             ManageModsMessage::SetSearch(search) => {
                 if let State::EditMods(menu) = &mut self.state {
+                    menu.modal = None;
                     menu.search = search;
                 }
             }
@@ -324,6 +323,18 @@ impl Launcher {
                     |n| ManageModsMessage::ToggleFinished(n.strerr()).into(),
                 );
             }
+            ManageModsMessage::ToggleOneLocal(local) => {
+                if let State::EditMods(menu) = &mut self.state {
+                    menu.toggle_local_mods_in_ui(std::slice::from_ref(&local));
+                }
+                return Task::perform(
+                    ql_mod_manager::store::toggle_mods_local(
+                        vec![local],
+                        self.selected_instance.clone().unwrap(),
+                    ),
+                    |n| ManageModsMessage::ToggleFinished(n.strerr()).into(),
+                );
+            }
         }
         Task::none()
     }
@@ -345,17 +356,7 @@ impl Launcher {
         // menu.selected_mods.clear();
         // menu.selected_state = SelectedState::None;
 
-        menu.selected_mods.retain(|n| {
-            if let SelectedMod::Local { file_name } = n {
-                !ids_local.contains(file_name)
-            } else {
-                true
-            }
-        });
-        menu.selected_mods
-            .extend(ids_local.iter().map(|n| SelectedMod::Local {
-                file_name: ql_mod_manager::store::flip_filename(n),
-            }));
+        menu.toggle_local_mods_in_ui(&ids_local);
 
         let toggle_downloaded = Task::perform(
             ql_mod_manager::store::toggle_mods(ids_downloaded.clone(), instance_name.clone()),
@@ -623,11 +624,11 @@ impl Launcher {
                     };
                     markdown_lines.push(format!("- [{name}]({url})"));
                 }
-                SelectedMod::Local { file_name } => {
-                    let display_name = file_name
-                        .strip_suffix(".jar")
-                        .or_else(|| file_name.strip_suffix(".zip"))
-                        .unwrap_or(file_name);
+                SelectedMod::Local(l) => {
+                    let display_name =
+                        l.0.strip_suffix(".jar")
+                            .or_else(|| l.0.strip_suffix(".zip"))
+                            .unwrap_or(&*l.0);
                     markdown_lines.push(display_name.to_string());
                 }
             }
@@ -707,24 +708,29 @@ impl Launcher {
     }
 
     fn export_mods_plain_text(selected_mods: &HashSet<SelectedMod>) -> String {
-        let mut lines = Vec::new();
+        let mut lines = String::new();
 
         for selected_mod in selected_mods {
             match selected_mod {
                 SelectedMod::Downloaded { name, .. } => {
-                    lines.push(name.clone());
+                    lines.push_str(name);
                 }
-                SelectedMod::Local { file_name } => {
+                SelectedMod::Local(l) => {
+                    if l.1 != QueryType::Mods {
+                        continue;
+                    }
+
                     // Remove file extension for cleaner display
-                    let display_name = file_name
-                        .strip_suffix(".jar")
-                        .or_else(|| file_name.strip_suffix(".zip"))
-                        .unwrap_or(file_name);
-                    lines.push(display_name.to_string());
+                    let display_name =
+                        l.0.strip_suffix(".jar")
+                            .or_else(|| l.0.strip_suffix(".zip"))
+                            .unwrap_or(&*l.0);
+                    lines.push_str(display_name);
                 }
             }
+            lines.push('\n');
         }
-        lines.join("\n")
+        lines
     }
 }
 
