@@ -6,6 +6,7 @@ use ql_core::LAUNCHER_DIR;
 use crate::{
     icons,
     menu_renderer::{Column, button_with_icon, checkered_list, tsubtitle},
+    stylesheet::color::Color,
     state::{LauncherSettingsMessage, MenuLauncherSettings, Message, PathKind},
 };
 
@@ -75,17 +76,14 @@ fn view_portable_mode_section(menu: &MenuLauncherSettings) -> Column<'_> {
         widget::row![
             widget::text("Portable Mode").size(16),
             widget::horizontal_space(),
-            widget::text(if is_active { "ACTIVE" } else { "INACTIVE" })
-                .size(12)
-                .style(if is_active {
-                    |_: &crate::stylesheet::styles::LauncherTheme| widget::text::Style {
-                        color: Some(iced::Color::from_rgb8(0x94, 0xe2, 0xd5)),
-                    }
+            status_badge(
+                if is_active { "ACTIVE" } else { "INACTIVE" },
+                if is_active {
+                    iced::Color::from_rgb8(0x94, 0xe2, 0xd5)
                 } else {
-                    |_: &crate::stylesheet::styles::LauncherTheme| widget::text::Style {
-                        color: Some(iced::Color::from_rgb8(0xf3, 0x8b, 0xa8)),
-                    }
-                }),
+                    iced::Color::from_rgb8(0xf3, 0x8b, 0xa8)
+                },
+            ),
         ]
         .align_y(Alignment::Center),
         t("Store launcher data alongside the executable. (Highest Priority)"),
@@ -191,26 +189,20 @@ fn view_system_redirect_section(menu: &MenuLauncherSettings) -> Column<'_> {
     .spacing(10);
 
     if is_active && portable_active {
-        status_row = status_row.push(widget::text("OVERRIDDEN").size(12).style(
-            |_: &crate::stylesheet::styles::LauncherTheme| widget::text::Style {
-                color: Some(iced::Color::from_rgb8(0xfa, 0xa3, 0x56)),
-            },
+        status_row = status_row.push(status_badge(
+            "OVERRIDDEN",
+            iced::Color::from_rgb8(0xfa, 0xa3, 0x56),
         ));
     }
 
-    status_row = status_row.push(
-        widget::text(if is_active { "ACTIVE" } else { "INACTIVE" })
-            .size(12)
-            .style(if is_active {
-                |_: &crate::stylesheet::styles::LauncherTheme| widget::text::Style {
-                    color: Some(iced::Color::from_rgb8(0x94, 0xe2, 0xd5)),
-                }
-            } else {
-                |_: &crate::stylesheet::styles::LauncherTheme| widget::text::Style {
-                    color: Some(iced::Color::from_rgb8(0xf3, 0x8b, 0xa8)),
-                }
-            }),
-    );
+    status_row = status_row.push(status_badge(
+        if is_active { "ACTIVE" } else { "INACTIVE" },
+        if is_active {
+            iced::Color::from_rgb8(0x94, 0xe2, 0xd5)
+        } else {
+            iced::Color::from_rgb8(0xf3, 0x8b, 0xa8)
+        },
+    ));
 
     let mut col = widget::column![
         status_row,
@@ -307,4 +299,53 @@ fn redact_path(path: &Path) -> String {
         }
     }
     path_str.into_owned()
+}
+
+fn status_badge<'a>(
+    label: &'a str,
+    accent_color: iced::Color,
+) -> widget::Container<'a, Message, crate::stylesheet::styles::LauncherTheme> {
+    widget::container(
+        widget::row![
+            widget::text("●").size(10).style(move |_| widget::text::Style {
+                color: Some(accent_color),
+            }),
+            widget::text(label).size(12).style(
+                |t: &crate::stylesheet::styles::LauncherTheme| widget::text::Style {
+                    color: Some(if t.is_light() {
+                        iced::Color::BLACK
+                    } else {
+                        iced::Color::WHITE
+                    }),
+                },
+            ),
+        ]
+        .spacing(6)
+        .align_y(Alignment::Center),
+    )
+    .padding([2, 8])
+    .style(|t: &crate::stylesheet::styles::LauncherTheme| {
+        let (bg_color, border_color, border_width) = if t.is_light() {
+            (
+                t.get(Color::SecondLight).scale_alpha(0.35),
+                t.get(Color::Mid),
+                1.5,
+            )
+        } else {
+            (
+                t.get(Color::SecondDark).scale_alpha(0.4),
+                t.get(Color::SecondLight),
+                1.0,
+            )
+        };
+        widget::container::Style {
+            background: Some(iced::Background::Color(bg_color)),
+            border: iced::Border {
+                color: border_color,
+                width: border_width,
+                radius: 6.0.into(),
+            },
+            ..Default::default()
+        }
+    })
 }
