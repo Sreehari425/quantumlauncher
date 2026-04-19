@@ -424,6 +424,9 @@ impl Launcher {
             }
             Message::CoreHideModal => {
                 self.hide_submenu();
+                if let State::EditMods(menu) = &mut self.state {
+                    return menu.scroll_fix();
+                }
             }
         }
         Task::none()

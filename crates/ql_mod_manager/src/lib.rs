@@ -15,7 +15,7 @@
 //! - Forge
 //! - Optifine
 //! - Quilt
-//! - NeoForge
+//! - Neoforge
 //! - Paper (for servers)
 
 /// Installers and Uninstallers for loaders (Fabric/Forge/Optifine/Quilt/Paper).

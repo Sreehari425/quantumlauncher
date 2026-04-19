@@ -1,30 +1,31 @@
 use crate::{
     icons,
     menu_renderer::{
-        CTXI_SIZE, Column, Element, FONT_MONO, back_to_launch_screen, barthin, button_with_icon,
-        ctx_button, ctx_button_empty, ctx_button_icon, dots, offsetbox, select_box,
-        subbutton_with_icon, tooltip, tsubtitle, view_info_message,
+        CTXI_SIZE, Column, Element, back_to_launch_screen, barthin, button_with_icon, ctx_button,
+        ctx_button_empty, ctx_button_icon, dots, offsetbox, subbutton_with_icon, tsubtitle,
+        view_info_message,
     },
     message_handler::ForgeKind,
     state::{
         EditPresetsMessage, ImageState, InstallFabricMessage, InstallModsMessage,
         InstallOptifineMessage, InstallPaperMessage, ManageJarModsMessage, ManageModsMessage,
-        MenuEditMods, MenuEditModsModal, Message, ModDescriptionMessage, ModListEntry,
-        SelectedState,
+        MenuEditMods, MenuEditModsModal, Message, ModDescriptionMessage, SelectedState,
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
 use iced::{
     Alignment, Length,
-    widget::{self, column, row, tooltip::Position},
+    widget::{self, column, row},
 };
 use ql_core::{
     Instance, InstanceKind, Loader,
     json::{InstanceConfigJson, V_LAST_TEXTUREPACK},
 };
-use ql_mod_manager::store::{QueryType, SelectedMod};
+use ql_mod_manager::store::QueryType;
 
 pub const MODS_SIDEBAR_WIDTH: u16 = 190;
+
+mod entry;
 
 impl MenuEditMods {
     pub fn view<'a>(
@@ -56,6 +57,15 @@ impl MenuEditMods {
                 self.get_mod_list(images)
             ]);
 
+        self.render_overlays(selected_instance, window_height, menu_main)
+    }
+
+    fn render_overlays<'a>(
+        &'a self,
+        selected_instance: &'a Instance,
+        window_height: f32,
+        menu_main: widget::Column<'a, Message, LauncherTheme>,
+    ) -> Element<'a> {
         if self.drag_and_drop_hovered {
             return widget::stack!(
                 menu_main,
@@ -142,7 +152,8 @@ impl MenuEditMods {
                     ctx_button_empty("Shader Pack").on_press(addfile_msg(QueryType::Shaders)),
                     ctx_button_empty("Resource Pack")
                         .on_press(addfile_msg(QueryType::ResourcePacks)),
-                    ctx_button_empty("Datapack").on_press(addfile_msg(QueryType::DataPacks)),
+                    // HOOK: Datapack
+                    // ctx_button_empty("Datapack").on_press(addfile_msg(QueryType::DataPacks)),
                     ctx_button_empty("Modpack/QMP").on_press(addfile_msg(QueryType::ModPacks)),
                 ]
                 .spacing(4);
@@ -446,8 +457,9 @@ impl MenuEditMods {
 
                             subbutton_with_icon(icons::bin_s(12), "Delete")
                             .on_press_maybe((!self.selected_mods.is_empty()).then_some(ManageModsMessage::DeleteSelected.into())),
-                            subbutton_with_icon(icons::toggleoff_s(12), "Toggle")
-                                .on_press(ManageModsMessage::ToggleSelected.into()),
+                            // Redundant?
+                            // subbutton_with_icon(icons::toggleoff_s(12), "Toggle")
+                            //     .on_press(ManageModsMessage::ToggleSelected.into()),
                             subbutton_with_icon(icons::deselectall_s(12), if matches!(self.selected_state, SelectedState::All) {
                                 "Unselect All"
                             } else {
@@ -492,7 +504,7 @@ impl MenuEditMods {
             filter: Option<QueryType>,
         ) -> widget::Button<'_, Message, LauncherTheme> {
             widget::button(label.size(11))
-                .padding([3, 4])
+                .padding([3, 6])
                 .style(move |t: &LauncherTheme, s| {
                     t.style_button(
                         s,
@@ -513,11 +525,11 @@ impl MenuEditMods {
             self.content_filter.is_none(),
             None
         )]
-        .extend(QueryType::ALL.iter().map(|filter| {
+        .extend(QueryType::INDEX_SUPPORTED.iter().map(|filter| {
             let is_selected = self.content_filter.is_some_and(|n| n == *filter);
             query_button(widget::text(filter.to_string()), is_selected, Some(*filter)).into()
         }))
-        .spacing(4)
+        .spacing(5)
         .wrap()
         .into()
     }
@@ -539,7 +551,7 @@ impl MenuEditMods {
                     };
                     n.name().to_lowercase().contains(&search.to_lowercase())
                 })
-                .map(|mod_list_entry| self.get_mod_entry(mod_list_entry, size, images)),
+                .map(|mod_list_entry| self.render_mod_entry(mod_list_entry, size, images)),
         ))
         .direction(widget::scrollable::Direction::Both {
             vertical: widget::scrollable::Scrollbar::new(),
@@ -552,224 +564,6 @@ impl MenuEditMods {
         .height(Length::Fill)
         .into()
     }
-
-    fn get_mod_entry<'a>(
-        &'a self,
-        entry: &'a ModListEntry,
-        size: iced::Size,
-        images: &'a ImageState,
-    ) -> Element<'a> {
-        const PADDING: iced::Padding = iced::Padding {
-            top: 4.0,
-            bottom: 6.0,
-            right: 15.0,
-            left: 20.0,
-        };
-        const ICON_SIZE: f32 = 18.0;
-        const SPACING: u16 = 16;
-
-        let no_icon = widget::Column::new()
-            .width(ICON_SIZE)
-            .height(ICON_SIZE)
-            .into();
-
-        match entry {
-            ModListEntry::Downloaded { id, config } => {
-                if config.manually_installed {
-                    let is_enabled = config.enabled;
-                    let is_selected = self.selected_mods.contains(&SelectedMod::Downloaded {
-                        name: config.name.clone(),
-                        id: (*id).clone(),
-                    });
-
-                    let image: Element = if let Some(url) = &config.icon_url {
-                        images.view(Some(url), Some(ICON_SIZE), Some(ICON_SIZE))
-                    } else {
-                        no_icon
-                    };
-
-                    let toggle: Element = mod_toggler(
-                        entry.project_type(),
-                        move |_| ManageModsMessage::ToggleOne(id.clone()).into(),
-                        is_enabled,
-                    );
-
-                    let entry = select_box(
-                        widget::row![
-                            toggle,
-                            image,
-                            widget::Space::with_width(1),
-                            widget::text(&*config.name)
-                                .shaping(widget::text::Shaping::Advanced)
-                                .style(move |t: &LauncherTheme| {
-                                    t.style_text(if is_enabled {
-                                        Color::SecondLight
-                                    } else {
-                                        Color::Mid
-                                    })
-                                })
-                                .size(14)
-                                .width(self.width_name),
-                            widget::text(&config.installed_version)
-                                .style(|t: &LauncherTheme| t.style_text(Color::Mid))
-                                .font(FONT_MONO)
-                                .size(12)
-                        ]
-                        .push_maybe({
-                            // Measure the length of the text
-                            // then from there measure the space it would occupy
-                            // (only possible because monospace font)
-
-                            // This is for finding the filler space
-                            //
-                            // ║ Some Mod         v0.0.1                ║
-                            // ║ Some other mod   2.4.1-fabric          ║
-                            //
-                            //  ╙═╦══════════════╜            ╙═╦══════╜
-                            //  Measured by:                   What we want
-                            //  `self.width_name`              to find
-
-                            let measured: f32 = (config.installed_version.len() as f32) * 7.2;
-                            let occupied =
-                                measured + self.width_name + PADDING.left + PADDING.right + 150.0;
-                            let space = size.width - occupied;
-                            (space > -10.0).then_some(widget::Space::with_width(space))
-                        })
-                        .align_y(Alignment::Center)
-                        .padding(PADDING)
-                        .spacing(SPACING),
-                        is_selected,
-                        ManageModsMessage::SelectMod(
-                            config.name.clone(),
-                            Some(id.clone()),
-                            config.project_type,
-                        )
-                        .into(),
-                    )
-                    .padding(0);
-
-                    let rightclick = ManageModsMessage::RightClick(id.clone()).into();
-
-                    widget::mouse_area(entry)
-                        .on_right_press(if self.selected_mods.len() > 1 && self.is_selected(id) {
-                            rightclick
-                        } else {
-                            Message::Multiple(vec![
-                                ManageModsMessage::SelectEnsure(
-                                    config.name.clone(),
-                                    Some(id.clone()),
-                                    config.project_type,
-                                )
-                                .into(),
-                                rightclick,
-                            ])
-                        })
-                        .into()
-                } else {
-                    row![
-                        widget::text("(dependency) ")
-                            .size(12)
-                            .style(|t: &LauncherTheme| t.style_text(Color::Mid)),
-                        widget::text(&*config.name)
-                            .shaping(widget::text::Shaping::Advanced)
-                            .size(13)
-                            .style(tsubtitle)
-                    ]
-                    .padding(PADDING)
-                    .into()
-                }
-            }
-            ModListEntry::Local(local) => {
-                let file_name = &*local.0;
-                let project_type = local.1;
-
-                let is_enabled = !file_name.ends_with(".disabled");
-                let is_selected = self
-                    .selected_mods
-                    .contains(&SelectedMod::Local(local.clone()));
-
-                let toggle: Element = mod_toggler(
-                    project_type,
-                    move |_| ManageModsMessage::ToggleOneLocal(local.clone()).into(),
-                    is_enabled,
-                );
-
-                let label = file_name.strip_suffix(".disabled").unwrap_or(file_name);
-                let label_len = label.len();
-
-                let checkbox = select_box(
-                    row![
-                        toggle,
-                        widget::text(label)
-                            .font(FONT_MONO)
-                            .shaping(widget::text::Shaping::Advanced)
-                            .style(move |t: &LauncherTheme| {
-                                t.style_text(if is_enabled {
-                                    Color::SecondLight
-                                } else {
-                                    Color::Mid
-                                })
-                            })
-                            .size(13)
-                    ]
-                    .push_maybe({
-                        // Measure the length of the text
-                        // then from there measure the space it would occupy
-                        // (only possible because monospace font)
-
-                        // This is for finding the filler space
-                        //
-                        // ║ some_mod.jar              ║
-                        // ║ some_other_mod.jar        ║
-                        //
-                        //  ╙═╦═══════════════╜  ╙═╦═══╜
-                        //  Measured by:         What we want
-                        //  `label_len`          to find
-
-                        let measured: f32 = (label_len as f32) * 7.2;
-                        let occupied = measured + PADDING.left + PADDING.right + 100.0;
-                        let space = size.width - occupied;
-                        (space > 0.0).then_some(widget::Space::with_width(space))
-                    })
-                    .padding(PADDING)
-                    .spacing(SPACING),
-                    is_selected,
-                    ManageModsMessage::SelectMod(local.0.clone(), None, project_type).into(),
-                )
-                .padding(0);
-
-                if is_enabled {
-                    checkbox.into()
-                } else {
-                    tooltip(checkbox, "Disabled", Position::FollowCursor).into()
-                }
-            }
-        }
-    }
-}
-
-fn mod_toggler<'a>(
-    project_type: QueryType,
-    f: impl Fn(bool) -> Message + 'a,
-    is_enabled: bool,
-) -> Element<'a> {
-    let (label, tooltip_text, color) = match project_type {
-        QueryType::Mods => return widget::toggler(is_enabled).on_toggle(f).size(14).into(),
-        QueryType::Shaders => ("  S", "Shader", iced::Color::from_rgb8(0xB8, 0x6E, 0x3C)),
-        QueryType::ModPacks => ("  M", "Modpack", iced::Color::from_rgb8(0x6E, 0x5A, 0x8A)),
-        QueryType::DataPacks => ("  D", "Datapack", iced::Color::from_rgb8(0xA4, 0x4E, 0x4E)),
-        QueryType::ResourcePacks => (
-            "  R",
-            "Resource Pack",
-            iced::Color::from_rgb8(0x5E, 0x7D, 0x61),
-        ),
-    };
-    tooltip(
-        widget::text(label).size(14).color(color).width(36),
-        tooltip_text,
-        Position::FollowCursor,
-    )
-    .into()
 }
 
 fn install_ldr(loader: &str) -> widget::Button<'_, Message, LauncherTheme> {

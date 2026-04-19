@@ -5,7 +5,10 @@ use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{Instance, IntoIoError, IntoJsonError, JsonFileError, OS_NAME, constants::*, err, pt};
+use crate::{Instance, IntoIoError, IntoJsonError, JsonFileError, OS_NAME, err, pt};
+
+#[allow(clippy::wildcard_imports)] // items may vary based on platform
+use crate::constants::*;
 
 pub const V_PRECLASSIC_LAST: &str = "2009-05-16T11:48:00+00:00";
 pub const V_OFFICIAL_FABRIC_SUPPORT: &str = "2018-10-24T10:52:16+00:00";
@@ -269,14 +272,14 @@ impl Default for AssetIndexInfo {
         Self {
             id: "29".to_owned(),
             sha1: String::new(),
-            size: 529372,
-            totalSize: 440970807,
+            size: 529_372,
+            totalSize: 440_970_807,
             url: String::new(),
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Downloads {
     pub client: Download,
     // pub client_mappings: Option<Download>,
@@ -284,30 +287,11 @@ pub struct Downloads {
     // pub server_mappings: Option<Download>,
 }
 
-impl Default for Downloads {
-    fn default() -> Self {
-        Self {
-            client: Download::default(),
-            server: None,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Download {
     pub sha1: String,
     pub size: usize,
     pub url: String,
-}
-
-impl Default for Download {
-    fn default() -> Self {
-        Self {
-            sha1: String::new(),
-            size: 0,
-            url: String::new(),
-        }
-    }
 }
 
 #[allow(non_snake_case)]

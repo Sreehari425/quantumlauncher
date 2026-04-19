@@ -373,35 +373,20 @@ pub fn sort_dependencies(
         .collect();
 
     entries.sort_by(|val1, val2| match (val1, val2) {
+        (ModListEntry::Downloaded { .. }, ModListEntry::Local(_)) => Ordering::Less,
+        (ModListEntry::Local(_), ModListEntry::Downloaded { .. }) => Ordering::Greater,
+
         (
-            ModListEntry::Downloaded { config, .. },
-            ModListEntry::Downloaded {
-                config: config2, ..
-            },
-        ) => match (config.manually_installed, config2.manually_installed) {
+            ModListEntry::Downloaded { config: c1, .. },
+            ModListEntry::Downloaded { config: c2, .. },
+        ) => match (c1.manually_installed, c2.manually_installed) {
             (true, false) => Ordering::Less,
             (false, true) => Ordering::Greater,
-            _ => match config.project_type.cmp(&config2.project_type) {
-                Ordering::Equal => config.name.cmp(&config2.name),
+            _ => match c1.project_type.cmp(&c2.project_type) {
+                Ordering::Equal => c1.name.cmp(&c2.name),
                 other => other,
             },
         },
-
-        (ModListEntry::Downloaded { config, .. }, ModListEntry::Local { .. }) => {
-            if config.manually_installed {
-                Ordering::Less
-            } else {
-                Ordering::Greater
-            }
-        }
-        (ModListEntry::Local { .. }, ModListEntry::Downloaded { config, .. }) => {
-            if config.manually_installed {
-                Ordering::Greater
-            } else {
-                Ordering::Less
-            }
-        }
-
         (ModListEntry::Local(l1), ModListEntry::Local(l2)) => match l1.1.cmp(&l2.1) {
             Ordering::Equal => l1.0.cmp(&l2.0),
             other => other,

@@ -290,12 +290,14 @@ impl Launcher {
             ManageModsMessage::SetModal(modal) => {
                 if let State::EditMods(menu) = &mut self.state {
                     menu.modal = modal;
+                    return menu.scroll_fix();
                 }
             }
             ManageModsMessage::SetSearch(search) => {
                 if let State::EditMods(menu) = &mut self.state {
                     menu.modal = None;
                     menu.search = search;
+                    return menu.scroll_fix();
                 }
             }
             ManageModsMessage::SetContentFilter(filter) => {
@@ -435,10 +437,13 @@ impl Launcher {
             .iter()
             .filter_map(|s_mod| {
                 if let SelectedMod::Downloaded { id, .. } = s_mod {
-                    Some(id.clone())
-                } else {
-                    None
+                    if let Some(config) = menu.mods.mods.get(id) {
+                        if config.manually_installed {
+                            return Some(id.clone());
+                        }
+                    }
                 }
+                None
             })
             .collect();
 
@@ -830,7 +835,9 @@ impl MenuEditMods {
         }
     }
 
-    fn scroll_fix(&self) -> Task<Message> {
+    /// Workaround for annoying iced tree diffing bug
+    /// that resets scroll position.
+    pub fn scroll_fix(&self) -> Task<Message> {
         let id = widget::scrollable::Id::new("MenuEditMods:mods");
         widget::scrollable::scroll_to(id, self.list_scroll)
     }

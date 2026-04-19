@@ -97,6 +97,8 @@ impl Display for QueryType {
 }
 
 impl QueryType {
+    // HOOK: Datapack
+
     /// Use this for the store since datapacks can't be installed globally,
     /// only per worlds, since you need to copy the datapack file into each world.
     ///
@@ -109,10 +111,10 @@ impl QueryType {
         Self::Shaders,
     ];
 
-    pub const ALL: &'static [Self] = &[
+    /// The query types that can be stored locally in the mod index.
+    pub const INDEX_SUPPORTED: &'static [Self] = &[
         Self::Mods,
-        Self::ModPacks,
-        Self::DataPacks,
+        // Self::DataPacks,
         Self::ResourcePacks,
         Self::Shaders,
     ];
