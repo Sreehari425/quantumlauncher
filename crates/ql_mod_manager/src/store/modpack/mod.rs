@@ -60,6 +60,7 @@ pub async fn install_modpack(
             // Resource Pack/Canvas Shader
             write_regular_file(&file, name, &instance, "resourcepacks").await?;
         }
+        return Ok(Some(HashSet::new()));
     } else if zip.by_name("shaders/pack.json").is_ok() {
         // Shader pack
         write_regular_file(&file, name, &instance, "shaderpacks").await?;

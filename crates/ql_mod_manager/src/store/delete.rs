@@ -2,7 +2,7 @@ use crate::{
     rate_limiter::lock,
     store::{DirStructure, ModError, ModId, ModIndex},
 };
-use ql_core::{Instance, IoError, err, info, pt};
+use ql_core::{Instance, IoError, err, info, json::VersionDetails, pt};
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -16,8 +16,9 @@ pub async fn delete_mods(ids: Vec<ModId>, instance: Instance) -> Result<Vec<ModI
     }
 
     info!("Deleting content:");
+    let version_json = VersionDetails::load(&instance).await?;
     let mut index = ModIndex::load(&instance).await?;
-    let dirs = DirStructure::new(&instance, None).await?;
+    let dirs = DirStructure::new(instance.clone(), &version_json).await?;
 
     for id in &ids {
         pt!("Deleting: {id:?}");

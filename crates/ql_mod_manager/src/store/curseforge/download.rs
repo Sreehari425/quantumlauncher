@@ -20,7 +20,6 @@ use super::Mod;
 
 pub struct ModDownloader<'a> {
     version: String,
-    instance: Instance,
     pub loader: Option<&'static str>,
     pub index: ModIndex,
 
@@ -44,10 +43,9 @@ impl<'a> ModDownloader<'a> {
             version: version_json.get_id().to_owned(),
             loader: config.mod_type.not_vanilla().map(|n| n.to_curseforge_num()),
             index: ModIndex::load(&instance).await?,
-            dirs: DirStructure::new(&instance, Some(&version_json)).await?,
+            dirs: DirStructure::new(instance, &version_json).await?,
             already_installed: HashSet::new(),
             query_cache: HashMap::new(),
-            instance,
             sender,
             not_allowed: HashSet::new(),
         })
@@ -61,10 +59,9 @@ impl<'a> ModDownloader<'a> {
             version: version_json.get_id().to_owned(),
             loader: config.mod_type.not_vanilla().map(|n| n.to_curseforge_num()),
             index: ModIndex::default(),
-            dirs: DirStructure::new(&instance, Some(&version_json)).await?,
+            dirs: DirStructure::new(instance.clone(), &version_json).await?,
             already_installed: HashSet::new(),
             query_cache: HashMap::new(),
-            instance,
             sender: None,
             not_allowed: HashSet::new(),
         })
@@ -155,11 +152,11 @@ impl<'a> ModDownloader<'a> {
         let Some(dir) = self.dirs.get(query_type) else {
             // It's a modpack
             let bytes = file_utils::download_file_to_bytes(&url, true).await?;
-            self.index.save(&self.instance).await?;
+            self.index.save(&self.dirs.instance).await?;
             if let Some(not_allowed_new) = install_modpack(
                 bytes,
                 Some(response.name.to_string()),
-                self.instance.clone(),
+                self.dirs.instance.clone(),
                 self.sender,
             )
             .await
@@ -169,7 +166,7 @@ impl<'a> ModDownloader<'a> {
             } else {
                 err!("Invalid modpack downloaded from curseforge! Corrupted?");
             }
-            self.index = ModIndex::load(&self.instance).await?;
+            self.index = ModIndex::load(&self.dirs.instance).await?;
             return Ok(());
         };
 

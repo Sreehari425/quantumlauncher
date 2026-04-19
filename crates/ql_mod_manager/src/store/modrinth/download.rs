@@ -52,7 +52,7 @@ impl ModDownloader {
             instance: instance.clone(),
             sender,
 
-            dirs: DirStructure::new(instance, Some(&version_json)).await?,
+            dirs: DirStructure::new(instance.clone(), &version_json).await?,
         })
     }
 
@@ -73,7 +73,7 @@ impl ModDownloader {
             info: HashMap::new(),
             instance: instance.clone(),
             sender: None,
-            dirs: DirStructure::new(instance, Some(&version_json)).await?,
+            dirs: DirStructure::new(instance.clone(), &version_json).await?,
         })
     }
 

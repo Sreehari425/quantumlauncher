@@ -234,7 +234,7 @@ pub async fn install(
 
     let i = Mutex::new(0);
     let mod_index = Mutex::new(ModIndex::load(instance).await?);
-    let dirs = DirStructure::new(instance, Some(json)).await?;
+    let dirs = DirStructure::new(instance.clone(), json).await?;
 
     let cache: HashMap<i32, curseforge::Mod> = {
         let project_ids: Vec<Arc<str>> = index

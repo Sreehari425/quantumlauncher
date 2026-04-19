@@ -215,6 +215,31 @@ impl VersionDetails {
     }
 }
 
+impl Default for VersionDetails {
+    // This is only placeholder to pass into stuff where it's not important.
+    // Do not use as actual information!
+    fn default() -> Self {
+        const TIME: &str = "2025-12-09T12:23:30+00:00";
+        Self {
+            assetIndex: AssetIndexInfo::default(),
+            assets: "29".to_owned(),
+            downloads: Downloads::default(),
+            id: "1.21.11".to_owned(),
+            javaVersion: None,
+            libraries: Vec::new(),
+            logging: None,
+            mainClass: "net.minecraft.client.main.Main".to_owned(),
+            minecraftArguments: None,
+            arguments: None,
+            minimumLauncherVersion: None,
+            releaseTime: TIME.to_owned(),
+            time: TIME.to_owned(),
+            r#type: "release".to_owned(),
+            q_patch_overrides: Vec::new(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[allow(non_snake_case)]
 pub struct VersionDetailsPatch {
@@ -239,6 +264,18 @@ pub struct AssetIndexInfo {
     pub url: String,
 }
 
+impl Default for AssetIndexInfo {
+    fn default() -> Self {
+        Self {
+            id: "29".to_owned(),
+            sha1: String::new(),
+            size: 529372,
+            totalSize: 440970807,
+            url: String::new(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Downloads {
     pub client: Download,
@@ -247,11 +284,30 @@ pub struct Downloads {
     // pub server_mappings: Option<Download>,
 }
 
+impl Default for Downloads {
+    fn default() -> Self {
+        Self {
+            client: Download::default(),
+            server: None,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Download {
     pub sha1: String,
     pub size: usize,
     pub url: String,
+}
+
+impl Default for Download {
+    fn default() -> Self {
+        Self {
+            sha1: String::new(),
+            size: 0,
+            url: String::new(),
+        }
+    }
 }
 
 #[allow(non_snake_case)]

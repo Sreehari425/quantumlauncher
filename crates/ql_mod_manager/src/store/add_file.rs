@@ -6,7 +6,7 @@ use std::{
 };
 
 use owo_colors::OwoColorize;
-use ql_core::{GenericProgress, Instance, IntoIoError, err, pt};
+use ql_core::{GenericProgress, Instance, IntoIoError, err, json::VersionDetails, pt};
 
 use crate::{
     presets,
@@ -24,8 +24,9 @@ pub async fn add_files(
     progress: Option<Sender<GenericProgress>>,
     project_type: QueryType,
 ) -> Result<HashSet<CurseforgeNotAllowed>, PackError> {
+    let version_json = VersionDetails::load(&instance).await?;
     let mods_dir = instance.get_dot_minecraft_path().join("mods");
-    let dirs = DirStructure::new(&instance, None).await?;
+    let dirs = DirStructure::new(instance.clone(), &version_json).await?;
 
     let mut not_allowed = HashSet::new();
 

@@ -1,6 +1,7 @@
 use iced::{Task, widget};
 use iced::{futures::executor::block_on, keyboard::Modifiers};
 use ql_core::file_utils::exists;
+use ql_core::json::VersionDetails;
 use ql_core::{Instance, IntoIoError, IntoStringError, err, jarmod::JarMods};
 use ql_mod_manager::store::{DirStructure, LocalMod, ModId, ModIndex, QueryType, SelectedMod};
 use std::{collections::HashSet, path::PathBuf};
@@ -102,7 +103,8 @@ impl Launcher {
 
                     let delete_local_command = Task::perform(
                         async move {
-                            let dirs = DirStructure::new(&instance, None).await.strerr()?;
+                            let json = VersionDetails::default();
+                            let dirs = DirStructure::new(instance, &json).await.strerr()?;
                             for l in local_mods {
                                 let Some(dir) = dirs.get(l.1) else { continue };
                                 let path = dir.join(&*l.0);

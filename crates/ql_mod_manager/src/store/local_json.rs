@@ -6,6 +6,7 @@ use std::{
 
 use ql_core::{
     Instance, IntoIoError, IntoJsonError, IoError, JsonFileError, file_utils::exists, info,
+    json::VersionDetails,
 };
 use serde::{Deserialize, Serialize};
 use tokio::fs;
@@ -47,7 +48,7 @@ pub struct ModIndex {
 impl ModIndex {
     pub async fn load(selected_instance: &Instance) -> Result<Self, JsonFileError> {
         let mut index = load_inner(selected_instance).await?;
-        index.fix(selected_instance).await?;
+        index.fix(selected_instance.clone()).await?;
         Ok(index)
     }
 
@@ -67,8 +68,8 @@ impl ModIndex {
         }
     }
 
-    pub async fn fix(&mut self, instance: &Instance) -> Result<(), IoError> {
-        let dirs = DirStructure::new(instance, None).await?;
+    pub async fn fix(&mut self, instance: Instance) -> Result<(), IoError> {
+        let dirs = DirStructure::new(instance, &VersionDetails::default()).await?;
         self.fix_nonexistent_mods(&dirs).await;
         self.fix_cf_modpack_id_bug();
 
@@ -98,17 +99,39 @@ impl ModIndex {
 
         for (id, mod_cfg) in &mut self.mods {
             let Some(content_dir) = dirs.get(mod_cfg.project_type) else {
-                continue; // a modpack somehow ended up here, ignore to be safe
+                continue; // A modpack somehow ended up here, ignore to be safe
             };
 
             let mut removed = Vec::new();
             for (i, file) in mod_cfg.files.iter().enumerate() {
-                let enabled_path = content_dir.join(&file.filename);
-                let disabled_path = content_dir.join(format!("{}.disabled", file.filename));
-                let (enabled, disabled) =
-                    tokio::join!(exists(&enabled_path), exists(&disabled_path));
+                let file_exists = if let QueryType::ResourcePacks = mod_cfg.project_type {
+                    // I know this sucks but whatever
+                    let p =
+                        |base, name| dirs.instance.get_dot_minecraft_path().join(base).join(name);
 
-                let file_exists = enabled || disabled;
+                    let disabled_name = format!("{}.disabled", file.filename);
+
+                    let enabled1_path = p("resourcepacks", &file.filename);
+                    let disabled1_path = p("resourcepacks", &disabled_name);
+                    let enabled2_path = p("texturepacks", &file.filename);
+                    let disabled2_path = p("texturepacks", &disabled_name);
+
+                    let (enabled1, disabled1, enabled2, disabled2) = tokio::join!(
+                        exists(&enabled1_path),
+                        exists(&disabled1_path),
+                        exists(&enabled2_path),
+                        exists(&disabled2_path)
+                    );
+
+                    enabled1 || disabled1 || enabled2 || disabled2
+                } else {
+                    let enabled_path = content_dir.join(&file.filename);
+                    let disabled_path = content_dir.join(format!("{}.disabled", file.filename));
+                    let (enabled, disabled) =
+                        tokio::join!(exists(&enabled_path), exists(&disabled_path));
+
+                    enabled || disabled
+                };
 
                 if !file_exists {
                     removed.push(i);

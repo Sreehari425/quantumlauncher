@@ -7,7 +7,6 @@ use std::{
 
 use ql_core::{
     Instance, IntoIoError, IoError, Loader,
-    file_utils::exists,
     json::{V_LAST_TEXTUREPACK, VersionDetails},
 };
 use serde::{Deserialize, Serialize};
@@ -173,8 +172,8 @@ impl QueryType {
     pub const fn get_extensions(self) -> &'static [&'static str] {
         match self {
             QueryType::Mods => &["jar"],
-            QueryType::Shaders | QueryType::ModPacks | QueryType::DataPacks => &["zip"],
-            QueryType::ResourcePacks => &["zip", "mrpack", "qmp"],
+            QueryType::Shaders | QueryType::ResourcePacks | QueryType::DataPacks => &["zip"],
+            QueryType::ModPacks => &["zip", "mrpack", "qmp"],
         }
     }
 }
@@ -293,6 +292,7 @@ impl Display for UrlKind {
 }
 
 pub struct DirStructure {
+    pub instance: Instance,
     mods: PathBuf,
     resource_packs: PathBuf,
     shaders: PathBuf,
@@ -300,10 +300,7 @@ pub struct DirStructure {
 }
 
 impl DirStructure {
-    pub async fn new(
-        instance: &Instance,
-        version_json: Option<&VersionDetails>,
-    ) -> Result<Self, IoError> {
+    pub async fn new(instance: Instance, version_json: &VersionDetails) -> Result<Self, IoError> {
         let mc_dir = instance.get_dot_minecraft_path();
 
         // this doesn't get loaded by default but there are datapack loader mods
@@ -312,11 +309,7 @@ impl DirStructure {
         let data_packs = mc_dir.join("datapacks");
         fs::create_dir_all(&data_packs).await.path(&data_packs)?;
 
-        let old = if let Some(version_json) = version_json {
-            version_json.is_before_or_eq(V_LAST_TEXTUREPACK)
-        } else {
-            !exists(&mc_dir.join("resourcepacks")).await
-        };
+        let old = version_json.is_before_or_eq(V_LAST_TEXTUREPACK);
 
         let resource_packs = if old { "texturepacks" } else { "resourcepacks" };
 
@@ -332,6 +325,7 @@ impl DirStructure {
         fs::create_dir_all(&mods).await.path(&mods)?;
 
         Ok(Self {
+            instance,
             mods,
             resource_packs,
             shaders,
