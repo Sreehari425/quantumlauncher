@@ -98,6 +98,7 @@ impl PackFile {
             &mod_info,
             query,
             url,
+            query_type,
         )
         .await;
 
@@ -128,6 +129,7 @@ async fn add_to_index(
     mod_info: &curseforge::Mod,
     query: CurseforgeFileQuery,
     url: String,
+    project_type: QueryType,
 ) {
     let mut index = index.lock().await;
     let project_id = ModId::Curseforge(project_id);
@@ -158,7 +160,7 @@ async fn add_to_index(
                     .collect(),
                 dependencies: HashSet::new(),
                 dependents: HashSet::new(),
-                project_type: QueryType::Mods,
+                project_type,
                 extra: HashMap::new(),
             },
         );

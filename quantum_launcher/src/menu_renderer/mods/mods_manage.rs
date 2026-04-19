@@ -466,9 +466,9 @@ impl MenuEditMods {
                         if self.selected_mods.is_empty() {
                             widget::text("Select some content to perform actions on them")
                         } else {
-                            widget::text!("{} items selected", self.selected_mods.len())
+                            widget::text!("{} item{} selected", self.selected_mods.len(), if self.selected_mods.len() == 1 { "" } else { "s" })
                         }
-                        .size(10)
+                        .size(11)
                         .style(|t: &LauncherTheme| t.style_text(Color::Mid))
                     )
                     .push_maybe(self.search.as_ref().map(|search|
@@ -491,8 +491,8 @@ impl MenuEditMods {
             is_selected: bool,
             filter: Option<QueryType>,
         ) -> widget::Button<'_, Message, LauncherTheme> {
-            widget::button(label.size(10))
-                .padding([2, 4])
+            widget::button(label.size(11))
+                .padding([3, 4])
                 .style(move |t: &LauncherTheme, s| {
                     t.style_button(
                         s,
@@ -588,14 +588,11 @@ impl MenuEditMods {
                         no_icon
                     };
 
-                    let toggle: Element = if entry.project_type().is_toggleable() {
-                        widget::toggler(is_enabled)
-                            .on_toggle(move |_| ManageModsMessage::ToggleOne(id.clone()).into())
-                            .size(14)
-                            .into()
-                    } else {
-                        widget::Space::with_width(10).into()
-                    };
+                    let toggle: Element = mod_toggler(
+                        entry.project_type(),
+                        move |_| ManageModsMessage::ToggleOne(id.clone()).into(),
+                        is_enabled,
+                    );
 
                     let entry = select_box(
                         widget::row![
@@ -691,26 +688,13 @@ impl MenuEditMods {
                     .selected_mods
                     .contains(&SelectedMod::Local(local.clone()));
 
-                let toggle: Element = if project_type.is_toggleable() {
-                    widget::toggler(is_enabled)
-                        .on_toggle(move |_| ManageModsMessage::ToggleOneLocal(local.clone()).into())
-                        .size(14)
-                        .into()
-                } else {
-                    widget::Space::with_width(36).into()
-                };
-
-                let label = format!(
-                    "{}{}",
-                    file_name.strip_suffix(".disabled").unwrap_or(file_name),
-                    match project_type {
-                        QueryType::Mods => "",
-                        QueryType::Shaders => " (shader)",
-                        QueryType::ModPacks => " (modpack)",
-                        QueryType::DataPacks => " (datapack)",
-                        QueryType::ResourcePacks => " (resourcepack)",
-                    }
+                let toggle: Element = mod_toggler(
+                    project_type,
+                    move |_| ManageModsMessage::ToggleOneLocal(local.clone()).into(),
+                    is_enabled,
                 );
+
+                let label = file_name.strip_suffix(".disabled").unwrap_or(file_name);
                 let label_len = label.len();
 
                 let checkbox = select_box(
@@ -762,6 +746,30 @@ impl MenuEditMods {
             }
         }
     }
+}
+
+fn mod_toggler<'a>(
+    project_type: QueryType,
+    f: impl Fn(bool) -> Message + 'a,
+    is_enabled: bool,
+) -> Element<'a> {
+    let (label, tooltip_text, color) = match project_type {
+        QueryType::Mods => return widget::toggler(is_enabled).on_toggle(f).size(14).into(),
+        QueryType::Shaders => ("  S", "Shader", iced::Color::from_rgb8(0xB8, 0x6E, 0x3C)),
+        QueryType::ModPacks => ("  M", "Modpack", iced::Color::from_rgb8(0x6E, 0x5A, 0x8A)),
+        QueryType::DataPacks => ("  D", "Datapack", iced::Color::from_rgb8(0xA4, 0x4E, 0x4E)),
+        QueryType::ResourcePacks => (
+            "  R",
+            "Resource Pack",
+            iced::Color::from_rgb8(0x5E, 0x7D, 0x61),
+        ),
+    };
+    tooltip(
+        widget::text(label).size(14).color(color).width(36),
+        tooltip_text,
+        Position::FollowCursor,
+    )
+    .into()
 }
 
 fn install_ldr(loader: &str) -> widget::Button<'_, Message, LauncherTheme> {

@@ -194,7 +194,8 @@ impl Launcher {
                 return self.install_forge(kind);
             }
             Message::InstallForgeEnd(Ok(())) => {
-                return self.go_to_edit_mods_menu(Some(InfoMessage::success("Installed Forge")));
+                return self
+                    .go_to_edit_mods_menu(Some(InfoMessage::success("Installed Forge/NeoForge")));
             }
             Message::UninstallLoaderEnd(Ok(())) => {
                 return self.go_to_edit_mods_menu(Some(InfoMessage::success("Uninstalled loader")));
