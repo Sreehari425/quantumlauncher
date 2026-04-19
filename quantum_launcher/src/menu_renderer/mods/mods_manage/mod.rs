@@ -332,7 +332,7 @@ impl MenuEditMods {
             .spacing(5)
             .into(),
 
-            Loader::Neoforge | Loader::Fabric | Loader::Quilt | Loader::Paper => {
+            Loader::NeoForge | Loader::Fabric | Loader::Quilt | Loader::Paper => {
                 Self::get_uninstall_panel(self.config.mod_type).into()
             }
 

@@ -103,7 +103,7 @@ impl Launcher {
 
                     let delete_local_command = Task::perform(
                         async move {
-                            let json = VersionDetails::default();
+                            let json = VersionDetails::load(&instance).await.strerr()?;
                             let dirs = DirStructure::new(instance, &json).await.strerr()?;
                             for l in local_mods {
                                 let Some(dir) = dirs.get(l.1) else { continue };

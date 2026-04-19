@@ -144,13 +144,12 @@ impl ModDownloader {
         }
 
         if !self.index.mods.contains_key(&ModId::Modrinth(id.clone())) {
-            let title = Some(&*project_info.title);
             if let Some(primary_file) = download_version.files.iter().find(|file| file.primary) {
-                self.download_file(query_type, primary_file, title).await?;
+                self.download_file(query_type, primary_file).await?;
             } else {
                 pt!("Didn't find primary file, checking secondary files...");
                 for file in &download_version.files {
-                    self.download_file(query_type, file, title).await?;
+                    self.download_file(query_type, file).await?;
                 }
             }
 
@@ -273,7 +272,6 @@ impl ModDownloader {
         &self,
         project_type: QueryType,
         file: &crate::store::ModFile,
-        title: Option<&str>,
     ) -> Result<(), ModError> {
         let Some(dir) = self.dirs.get(project_type) else {
             // It's a modpack!
@@ -284,7 +282,7 @@ impl ModDownloader {
             let bytes = file_utils::download_file_to_bytes(&file.url, true).await?;
             let incompatible = install_modpack(
                 bytes,
-                title.map(str::to_owned),
+                Some(file.filename.clone()),
                 self.instance.clone(),
                 self.sender.as_ref(),
             )

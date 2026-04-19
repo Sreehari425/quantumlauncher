@@ -137,12 +137,15 @@ impl<'a> ModDownloader<'a> {
                 query_type,
             )
             .await?;
-        pt!("File: {}", file_query.data.fileName.bright_black());
+
+        let filename = file_query.data.fileName.clone();
+        pt!("File: {}", filename.bright_black());
+
         let Some(url) = file_query.data.downloadUrl.clone() else {
             self.not_allowed.insert(CurseforgeNotAllowed {
                 name: response.name.clone(),
                 slug: response.slug.clone(),
-                filename: file_query.data.fileName.clone(),
+                filename,
                 project_type: query_type,
                 file_id: file_id as usize,
             });
@@ -155,7 +158,7 @@ impl<'a> ModDownloader<'a> {
             self.index.save(&self.dirs.instance).await?;
             if let Some(not_allowed_new) = install_modpack(
                 bytes,
-                Some(response.name.to_string()),
+                Some(filename),
                 self.dirs.instance.clone(),
                 self.sender,
             )

@@ -220,7 +220,7 @@ pub enum ModListEntry {
 impl ModListEntry {
     pub fn is_manually_installed(&self) -> bool {
         match self {
-            ModListEntry::Local { .. } => true,
+            ModListEntry::Local(_) => true,
             ModListEntry::Downloaded { config, .. } => config.manually_installed,
         }
     }
@@ -233,7 +233,6 @@ impl ModListEntry {
     }
 
     /// Returns the project type ("mod", "resourcepack", "shader", "datapack")
-    /// Local files are assumed to be mods.
     pub fn project_type(&self) -> QueryType {
         match self {
             ModListEntry::Local(l) => l.1,

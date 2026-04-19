@@ -22,7 +22,7 @@ const NEOFORGE_VERSIONS_URL: &str =
 const INSTALLER_NAME: &str = "installer.jar";
 
 #[derive(Deserialize)]
-struct NeoforgeVersions {
+struct NeoForgeVersions {
     versions: Vec<String>,
 }
 
@@ -76,7 +76,7 @@ pub async fn install(
     pt!("Finished");
     change_instance_type(
         &instance_dir,
-        Loader::Neoforge,
+        Loader::NeoForge,
         Some(ModTypeInfo::new_regular(neoforge_version)),
     )
     .await?;
@@ -234,7 +234,7 @@ fn send_progress(f_progress: Option<&Sender<ForgeInstallProgress>>, message: For
 pub async fn get_versions(
     instance_selection: Instance,
 ) -> Result<(Vec<String>, VersionDetails), ForgeInstallError> {
-    let versions: NeoforgeVersions =
+    let versions: NeoForgeVersions =
         file_utils::download_file_to_json(NEOFORGE_VERSIONS_URL, false).await?;
 
     let version_json = VersionDetails::load(&instance_selection).await?;
@@ -242,7 +242,7 @@ pub async fn get_versions(
 
     let v1_20_2 = DateTime::parse_from_rfc3339("2023-09-20T09:02:57+00:00")?;
     if release_time < v1_20_2 {
-        return Err(ForgeInstallError::NeoforgeOutdatedMinecraft);
+        return Err(ForgeInstallError::NeoForgeOutdatedMinecraft);
     }
 
     let version = version_json.get_id();

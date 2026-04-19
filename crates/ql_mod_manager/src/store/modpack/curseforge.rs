@@ -214,7 +214,7 @@ pub async fn install(
         Loader::Forge => "forge",
         Loader::Fabric => "fabric",
         Loader::Quilt => "quilt",
-        Loader::Neoforge => "neoforge",
+        Loader::NeoForge => "neoforge",
         _ => {
             return Err(expect_got_curseforge(index, config));
         }
