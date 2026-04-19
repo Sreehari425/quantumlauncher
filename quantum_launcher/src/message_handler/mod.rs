@@ -550,6 +550,7 @@ impl Launcher {
                 self.selected_instance.clone().unwrap(),
                 vec![path],
                 Some(sender),
+                QueryType::ModPacks,
             ),
             |n| ManageModsMessage::AddFileDone(n.strerr()).into(),
         )

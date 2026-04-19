@@ -44,12 +44,27 @@ use super::CurseforgeNotAllowed;
 /// - `Err` - Any error that occurred.
 pub async fn install_modpack(
     file: Vec<u8>,
+    name: Option<String>,
     instance: Instance,
     sender: Option<&Sender<GenericProgress>>,
 ) -> Result<Option<HashSet<CurseforgeNotAllowed>>, PackError> {
     let mut zip = zip::ZipArchive::new(Cursor::new(file.as_slice()))?;
 
     info!("Installing modpack");
+
+    // If user accidentally added regular file
+    if zip.by_name("pack.mcmeta").is_ok() {
+        if zip.by_name("data").is_ok() {
+            write_regular_file(&file, name, &instance, "datapacks").await?;
+        } else {
+            // Resource Pack/Canvas Shader
+            write_regular_file(&file, name, &instance, "resourcepacks").await?;
+        }
+    } else if zip.by_name("shaders/pack.json").is_ok() {
+        // Shader pack
+        write_regular_file(&file, name, &instance, "shaderpacks").await?;
+        return Ok(Some(HashSet::new()));
+    }
 
     let index_json_modrinth: Option<modrinth::PackIndex> =
         read_json_from_zip(&mut zip, "modrinth.index.json")?;
@@ -152,6 +167,26 @@ pub async fn install_modpack(
     pt!("Done!");
 
     Ok(Some(not_allowed))
+}
+
+async fn write_regular_file(
+    file: &[u8],
+    name: Option<String>,
+    instance: &Instance,
+    dir_name: &str,
+) -> Result<(), PackError> {
+    let dir = instance.get_dot_minecraft_path().join(dir_name);
+    tokio::fs::create_dir_all(&dir).await.path(&dir)?;
+    let name = name.unwrap_or_else(|| {
+        let time = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|n| n.as_secs())
+            .unwrap_or(0);
+        format!("{dir_name}_{time}")
+    });
+    let path = dir.join(name);
+    tokio::fs::write(&path, file).await.path(&path)?;
+    Ok(())
 }
 
 fn read_json_from_zip<T: serde::de::DeserializeOwned>(

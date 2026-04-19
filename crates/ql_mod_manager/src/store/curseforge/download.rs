@@ -3,6 +3,7 @@ use std::{
     sync::{Arc, mpsc::Sender},
 };
 
+use owo_colors::OwoColorize;
 use ql_core::{
     GenericProgress, Instance, InstanceConfigJson, download, err, file_utils, info,
     json::VersionDetails, pt,
@@ -139,12 +140,13 @@ impl<'a> ModDownloader<'a> {
                 query_type,
             )
             .await?;
+        pt!("File: {}", file_query.data.fileName.bright_black());
         let Some(url) = file_query.data.downloadUrl.clone() else {
             self.not_allowed.insert(CurseforgeNotAllowed {
                 name: response.name.clone(),
                 slug: response.slug.clone(),
                 filename: file_query.data.fileName.clone(),
-                project_type: query_type.to_curseforge_str().to_owned(),
+                project_type: query_type,
                 file_id: file_id as usize,
             });
             return Ok(());
@@ -152,13 +154,16 @@ impl<'a> ModDownloader<'a> {
 
         let Some(dir) = self.dirs.get(query_type) else {
             // It's a modpack
-
             let bytes = file_utils::download_file_to_bytes(&url, true).await?;
             self.index.save(&self.instance).await?;
-            if let Some(not_allowed_new) =
-                install_modpack(bytes, self.instance.clone(), self.sender)
-                    .await
-                    .map_err(Box::new)?
+            if let Some(not_allowed_new) = install_modpack(
+                bytes,
+                Some(response.name.to_string()),
+                self.instance.clone(),
+                self.sender,
+            )
+            .await
+            .map_err(Box::new)?
             {
                 self.not_allowed.extend(not_allowed_new);
             } else {
@@ -248,7 +253,7 @@ impl<'a> ModDownloader<'a> {
                     HashSet::new()
                 },
                 project_type,
-                _extra: HashMap::new(),
+                extra: HashMap::new(),
             },
         );
     }

@@ -33,7 +33,7 @@ pub struct ModConfig {
     #[serde(default = "QueryType::default")]
     pub project_type: QueryType,
     #[serde(flatten)]
-    pub _extra: HashMap<String, serde_json::Value>,
+    pub extra: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]

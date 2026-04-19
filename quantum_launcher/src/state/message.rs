@@ -137,7 +137,8 @@ pub enum ManageModsMessage {
 
     /// Add a mod, preset or modpack to the current instance.
     /// The field represents whether to delete the file after importing it.
-    AddFile(bool),
+    AddFile(bool, QueryType),
+    AddFileSelected(bool, Vec<PathBuf>, QueryType),
     AddFileDone(Res<HashSet<CurseforgeNotAllowed>>),
 
     SelectAll,
@@ -240,7 +241,6 @@ pub enum WindowMessage {
     // IsMaximized(bool),
 }
 
-#[allow(unused)]
 #[derive(Debug, Clone)]
 pub enum AccountMessage {
     Selected(String),

@@ -116,7 +116,7 @@ impl PackFile {
             name: mod_info.name,
             slug: mod_info.slug,
             file_id: self.fileID,
-            project_type: query_type.to_curseforge_str().to_owned(),
+            project_type: query_type,
             filename: query.data.fileName,
         });
     }
@@ -159,7 +159,7 @@ async fn add_to_index(
                 dependencies: HashSet::new(),
                 dependents: HashSet::new(),
                 project_type: QueryType::Mods,
-                _extra: HashMap::new(),
+                extra: HashMap::new(),
             },
         );
     }

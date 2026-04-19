@@ -362,6 +362,7 @@ pub enum MenuEditModsModal {
     Submenu,
     RightClick(ModId, (f32, f32)),
     FolderMenu,
+    AddFile,
 }
 
 impl MenuEditMods {
@@ -507,7 +508,7 @@ pub struct MenuInstallForge {
     pub is_java_getting_installed: bool,
 }
 
-#[allow(unused)]
+#[cfg(feature = "auto_update")]
 pub struct MenuLauncherUpdate {
     pub url: String,
     pub progress: Option<ProgressBar<GenericProgress>>,

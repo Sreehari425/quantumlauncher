@@ -53,8 +53,27 @@ impl Launcher {
                 menu.update_selected_state();
                 return menu.scroll_fix();
             }
-            ManageModsMessage::AddFile(delete_file) => {
-                return self.add_file_select(delete_file);
+            ManageModsMessage::AddFile(delete_file, project_type) => {
+                return Task::perform(
+                    rfd::AsyncFileDialog::new()
+                        .add_filter(project_type.to_string(), project_type.get_extensions())
+                        .set_title("Add Mod, Modpack or Preset")
+                        .pick_files(),
+                    move |r| {
+                        ManageModsMessage::AddFileSelected(
+                            delete_file,
+                            r.into_iter()
+                                .flatten()
+                                .map(|n| n.path().to_owned())
+                                .collect(),
+                            project_type,
+                        )
+                        .into()
+                    },
+                );
+            }
+            ManageModsMessage::AddFileSelected(delete_files, paths, project_type) => {
+                return self.add_file_selected(delete_files, paths, project_type);
             }
             ManageModsMessage::AddFileDone(Ok(not_allowed)) => {
                 if !not_allowed.is_empty() {
@@ -374,23 +393,23 @@ impl Launcher {
         Task::batch([toggle_downloaded, toggle_local])
     }
 
-    fn add_file_select(&mut self, delete_file: bool) -> Task<Message> {
-        let Some(paths) = rfd::FileDialog::new()
-            .add_filter("Mod/Modpack", &["jar", "zip", "mrpack", "qmp"])
-            .set_title("Add Mod, Modpack or Preset")
-            .pick_files()
-        else {
-            return Task::none();
-        };
-
+    fn add_file_selected(
+        &mut self,
+        delete_file: bool,
+        paths: Vec<PathBuf>,
+        project_type: QueryType,
+    ) -> Task<Message> {
         let (sender, receiver) = std::sync::mpsc::channel();
-        self.state = State::ImportModpack(ProgressBar::with_recv(receiver));
+        if project_type == QueryType::ModPacks {
+            self.state = State::ImportModpack(ProgressBar::with_recv(receiver));
+        }
 
         let files_task = Task::perform(
             ql_mod_manager::add_files(
                 self.selected_instance.clone().unwrap(),
                 paths.clone(),
                 Some(sender),
+                project_type,
             ),
             move |n| ManageModsMessage::AddFileDone(n.strerr()).into(),
         );

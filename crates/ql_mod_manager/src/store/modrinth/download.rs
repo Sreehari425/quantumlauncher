@@ -144,12 +144,13 @@ impl ModDownloader {
         }
 
         if !self.index.mods.contains_key(&ModId::Modrinth(id.clone())) {
+            let title = Some(&*project_info.title);
             if let Some(primary_file) = download_version.files.iter().find(|file| file.primary) {
-                self.download_file(query_type, primary_file).await?;
+                self.download_file(query_type, primary_file, title).await?;
             } else {
                 pt!("Didn't find primary file, checking secondary files...");
                 for file in &download_version.files {
-                    self.download_file(query_type, file).await?;
+                    self.download_file(query_type, file, title).await?;
                 }
             }
 
@@ -272,6 +273,7 @@ impl ModDownloader {
         &self,
         project_type: QueryType,
         file: &crate::store::ModFile,
+        title: Option<&str>,
     ) -> Result<(), ModError> {
         let Some(dir) = self.dirs.get(project_type) else {
             // It's a modpack!
@@ -280,9 +282,14 @@ impl ModDownloader {
             };
 
             let bytes = file_utils::download_file_to_bytes(&file.url, true).await?;
-            let incompatible = install_modpack(bytes, self.instance.clone(), self.sender.as_ref())
-                .await
-                .map_err(Box::new)?;
+            let incompatible = install_modpack(
+                bytes,
+                title.map(str::to_owned),
+                self.instance.clone(),
+                self.sender.as_ref(),
+            )
+            .await
+            .map_err(Box::new)?;
             debug_assert!(
                 incompatible.is_some(),
                 "invalid modpack downloaded from modrinth store!"
@@ -325,7 +332,7 @@ impl ModDownloader {
             version_release_time: download_version.date_published.clone(),
             project_source: StoreBackendType::Modrinth,
             project_type,
-            _extra: HashMap::new(),
+            extra: HashMap::new(),
         };
 
         self.index.mods.insert(mid(&project_info.id), config);

@@ -66,7 +66,7 @@ pub struct CurseforgeNotAllowed {
     pub name: Arc<str>,
     pub slug: String,
     pub filename: String,
-    pub project_type: String,
+    pub project_type: QueryType,
     pub file_id: usize,
 }
 
@@ -167,6 +167,15 @@ impl QueryType {
     #[must_use]
     pub const fn is_toggleable(self) -> bool {
         matches!(self, QueryType::Mods)
+    }
+
+    #[must_use]
+    pub const fn get_extensions(self) -> &'static [&'static str] {
+        match self {
+            QueryType::Mods => &["jar"],
+            QueryType::Shaders | QueryType::ModPacks | QueryType::DataPacks => &["zip"],
+            QueryType::ResourcePacks => &["zip", "mrpack", "qmp"],
+        }
     }
 }
 
@@ -330,12 +339,16 @@ impl DirStructure {
         })
     }
 
+    #[must_use]
     pub fn get(&self, query_type: QueryType) -> Option<&Path> {
         Some(match query_type {
             QueryType::DataPacks => &self.data_packs,
             QueryType::ResourcePacks => &self.resource_packs,
             QueryType::Mods => &self.mods,
             QueryType::Shaders => &self.shaders,
+            // Note: A lot of code relies on the assumption
+            // that this returns None only for modpacks,
+            // so be careful
             QueryType::ModPacks => return None,
         })
     }
