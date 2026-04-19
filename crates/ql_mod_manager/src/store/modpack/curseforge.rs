@@ -78,7 +78,10 @@ impl PackFile {
             return Ok(());
         };
 
-        let path = dirs.get(query_type)?.join(&query.data.fileName);
+        let path = dirs
+            .get(query_type)
+            .ok_or(PackError::ModpackInModpack)?
+            .join(&query.data.fileName);
         if path.is_file() {
             let metadata = tokio::fs::metadata(&path).await.path(&path)?;
             let got_len = metadata.len();
@@ -156,6 +159,7 @@ async fn add_to_index(
                 dependencies: HashSet::new(),
                 dependents: HashSet::new(),
                 project_type: QueryType::Mods,
+                _extra: HashMap::new(),
             },
         );
     }

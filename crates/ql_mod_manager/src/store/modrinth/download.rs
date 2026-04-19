@@ -273,7 +273,12 @@ impl ModDownloader {
         project_type: QueryType,
         file: &crate::store::ModFile,
     ) -> Result<(), ModError> {
-        if let QueryType::ModPacks = project_type {
+        let Some(dir) = self.dirs.get(project_type) else {
+            // It's a modpack!
+            let QueryType::ModPacks = project_type else {
+                return Ok(());
+            };
+
             let bytes = file_utils::download_file_to_bytes(&file.url, true).await?;
             let incompatible = install_modpack(bytes, self.instance.clone(), self.sender.as_ref())
                 .await
@@ -283,8 +288,9 @@ impl ModDownloader {
                 "invalid modpack downloaded from modrinth store!"
             );
             return Ok(());
-        }
-        let file_path = self.dirs.get(project_type).unwrap().join(&file.filename);
+        };
+
+        let file_path = dir.join(&file.filename);
         download(&file.url).user_agent_ql().path(&file_path).await?;
         Ok(())
     }
@@ -319,6 +325,7 @@ impl ModDownloader {
             version_release_time: download_version.date_published.clone(),
             project_source: StoreBackendType::Modrinth,
             project_type,
+            _extra: HashMap::new(),
         };
 
         self.index.mods.insert(mid(&project_info.id), config);

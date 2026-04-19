@@ -1,4 +1,9 @@
-use std::{fmt::Display, path::PathBuf, sync::Arc, time::Instant};
+use std::{
+    fmt::Display,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Instant,
+};
 
 use ql_core::{
     Instance, IntoIoError, IoError, Loader,
@@ -8,7 +13,7 @@ use ql_core::{
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 
-use crate::store::{ModId, PackError};
+use crate::store::ModId;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoreBackendType {
@@ -325,13 +330,13 @@ impl DirStructure {
         })
     }
 
-    pub fn get(&self, query_type: QueryType) -> Result<PathBuf, PackError> {
-        Ok(match query_type {
-            QueryType::DataPacks => self.data_packs.clone(),
-            QueryType::ResourcePacks => self.resource_packs.clone(),
-            QueryType::Mods => self.mods.clone(),
-            QueryType::Shaders => self.shaders.clone(),
-            QueryType::ModPacks => return Err(PackError::ModpackInModpack),
+    pub fn get(&self, query_type: QueryType) -> Option<&Path> {
+        Some(match query_type {
+            QueryType::DataPacks => &self.data_packs,
+            QueryType::ResourcePacks => &self.resource_packs,
+            QueryType::Mods => &self.mods,
+            QueryType::Shaders => &self.shaders,
+            QueryType::ModPacks => return None,
         })
     }
 }

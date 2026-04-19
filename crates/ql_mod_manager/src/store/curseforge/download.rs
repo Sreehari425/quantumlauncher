@@ -150,7 +150,7 @@ impl<'a> ModDownloader<'a> {
             return Ok(());
         };
 
-        let Ok(dir) = self.dirs.get(query_type) else {
+        let Some(dir) = self.dirs.get(query_type) else {
             // It's a modpack
 
             let bytes = file_utils::download_file_to_bytes(&url, true).await?;
@@ -248,6 +248,7 @@ impl<'a> ModDownloader<'a> {
                     HashSet::new()
                 },
                 project_type,
+                _extra: HashMap::new(),
             },
         );
     }

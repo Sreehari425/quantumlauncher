@@ -32,12 +32,16 @@ pub struct ModConfig {
     pub dependents: HashSet<ModId>,
     #[serde(default = "QueryType::default")]
     pub project_type: QueryType,
+    #[serde(flatten)]
+    pub _extra: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct ModIndex {
     pub mods: HashMap<ModId, ModConfig>,
     pub is_server: Option<bool>,
+    #[serde(flatten)]
+    _extra: HashMap<String, serde_json::Value>,
 }
 
 impl ModIndex {
@@ -59,21 +63,13 @@ impl ModIndex {
         Self {
             mods: HashMap::new(),
             is_server: Some(instance.is_server()),
+            _extra: HashMap::new(),
         }
     }
 
     pub async fn fix(&mut self, instance: &Instance) -> Result<(), IoError> {
-        let mc_dir = instance.get_dot_minecraft_path();
-        let mods_dir = mc_dir.join("mods");
-        if !exists(&mods_dir).await {
-            fs::create_dir(&mods_dir).await.path(&mods_dir)?;
-            self.mods.clear();
-            return Ok(());
-        }
-
         let dirs = DirStructure::new(instance, None).await?;
-
-        self.fix_nonexistent_mods(&dirs);
+        self.fix_nonexistent_mods(&dirs).await;
         self.fix_cf_modpack_id_bug();
 
         Ok(())
@@ -96,30 +92,43 @@ impl ModIndex {
         self.mods.extend(drained_mods);
     }
 
-    fn fix_nonexistent_mods(&mut self, dirs: &DirStructure) {
+    async fn fix_nonexistent_mods(&mut self, dirs: &DirStructure) {
         let mut removed_ids = Vec::new();
         let mut remove_dependents = Vec::new();
 
         for (id, mod_cfg) in &mut self.mods {
-            let Ok(content_dir) = dirs.get(mod_cfg.project_type) else {
+            let Some(content_dir) = dirs.get(mod_cfg.project_type) else {
                 continue; // a modpack somehow ended up here, ignore to be safe
             };
 
-            mod_cfg.files.retain(|file| {
-                content_dir.join(&file.filename).is_file()
-                    || content_dir
-                        .join(format!("{}.disabled", file.filename))
-                        .is_file()
-            });
+            let mut removed = Vec::new();
+            for (i, file) in mod_cfg.files.iter().enumerate() {
+                let enabled_path = content_dir.join(&file.filename);
+                let disabled_path = content_dir.join(format!("{}.disabled", file.filename));
+                let (enabled, disabled) =
+                    tokio::join!(exists(&enabled_path), exists(&disabled_path));
+
+                let file_exists = enabled || disabled;
+
+                if !file_exists {
+                    removed.push(i);
+                }
+            }
+            for i in removed.into_iter().rev() {
+                // Can't do Vec::retain because async
+                mod_cfg.files.remove(i);
+            }
+
             if mod_cfg.files.is_empty() {
                 info!(
                     "Cleaning deleted {}: {}",
                     mod_cfg.project_type, mod_cfg.name
                 );
                 removed_ids.push(id.clone());
-            }
-            for dependent in &mod_cfg.dependents {
-                remove_dependents.push((dependent.clone(), id.clone()));
+
+                for dependent in &mod_cfg.dependents {
+                    remove_dependents.push((dependent.clone(), id.clone()));
+                }
             }
         }
 

@@ -84,15 +84,15 @@ pub async fn delete_mods(ids: Vec<ModId>, instance: Instance) -> Result<Vec<ModI
 
 async fn delete_mod(index: &mut ModIndex, id: &ModId, dirs: &DirStructure) -> Result<(), ModError> {
     if let Some(mod_info) = index.mods.remove(id) {
-        let Ok(content_dir) = dirs.get(mod_info.project_type) else {
+        let Some(content_dir) = dirs.get(mod_info.project_type) else {
             debug_assert!(false, "modpack ended up in mod index");
             return Ok(());
         };
         for file in &mod_info.files {
             if mod_info.enabled {
-                delete_file(&content_dir, &file.filename).await?;
+                delete_file(content_dir, &file.filename).await?;
             } else {
-                delete_file(&content_dir, &format!("{}.disabled", file.filename)).await?;
+                delete_file(content_dir, &format!("{}.disabled", file.filename)).await?;
             }
         }
     } else {

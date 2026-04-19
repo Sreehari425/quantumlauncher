@@ -85,7 +85,7 @@ impl Launcher {
                         async move {
                             let dirs = DirStructure::new(&instance, None).await.strerr()?;
                             for l in local_mods {
-                                let Ok(dir) = dirs.get(l.1) else { continue };
+                                let Some(dir) = dirs.get(l.1) else { continue };
                                 let path = dir.join(&*l.0);
                                 delete_file_wrapper(path).await?;
                             }
