@@ -42,7 +42,7 @@ impl MenuLauncherSettings {
                         row!(
                             icons::clock_s(13),
                             widget::Space::with_width(5),
-                            widget::text("Awaiting sync...").size(13).style(tsubtitle),
+                            widget::text("Awaiting activity...").size(13).style(tsubtitle),
                         )
                     } else {
                         row!(
@@ -115,16 +115,13 @@ impl RpcText {
                 }
             )),
             widget::Space::with_height(0),
-            widget::text_input(
-                "Details (top text)",
-                self.top_text.as_deref().unwrap_or_default()
-            )
-            .size(14)
-            .on_input(move |v| m2(RpcInnerMessage::TopTextChanged(v)).into()),
+            widget::text_input("Top Text", self.top_text.as_deref().unwrap_or_default())
+                .size(14)
+                .on_input(move |v| m2(RpcInnerMessage::TopTextChanged(v)).into()),
             if self.top_text.is_some() {
                 widget::column![
                     widget::text_input(
-                        "Details URL",
+                        "Top Text URL",
                         self.top_text_url.as_deref().unwrap_or_default()
                     )
                     .size(14)
@@ -136,7 +133,7 @@ impl RpcText {
             if self.top_text.is_some() || self.bottom_text.is_some() {
                 widget::column![
                     widget::text_input(
-                        "State (usually bottom)",
+                        "Bottom Text",
                         &self.bottom_text.as_deref().unwrap_or_default()
                     )
                     .size(14)
@@ -148,7 +145,7 @@ impl RpcText {
             if self.bottom_text.is_some() {
                 widget::column![
                     widget::text_input(
-                        "State URL",
+                        "Bottom Text URL",
                         self.bottom_text_url.as_deref().unwrap_or_default()
                     )
                     .size(14)
