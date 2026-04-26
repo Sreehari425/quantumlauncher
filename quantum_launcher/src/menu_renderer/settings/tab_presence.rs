@@ -104,20 +104,23 @@ impl RpcText {
         column![
             widget::text(format!(
                 "{label} {}",
-                if self.top_text.is_none() {
+                if self.top_text.is_none() && self.bottom_text.is_none() {
                     "(Disabled)"
                 } else {
                     ""
                 }
             )),
             widget::Space::with_height(0),
-            widget::text_input("Top Text", self.top_text.as_deref().unwrap_or_default())
-                .size(14)
-                .on_input(move |v| m2(RpcInnerMessage::TopTextChanged(v)).into()),
+            widget::text_input(
+                "Details (top text)",
+                self.top_text.as_deref().unwrap_or_default()
+            )
+            .size(14)
+            .on_input(move |v| m2(RpcInnerMessage::TopTextChanged(v)).into()),
             if self.top_text.is_some() || self.bottom_text.is_some() {
                 widget::row![
                     widget::text_input(
-                        "Bottom Text",
+                        "State (usually bottom)",
                         &self.bottom_text.as_deref().unwrap_or_default()
                     )
                     .size(13)
