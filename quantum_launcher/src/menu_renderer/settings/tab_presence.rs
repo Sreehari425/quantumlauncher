@@ -65,7 +65,9 @@ impl MenuLauncherSettings {
                         widget::text("Changes will take effect on launcher restart or with the press of the button above.").size(12).style(tsubtitle),
                     ].spacing(5)
                 } else {
-                    column![]
+                    column![
+                        widget::text("Toggle \"Enable Broadcast\" to show this on Discord.").size(12).style(tsubtitle),
+                    ]
                 },
             ].spacing(10),
 
@@ -120,7 +122,7 @@ impl RpcText {
             .size(14)
             .on_input(move |v| m2(RpcInnerMessage::TopTextChanged(v)).into()),
             if self.top_text.is_some() {
-                widget::row![
+                widget::column![
                     widget::text_input(
                         "Details URL",
                         self.top_text_url.as_deref().unwrap_or_default()
@@ -129,31 +131,31 @@ impl RpcText {
                     .on_input(move |v| m3(RpcInnerMessage::TopTextURLChanged(v)).into())
                 ]
             } else {
-                widget::row![]
+                widget::column![]
             },
             if self.top_text.is_some() || self.bottom_text.is_some() {
-                widget::row![
+                widget::column![
                     widget::text_input(
                         "State (usually bottom)",
                         &self.bottom_text.as_deref().unwrap_or_default()
                     )
-                    .size(13)
+                    .size(14)
                     .on_input(move |v| m(RpcInnerMessage::BottomTextChanged(v)).into())
                 ]
             } else {
-                widget::row![]
+                widget::column![]
             },
             if self.bottom_text.is_some() {
-                widget::row![
+                widget::column![
                     widget::text_input(
                         "State URL",
                         self.bottom_text_url.as_deref().unwrap_or_default()
                     )
-                    .size(13)
+                    .size(14)
                     .on_input(move |v| m4(RpcInnerMessage::BottomTextURLChanged(v)).into())
                 ]
             } else {
-                widget::row![]
+                widget::column![]
             },
         ]
         .spacing(5)
