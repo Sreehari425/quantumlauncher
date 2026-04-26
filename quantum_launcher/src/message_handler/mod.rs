@@ -200,12 +200,15 @@ impl Launcher {
         } else {
             &rpc_config.on_gameopen
         };
-        let Some(gameexit_details) = info.top_text.clone() else {
+
+        if info.top_text.is_none() && info.bottom_text.is_none() {
             return Task::none();
-        };
+        }
+
+        let gameexit_details = info.top_text.clone();
+        let gameexit_state = info.bottom_text.clone();
 
         let client = self.discord_ipc_client.clone();
-        let gameexit_state = info.bottom_text.clone();
 
         Task::perform(
             async move {
@@ -214,12 +217,18 @@ impl Launcher {
                         let instance = selected_instance.get_name();
                         let minecraft_vers = version_details.get_id();
 
-                        let activity = Activity::new()
-                            .details(gameexit_details.substitute(instance, minecraft_vers))
-                            .state(gameexit_state.substitute(instance, minecraft_vers))
-                            .build();
+                        let mut activity = Activity::new();
 
-                        _ = c.set_activity(activity).await;
+                        if let Some(d) = gameexit_details {
+                            activity = activity.details(d.substitute(instance, minecraft_vers));
+                        }
+                        if let Some(s) = gameexit_state {
+                            activity = activity.state(s.substitute(instance, minecraft_vers));
+                        }
+
+                        let built_activity = activity.build();
+
+                        _ = c.set_activity(built_activity).await;
                     }
                 }
             },
@@ -415,17 +424,23 @@ impl Launcher {
             return Task::none();
         };
         let rpc_config = self.config.discord_rpc.clone().unwrap_or_default();
-        let Some(top_text) = rpc_config.basic.top_text else {
+
+        if rpc_config.basic.top_text.is_none() && rpc_config.basic.bottom_text.is_none() {
             return Task::none();
-        };
-        let bottom_text = rpc_config.basic.bottom_text;
+        }
+
+        let top_text = rpc_config.basic.top_text.clone();
+        let bottom_text = rpc_config.basic.bottom_text.clone();
 
         Task::perform(
             async move {
-                let mut activity = Activity::new().details(top_text);
+                let mut activity = Activity::new();
 
-                if !bottom_text.is_empty() {
-                    activity = activity.state(bottom_text);
+                if let Some(d) = top_text {
+                    activity = activity.details(d)
+                }
+                if let Some(s) = bottom_text {
+                    activity = activity.state(s)
                 }
 
                 let built_activity = activity.build();

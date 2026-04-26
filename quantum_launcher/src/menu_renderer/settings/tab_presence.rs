@@ -31,8 +31,6 @@ impl MenuLauncherSettings {
                 widget::checkbox("Enable Broadcast", rpc_config.enable)
                     .on_toggle(|n| RpcMessage::Toggle(n).into()),
                 widget::text("Sometimes toggling this option might take some time to apply the activity updates on Discord.").size(12).style(tsubtitle),
-                widget::Space::with_height(3),
-                widget::text("Please note that for all types of presences, the top text is mandatory. If not provided, the presence isn't set.").size(12).style(tsubtitle),
                 widget::Space::with_height(5),
                     if is_presence_running {
                         row!(
@@ -113,15 +111,21 @@ impl RpcText {
                 }
             )),
             widget::Space::with_height(0),
-            widget::text_input(
-                "(Mandatory) Top Text",
-                self.top_text.as_deref().unwrap_or_default()
-            )
-            .size(14)
-            .on_input(move |v| m2(RpcInnerMessage::TopTextChanged(v)).into()),
-            widget::text_input("Bottom Text", &self.bottom_text)
-                .size(13)
-                .on_input(move |v| m(RpcInnerMessage::BottomTextChanged(v)).into()),
+            widget::text_input("Top Text", self.top_text.as_deref().unwrap_or_default())
+                .size(14)
+                .on_input(move |v| m2(RpcInnerMessage::TopTextChanged(v)).into()),
+            if self.top_text.is_some() || self.bottom_text.is_some() {
+                widget::row![
+                    widget::text_input(
+                        "Bottom Text",
+                        &self.bottom_text.as_deref().unwrap_or_default()
+                    )
+                    .size(13)
+                    .on_input(move |v| m(RpcInnerMessage::BottomTextChanged(v)).into())
+                ]
+            } else {
+                widget::row![]
+            }
         ]
         .spacing(5)
     }

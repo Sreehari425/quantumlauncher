@@ -327,7 +327,7 @@ impl RpcText {
                 self.top_text = (!text.is_empty()).then_some(text);
             }
             RpcInnerMessage::BottomTextChanged(text) => {
-                self.bottom_text = text;
+                self.bottom_text = (!text.is_empty()).then_some(text);
             }
         }
     }
