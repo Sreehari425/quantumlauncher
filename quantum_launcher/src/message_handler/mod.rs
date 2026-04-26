@@ -2,6 +2,7 @@ use crate::{
     Launcher, Message,
     config::AfterLaunchBehavior,
     menu_renderer::back_to_launch_screen,
+    presence_utils::bake_activity,
     state::{
         AutoSaveKind, EditPresetsMessage, GameProcess, InfoMessage, LaunchTab, LogState,
         ManageModsMessage, MenuCreateInstance, MenuCreateInstanceChoosing, MenuEditInstance,
@@ -10,7 +11,7 @@ use crate::{
     },
     tick::sort_dependencies,
 };
-use filthy_rich::{PresenceRunner, types::Activity};
+use filthy_rich::PresenceRunner;
 use iced::{Task, futures::executor::block_on, widget::scrollable::AbsoluteOffset};
 use ql_core::{
     GenericProgress, Instance, InstanceKind, IntoIoError, IntoJsonError, IntoStringError,
@@ -205,8 +206,8 @@ impl Launcher {
             return Task::none();
         }
 
-        let gameexit_details = info.top_text.clone();
-        let gameexit_state = info.bottom_text.clone();
+        let details = info.top_text.clone();
+        let state = info.bottom_text.clone();
 
         let client = self.discord_ipc_client.clone();
 
@@ -217,18 +218,12 @@ impl Launcher {
                         let instance = selected_instance.get_name();
                         let minecraft_vers = version_details.get_id();
 
-                        let mut activity = Activity::new();
-
-                        if let Some(d) = gameexit_details {
-                            activity = activity.details(d.substitute(instance, minecraft_vers));
-                        }
-                        if let Some(s) = gameexit_state {
-                            activity = activity.state(s.substitute(instance, minecraft_vers));
-                        }
-
-                        let built_activity = activity.build();
-
-                        _ = c.set_activity(built_activity).await;
+                        _ = c
+                            .set_activity(bake_activity(
+                                details.map(|f| f.substitute(instance, minecraft_vers)),
+                                state.map(|f| f.substitute(instance, minecraft_vers)),
+                            ))
+                            .await;
                     }
                 }
             },
@@ -434,17 +429,7 @@ impl Launcher {
 
         Task::perform(
             async move {
-                let mut activity = Activity::new();
-
-                if let Some(d) = top_text {
-                    activity = activity.details(d)
-                }
-                if let Some(s) = bottom_text {
-                    activity = activity.state(s)
-                }
-
-                let built_activity = activity.build();
-                _ = c.set_activity(built_activity).await;
+                _ = c.set_activity(bake_activity(top_text, bottom_text)).await;
             },
             |()| Message::DiscordIPCPresenceSet,
         )
