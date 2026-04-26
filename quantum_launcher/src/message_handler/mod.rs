@@ -207,7 +207,9 @@ impl Launcher {
         }
 
         let details = info.top_text.clone();
+        let details_url = info.top_text_url.clone();
         let state = info.bottom_text.clone();
+        let state_url = info.bottom_text_url.clone();
 
         let client = self.discord_ipc_client.clone();
 
@@ -221,7 +223,9 @@ impl Launcher {
                         _ = c
                             .set_activity(bake_activity(
                                 details.map(|f| f.substitute(instance, minecraft_vers)),
+                                details_url,
                                 state.map(|f| f.substitute(instance, minecraft_vers)),
+                                state_url,
                             ))
                             .await;
                     }
@@ -424,12 +428,16 @@ impl Launcher {
             return Task::none();
         }
 
-        let top_text = rpc_config.basic.top_text.clone();
-        let bottom_text = rpc_config.basic.bottom_text.clone();
+        let details = rpc_config.basic.top_text.clone();
+        let details_url = rpc_config.basic.top_text_url.clone();
+        let state = rpc_config.basic.bottom_text.clone();
+        let state_url = rpc_config.basic.bottom_text_url.clone();
 
         Task::perform(
             async move {
-                _ = c.set_activity(bake_activity(top_text, bottom_text)).await;
+                _ = c
+                    .set_activity(bake_activity(details, details_url, state, state_url))
+                    .await;
             },
             |()| Message::DiscordIPCPresenceSet,
         )

@@ -101,6 +101,8 @@ impl RpcText {
         m: impl Fn(RpcInnerMessage) -> RpcMessage + 'a + Clone,
     ) -> Column<'a> {
         let m2 = m.clone();
+        let m3 = m.clone();
+        let m4 = m.clone();
         column![
             widget::text(format!(
                 "{label} {}",
@@ -117,6 +119,18 @@ impl RpcText {
             )
             .size(14)
             .on_input(move |v| m2(RpcInnerMessage::TopTextChanged(v)).into()),
+            if self.top_text.is_some() {
+                widget::row![
+                    widget::text_input(
+                        "Details URL",
+                        self.top_text_url.as_deref().unwrap_or_default()
+                    )
+                    .size(14)
+                    .on_input(move |v| m3(RpcInnerMessage::TopTextURLChanged(v)).into())
+                ]
+            } else {
+                widget::row![]
+            },
             if self.top_text.is_some() || self.bottom_text.is_some() {
                 widget::row![
                     widget::text_input(
@@ -128,7 +142,19 @@ impl RpcText {
                 ]
             } else {
                 widget::row![]
-            }
+            },
+            if self.bottom_text.is_some() {
+                widget::row![
+                    widget::text_input(
+                        "State URL",
+                        self.bottom_text_url.as_deref().unwrap_or_default()
+                    )
+                    .size(13)
+                    .on_input(move |v| m4(RpcInnerMessage::BottomTextURLChanged(v)).into())
+                ]
+            } else {
+                widget::row![]
+            },
         ]
         .spacing(5)
     }

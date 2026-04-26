@@ -317,7 +317,9 @@ pub enum RpcMessage {
 #[derive(Debug, Clone)]
 pub enum RpcInnerMessage {
     TopTextChanged(String),
+    TopTextURLChanged(String),
     BottomTextChanged(String),
+    BottomTextURLChanged(String),
 }
 
 impl RpcText {
@@ -326,8 +328,14 @@ impl RpcText {
             RpcInnerMessage::TopTextChanged(text) => {
                 self.top_text = (!text.is_empty()).then_some(text);
             }
+            RpcInnerMessage::TopTextURLChanged(text) => {
+                self.top_text_url = (!text.is_empty()).then_some(text);
+            }
             RpcInnerMessage::BottomTextChanged(text) => {
                 self.bottom_text = (!text.is_empty()).then_some(text);
+            }
+            RpcInnerMessage::BottomTextURLChanged(text) => {
+                self.bottom_text_url = (!text.is_empty()).then_some(text);
             }
         }
     }
