@@ -78,7 +78,7 @@ impl MenuLauncherSettings {
                     .on_toggle(|n| RpcMessage::TogglePresenceOnGameEvent(n).into()),
                 widget::text("Disabling this will ensure that only the custom rich presence set above stays alive when you run the launcher and/or play Minecraft.").size(12).style(tsubtitle),
                 widget::Space::with_height(5),
-                widget::checkbox("Competing mode", rpc_config.competing)
+                widget::checkbox("Competing Mode", rpc_config.competing)
                     .on_toggle(|n| RpcMessage::ToggleCompeting(n).into()),
                 widget::text("A fancier way to show off your activities. Try this at home!").size(12).style(tsubtitle),
 
