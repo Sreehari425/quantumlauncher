@@ -206,6 +206,7 @@ impl Launcher {
             return Task::none();
         }
 
+        let competing = rpc_config.competing;
         let details = info.top_text.clone();
         let details_url = info.top_text_url.clone();
         let state = info.bottom_text.clone();
@@ -222,6 +223,7 @@ impl Launcher {
 
                         _ = c
                             .set_activity(bake_activity(
+                                competing,
                                 details.map(|f| f.substitute(instance, minecraft_vers)),
                                 details_url,
                                 state.map(|f| f.substitute(instance, minecraft_vers)),
@@ -428,6 +430,7 @@ impl Launcher {
             return Task::none();
         }
 
+        let competing = rpc_config.competing;
         let details = rpc_config.basic.top_text.clone();
         let details_url = rpc_config.basic.top_text_url.clone();
         let state = rpc_config.basic.bottom_text.clone();
@@ -436,7 +439,13 @@ impl Launcher {
         Task::perform(
             async move {
                 _ = c
-                    .set_activity(bake_activity(details, details_url, state, state_url))
+                    .set_activity(bake_activity(
+                        competing,
+                        details,
+                        details_url,
+                        state,
+                        state_url,
+                    ))
                     .await;
             },
             |()| Message::DiscordIPCPresenceSet,

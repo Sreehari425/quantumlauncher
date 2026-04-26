@@ -390,6 +390,10 @@ impl Launcher {
                 let rpc = self.config.discord_rpc.get_or_insert_default();
                 rpc.update_on_game_open = t;
             }
+            RpcMessage::ToggleCompeting(t) => {
+                let rpc = self.config.discord_rpc.get_or_insert_default();
+                rpc.competing = t;
+            }
             RpcMessage::GameOpen(op) => {
                 let rpc = self.config.discord_rpc.get_or_insert_default();
                 rpc.on_gameopen.apply(op);

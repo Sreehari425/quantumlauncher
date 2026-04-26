@@ -77,6 +77,10 @@ impl MenuLauncherSettings {
                 widget::checkbox("Change presence during play/quit events", rpc_config.update_on_game_open)
                     .on_toggle(|n| RpcMessage::TogglePresenceOnGameEvent(n).into()),
                 widget::text("Disabling this will ensure that only the custom rich presence set above stays alive when you run the launcher and/or play Minecraft.").size(12).style(tsubtitle),
+                widget::Space::with_height(5),
+                widget::checkbox("Competing mode", rpc_config.competing)
+                    .on_toggle(|n| RpcMessage::ToggleCompeting(n).into()),
+                widget::text("A fancier way to show off your activities. Try this at home!").size(12).style(tsubtitle),
 
             ].spacing(5),
 
@@ -114,7 +118,6 @@ impl RpcText {
                     ""
                 }
             )),
-            widget::Space::with_height(0),
             widget::text_input("Top Text", self.top_text.as_deref().unwrap_or_default())
                 .size(14)
                 .on_input(move |v| m2(RpcInnerMessage::TopTextChanged(v)).into()),

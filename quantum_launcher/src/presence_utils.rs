@@ -1,13 +1,18 @@
-use filthy_rich::types::Activity;
+use filthy_rich::types::{Activity, ActivityType};
 
 /// Returns a fully-built [`filthy_rich::types::Activity`] object given the details and state.
 pub fn bake_activity(
+    competing: bool,
     details: Option<String>,
     details_url: Option<String>,
     state: Option<String>,
     state_url: Option<String>,
 ) -> Activity {
-    let mut activity = Activity::new();
+    let mut activity = Activity::new().activity_type(if competing {
+        ActivityType::Competing
+    } else {
+        ActivityType::Playing
+    });
 
     if let Some(d) = details {
         activity = activity.details(d);

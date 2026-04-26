@@ -25,6 +25,9 @@ pub struct RpcConfig {
     /// Activity on closing the game
     // Since: TBD
     pub on_gameexit: RpcText,
+    /// Whether to display "Competing on ..." in the rich presence activity
+    /// Since: TBD
+    pub competing: bool,
     #[serde(flatten)]
     _extra: HashMap<String, serde_json::Value>,
 }
@@ -66,6 +69,7 @@ impl Default for RpcConfig {
                 _extra: HashMap::new(),
             },
             _extra: HashMap::new(),
+            competing: false,
         }
     }
 }
