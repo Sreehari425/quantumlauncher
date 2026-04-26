@@ -65,7 +65,7 @@ chrono.workspace = true # Logging time/date
 paste = "1" # Icon widget macro
 rfd.workspace = true # File picker
 # For Discord Rich Presence management
-filthy-rich = "0.11.0"
+filthy-rich = "0.11.1"
 # Launcher Update
 thiserror.workspace = true
 zip.workspace = true
