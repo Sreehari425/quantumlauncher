@@ -373,10 +373,8 @@ impl Launcher {
                 }
 
                 // On disable
-                let client = self.discord_ipc_client.clone();
-
                 block_on(async {
-                    if let Some(c) = client {
+                    if let Some(c) = &self.discord_ipc_client {
                         let _ = c.close().await;
                     }
                 });
