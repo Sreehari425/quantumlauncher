@@ -39,33 +39,36 @@ impl MenuLauncherSettings {
                     .on_toggle(|n| RpcMessage::Toggle(n).into()),
                 widget::text("Sometimes toggling this option might take some time to apply the activity updates on Discord.").size(12).style(tsubtitle),
                 widget::Space::with_height(5),
-                    if is_presence_running.load(Ordering::Relaxed) {
-                        row!(
-                            icons::version_tick_s(13),
-                            widget::Space::with_width(5),
-                            widget::text("Synced!").size(13).style(tsubtitle)
-                        )
-                    } else if rpc_config.enable {
-                        row!(
-                            icons::clock_s(13),
-                            widget::Space::with_width(5),
-                            widget::text("Awaiting sync...").size(13).style(tsubtitle),
-                        )
-                    } else {
-                        row!(
-                            icons::cross_s(13),
-                            widget::Space::with_width(5),
-                            widget::text("Not enabled.").size(13).style(tsubtitle)
-                        )
-                    }
-
+                if is_presence_running.load(Ordering::Relaxed) {
+                    row!(
+                        icons::version_tick_s(13),
+                        widget::Space::with_width(5),
+                        widget::text("Synced!").size(13).style(tsubtitle),
+                    )
+                } else if rpc_config.enable {
+                    row!(
+                        icons::clock_s(13),
+                        widget::Space::with_width(5),
+                        widget::text("Awaiting sync...").size(13).style(tsubtitle),
+                    )
+                } else {
+                    row!(
+                        icons::cross_s(13),
+                        widget::Space::with_width(5),
+                        widget::text("Not enabled.").size(13).style(tsubtitle),
+                    )
+                }
             ]
             .spacing(5),
 
             column![
+                widget::text("Core Settings:"),
+                widget::text("Tweak intial/custom presence, add flavor, change names, let your imagination fly.").size(12).style(tsubtitle),
+                widget::Space::with_height(6),
+
                 row![
                     column![
-                        rpc_config.basic.view("Custom Presence", RpcMessage::DefaultChanged),
+                        rpc_config.basic.view(&format!("{} Presence", if rpc_config.update_on_game_open {"Startup"} else {"Custom"}), RpcMessage::DefaultChanged),
                         if rpc_config.enable {
                             column![
                                 button_with_icon(icons::discord_s(16), "Set Now", 12)
@@ -81,20 +84,20 @@ impl MenuLauncherSettings {
                     ].spacing(20),
 
                     column![
-                        widget::text("Activity Name"),
-                        widget::text("Appears as the default name instead of \"QuantumLauncher\".").size(12).style(tsubtitle),
+                        widget::text("App/Activity Name"),
+                        widget::text("Replace the default 'QuantumLauncher' name with something else: ").size(12).style(tsubtitle),
                         widget::Space::with_height(2),
                         widget::text_input("(e.g. epic game)", rpc_config.name.as_deref().unwrap_or_default())
                             .size(21)
                             .on_input(|v| RpcMessage::SetName(v).into()),
                         widget::Space::with_height(10),
                         widget::text("Status Display Type"),
-                        widget::text("Appears in your profile banner when playing.").size(12).style(tsubtitle),
+                        widget::text("Choose which one to display in your profile banner as status:").size(12).style(tsubtitle),
                         widget::Space::with_height(5),
                         get_sdt_selector(&rpc_config)
                     ].spacing(5),
                 ].spacing(20),
-            ],
+            ].spacing(5),
 
 
             column![
@@ -104,8 +107,12 @@ impl MenuLauncherSettings {
                     .on_toggle(|n| RpcMessage::TogglePresenceOnGameEvent(n).into()),
                 widget::text("Disabling this will ensure that only the custom rich presence set above stays alive when you run the launcher and/or play Minecraft.").size(12).style(tsubtitle),
                 widget::Space::with_height(5),
-                widget::checkbox("Competing Mode", rpc_config.competing)
-                    .on_toggle(|n| RpcMessage::ToggleCompeting(n).into()),
+                row![
+                    widget::checkbox("Competing Mode", rpc_config.competing)
+                        .on_toggle(|n| RpcMessage::ToggleCompeting(n).into()),
+                    widget::Space::with_width(5),
+                    icons::paintbrush_s(15),
+                ],
                 widget::text("A fancier way to show off your activities. Try this at home!").size(12).style(tsubtitle),
 
             ].spacing(5),
@@ -197,9 +204,13 @@ pub fn get_sdt_selector(config: &RpcConfig) -> widget::Row<'static, Message, Lau
                 .on_press(RpcMessage::StatusDisplayTypePicked(*dt).into())
                 .into()
         } else {
-            widget::container(widget::text(dt.to_string()).size(14))
-                .padding(PADDING)
-                .into()
+            widget::container(row![
+                icons::checkmark_s(15),
+                widget::Space::with_width(5),
+                widget::text(dt.to_string()).size(14)
+            ])
+            .padding(PADDING)
+            .into()
         }
     }))
     .spacing(5)

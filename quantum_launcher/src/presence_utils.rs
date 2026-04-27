@@ -65,9 +65,9 @@ impl PresenceStatusDisplayType {
 impl Display for PresenceStatusDisplayType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            PresenceStatusDisplayType::Name => "Name",
-            PresenceStatusDisplayType::Details => "Details",
-            PresenceStatusDisplayType::State => "State",
+            PresenceStatusDisplayType::Name => "App Name",
+            PresenceStatusDisplayType::Details => "Top Text",
+            PresenceStatusDisplayType::State => "Bottom Text",
         })
     }
 }
