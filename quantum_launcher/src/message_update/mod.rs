@@ -381,7 +381,7 @@ impl Launcher {
                     }
                 });
 
-                self.is_presence_running.store(false, Ordering::SeqCst);
+                self.is_presence_running.store(false, Ordering::Relaxed);
                 self.discord_ipc_client = None;
             }
             RpcMessage::DefaultChanged(op) => {

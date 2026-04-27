@@ -34,7 +34,7 @@ impl MenuLauncherSettings {
                     .on_toggle(|n| RpcMessage::Toggle(n).into()),
                 widget::text("Sometimes toggling this option might take some time to apply the activity updates on Discord.").size(12).style(tsubtitle),
                 widget::Space::with_height(5),
-                    if is_presence_running.load(Ordering::SeqCst) {
+                    if is_presence_running.load(Ordering::Relaxed) {
                         row!(
                             icons::version_tick_s(13),
                             widget::Space::with_width(5),

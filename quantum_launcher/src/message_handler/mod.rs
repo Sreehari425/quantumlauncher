@@ -425,7 +425,7 @@ impl Launcher {
                     f.application_id
                 );
 
-                is_presence_running.store(true, Ordering::SeqCst);
+                is_presence_running.store(true, Ordering::Relaxed);
             });
 
         Task::perform(
