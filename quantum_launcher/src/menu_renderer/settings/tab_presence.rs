@@ -73,7 +73,7 @@ impl MenuLauncherSettings {
                                 widget::text("Toggle \"Enable Broadcast\" to show this on Discord.").size(12).style(tsubtitle),
                             ]
                         },
-                    ].spacing(10),
+                    ].spacing(20),
 
                     column![
                         widget::text("Activity Name"),
@@ -110,7 +110,7 @@ impl MenuLauncherSettings {
                         rpc_config.on_gameopen.view("Game Launch", RpcMessage::GameOpen),
                         widget::Space::with_height(3),
                         rpc_config.on_gameexit.view("Game Exit", RpcMessage::GameExit),
-                    ].spacing(20)
+                    ].spacing(10)
                 ].spacing(5)
             } else {
                 widget::column![]
