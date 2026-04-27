@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::presence_utils::PresenceStatusDisplayType;
+
 const BASIC_DETAILS: &str = "Opened Launcher";
 const GAMEOPEN_DETAILS: &str = "Minecraft v${version}";
 const GAMEOPEN_STATE: &str = "Instance name: ${instance}";
@@ -14,11 +16,14 @@ pub struct RpcConfig {
     // Since: TBD
     pub enable: bool,
     /// Custom rich presence activity name
-    /// Since: TBD
+    // Since: TBD
     pub name: Option<String>,
     /// Details for the basic/initial rich presence activity
     // Since: TBD
     pub basic: RpcText,
+    /// The default status display type to use.
+    // Since: TBD
+    pub status_display_type: PresenceStatusDisplayType,
     /// Whether to change rich presence with instance open/exit events.
     // Since: TBD
     pub update_on_game_open: bool,
@@ -29,7 +34,7 @@ pub struct RpcConfig {
     // Since: TBD
     pub on_gameexit: RpcText,
     /// Whether to display "Competing on ..." in the rich presence activity
-    /// Since: TBD
+    // Since: TBD
     pub competing: bool,
     #[serde(flatten)]
     _extra: HashMap<String, serde_json::Value>,
@@ -74,6 +79,7 @@ impl Default for RpcConfig {
             },
             _extra: HashMap::new(),
             competing: false,
+            status_display_type: PresenceStatusDisplayType::Name,
         }
     }
 }

@@ -6,10 +6,15 @@ use iced::{
 };
 
 use crate::{
-    config::{LauncherConfig, discord_rpc::RpcText},
+    config::{
+        LauncherConfig,
+        discord_rpc::{RpcConfig, RpcText},
+    },
     icons,
     menu_renderer::{Column, button_with_icon, checkered_list, tsubtitle},
-    state::{MenuLauncherSettings, RpcInnerMessage, RpcMessage},
+    presence_utils::PresenceStatusDisplayType,
+    state::{MenuLauncherSettings, Message, RpcInnerMessage, RpcMessage},
+    stylesheet::{styles::LauncherTheme, widgets::StyleButton},
 };
 
 impl MenuLauncherSettings {
@@ -44,7 +49,7 @@ impl MenuLauncherSettings {
                         row!(
                             icons::clock_s(13),
                             widget::Space::with_width(5),
-                            widget::text("Awaiting activity...").size(13).style(tsubtitle),
+                            widget::text("Awaiting sync...").size(13).style(tsubtitle),
                         )
                     } else {
                         row!(
@@ -70,7 +75,7 @@ impl MenuLauncherSettings {
                             ].spacing(5)
                         } else {
                             column![
-                                widget::text("Toggle \"Enable Broadcast\" to show this on Discord.").size(12).style(tsubtitle),
+                                widget::text("Toggle 'Enable Broadcast' to actually start using presences.").size(12).style(tsubtitle),
                             ]
                         },
                     ].spacing(20),
@@ -78,10 +83,15 @@ impl MenuLauncherSettings {
                     column![
                         widget::text("Activity Name"),
                         widget::text("Appears as the default name instead of \"QuantumLauncher\".").size(12).style(tsubtitle),
-                        widget::Space::with_height(5),
+                        widget::Space::with_height(2),
                         widget::text_input("(e.g. epic game)", rpc_config.name.as_deref().unwrap_or_default())
                             .size(21)
                             .on_input(|v| RpcMessage::SetName(v).into()),
+                        widget::Space::with_height(10),
+                        widget::text("Status Display Type"),
+                        widget::text("Appears in your profile banner when playing.").size(12).style(tsubtitle),
+                        widget::Space::with_height(5),
+                        get_sdt_selector(&rpc_config)
                     ].spacing(5),
                 ].spacing(20),
             ],
@@ -140,43 +150,57 @@ impl RpcText {
             widget::text_input("Top Text", self.top_text.as_deref().unwrap_or_default())
                 .size(14)
                 .on_input(move |v| m2(RpcInnerMessage::TopTextChanged(v)).into()),
-            if self.top_text.is_some() {
-                widget::column![
-                    widget::text_input(
-                        "Top Text URL",
-                        self.top_text_url.as_deref().unwrap_or_default()
-                    )
-                    .size(14)
-                    .on_input(move |v| m3(RpcInnerMessage::TopTextURLChanged(v)).into())
-                ]
-            } else {
-                widget::column![]
-            },
-            if self.top_text.is_some() || self.bottom_text.is_some() {
-                widget::column![
-                    widget::text_input(
-                        "Bottom Text",
-                        &self.bottom_text.as_deref().unwrap_or_default()
-                    )
-                    .size(14)
-                    .on_input(move |v| m(RpcInnerMessage::BottomTextChanged(v)).into())
-                ]
-            } else {
-                widget::column![]
-            },
-            if self.bottom_text.is_some() {
-                widget::column![
-                    widget::text_input(
-                        "Bottom Text URL",
-                        self.bottom_text_url.as_deref().unwrap_or_default()
-                    )
-                    .size(14)
-                    .on_input(move |v| m4(RpcInnerMessage::BottomTextURLChanged(v)).into())
-                ]
-            } else {
-                widget::column![]
-            },
+            widget::text_input(
+                "Top Text URL",
+                self.top_text_url.as_deref().unwrap_or_default()
+            )
+            .size(14)
+            .on_input(move |v| m3(RpcInnerMessage::TopTextURLChanged(v)).into()),
+            widget::text_input(
+                "Bottom Text",
+                &self.bottom_text.as_deref().unwrap_or_default()
+            )
+            .size(14)
+            .on_input(move |v| m(RpcInnerMessage::BottomTextChanged(v)).into()),
+            widget::text_input(
+                "Bottom Text URL",
+                self.bottom_text_url.as_deref().unwrap_or_default()
+            )
+            .size(14)
+            .on_input(move |v| m4(RpcInnerMessage::BottomTextURLChanged(v)).into()),
         ]
         .spacing(5)
     }
+}
+
+pub fn get_sdt_selector(config: &RpcConfig) -> widget::Row<'static, Message, LauncherTheme> {
+    const PADDING: iced::Padding = iced::Padding {
+        top: 5.0,
+        bottom: 5.0,
+        right: 10.0,
+        left: 10.0,
+    };
+
+    let s_dt = config.status_display_type;
+
+    widget::row(PresenceStatusDisplayType::ALL.iter().map(|dt| {
+        if *dt != s_dt {
+            widget::button(widget::text(dt.to_string()).size(14))
+                .padding(PADDING)
+                .style(|theme: &LauncherTheme, s| {
+                    LauncherTheme {
+                        alpha: 1.0,
+                        ..*theme
+                    }
+                    .style_button(s, StyleButton::Round)
+                })
+                .on_press(RpcMessage::StatusDisplayTypePicked(*dt).into())
+                .into()
+        } else {
+            widget::container(widget::text(dt.to_string()).size(14))
+                .padding(PADDING)
+                .into()
+        }
+    }))
+    .spacing(5)
 }

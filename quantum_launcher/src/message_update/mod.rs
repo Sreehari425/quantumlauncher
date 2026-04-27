@@ -404,6 +404,7 @@ impl Launcher {
             RpcMessage::ResetPresence => {
                 self.config.reset_presence();
             }
+            RpcMessage::StatusDisplayTypePicked(dt) => rpc.status_display_type = dt,
         }
         Task::none()
     }

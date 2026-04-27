@@ -215,6 +215,7 @@ impl Launcher {
         let details_url = info.top_text_url.clone();
         let state = info.bottom_text.clone();
         let state_url = info.bottom_text_url.clone();
+        let sdt = rpc_config.status_display_type;
 
         let client = self.discord_ipc_client.clone();
 
@@ -228,6 +229,7 @@ impl Launcher {
                         _ = c
                             .set_activity(bake_activity(
                                 name,
+                                sdt,
                                 competing,
                                 details.map(|f| f.substitute(instance, minecraft_vers)),
                                 details_url,
@@ -458,12 +460,14 @@ impl Launcher {
         let details_url = rpc_config.basic.top_text_url.clone();
         let state = rpc_config.basic.bottom_text.clone();
         let state_url = rpc_config.basic.bottom_text_url.clone();
+        let sdt = rpc_config.status_display_type;
 
         Task::perform(
             async move {
                 _ = c
                     .set_activity(bake_activity(
                         name,
+                        sdt,
                         competing,
                         details,
                         details_url,

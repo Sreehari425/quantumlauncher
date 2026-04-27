@@ -6,6 +6,7 @@ use crate::{
         sidebar::{FolderId, SDragLocation, SidebarSelection},
     },
     message_handler::ForgeKind,
+    presence_utils::PresenceStatusDisplayType,
     state::{InfoMessage, LaunchModal, MenuEditModsModal, SidebarScroll},
     stylesheet::styles::{LauncherThemeColor, LauncherThemeLightness},
 };
@@ -308,6 +309,7 @@ pub enum RpcMessage {
     Toggle(bool),
     DefaultChanged(RpcInnerMessage),
     TogglePresenceOnGameEvent(bool),
+    StatusDisplayTypePicked(PresenceStatusDisplayType),
     SetName(String),
     ToggleCompeting(bool),
     GameOpen(RpcInnerMessage),
