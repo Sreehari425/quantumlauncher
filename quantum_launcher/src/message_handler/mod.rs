@@ -206,6 +206,7 @@ impl Launcher {
             return Task::none();
         }
 
+        let name = rpc_config.name.clone();
         let competing = rpc_config.competing;
         let details = info.top_text.clone();
         let details_url = info.top_text_url.clone();
@@ -223,6 +224,7 @@ impl Launcher {
 
                         _ = c
                             .set_activity(bake_activity(
+                                name,
                                 competing,
                                 details.map(|f| f.substitute(instance, minecraft_vers)),
                                 details_url,
@@ -430,6 +432,7 @@ impl Launcher {
             return Task::none();
         }
 
+        let name = rpc_config.name.clone();
         let competing = rpc_config.competing;
         let details = rpc_config.basic.top_text.clone();
         let details_url = rpc_config.basic.top_text_url.clone();
@@ -440,6 +443,7 @@ impl Launcher {
             async move {
                 _ = c
                     .set_activity(bake_activity(
+                        name,
                         competing,
                         details,
                         details_url,

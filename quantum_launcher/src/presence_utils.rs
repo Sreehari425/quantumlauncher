@@ -2,6 +2,7 @@ use filthy_rich::types::{Activity, ActivityType};
 
 /// Returns a fully-built [`filthy_rich::types::Activity`] object given the details and state.
 pub fn bake_activity(
+    name: Option<String>,
     competing: bool,
     details: Option<String>,
     details_url: Option<String>,
@@ -14,6 +15,9 @@ pub fn bake_activity(
         ActivityType::Playing
     });
 
+    if let Some(n) = name {
+        activity = activity.name(n)
+    }
     if let Some(d) = details {
         activity = activity.details(d);
 

@@ -13,6 +13,9 @@ pub struct RpcConfig {
     /// Enable Discord Rich Presence support
     // Since: TBD
     pub enable: bool,
+    /// Custom rich presence activity name
+    /// Since: TBD
+    pub name: Option<String>,
     /// Details for the basic/initial rich presence activity
     // Since: TBD
     pub basic: RpcText,
@@ -46,6 +49,7 @@ impl Default for RpcConfig {
     fn default() -> Self {
         Self {
             enable: false,
+            name: None,
             basic: RpcText {
                 top_text: Some(BASIC_DETAILS.to_owned()),
                 top_text_url: None,

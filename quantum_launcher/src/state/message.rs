@@ -308,6 +308,7 @@ pub enum RpcMessage {
     Toggle(bool),
     DefaultChanged(RpcInnerMessage),
     TogglePresenceOnGameEvent(bool),
+    SetName(String),
     ToggleCompeting(bool),
     GameOpen(RpcInnerMessage),
     GameExit(RpcInnerMessage),

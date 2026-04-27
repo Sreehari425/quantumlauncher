@@ -56,20 +56,34 @@ impl MenuLauncherSettings {
             .spacing(5),
 
             column![
-                rpc_config.basic.view("Custom Presence", RpcMessage::DefaultChanged),
-                if rpc_config.enable {
+                row![
                     column![
-                        button_with_icon(icons::discord_s(16), "Set Now", 12)
-                            .padding([5, 10])
-                            .on_press(RpcMessage::SetPresenceNow.into()),
-                        widget::text("Changes will take effect on launcher restart or with the press of the button above.").size(12).style(tsubtitle),
-                    ].spacing(5)
-                } else {
+                        rpc_config.basic.view("Custom Presence", RpcMessage::DefaultChanged),
+                        if rpc_config.enable {
+                            column![
+                                button_with_icon(icons::discord_s(16), "Set Now", 12)
+                                    .padding([5, 10])
+                                    .on_press(RpcMessage::SetPresenceNow.into()),
+                                widget::text("Changes will take effect on launcher restart or with the press of the button above.").size(12).style(tsubtitle),
+                            ].spacing(5)
+                        } else {
+                            column![
+                                widget::text("Toggle \"Enable Broadcast\" to show this on Discord.").size(12).style(tsubtitle),
+                            ]
+                        },
+                    ].spacing(10),
+
                     column![
-                        widget::text("Toggle \"Enable Broadcast\" to show this on Discord.").size(12).style(tsubtitle),
-                    ]
-                },
-            ].spacing(10),
+                        widget::text("Activity Name"),
+                        widget::text("Appears as the default name instead of \"QuantumLauncher\".").size(12).style(tsubtitle),
+                        widget::Space::with_height(5),
+                        widget::text_input("(e.g. epic game)", rpc_config.name.as_deref().unwrap_or_default())
+                            .size(21)
+                            .on_input(|v| RpcMessage::SetName(v).into()),
+                    ].spacing(5),
+                ].spacing(20),
+            ],
+
 
             column![
                 widget::text("Toggles:"),
@@ -89,9 +103,12 @@ impl MenuLauncherSettings {
                     widget::text("Event Presences:"),
                     widget::text("NOTE: You can use substitutes like ${instance} and ${version} for instance and version names respectively.").size(12).style(tsubtitle),
                     widget::Space::with_height(6),
-                    rpc_config.on_gameopen.view("Game Launch", RpcMessage::GameOpen),
-                    widget::Space::with_height(3),
-                    rpc_config.on_gameexit.view("Game Exit", RpcMessage::GameExit),
+
+                    widget::row![
+                        rpc_config.on_gameopen.view("Game Launch", RpcMessage::GameOpen),
+                        widget::Space::with_height(3),
+                        rpc_config.on_gameexit.view("Game Exit", RpcMessage::GameExit),
+                    ].spacing(20)
                 ].spacing(5)
             } else {
                 widget::column![]

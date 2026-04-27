@@ -362,9 +362,10 @@ impl Launcher {
     }
 
     fn update_rpc(&mut self, msg: RpcMessage) -> Task<Message> {
+        let rpc = self.config.discord_rpc.get_or_insert_default();
+
         match msg {
             RpcMessage::Toggle(enable) => {
-                let rpc = self.config.discord_rpc.get_or_insert_default();
                 rpc.enable = enable;
 
                 if enable {
@@ -383,23 +384,19 @@ impl Launcher {
                 self.discord_ipc_client = None;
             }
             RpcMessage::DefaultChanged(op) => {
-                let rpc = self.config.discord_rpc.get_or_insert_default();
                 rpc.basic.apply(op);
             }
+            RpcMessage::SetName(name) => rpc.name = (!name.is_empty()).then_some(name),
             RpcMessage::TogglePresenceOnGameEvent(t) => {
-                let rpc = self.config.discord_rpc.get_or_insert_default();
                 rpc.update_on_game_open = t;
             }
             RpcMessage::ToggleCompeting(t) => {
-                let rpc = self.config.discord_rpc.get_or_insert_default();
                 rpc.competing = t;
             }
             RpcMessage::GameOpen(op) => {
-                let rpc = self.config.discord_rpc.get_or_insert_default();
                 rpc.on_gameopen.apply(op);
             }
             RpcMessage::GameExit(op) => {
-                let rpc = self.config.discord_rpc.get_or_insert_default();
                 rpc.on_gameexit.apply(op);
             }
             RpcMessage::SetPresenceNow => return self.set_custom_discord_presence(),
