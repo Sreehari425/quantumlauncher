@@ -99,10 +99,6 @@ impl Launcher {
                     )
                 }
             }
-            Message::DiscordIPCPresenceSet => {
-                self.is_presence_running = true;
-                pt!(no_log, "Rich presence has been set.");
-            }
 
             Message::MScreenOpen {
                 message,

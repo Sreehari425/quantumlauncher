@@ -29,7 +29,10 @@ use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
     process::ExitStatus,
-    sync::mpsc::{Receiver, Sender},
+    sync::{
+        atomic::Ordering,
+        mpsc::{Receiver, Sender},
+    },
 };
 use tokio::io::AsyncWriteExt;
 
@@ -406,7 +409,24 @@ impl Launcher {
     pub fn start_discord_ipc_run(&self) -> Task<Message> {
         const DISCORD_CLIENT_ID: &str = "1468876407756029965";
 
-        let mut runner = PresenceRunner::new(DISCORD_CLIENT_ID);
+        let is_presence_running = self.is_presence_running.clone();
+        let mut runner = PresenceRunner::new(DISCORD_CLIENT_ID)
+            .on_ready(|f| {
+                pt!(
+                    no_log,
+                    "Connected to user: {}; ready for presence",
+                    f.user.username
+                );
+            })
+            .on_activity_send(move |f| {
+                pt!(
+                    no_log,
+                    "Presence activity received for app: {}",
+                    f.application_id
+                );
+
+                is_presence_running.store(true, Ordering::SeqCst);
+            });
 
         Task::perform(
             {
@@ -452,7 +472,7 @@ impl Launcher {
                     ))
                     .await;
             },
-            |()| Message::DiscordIPCPresenceSet,
+            |_| Message::Nothing,
         )
     }
 

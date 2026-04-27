@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::atomic::Ordering;
 
 use frostmark::MarkState;
 use iced::{Task, futures::executor::block_on, widget::text_editor};
@@ -380,7 +381,7 @@ impl Launcher {
                     }
                 });
 
-                self.is_presence_running = false;
+                self.is_presence_running.store(false, Ordering::SeqCst);
                 self.discord_ipc_client = None;
             }
             RpcMessage::DefaultChanged(op) => {

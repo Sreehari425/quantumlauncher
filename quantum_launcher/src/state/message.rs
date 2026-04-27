@@ -476,7 +476,6 @@ pub enum Message {
     Shortcut(ShortcutMessage),
 
     DiscordIPCRunStarted(Option<PresenceClient>),
-    DiscordIPCPresenceSet,
 
     ManageMods(ManageModsMessage),
     ManageJarMods(ManageJarModsMessage),

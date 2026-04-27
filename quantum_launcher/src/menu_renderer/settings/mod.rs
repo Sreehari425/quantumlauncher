@@ -1,4 +1,4 @@
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock, atomic::AtomicBool};
 
 use iced::{Length, widget};
 
@@ -29,7 +29,7 @@ impl MenuLauncherSettings {
     pub fn view<'a>(
         &'a self,
         config: &'a LauncherConfig,
-        is_presence_running: bool,
+        is_presence_running: &Arc<AtomicBool>,
     ) -> Element<'a> {
         widget::row![
             sidebar(
@@ -58,7 +58,7 @@ impl MenuLauncherSettings {
                 border: iced::Border::default(),
                 shadow: iced::Shadow::default()
             }),
-            widget::scrollable(self.selected_tab.view(config, self, is_presence_running))
+            widget::scrollable(self.selected_tab.view(config, self, &is_presence_running))
                 .width(Length::Fill)
                 .spacing(0)
                 .style(LauncherTheme::style_scrollable_flat_dark)
@@ -101,11 +101,11 @@ impl LauncherSettingsTab {
         &'a self,
         config: &'a LauncherConfig,
         menu: &'a MenuLauncherSettings,
-        is_presence_running: bool,
+        is_presence_running: &Arc<AtomicBool>,
     ) -> Element<'a> {
         match self {
             LauncherSettingsTab::UserInterface => menu.view_ui_tab(config),
-            LauncherSettingsTab::Presence => menu.view_presence_tab(config, is_presence_running),
+            LauncherSettingsTab::Presence => menu.view_presence_tab(config, &is_presence_running),
             LauncherSettingsTab::Game => menu.view_game_tab(config),
             LauncherSettingsTab::About => tab_about::view(),
         }
