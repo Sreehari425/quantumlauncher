@@ -1,4 +1,4 @@
-use std::sync::{Arc, LazyLock, atomic::AtomicBool};
+use std::sync::{LazyLock, atomic::AtomicBool};
 
 use iced::{Length, widget};
 
@@ -29,7 +29,7 @@ impl MenuLauncherSettings {
     pub fn view<'a>(
         &'a self,
         config: &'a LauncherConfig,
-        is_presence_running: &Arc<AtomicBool>,
+        is_presence_running: &AtomicBool,
     ) -> Element<'a> {
         widget::row![
             sidebar(
@@ -101,7 +101,7 @@ impl LauncherSettingsTab {
         &'a self,
         config: &'a LauncherConfig,
         menu: &'a MenuLauncherSettings,
-        is_presence_running: &Arc<AtomicBool>,
+        is_presence_running: &AtomicBool,
     ) -> Element<'a> {
         match self {
             LauncherSettingsTab::UserInterface => menu.view_ui_tab(config),

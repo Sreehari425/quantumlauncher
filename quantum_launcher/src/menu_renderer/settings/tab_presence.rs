@@ -1,7 +1,4 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use iced::{
     Length,
@@ -19,7 +16,7 @@ impl MenuLauncherSettings {
     pub(super) fn view_presence_tab<'a>(
         &'a self,
         config: &'a LauncherConfig,
-        is_presence_running: &Arc<AtomicBool>,
+        is_presence_running: &AtomicBool,
     ) -> Column<'a> {
         let rpc_config = config.discord_rpc.clone().unwrap_or_default();
 
