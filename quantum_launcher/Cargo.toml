@@ -59,11 +59,12 @@ tokio.workspace = true
 cfg-if.workspace = true
 semver.workspace = true
 
-constcat = "0.6"
-rand = "0.10"
 chrono.workspace = true # Logging time/date
 paste = "1" # Icon widget macro
 rfd.workspace = true # File picker
+constcat = "0.6"
+rand = "0.10" # Instance folder unique id
+
 # For Discord Rich Presence management
 filthy-rich = "0.11.3"
 # Launcher Update
