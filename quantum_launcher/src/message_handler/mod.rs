@@ -349,7 +349,9 @@ impl Launcher {
     pub fn start_discord_ipc_run(&self) -> Task<Message> {
         const DISCORD_CLIENT_ID: &str = "1468876407756029965";
 
-        let is_presence_running = self.is_presence_running.clone();
+        let presence_ready = self.is_presence_running.clone();
+        let presence_close = self.is_presence_running.clone();
+
         let mut runner = PresenceRunner::new(DISCORD_CLIENT_ID)
             .on_ready(|f| {
                 pt!(
@@ -365,7 +367,12 @@ impl Launcher {
                     f.application_id
                 );
 
-                is_presence_running.store(true, Ordering::Relaxed);
+                presence_ready.store(true, Ordering::Relaxed);
+            })
+            .on_disconnect(move |f| {
+                pt!(no_log, "Disconnected from Discord: {f:?}");
+
+                presence_close.store(false, Ordering::Relaxed);
             });
 
         Task::perform(

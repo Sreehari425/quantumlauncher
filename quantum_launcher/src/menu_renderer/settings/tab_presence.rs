@@ -48,7 +48,7 @@ impl MenuLauncherSettings {
                     row!(
                         icons::clock_s(13),
                         widget::Space::with_width(5),
-                        widget::text("Awaiting sync...").size(13).style(tsubtitle),
+                        widget::text("Waiting for Discord/activity...").size(13).style(tsubtitle),
                     )
                 } else {
                     row!(
