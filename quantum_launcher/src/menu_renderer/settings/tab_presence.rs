@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
 use iced::{
     Length,
@@ -12,6 +12,7 @@ use crate::{
     },
     icons,
     menu_renderer::{Column, button_with_icon, checkered_list, tsubtitle},
+    message_update::PresenceConnectionState,
     state::{MenuLauncherSettings, Message, RpcInnerMessage, RpcMessage},
     stylesheet::{styles::LauncherTheme, widgets::StyleButton},
 };
@@ -20,9 +21,10 @@ impl MenuLauncherSettings {
     pub(super) fn view_presence_tab<'a>(
         &'a self,
         config: &'a LauncherConfig,
-        is_presence_running: &AtomicBool,
+        discord_connection_state: Arc<Mutex<PresenceConnectionState>>,
     ) -> Column<'a> {
         let rpc_config = config.discord_rpc.clone().unwrap_or_default();
+        let p = discord_connection_state.lock().unwrap();
 
         checkered_list([
             column![
@@ -38,25 +40,45 @@ impl MenuLauncherSettings {
                     .on_toggle(|n| RpcMessage::Toggle(n).into()),
                 widget::text("Sometimes toggling this option might take some time to apply the activity updates on Discord.").size(12).style(tsubtitle),
                 widget::Space::with_height(5),
-                if is_presence_running.load(Ordering::Relaxed) {
-                    row!(
-                        icons::version_tick_s(13),
-                        widget::Space::with_width(5),
-                        widget::text("Synced!").size(13).style(tsubtitle),
-                    )
-                } else if rpc_config.enable {
-                    row!(
-                        icons::clock_s(13),
-                        widget::Space::with_width(5),
-                        widget::text("Waiting for Discord/activity...").size(13).style(tsubtitle),
-                    )
-                } else {
-                    row!(
-                        icons::cross_s(13),
-                        widget::Space::with_width(5),
-                        widget::text("Not enabled.").size(13).style(tsubtitle),
-                    )
-                }
+                match *p {
+                    PresenceConnectionState::Uninitialized => {
+                        if !rpc_config.enable {
+                            row!(
+                                icons::cross_s(13),
+                                widget::Space::with_width(5),
+                                widget::text("Not enabled.").size(13).style(tsubtitle),
+                            )
+                        } else {
+                            row!(
+                                icons::clock_s(13),
+                                widget::Space::with_width(5),
+                                widget::text("Waiting for Discord...").size(13).style(tsubtitle),
+                            )
+                        }
+
+                    },
+                    PresenceConnectionState::Connected => {
+                        row!(
+                            icons::clock_s(13),
+                            widget::Space::with_width(5),
+                            widget::text("Waiting for activity...").size(13).style(tsubtitle),
+                        )
+                    },
+                    PresenceConnectionState::Active => {
+                        row!(
+                            icons::version_tick_s(13),
+                            widget::Space::with_width(5),
+                            widget::text("Synced!").size(13).style(tsubtitle),
+                        )
+                    },
+                    PresenceConnectionState::Disconnected => {
+                        row!(
+                            icons::clock_s(13),
+                            widget::Space::with_width(5),
+                            widget::text("Disconnected, waiting for Discord...").size(13).style(tsubtitle),
+                        )
+                    },
+                },
             ]
             .spacing(5),
 

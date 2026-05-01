@@ -2,6 +2,7 @@ use crate::{
     Launcher, Message,
     config::AfterLaunchBehavior,
     menu_renderer::back_to_launch_screen,
+    message_update::PresenceConnectionState,
     state::{
         AutoSaveKind, EditPresetsMessage, GameProcess, InfoMessage, LaunchTab, LogState,
         ManageModsMessage, MenuCreateInstance, MenuCreateInstanceChoosing, MenuEditInstance,
@@ -28,10 +29,7 @@ use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
     process::ExitStatus,
-    sync::{
-        atomic::Ordering,
-        mpsc::{Receiver, Sender},
-    },
+    sync::mpsc::{Receiver, Sender},
 };
 use tokio::io::AsyncWriteExt;
 
@@ -349,30 +347,33 @@ impl Launcher {
     pub fn start_discord_ipc_run(&self) -> Task<Message> {
         const DISCORD_CLIENT_ID: &str = "1468876407756029965";
 
-        let presence_ready = self.is_presence_running.clone();
-        let presence_close = self.is_presence_running.clone();
+        let presence_ready = self.discord_connection_state.clone();
+        let presence_ac = self.discord_connection_state.clone();
+        let presence_close = self.discord_connection_state.clone();
 
         let mut runner = PresenceRunner::new(DISCORD_CLIENT_ID)
-            .on_ready(|f| {
+            .on_ready(move |f| {
+                let mut p = presence_ready.lock().unwrap();
                 pt!(
                     no_log,
                     "Connected to user: {}; ready for presence",
                     f.user.username
                 );
+                *p = PresenceConnectionState::Connected;
             })
             .on_activity_send(move |f| {
+                let mut p = presence_ac.lock().unwrap();
                 pt!(
                     no_log,
                     "Presence activity received for app: {}",
                     f.application_id
                 );
-
-                presence_ready.store(true, Ordering::Relaxed);
+                *p = PresenceConnectionState::Active;
             })
             .on_disconnect(move |f| {
+                let mut p = presence_close.lock().unwrap();
                 pt!(no_log, "Disconnected from Discord: {f:?}");
-
-                presence_close.store(false, Ordering::Relaxed);
+                *p = PresenceConnectionState::Disconnected;
             });
 
         Task::perform(

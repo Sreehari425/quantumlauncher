@@ -24,6 +24,8 @@ use crate::state::{
     Message, ModDescriptionMessage, NotesMessage, ProgressBar, State, WindowMessage,
 };
 
+pub use discord_rpc::PresenceConnectionState;
+
 pub const MSG_RESIZE: &str = "Resize your window to apply the changes.";
 
 impl Launcher {

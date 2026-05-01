@@ -45,8 +45,8 @@ impl Launcher {
                     }
                 });
 
-                self.is_presence_running
-                    .store(false, std::sync::atomic::Ordering::Relaxed);
+                let mut p = self.discord_connection_state.lock().unwrap();
+                *p = PresenceConnectionState::Uninitialized;
                 self.discord_ipc_client = None;
             }
             RpcMessage::DefaultChanged(op) => {
@@ -170,6 +170,14 @@ impl StringPresenceExt for str {
         self.replace("${version}", minecraft_vers)
             .replace("${instance}", instance)
     }
+}
+
+/// State for presence connection in QuantumLauncher.
+pub enum PresenceConnectionState {
+    Uninitialized,
+    Connected,
+    Active,
+    Disconnected,
 }
 
 /// Returns a fully-built [`filthy_rich::types::Activity`] object given the details and state.
