@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 use iced::{
     Length,
@@ -21,7 +21,7 @@ impl MenuLauncherSettings {
     pub(super) fn view_presence_tab<'a>(
         &'a self,
         config: &'a LauncherConfig,
-        discord_connection_state: Arc<Mutex<PresenceConnectionState>>,
+        discord_connection_state: &Mutex<PresenceConnectionState>,
     ) -> Column<'a> {
         let rpc_config = config.discord_rpc.clone().unwrap_or_default();
         let p = discord_connection_state.lock().unwrap();
