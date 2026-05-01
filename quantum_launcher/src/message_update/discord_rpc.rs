@@ -1,4 +1,7 @@
-use filthy_rich::types::{Activity, ActivityType};
+use filthy_rich::{
+    PresenceRunner,
+    types::{Activity, ActivityType},
+};
 use iced::{Task, futures::executor::block_on};
 
 use ql_core::{Instance, err, json::VersionDetails, pt};
@@ -9,6 +12,50 @@ use crate::{
 };
 
 impl Launcher {
+    pub fn start_discord_ipc_run(&self) -> Task<Message> {
+        const DISCORD_CLIENT_ID: &str = "1468876407756029965";
+
+        let presence_ready = self.discord_connection_state.clone();
+        let presence_ac = self.discord_connection_state.clone();
+        let presence_close = self.discord_connection_state.clone();
+
+        let mut runner = PresenceRunner::new(DISCORD_CLIENT_ID)
+            .on_ready(move |f| {
+                let mut p = presence_ready.lock().unwrap();
+                pt!(
+                    no_log,
+                    "Connected to user: {}; ready for presence",
+                    f.user.username
+                );
+                *p = PresenceConnectionState::Connected;
+            })
+            .on_activity_send(move |f| {
+                let mut p = presence_ac.lock().unwrap();
+                pt!(
+                    no_log,
+                    "Presence activity received for app: {}",
+                    f.application_id
+                );
+                *p = PresenceConnectionState::Active;
+            })
+            .on_disconnect(move |f| {
+                let mut p = presence_close.lock().unwrap();
+                pt!(no_log, "Disconnected from Discord: {f:?}");
+                *p = PresenceConnectionState::Disconnected;
+            });
+
+        Task::perform(
+            async move {
+                if runner.run(true).await.is_ok() {
+                    Some(runner.clone_handle())
+                } else {
+                    None
+                }
+            },
+            |c| RpcMessage::RunStarted(c).into(),
+        )
+    }
+
     pub fn update_rpc(&mut self, msg: RpcMessage) -> Task<Message> {
         let rpc = self.config.discord_rpc.get_or_insert_default();
 

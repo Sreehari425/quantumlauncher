@@ -2,16 +2,14 @@ use crate::{
     Launcher, Message,
     config::AfterLaunchBehavior,
     menu_renderer::back_to_launch_screen,
-    message_update::PresenceConnectionState,
     state::{
         AutoSaveKind, EditPresetsMessage, GameProcess, InfoMessage, LaunchTab, LogState,
         ManageModsMessage, MenuCreateInstance, MenuCreateInstanceChoosing, MenuEditInstance,
         MenuEditMods, MenuInstallForge, MenuInstallOptifine, MenuLaunch, OFFLINE_ACCOUNT_NAME,
-        ProgressBar, RpcMessage, SelectedState, State,
+        ProgressBar, SelectedState, State,
     },
     tick::sort_dependencies,
 };
-use filthy_rich::PresenceRunner;
 use iced::{Task, futures::executor::block_on, widget::scrollable::AbsoluteOffset};
 use ql_core::{
     GenericProgress, Instance, InstanceKind, IntoIoError, IntoJsonError, IntoStringError,
@@ -342,50 +340,6 @@ impl Launcher {
         }
 
         self.rpc_game_update(instance.clone(), true)
-    }
-
-    pub fn start_discord_ipc_run(&self) -> Task<Message> {
-        const DISCORD_CLIENT_ID: &str = "1468876407756029965";
-
-        let presence_ready = self.discord_connection_state.clone();
-        let presence_ac = self.discord_connection_state.clone();
-        let presence_close = self.discord_connection_state.clone();
-
-        let mut runner = PresenceRunner::new(DISCORD_CLIENT_ID)
-            .on_ready(move |f| {
-                let mut p = presence_ready.lock().unwrap();
-                pt!(
-                    no_log,
-                    "Connected to user: {}; ready for presence",
-                    f.user.username
-                );
-                *p = PresenceConnectionState::Connected;
-            })
-            .on_activity_send(move |f| {
-                let mut p = presence_ac.lock().unwrap();
-                pt!(
-                    no_log,
-                    "Presence activity received for app: {}",
-                    f.application_id
-                );
-                *p = PresenceConnectionState::Active;
-            })
-            .on_disconnect(move |f| {
-                let mut p = presence_close.lock().unwrap();
-                pt!(no_log, "Disconnected from Discord: {f:?}");
-                *p = PresenceConnectionState::Disconnected;
-            });
-
-        Task::perform(
-            async move {
-                if runner.run(true).await.is_ok() {
-                    Some(runner.clone_handle())
-                } else {
-                    None
-                }
-            },
-            |c| RpcMessage::RunStarted(c).into(),
-        )
     }
 
     pub fn update_mods(&mut self) -> Task<Message> {
