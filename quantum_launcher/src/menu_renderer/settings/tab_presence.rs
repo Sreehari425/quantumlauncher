@@ -11,7 +11,7 @@ use crate::{
         discord_rpc::{PresenceStatusDisplayType, RpcConfig, RpcText},
     },
     icons,
-    menu_renderer::{Column, button_with_icon, checkered_list, tsubtitle},
+    menu_renderer::{Column, FONT_MONO, button_with_icon, checkered_list, tsubtitle},
     message_update::PresenceConnectionState,
     state::{MenuLauncherSettings, Message, RpcInnerMessage, RpcMessage},
     stylesheet::{styles::LauncherTheme, widgets::StyleButton},
@@ -24,7 +24,7 @@ impl MenuLauncherSettings {
         discord_connection_state: &Mutex<PresenceConnectionState>,
     ) -> Column<'a> {
         let rpc_config = config.discord_rpc.clone().unwrap_or_default();
-        let p = discord_connection_state.lock().unwrap();
+        let presence_state = discord_connection_state.lock().unwrap();
 
         checkered_list([
             column![
@@ -40,7 +40,7 @@ impl MenuLauncherSettings {
                     .on_toggle(|n| RpcMessage::Toggle(n).into()),
                 widget::text("Sometimes toggling this option might take some time to apply the activity updates on Discord.").size(12).style(tsubtitle),
                 widget::Space::with_height(5),
-                match *p {
+                match *presence_state {
                     PresenceConnectionState::Uninitialized => {
                         if !rpc_config.enable {
                             row!(
@@ -84,7 +84,7 @@ impl MenuLauncherSettings {
 
             column![
                 widget::text("Core Settings:"),
-                widget::text("Tweak intial/custom presence, add flavor, change names, let your imagination fly.").size(12).style(tsubtitle),
+                widget::text("Tweak initial/custom presence, add flavor, change names, let your imagination fly.").size(12).style(tsubtitle),
                 widget::Space::with_height(6),
 
                 row![
@@ -163,9 +163,15 @@ impl RpcText {
         label: &str,
         m: impl Fn(RpcInnerMessage) -> RpcMessage + 'a + Clone,
     ) -> Column<'a> {
+        let m1 = m.clone();
         let m2 = m.clone();
         let m3 = m.clone();
-        let m4 = m.clone();
+
+        let space = |e| row![widget::Space::with_width(10), e];
+
+        let top_text = self.top_text.as_deref().unwrap_or_default();
+        let bottom_text = self.bottom_text.as_deref().unwrap_or_default();
+
         column![
             widget::text(format!(
                 "{label} {}",
@@ -175,28 +181,37 @@ impl RpcText {
                     ""
                 }
             )),
-            widget::text_input("Top Text", self.top_text.as_deref().unwrap_or_default())
+            widget::text_input("Top Text", top_text)
                 .size(14)
-                .on_input(move |v| m2(RpcInnerMessage::TopText(v)).into()),
-            widget::text_input(
-                "Top Text URL",
-                self.top_text_url.as_deref().unwrap_or_default()
-            )
-            .size(14)
-            .on_input(move |v| m3(RpcInnerMessage::TopTextURL(v)).into()),
-            widget::text_input(
-                "Bottom Text",
-                self.bottom_text.as_deref().unwrap_or_default()
-            )
-            .size(14)
-            .on_input(move |v| m(RpcInnerMessage::BottomText(v)).into()),
-            widget::text_input(
-                "Bottom Text URL",
-                self.bottom_text_url.as_deref().unwrap_or_default()
-            )
-            .size(14)
-            .on_input(move |v| m4(RpcInnerMessage::BottomTextURL(v)).into()),
+                .on_input(move |v| m1(RpcInnerMessage::TopText(v)).into()),
         ]
+        .push_maybe((!top_text.is_empty()).then(|| {
+            space(
+                widget::text_input(
+                    "Top Text URL (optional)",
+                    self.top_text_url.as_deref().unwrap_or_default(),
+                )
+                .size(14)
+                .font(FONT_MONO)
+                .on_input(move |v| m2(RpcInnerMessage::TopTextURL(v)).into()),
+            )
+        }))
+        .push(
+            widget::text_input("Bottom Text", bottom_text)
+                .size(14)
+                .on_input(move |v| m(RpcInnerMessage::BottomText(v)).into()),
+        )
+        .push_maybe((!bottom_text.is_empty()).then(|| {
+            space(
+                widget::text_input(
+                    "Bottom Text URL (optional)",
+                    self.bottom_text_url.as_deref().unwrap_or_default(),
+                )
+                .size(14)
+                .font(FONT_MONO)
+                .on_input(move |v| m3(RpcInnerMessage::BottomTextURL(v)).into()),
+            )
+        }))
         .spacing(5)
     }
 }

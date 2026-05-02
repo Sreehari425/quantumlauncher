@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt::Write};
 use ql_core::{IntoIoError, IoError, LAUNCHER_DIR};
 
 pub struct ServerProperties {
-    entries: HashMap<String, String>,
+    pub entries: HashMap<String, String>,
 }
 
 impl ServerProperties {

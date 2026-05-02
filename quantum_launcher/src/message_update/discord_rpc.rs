@@ -220,6 +220,7 @@ impl StringPresenceExt for str {
 }
 
 /// State for presence connection in QuantumLauncher.
+#[derive(Clone, Copy)]
 pub enum PresenceConnectionState {
     Uninitialized,
     Connected,
