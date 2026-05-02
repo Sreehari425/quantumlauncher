@@ -25,7 +25,7 @@ impl Launcher {
 
             ManageModsMessage::ListScrolled(offset) => {
                 if let State::EditMods(menu) = &mut self.state {
-                    menu.list_scroll = offset;
+                    menu.ui_state.list_scroll = offset;
                 }
             }
             ManageModsMessage::SelectEnsure(name, id, project_type) => {
@@ -33,10 +33,10 @@ impl Launcher {
                     return Task::none();
                 };
                 let selected_mod = SelectedMod::new(name, id, project_type);
-                menu.list_shift_index = Some(menu.index(&selected_mod));
-                menu.shift_selected_mods.clear();
-                menu.selected_mods.clear();
-                menu.selected_mods.insert(selected_mod);
+                menu.selection.list_shift_index = Some(menu.index(&selected_mod));
+                menu.selection.shift_selected_mods.clear();
+                menu.selection.selected_mods.clear();
+                menu.selection.selected_mods.insert(selected_mod);
                 menu.update_selected_state();
                 return menu.scroll_fix();
             }
@@ -92,6 +92,7 @@ impl Launcher {
                         Self::get_delete_mods_command(instance.clone(), menu);
 
                     let local_mods: Vec<LocalMod> = menu
+                        .selection
                         .selected_mods
                         .iter()
                         .filter_map(|m| m.local().cloned())
@@ -123,12 +124,14 @@ impl Launcher {
                 if let State::EditMods(menu) = &mut self.state {
                     menu.locally_installed_mods
                         .remove(&LocalMod(name.clone(), QueryType::Mods));
-                    if let Some(mod_info) = &mut menu.config.mod_type_info {
+                    if let Some(mod_info) = &mut menu.file_data.config.mod_type_info {
                         if mod_info.optifine_jar.as_ref().is_some_and(|n| n == &name) {
                             mod_info.optifine_jar = None;
-                            if let Err(err) =
-                                block_on(menu.config.save(self.selected_instance.as_ref().unwrap()))
-                            {
+                            if let Err(err) = block_on(
+                                menu.file_data
+                                    .config
+                                    .save(self.selected_instance.as_ref().unwrap()),
+                            ) {
                                 self.set_error(err);
                             }
                         }
@@ -140,7 +143,7 @@ impl Launcher {
             }
             ManageModsMessage::DeleteFinished(Ok(_)) => {
                 if let State::EditMods(menu) = &mut self.state {
-                    menu.selected_mods.clear();
+                    menu.selection.selected_mods.clear();
                 }
                 self.update_mod_index();
             }
@@ -158,8 +161,8 @@ impl Launcher {
             ManageModsMessage::UpdatePerformDone(Ok((file, should_write_changelog))) => {
                 self.update_mod_index();
                 if let State::EditMods(menu) = &mut self.state {
-                    menu.available_updates.clear();
-                    menu.info_message = if let Some(file) = file {
+                    menu.updates.available.clear();
+                    menu.ui_state.info_message = if let Some(file) = file {
                         Some(InfoMessage {
                             text: format!("{} written to disk", file.filename),
                             kind: InfoMessageKind::AtPath(file.path),
@@ -180,27 +183,32 @@ impl Launcher {
                 )
                 .abortable();
                 if let State::EditMods(menu) = &mut self.state {
-                    menu.update_check_handle = Some(handle.abort_on_drop());
-                    menu.modal = None;
+                    menu.updates.check_handle = Some(handle.abort_on_drop());
+                    menu.ui_state.modal = None;
                 }
                 return task;
             }
             ManageModsMessage::UpdateCheckResult(updates) => {
                 if let State::EditMods(menu) = &mut self.state {
-                    menu.update_check_handle = None;
+                    menu.updates.check_handle = None;
                     match updates {
                         Ok(updates) => {
                             if updates.is_empty() {
-                                menu.info_message = Some(InfoMessage {
+                                menu.ui_state.info_message = Some(InfoMessage {
                                     text: "No updates found".to_owned(),
                                     kind: InfoMessageKind::Success,
                                 });
                             }
 
-                            menu.available_updates = updates
+                            menu.updates.available = updates
                                 .into_iter()
                                 .map(|(id, title)| {
-                                    let enabled = menu.mods.mods.get(&id).is_none_or(|n| n.enabled);
+                                    let enabled = menu
+                                        .file_data
+                                        .mod_index
+                                        .mods
+                                        .get(&id)
+                                        .is_none_or(|n| n.enabled);
                                     (id, title, enabled)
                                 })
                                 .collect();
@@ -212,30 +220,28 @@ impl Launcher {
                 }
             }
             ManageModsMessage::UpdateCheckToggle(idx, t) => {
-                if let State::EditMods(MenuEditMods {
-                    available_updates, ..
-                }) = &mut self.state
-                {
-                    if let Some((_, _, b)) = available_updates.get_mut(idx) {
+                if let State::EditMods(menu) = &mut self.state {
+                    if let Some((_, _, b)) = menu.updates.available.get_mut(idx) {
                         *b = t;
                     }
                 }
             }
             ManageModsMessage::SetInfoMessage(message) => {
                 if let State::EditMods(menu) = &mut self.state {
-                    menu.info_message = message;
+                    menu.ui_state.info_message = message;
                 }
             }
             ManageModsMessage::SelectAll => {
                 if let State::EditMods(menu) = &mut self.state {
-                    match menu.selected_state {
+                    match menu.selection.state {
                         SelectedState::All => {
-                            menu.selected_mods.clear();
-                            menu.selected_state = SelectedState::None;
+                            menu.selection.selected_mods.clear();
+                            menu.selection.state = SelectedState::None;
                         }
                         SelectedState::Some | SelectedState::None => {
-                            menu.selected_mods = menu
-                                .mods
+                            menu.selection.selected_mods = menu
+                                .file_data
+                                .mod_index
                                 .mods
                                 .iter()
                                 .filter_map(|(id, mod_info)| {
@@ -252,7 +258,7 @@ impl Launcher {
                                         .map(|n| SelectedMod::Local(n.clone())),
                                 )
                                 .collect();
-                            menu.selected_state = SelectedState::All;
+                            menu.selection.state = SelectedState::All;
                         }
                     }
                 }
@@ -263,8 +269,9 @@ impl Launcher {
                     use crate::state::MenuExportMods;
 
                     self.state = State::ExportMods(MenuExportMods {
-                        selected_mods: if menu.selected_mods.is_empty() {
-                            menu.mods
+                        selected_mods: if menu.selection.selected_mods.is_empty() {
+                            menu.file_data
+                                .mod_index
                                 .mods
                                 .iter()
                                 .filter_map(|(id, mod_info)| {
@@ -282,20 +289,20 @@ impl Launcher {
                                 )
                                 .collect()
                         } else {
-                            menu.selected_mods.clone()
+                            menu.selection.selected_mods.clone()
                         },
                     });
                 }
             }
             ManageModsMessage::SetModal(modal) => {
                 if let State::EditMods(menu) = &mut self.state {
-                    menu.modal = modal;
+                    menu.ui_state.modal = modal;
                     return menu.scroll_fix();
                 }
             }
             ManageModsMessage::SetSearch(search) => {
                 if let State::EditMods(menu) = &mut self.state {
-                    menu.modal = None;
+                    menu.ui_state.modal = None;
                     menu.search = search;
                     return menu.scroll_fix();
                 }
@@ -304,8 +311,8 @@ impl Launcher {
                 if let State::EditMods(menu) = &mut self.state {
                     menu.content_filter = filter;
                     // Clear selection when changing filter
-                    menu.selected_mods.clear();
-                    menu.shift_selected_mods.clear();
+                    menu.selection.selected_mods.clear();
+                    menu.selection.shift_selected_mods.clear();
                     menu.update_selected_state();
                 }
             }
@@ -316,17 +323,17 @@ impl Launcher {
             }
             ManageModsMessage::RightClick(clicked_id) => {
                 if let State::EditMods(menu) = &mut self.state {
-                    if let Some(MenuEditModsModal::RightClick(old_id, _)) = &menu.modal {
+                    if let Some(MenuEditModsModal::RightClick(old_id, _)) = &menu.ui_state.modal {
                         if *old_id == clicked_id {
-                            menu.modal = None;
+                            menu.ui_state.modal = None;
                         } else {
-                            menu.modal = Some(MenuEditModsModal::RightClick(
+                            menu.ui_state.modal = Some(MenuEditModsModal::RightClick(
                                 clicked_id,
                                 self.window_state.mouse_pos,
                             ));
                         }
                     } else {
-                        menu.modal = Some(MenuEditModsModal::RightClick(
+                        menu.ui_state.modal = Some(MenuEditModsModal::RightClick(
                             clicked_id,
                             self.window_state.mouse_pos,
                         ));
@@ -337,7 +344,7 @@ impl Launcher {
             ManageModsMessage::ToggleOne(id) => {
                 let instance_name = self.selected_instance.clone().unwrap();
                 if let State::EditMods(menu) = &mut self.state {
-                    if let Some(m) = menu.mods.mods.get_mut(&id) {
+                    if let Some(m) = menu.file_data.mod_index.mods.get_mut(&id) {
                         m.enabled = !m.enabled;
                     }
                 }
@@ -365,14 +372,15 @@ impl Launcher {
     fn apply_mod_updates(&mut self) -> Task<Message> {
         if let State::EditMods(menu) = &mut self.state {
             let updates = menu
-                .available_updates
+                .updates
+                .available
                 .clone()
                 .into_iter()
                 .map(|(id, version, _)| (id, version))
                 .collect();
             let write_changelog = self.config.c_persistent().write_mod_update_changelog;
             let (sender, receiver) = std::sync::mpsc::channel();
-            menu.mod_update_progress = Some(ProgressBar::with_recv_and_msg(
+            menu.updates.progress = Some(ProgressBar::with_recv_and_msg(
                 receiver,
                 "Deleting Mods".to_owned(),
             ));
@@ -405,7 +413,7 @@ impl Launcher {
 
         // Show change in UI beforehand, don't want for disk sync
         for m in &ids_downloaded {
-            if let Some(m) = menu.mods.mods.get_mut(m) {
+            if let Some(m) = menu.file_data.mod_index.mods.get_mut(m) {
                 m.enabled = !m.enabled;
             }
         }
@@ -424,7 +432,7 @@ impl Launcher {
             |n| ManageModsMessage::ToggleFinished(n.strerr()).into(),
         )
         .chain(MenuEditMods::update_locally_installed_mods(
-            &menu.mods,
+            &menu.file_data.mod_index,
             &instance_name,
         ));
 
@@ -467,11 +475,12 @@ impl Launcher {
 
     fn get_delete_mods_command(selected_instance: Instance, menu: &MenuEditMods) -> Task<Message> {
         let ids: Vec<ModId> = menu
+            .selection
             .selected_mods
             .iter()
             .filter_map(|s_mod| {
                 if let SelectedMod::Downloaded { id, .. } = s_mod {
-                    if let Some(config) = menu.mods.mods.get(id) {
+                    if let Some(config) = menu.file_data.mod_index.mods.get(id) {
                         if config.manually_installed {
                             return Some(id.clone());
                         }
@@ -490,7 +499,7 @@ impl Launcher {
     fn update_mod_index(&mut self) {
         if let State::EditMods(menu) = &mut self.state {
             match block_on(ModIndex::load(self.selected_instance.as_ref().unwrap())).strerr() {
-                Ok(idx) => menu.mods = idx,
+                Ok(idx) => menu.file_data.mod_index = idx,
                 Err(err) => self.set_error(err),
             }
         }
@@ -799,21 +808,21 @@ async fn delete_file_wrapper(path: PathBuf) -> Result<(), String> {
 
 impl MenuEditMods {
     fn select_mod(&mut self, selected_mod: SelectedMod, pressed_ctrl: bool, pressed_shift: bool) {
-        self.modal = None;
+        self.ui_state.modal = None;
 
         match (pressed_ctrl, pressed_shift) {
             (true, _) => {
-                self.shift_selected_mods.clear();
+                self.selection.shift_selected_mods.clear();
             }
             (_, false) => {
-                let single = if let Some(m) = self.selected_mods.iter().next() {
-                    selected_mod == *m && self.selected_mods.len() == 1
+                let single = if let Some(m) = self.selection.selected_mods.iter().next() {
+                    selected_mod == *m && self.selection.selected_mods.len() == 1
                 } else {
                     false
                 };
 
                 if !pressed_ctrl && !single {
-                    self.selected_mods.clear();
+                    self.selection.selected_mods.clear();
                 }
             }
             _ => {}
@@ -821,31 +830,32 @@ impl MenuEditMods {
 
         let idx = self.index(&selected_mod);
 
-        match (pressed_shift, self.list_shift_index) {
+        match (pressed_shift, self.selection.list_shift_index) {
             // Range selection, shift pressed
             (true, Some(shift_idx)) if shift_idx != idx => {
-                self.selected_mods
-                    .retain(|n| !self.shift_selected_mods.contains(n));
-                self.shift_selected_mods.clear();
+                self.selection
+                    .selected_mods
+                    .retain(|n| !self.selection.shift_selected_mods.contains(n));
+                self.selection.shift_selected_mods.clear();
 
                 let (idx, shift_idx) =
                     (std::cmp::min(idx, shift_idx), std::cmp::max(idx, shift_idx));
 
                 for i in idx..=shift_idx {
                     let current_mod: SelectedMod = self.sorted_mods_list[i].clone().into();
-                    if self.selected_mods.insert(current_mod.clone()) {
-                        self.shift_selected_mods.insert(current_mod);
+                    if self.selection.selected_mods.insert(current_mod.clone()) {
+                        self.selection.shift_selected_mods.insert(current_mod);
                     }
                 }
             }
 
             // Normal selection
             _ => {
-                self.list_shift_index = Some(idx);
-                if self.selected_mods.contains(&selected_mod) {
-                    self.selected_mods.remove(&selected_mod);
+                self.selection.list_shift_index = Some(idx);
+                if self.selection.selected_mods.contains(&selected_mod) {
+                    self.selection.selected_mods.remove(&selected_mod);
                 } else {
-                    self.selected_mods.insert(selected_mod);
+                    self.selection.selected_mods.insert(selected_mod);
                 }
             }
         }
@@ -864,6 +874,6 @@ impl MenuEditMods {
     /// that resets scroll position.
     pub fn scroll_fix(&self) -> Task<Message> {
         let id = widget::scrollable::Id::new("MenuEditMods:mods");
-        widget::scrollable::scroll_to(id, self.list_scroll)
+        widget::scrollable::scroll_to(id, self.ui_state.list_scroll)
     }
 }

@@ -35,7 +35,7 @@ impl MenuEditMods {
         images: &'a ImageState,
         window_height: f32,
     ) -> Element<'a> {
-        if let Some(progress) = &self.mod_update_progress {
+        if let Some(progress) = &self.updates.progress {
             return column![widget::text("Updating mods").size(20), progress.view()]
                 .padding(10)
                 .spacing(10)
@@ -44,11 +44,12 @@ impl MenuEditMods {
 
         let menu_main = widget::Column::new()
             .push_maybe(
-                self.info_message
+                self.ui_state
+                    .info_message
                     .as_ref()
                     .map(|n| view_info_message(n, ManageModsMessage::SetInfoMessage(None).into())),
             )
-            .push_maybe(self.info_message.as_ref().map(|_| {
+            .push_maybe(self.ui_state.info_message.as_ref().map(|_| {
                 widget::horizontal_rule(2)
                     .style(|t: &LauncherTheme| t.style_rule(Color::SecondDark, 1))
             }))
@@ -66,7 +67,7 @@ impl MenuEditMods {
         window_height: f32,
         menu_main: widget::Column<'a, Message, LauncherTheme>,
     ) -> Element<'a> {
-        if self.drag_and_drop_hovered {
+        if self.ui_state.drag_and_drop_hovered {
             return widget::stack!(
                 menu_main,
                 widget::center(widget::button(
@@ -76,7 +77,7 @@ impl MenuEditMods {
             .into();
         }
 
-        match &self.modal {
+        match &self.ui_state.modal {
             Some(MenuEditModsModal::Submenu) => {
                 let submenu = column![
                     ctx_button_icon(icons::refresh_s(CTXI_SIZE), "Check for updates")
@@ -119,7 +120,7 @@ impl MenuEditMods {
                     }),
                     ctx_button("Resource Packs Folder").on_press_with(|| Message::CoreOpenPath(
                         selected_instance.get_dot_minecraft_path().join(
-                            if self.version_json.is_before_or_eq(V_LAST_TEXTUREPACK) {
+                            if self.file_data.details.is_before_or_eq(V_LAST_TEXTUREPACK) {
                                 "texturepacks"
                             } else {
                                 "resourcepacks"
@@ -180,7 +181,7 @@ impl MenuEditMods {
             .padding(TOP_PADDING)
             .on_press(
                 ManageModsMessage::SetModal(
-                    if let Some(MenuEditModsModal::FolderMenu) = self.modal {
+                    if let Some(MenuEditModsModal::FolderMenu) = self.ui_state.modal {
                         None
                     } else {
                         Some(MenuEditModsModal::FolderMenu)
@@ -193,11 +194,13 @@ impl MenuEditMods {
         let add_file_btn = button_with_icon(icons::file_s(14), "Add File...", 14)
             .padding(TOP_PADDING)
             .on_press(
-                ManageModsMessage::SetModal(if let Some(MenuEditModsModal::AddFile) = self.modal {
-                    None
-                } else {
-                    Some(MenuEditModsModal::AddFile)
-                })
+                ManageModsMessage::SetModal(
+                    if let Some(MenuEditModsModal::AddFile) = self.ui_state.modal {
+                        None
+                    } else {
+                        Some(MenuEditModsModal::AddFile)
+                    },
+                )
                 .into(),
             );
 
@@ -232,17 +235,23 @@ impl MenuEditMods {
     }
 
     fn get_mod_update_pane(&'_ self, tick_timer: usize) -> Column<'_> {
-        if self.update_check_handle.is_some() {
+        if self.updates.check_handle.is_some() {
             column![widget::text!("Checking for mod updates{}", dots(tick_timer)).size(12)]
-        } else if self.available_updates.is_empty() {
+        } else if self.updates.available.is_empty() {
             column![]
         } else {
             column![
                 widget::horizontal_rule(1),
                 widget::text("Mod Updates Available!").size(15),
-                widget::column(self.available_updates.iter().enumerate().map(
+                widget::column(self.updates.available.iter().enumerate().map(
                     |(i, (id, update_name, is_enabled))| {
-                        let title = self.mods.mods.get(id).map(|n| &*n.name).unwrap_or_default();
+                        let title = self
+                            .file_data
+                            .mod_index
+                            .mods
+                            .get(id)
+                            .map(|n| &*n.name)
+                            .unwrap_or_default();
 
                         let toggle = move |b| ManageModsMessage::UpdateCheckToggle(i, b).into();
 
@@ -268,7 +277,7 @@ impl MenuEditMods {
     }
 
     fn get_mod_installer_buttons(&'_ self, kind: InstanceKind) -> Element<'_> {
-        match self.config.mod_type {
+        match self.file_data.config.mod_type {
             Loader::Vanilla => match kind {
                 InstanceKind::Client => column![
                     "Install:",
@@ -319,24 +328,24 @@ impl MenuEditMods {
             Loader::Forge => widget::Column::new()
                 .push_maybe(
                     matches!(kind, InstanceKind::Client)
-                        .then(|| Self::get_optifine_install_button(&self.config)),
+                        .then(|| Self::get_optifine_install_button(&self.file_data.config)),
                 )
-                .push(Self::get_uninstall_panel(self.config.mod_type))
+                .push(Self::get_uninstall_panel(self.file_data.config.mod_type))
                 .spacing(5)
                 .into(),
             Loader::OptiFine => column![
                 widget::button(widget::text("Install Forge with OptiFine").size(14))
                     .on_press(Message::InstallForge(ForgeKind::OptiFine)),
-                Self::get_uninstall_panel(self.config.mod_type),
+                Self::get_uninstall_panel(self.file_data.config.mod_type),
             ]
             .spacing(5)
             .into(),
 
             Loader::NeoForge | Loader::Fabric | Loader::Quilt | Loader::Paper => {
-                Self::get_uninstall_panel(self.config.mod_type).into()
+                Self::get_uninstall_panel(self.file_data.config.mod_type).into()
             }
 
-            _ => widget::text!("Unknown mod type: {}", self.config.mod_type).into(),
+            _ => widget::text!("Unknown mod type: {}", self.file_data.config.mod_type).into(),
         }
     }
 
@@ -404,7 +413,7 @@ impl MenuEditMods {
                 .padding(1),
         );
 
-        let hamburger_dropdown = if let Some(MenuEditModsModal::Submenu) = self.modal {
+        let hamburger_dropdown = if let Some(MenuEditModsModal::Submenu) = self.ui_state.modal {
             hamburger_dropdown.on_press(ManageModsMessage::SetModal(None).into())
         } else {
             hamburger_dropdown
@@ -416,7 +425,7 @@ impl MenuEditMods {
             column![
                 widget::Column::new()
                     .push_maybe(
-                        (self.config.mod_type.is_vanilla() && !self.sorted_mods_list.is_empty())
+                        (self.file_data.config.mod_type.is_vanilla() && !self.sorted_mods_list.is_empty())
                         .then_some(
                             widget::container(
                                 widget::text(
@@ -456,11 +465,11 @@ impl MenuEditMods {
                             ),
 
                             subbutton_with_icon(icons::bin_s(12), "Delete")
-                            .on_press_maybe((!self.selected_mods.is_empty()).then_some(ManageModsMessage::DeleteSelected.into())),
+                            .on_press_maybe((!self.selection.selected_mods.is_empty()).then_some(ManageModsMessage::DeleteSelected.into())),
                             // Redundant?
                             // subbutton_with_icon(icons::toggleoff_s(12), "Toggle")
                             //     .on_press(ManageModsMessage::ToggleSelected.into()),
-                            subbutton_with_icon(icons::deselectall_s(12), if matches!(self.selected_state, SelectedState::All) {
+                            subbutton_with_icon(icons::deselectall_s(12), if matches!(self.selection.state, SelectedState::All) {
                                 "Unselect All"
                             } else {
                                 "Select All"
@@ -475,10 +484,10 @@ impl MenuEditMods {
                         self.get_content_filters()
                     )
                     .push(
-                        if self.selected_mods.is_empty() {
+                        if self.selection.selected_mods.is_empty() {
                             widget::text("Select some content to perform actions on them")
                         } else {
-                            widget::text!("{} item{} selected", self.selected_mods.len(), if self.selected_mods.len() == 1 { "" } else { "s" })
+                            widget::text!("{} item{} selected", self.selection.selected_mods.len(), if self.selection.selected_mods.len() == 1 { "" } else { "s" })
                         }
                         .size(11)
                         .style(|t: &LauncherTheme| t.style_text(Color::Mid))

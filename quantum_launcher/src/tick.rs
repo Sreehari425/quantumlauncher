@@ -398,16 +398,17 @@ pub fn sort_dependencies(
 
 impl MenuEditMods {
     fn tick(&mut self, instance_selection: &Instance) -> Task<Message> {
-        self.sorted_mods_list = sort_dependencies(&self.mods.mods, &self.locally_installed_mods);
+        self.sorted_mods_list =
+            sort_dependencies(&self.file_data.mod_index.mods, &self.locally_installed_mods);
 
-        if let Some(progress) = &mut self.mod_update_progress {
+        if let Some(progress) = &mut self.updates.progress {
             progress.tick();
             if progress.progress.has_finished {
-                self.mod_update_progress = None;
+                self.updates.progress = None;
             }
         }
 
-        MenuEditMods::update_locally_installed_mods(&self.mods, instance_selection)
+        MenuEditMods::update_locally_installed_mods(&self.file_data.mod_index, instance_selection)
     }
 }
 

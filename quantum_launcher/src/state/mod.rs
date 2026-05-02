@@ -127,6 +127,24 @@ pub struct DirWatcher {
 }
 
 impl DirWatcher {
+    pub fn new<P: AsRef<Path>>(path: P) -> notify::Result<DirWatcher> {
+        let (tx, recv) = mpsc::channel();
+
+        // `notify` runs callbacks in its own thread.
+        let mut watcher: notify::RecommendedWatcher = notify::recommended_watcher(move |res| {
+            if let Ok(event) = res {
+                _ = tx.send(event);
+            }
+        })?;
+        let path = path.as_ref();
+        watcher.watch(path, notify::RecursiveMode::NonRecursive)?;
+
+        Ok(DirWatcher {
+            recv,
+            _watcher: watcher,
+        })
+    }
+
     pub fn has_changed(&self) -> bool {
         let mut has_changed = false;
         while let Ok(_event) = self.recv.try_recv() {
@@ -488,24 +506,6 @@ pub async fn load_custom_jars() -> Result<Vec<String>, IoError> {
     list.push(OPEN_FOLDER_JAR_NAME.to_owned());
 
     Ok(list)
-}
-
-pub fn dir_watch<P: AsRef<Path>>(path: P) -> notify::Result<DirWatcher> {
-    let (tx, recv) = mpsc::channel();
-
-    // `notify` runs callbacks in its own thread.
-    let mut watcher: notify::RecommendedWatcher = notify::recommended_watcher(move |res| {
-        if let Ok(event) = res {
-            _ = tx.send(event);
-        }
-    })?;
-    let path = path.as_ref();
-    watcher.watch(path, notify::RecursiveMode::NonRecursive)?;
-
-    Ok(DirWatcher {
-        recv,
-        _watcher: watcher,
-    })
 }
 
 fn migration(version: &str) -> Result<(), String> {

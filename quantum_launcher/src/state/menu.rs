@@ -279,52 +279,65 @@ impl From<&LocalMod> for ModListEntry {
 }
 
 pub struct MenuEditMods {
-    pub mod_update_progress: Option<ProgressBar<GenericProgress>>,
-
-    pub config: InstanceConfigJson,
-    pub mods: ModIndex,
-    // TODO: Use this for dynamically adjusting installable loader buttons
-    pub version_json: Box<VersionDetails>,
-
     pub locally_installed_mods: HashSet<LocalMod>,
     pub sorted_mods_list: Vec<ModListEntry>,
 
-    pub selected_mods: HashSet<SelectedMod>,
-    pub shift_selected_mods: HashSet<SelectedMod>,
-    pub selected_state: SelectedState,
+    pub file_data: EditModsFileData,
+    pub updates: EditModsUpdates,
+    pub selection: EditModsSelection,
+    pub ui_state: EditModsUiState,
 
-    pub update_check_handle: Option<iced::task::Handle>,
-    pub available_updates: Vec<(ModId, String, bool)>,
-
-    pub info_message: Option<InfoMessage>,
-
-    pub list_scroll: AbsoluteOffset,
-    /// Index of the item selected before pressing shift
-    pub list_shift_index: Option<usize>,
-    pub drag_and_drop_hovered: bool,
-    pub modal: Option<MenuEditModsModal>,
     pub search: Option<String>,
-
-    pub width_name: f32,
     pub content_filter: Option<QueryType>,
 }
 
 impl MenuEditMods {
     pub fn toggle_local_mods_in_ui(&mut self, ids_local: &[LocalMod]) {
-        self.selected_mods.retain(|n| {
+        self.selection.selected_mods.retain(|n| {
             if let SelectedMod::Local(l) = n {
                 !ids_local.contains(l)
             } else {
                 true
             }
         });
-        self.selected_mods.extend(ids_local.iter().map(|n| {
-            SelectedMod::Local(LocalMod(
-                Arc::from(ql_mod_manager::store::flip_filename(&n.0)),
-                n.1,
-            ))
-        }));
+        self.selection
+            .selected_mods
+            .extend(ids_local.iter().map(|n| {
+                SelectedMod::Local(LocalMod(
+                    Arc::from(ql_mod_manager::store::flip_filename(&n.0)),
+                    n.1,
+                ))
+            }));
     }
+}
+
+pub struct EditModsUpdates {
+    pub progress: Option<ProgressBar<GenericProgress>>,
+    pub check_handle: Option<iced::task::Handle>,
+    pub available: Vec<(ModId, String, bool)>,
+}
+
+pub struct EditModsSelection {
+    pub selected_mods: HashSet<SelectedMod>,
+    pub shift_selected_mods: HashSet<SelectedMod>,
+    pub state: SelectedState,
+    /// Index of the item selected before pressing shift
+    pub list_shift_index: Option<usize>,
+}
+
+pub struct EditModsUiState {
+    pub info_message: Option<InfoMessage>,
+    pub list_scroll: AbsoluteOffset,
+    pub drag_and_drop_hovered: bool,
+    pub modal: Option<MenuEditModsModal>,
+    pub width_name: f32,
+}
+
+pub struct EditModsFileData {
+    pub config: InstanceConfigJson,
+    pub mod_index: ModIndex,
+    // TODO: Use this for dynamically adjusting installable loader buttons
+    pub details: Box<VersionDetails>,
 }
 
 #[derive(Debug, Clone)]
@@ -389,6 +402,7 @@ impl MenuEditMods {
     /// ...respectively, from the mods selected in the mod menu.
     pub fn get_kinds_of_ids(&self) -> (Vec<ModId>, Vec<LocalMod>) {
         let ids_downloaded = self
+            .selection
             .selected_mods
             .iter()
             .filter_map(|s_mod| {
@@ -401,6 +415,7 @@ impl MenuEditMods {
             .collect();
 
         let ids_local = self
+            .selection
             .selected_mods
             .iter()
             .filter_map(SelectedMod::local)
@@ -412,9 +427,9 @@ impl MenuEditMods {
     }
 
     pub fn update_selected_state(&mut self) {
-        self.selected_state = if self.selected_mods.is_empty() {
+        self.selection.state = if self.selection.selected_mods.is_empty() {
             SelectedState::None
-        } else if self.selected_mods.len() == self.sorted_mods_list.len() {
+        } else if self.selection.selected_mods.len() == self.sorted_mods_list.len() {
             SelectedState::All
         } else {
             SelectedState::Some
@@ -422,7 +437,7 @@ impl MenuEditMods {
     }
 
     pub fn is_selected(&self, clicked_id: &ModId) -> bool {
-        self.selected_mods.iter().any(|n| {
+        self.selection.selected_mods.iter().any(|n| {
             if let SelectedMod::Downloaded { id, .. } = n {
                 id == clicked_id
             } else {

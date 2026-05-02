@@ -49,6 +49,7 @@ impl MenuEditMods {
 
         let is_enabled = !file_name.ends_with(".disabled");
         let is_selected = self
+            .selection
             .selected_mods
             .contains(&SelectedMod::Local(local.clone()));
 
@@ -105,10 +106,13 @@ impl MenuEditMods {
         config: &'a ModConfig,
     ) -> Element<'a> {
         let is_enabled = config.enabled;
-        let is_selected = self.selected_mods.contains(&SelectedMod::Downloaded {
-            name: config.name.clone(),
-            id: (*id).clone(),
-        });
+        let is_selected = self
+            .selection
+            .selected_mods
+            .contains(&SelectedMod::Downloaded {
+                name: config.name.clone(),
+                id: (*id).clone(),
+            });
 
         let image = config
             .icon_url
@@ -132,7 +136,7 @@ impl MenuEditMods {
                     .shaping(widget::text::Shaping::Advanced)
                     .style(mod_name_style(is_enabled))
                     .size(14)
-                    .width(self.width_name),
+                    .width(self.ui_state.width_name),
                 widget::text(&config.installed_version)
                     .style(|t: &LauncherTheme| t.style_text(Color::Mid))
                     .font(FONT_MONO)
@@ -153,7 +157,8 @@ impl MenuEditMods {
                 //  `self.width_name`              to find
 
                 let measured: f32 = (config.installed_version.len() as f32) * MONO_CHAR_WIDTH;
-                let occupied = measured + self.width_name + PADDING.left + PADDING.right + 150.0;
+                let occupied =
+                    measured + self.ui_state.width_name + PADDING.left + PADDING.right + 150.0;
                 let space = size.width - occupied;
                 (space > -10.0).then_some(widget::Space::with_width(space))
             })
@@ -182,7 +187,7 @@ impl MenuEditMods {
         let right_click_msg = ManageModsMessage::RightClick(id.clone()).into();
 
         widget::mouse_area(entry).on_right_press(
-            if self.selected_mods.len() > 1 && self.is_selected(id) {
+            if self.selection.selected_mods.len() > 1 && self.is_selected(id) {
                 right_click_msg
             } else {
                 Message::Multiple(vec![

@@ -12,7 +12,7 @@ use crate::{
     state::{
         AutoSaveKind, CustomJarState, DirWatcher, GameProcess, InfoMessage, Launcher,
         LauncherSettingsMessage, ManageModsMessage, MenuExportInstance, MenuLicense, MenuWelcome,
-        Message, ProgressBar, State, dir_watch, get_entries,
+        Message, ProgressBar, State, get_entries,
     },
     stylesheet::styles::LauncherThemeLightness,
 };
@@ -433,7 +433,7 @@ impl Launcher {
 
         if self_watcher.is_none() {
             let dir = kind.get_root_directory();
-            let watcher = match dir_watch(dir) {
+            let watcher = match DirWatcher::new(dir) {
                 Ok(n) => n,
                 Err(err) => {
                     err!("Couldn't start dir watcher! {err}");

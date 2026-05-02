@@ -2,8 +2,9 @@ use crate::{
     Launcher, Message,
     menu_renderer::back_to_launch_screen,
     state::{
-        AutoSaveKind, EditPresetsMessage, InfoMessage, LaunchTab, LogState, ManageModsMessage,
-        MenuEditMods, MenuInstallForge, MenuInstallOptifine, ProgressBar, SelectedState, State,
+        AutoSaveKind, EditModsFileData, EditModsSelection, EditModsUiState, EditModsUpdates,
+        EditPresetsMessage, InfoMessage, LaunchTab, LogState, ManageModsMessage, MenuEditMods,
+        MenuInstallForge, MenuInstallOptifine, ProgressBar, SelectedState, State,
     },
     tick::sort_dependencies,
 };
@@ -111,44 +112,52 @@ impl Launcher {
         ) -> Result<Task<Message>, JsonFileError> {
             let instance = this.selected_instance.as_ref().unwrap();
 
-            let config_json = InstanceConfigJson::read(instance).await?;
-            let version_json = Box::new(VersionDetails::load(instance).await?);
+            let config = InstanceConfigJson::read(instance).await?;
+            let details = Box::new(VersionDetails::load(instance).await?);
 
-            let mods = ModIndex::load(instance).await?;
+            let mod_index = ModIndex::load(instance).await?;
             let update_local_mods_task =
-                MenuEditMods::update_locally_installed_mods(&mods, instance);
+                MenuEditMods::update_locally_installed_mods(&mod_index, instance);
 
             let locally_installed_mods = HashSet::new();
-            let sorted_mods_list = sort_dependencies(&mods.mods, &locally_installed_mods);
+            let sorted_mods_list = sort_dependencies(&mod_index.mods, &locally_installed_mods);
 
             this.state = State::EditMods(MenuEditMods {
-                config: config_json,
-                mods,
-                selected_mods: HashSet::new(),
-                shift_selected_mods: HashSet::new(),
                 sorted_mods_list,
-                selected_state: SelectedState::None,
-                available_updates: Vec::new(),
-                mod_update_progress: None,
+                selection: EditModsSelection {
+                    selected_mods: HashSet::new(),
+                    shift_selected_mods: HashSet::new(),
+                    state: SelectedState::None,
+                    list_shift_index: None,
+                },
+                updates: EditModsUpdates {
+                    available: Vec::new(),
+                    progress: None,
+                    check_handle: None,
+                },
+                ui_state: EditModsUiState {
+                    // If you wanna test stuff out...
+                    // info_message: Some(crate::state::ModInfoMessage {
+                    //     text: "Hello, World!".to_owned(),
+                    //     kind: crate::state::InfoMessageKind::AtPath(PathBuf::from("/home/mrmayman")),
+                    // }),
+                    // info_message: Some(crate::state::ModInfoMessage {
+                    //     text: "Hello, World!".to_owned(),
+                    //     kind: crate::state::InfoMessageKind::Success,
+                    // }),
+                    info_message,
+                    list_scroll: AbsoluteOffset::default(),
+                    drag_and_drop_hovered: false,
+                    modal: None,
+                    width_name: 220.0,
+                },
+                file_data: EditModsFileData {
+                    config,
+                    mod_index,
+                    details,
+                },
                 locally_installed_mods,
-                drag_and_drop_hovered: false,
-                update_check_handle: None,
-                version_json,
-                modal: None,
                 search: None,
-                // If you wanna test stuff out...
-                // info_message: Some(crate::state::ModInfoMessage {
-                //     text: "Hello, World!".to_owned(),
-                //     kind: crate::state::InfoMessageKind::AtPath(PathBuf::from("/home/mrmayman")),
-                // }),
-                // info_message: Some(crate::state::ModInfoMessage {
-                //     text: "Hello, World!".to_owned(),
-                //     kind: crate::state::InfoMessageKind::Success,
-                // }),
-                info_message,
-                width_name: 220.0,
-                list_shift_index: None,
-                list_scroll: AbsoluteOffset::default(),
                 content_filter: None,
             });
 
@@ -282,7 +291,7 @@ impl Launcher {
 
     fn set_drag_and_drop_hover(&mut self, is_hovered: bool) {
         if let State::EditMods(menu) = &mut self.state {
-            menu.drag_and_drop_hovered = is_hovered;
+            menu.ui_state.drag_and_drop_hovered = is_hovered;
         } else if let State::ManagePresets(menu) = &mut self.state {
             menu.drag_and_drop_hovered = is_hovered;
         } else if let State::EditJarMods(menu) = &mut self.state {
