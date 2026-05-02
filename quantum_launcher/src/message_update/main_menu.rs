@@ -207,7 +207,7 @@ impl Launcher {
                     AfterLaunchBehavior::DoNothing => {}
                     AfterLaunchBehavior::CloseLauncher => {
                         ql_core::logger_finish();
-                        std::process::exit(0);
+                        self.close_launcher();
                     }
                     AfterLaunchBehavior::MinimizeLauncher => {
                         let minimize_task = iced::window::get_latest()

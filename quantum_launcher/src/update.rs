@@ -36,7 +36,7 @@ impl Launcher {
 
                 if safe_to_exit {
                     info!(no_log, "CTRL-Q pressed, closing launcher...");
-                    std::process::exit(1);
+                    self.close_launcher();
                 }
             }
 
@@ -199,6 +199,8 @@ impl Launcher {
             Message::UpdateDownloadEnd(result) => {
                 if let Err(err) = result {
                     self.set_error(format!("Update installation failed! Try going to the website at\nmrmayman.github.io/quantumlauncher\nAnd download from there\n\n{err}"));
+                } else {
+                    self.close_launcher();
                 }
             }
 

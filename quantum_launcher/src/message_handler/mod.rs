@@ -47,6 +47,12 @@ impl Launcher {
         }
     }
 
+    pub fn close_launcher(&mut self) -> ! {
+        // You can add deinit logic here in the future
+
+        std::process::exit(0);
+    }
+
     pub fn load_logs(&mut self) {
         let State::Launch(menu) = &mut self.state else {
             return;

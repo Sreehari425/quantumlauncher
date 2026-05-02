@@ -472,7 +472,7 @@ impl Launcher {
                     .map(Some)
                     .and_then(move |max| iced::window::maximize(id, !max))
             }),
-            WindowMessage::ClickClose => std::process::exit(0),
+            WindowMessage::ClickClose => self.close_launcher(),
             // WindowMessage::IsMaximized(n) => {
             //     self.window_state.is_maximized = n;
             //     Task::none()
