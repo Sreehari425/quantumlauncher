@@ -6,9 +6,6 @@ use crate::{err, json::version::JavaVersionJson};
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Loader {
-    #[serde(rename = "Vanilla")]
-    #[default]
-    Vanilla,
     #[serde(rename = "Fabric")]
     Fabric,
     #[serde(rename = "Quilt")]
@@ -31,6 +28,11 @@ pub enum Loader {
     Modloader,
     #[serde(rename = "Rift")]
     Rift,
+
+    #[serde(rename = "Vanilla")]
+    #[default]
+    #[serde(other)]
+    Vanilla,
 }
 
 impl Display for Loader {

@@ -40,7 +40,7 @@ pub struct ModConfig {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct ModIndex {
     pub mods: HashMap<ModId, ModConfig>,
-    pub is_server: Option<bool>,
+    is_server: Option<bool>,
     #[serde(flatten)]
     _extra: HashMap<String, serde_json::Value>,
 }
@@ -68,7 +68,7 @@ impl ModIndex {
         }
     }
 
-    pub async fn fix(&mut self, instance: Instance) -> Result<(), IoError> {
+    async fn fix(&mut self, instance: Instance) -> Result<(), IoError> {
         let dirs = DirStructure::new(instance, &VersionDetails::default()).await?;
         self.fix_nonexistent_mods(&dirs).await;
         self.fix_cf_modpack_id_bug();
