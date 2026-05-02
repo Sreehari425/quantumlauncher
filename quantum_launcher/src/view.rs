@@ -204,7 +204,7 @@ impl Launcher {
         .into()
     }
 
-    pub fn view_window_decorations(&self) -> widget::Row<'_, Message, LauncherTheme> {
+    fn view_window_decorations(&self) -> widget::Row<'_, Message, LauncherTheme> {
         const ICON_SIZE: u16 = 10;
 
         fn win_button(icon: widget::Text<'_, LauncherTheme>, m: Message) -> Element<'_> {

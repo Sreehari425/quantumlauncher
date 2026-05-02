@@ -261,7 +261,7 @@ impl Launcher {
             .width(98)
     }
 
-    pub fn get_tab_logs<'element>(
+    fn get_tab_logs<'element>(
         &'element self,
         menu: &'element MenuLaunch,
         kind: InstanceKind,

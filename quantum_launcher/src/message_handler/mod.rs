@@ -229,7 +229,7 @@ impl Launcher {
         }
     }
 
-    pub fn load_qmp_from_path(&mut self, path: &Path) -> Task<Message> {
+    fn load_qmp_from_path(&mut self, path: &Path) -> Task<Message> {
         let file = match std::fs::read(path) {
             Ok(n) => n,
             Err(err) => {

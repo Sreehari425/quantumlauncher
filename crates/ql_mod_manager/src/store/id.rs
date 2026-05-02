@@ -69,16 +69,6 @@ impl ModId {
             StoreBackendType::Curseforge => Self::Curseforge(n),
         }
     }
-
-    #[must_use]
-    pub fn to_pair(self) -> (String, StoreBackendType) {
-        let backend = match self {
-            ModId::Modrinth(_) => StoreBackendType::Modrinth,
-            ModId::Curseforge(_) => StoreBackendType::Curseforge,
-        };
-
-        (self.get_internal_id().to_owned(), backend)
-    }
 }
 
 #[cfg(test)]

@@ -41,7 +41,7 @@ pub struct LauncherConfig {
         since = "0.2.0",
         note = "removed feature, field left here for backwards compatibility"
     )]
-    pub java_installs: Option<Vec<String>>,
+    java_installs: Option<Vec<String>>,
 
     /// UI mode (Light/Dark/Auto) set by the user.
     // Since: v0.3
@@ -109,7 +109,7 @@ pub struct LauncherConfig {
     /// Time of last auto-update check result, in seconds since the Unix epoch.
     // Since: TBD
     #[cfg(feature = "auto_update")]
-    pub last_update_check: Option<u64>,
+    last_update_check: Option<u64>,
 
     /// Preserve fields when downgrading
     #[serde(flatten)]
@@ -366,7 +366,7 @@ pub struct ConfigAccount {
     pub uuid: String,
 
     /// Currently unimplemented, does nothing.
-    pub skin: Option<String>, // TODO: Add skin visualization?
+    skin: Option<String>, // TODO: Add skin visualization?
 
     /// Type of account (default: `Microsoft`)
     pub account_type: Option<AccountType>,

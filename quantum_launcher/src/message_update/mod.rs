@@ -363,7 +363,7 @@ impl Launcher {
         Task::none()
     }
 
-    pub fn should_split_args(&self) -> bool {
+    fn should_split_args(&self) -> bool {
         if let State::Launch(MenuLaunch {
             edit_instance: Some(menu),
             ..

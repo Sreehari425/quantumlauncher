@@ -101,7 +101,7 @@ pub fn get_theme_selector() -> widget::Row<'static, Message, LauncherTheme> {
 }
 
 impl LauncherSettingsTab {
-    pub fn view<'a>(
+    fn view<'a>(
         &'a self,
         config: &'a LauncherConfig,
         menu: &'a MenuLauncherSettings,

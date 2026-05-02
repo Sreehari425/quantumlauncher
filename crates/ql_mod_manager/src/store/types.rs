@@ -76,22 +76,15 @@ impl Display for QueryType {
 }
 
 impl QueryType {
-    /// Use this for the store since datapacks can't be installed globally,
-    /// only per worlds, since you need to copy the datapack file into each world.
-    ///
-    /// Once the launcher has support for installing datapacks properly,
-    /// delete this and use ALL in the store too.
-    pub const STORE_QUERIES: &'static [Self] = &[
-        Self::Mods,
-        Self::ModPacks,
-        Self::ResourcePacks,
-        Self::Shaders,
-    ];
-
     pub const ALL: &'static [Self] = &[
         Self::Mods,
         Self::ModPacks,
-        Self::DataPacks,
+        // /// Datapacks can't be installed globally (only per worlds),
+        // /// since you need to copy the datapack file into each world.
+        // ///
+        // /// Once the launcher has support for installing datapacks properly,
+        // /// uncomment this.
+        // Self::DataPacks,
         Self::ResourcePacks,
         Self::Shaders,
     ];

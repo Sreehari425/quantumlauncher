@@ -757,12 +757,7 @@ async fn delete_file_wrapper(path: PathBuf) -> Result<(), String> {
 }
 
 impl MenuEditMods {
-    pub fn select_mod(
-        &mut self,
-        selected_mod: SelectedMod,
-        pressed_ctrl: bool,
-        pressed_shift: bool,
-    ) {
+    fn select_mod(&mut self, selected_mod: SelectedMod, pressed_ctrl: bool, pressed_shift: bool) {
         self.modal = None;
 
         match (pressed_ctrl, pressed_shift) {
