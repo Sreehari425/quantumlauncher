@@ -177,25 +177,25 @@ impl RpcText {
             )),
             widget::text_input("Top Text", self.top_text.as_deref().unwrap_or_default())
                 .size(14)
-                .on_input(move |v| m2(RpcInnerMessage::TopTextChanged(v)).into()),
+                .on_input(move |v| m2(RpcInnerMessage::TopText(v)).into()),
             widget::text_input(
                 "Top Text URL",
                 self.top_text_url.as_deref().unwrap_or_default()
             )
             .size(14)
-            .on_input(move |v| m3(RpcInnerMessage::TopTextURLChanged(v)).into()),
+            .on_input(move |v| m3(RpcInnerMessage::TopTextURL(v)).into()),
             widget::text_input(
                 "Bottom Text",
-                &self.bottom_text.as_deref().unwrap_or_default()
+                self.bottom_text.as_deref().unwrap_or_default()
             )
             .size(14)
-            .on_input(move |v| m(RpcInnerMessage::BottomTextChanged(v)).into()),
+            .on_input(move |v| m(RpcInnerMessage::BottomText(v)).into()),
             widget::text_input(
                 "Bottom Text URL",
                 self.bottom_text_url.as_deref().unwrap_or_default()
             )
             .size(14)
-            .on_input(move |v| m4(RpcInnerMessage::BottomTextURLChanged(v)).into()),
+            .on_input(move |v| m4(RpcInnerMessage::BottomTextURL(v)).into()),
         ]
         .spacing(5)
     }

@@ -110,7 +110,7 @@ impl LauncherSettingsTab {
         match self {
             LauncherSettingsTab::UserInterface => menu.view_ui_tab(config),
             LauncherSettingsTab::Presence => {
-                menu.view_presence_tab(config, &discord_connection_state)
+                menu.view_presence_tab(config, discord_connection_state)
             }
             LauncherSettingsTab::Game => menu.view_game_tab(config),
             LauncherSettingsTab::About => tab_about::view(),

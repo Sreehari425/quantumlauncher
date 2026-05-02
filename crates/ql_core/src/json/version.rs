@@ -315,7 +315,6 @@ impl Library {
             allowed = false;
 
             for rule in rules {
-                #[allow(clippy::unnecessary_semicolon)] // cfg_if weirdness
                 if let Some(ref os) = rule.os {
                     cfg_if!(
                         if #[cfg(any(

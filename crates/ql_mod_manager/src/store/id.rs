@@ -24,7 +24,7 @@ impl<'de> serde::Deserialize<'de> for ModId {
         D: serde::Deserializer<'de>,
     {
         struct ModIdVisitor;
-        impl<'de> serde::de::Visitor<'de> for ModIdVisitor {
+        impl serde::de::Visitor<'_> for ModIdVisitor {
             type Value = ModId;
 
             fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {

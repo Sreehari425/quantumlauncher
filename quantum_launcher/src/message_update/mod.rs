@@ -9,7 +9,7 @@ mod accounts;
 mod create_instance;
 mod discord_rpc;
 mod edit_instance;
-mod launch;
+mod main_menu;
 mod manage_mods;
 mod mod_store;
 mod presets;
