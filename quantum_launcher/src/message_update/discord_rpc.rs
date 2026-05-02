@@ -162,6 +162,11 @@ impl Launcher {
             return Task::none();
         }
         let rpc_config = self.config.discord_rpc.get_or_insert_default();
+
+        if !rpc_config.update_on_game_open {
+            return Task::none();
+        }
+
         let info = if exited {
             &rpc_config.on_gameexit
         } else {
