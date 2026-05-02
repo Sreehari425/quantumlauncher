@@ -114,7 +114,7 @@ impl Launcher {
         Task::none()
     }
 
-    fn uninitialize_presence(&mut self) {
+    pub fn uninitialize_presence(&mut self) {
         block_on(async {
             if let Some(c) = &self.discord_ipc_client {
                 let _ = c.close().await;

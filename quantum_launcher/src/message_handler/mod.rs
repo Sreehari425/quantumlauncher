@@ -48,8 +48,7 @@ impl Launcher {
     }
 
     pub fn close_launcher(&mut self) -> ! {
-        // You can add deinit logic here in the future
-
+        self.uninitialize_presence();
         std::process::exit(0);
     }
 
