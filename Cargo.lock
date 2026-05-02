@@ -1435,9 +1435,9 @@ dependencies = [
 
 [[package]]
 name = "filthy-rich"
-version = "0.13.1"
+version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4967de43b55e29c683d5f13d968d11d15ffc30187eb8b967527caaba98c8b870"
+checksum = "566bf8a107125e82d5bd4728ee67283c836807b102cca76a90dacf317ea5ae27"
 dependencies = [
  "serde",
  "serde_json",
@@ -5486,7 +5486,6 @@ dependencies = [
  "bytes",
  "libc",
  "mio",
- "parking_lot 0.12.5",
  "pin-project-lite",
  "signal-hook-registry",
  "socket2",
