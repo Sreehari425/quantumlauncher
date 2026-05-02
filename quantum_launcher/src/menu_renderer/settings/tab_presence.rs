@@ -26,6 +26,14 @@ impl MenuLauncherSettings {
         let rpc_config = config.discord_rpc.clone().unwrap_or_default();
         let presence_state = discord_connection_state.lock().unwrap();
 
+        let status = |icon, text| {
+            row![
+                icon,
+                widget::Space::with_width(5),
+                widget::text(text).size(13).style(tsubtitle)
+            ]
+        };
+
         checkered_list([
             column![
                 row![
@@ -42,41 +50,20 @@ impl MenuLauncherSettings {
                 widget::Space::with_height(5),
                 match *presence_state {
                     PresenceConnectionState::Uninitialized => {
-                        if !rpc_config.enable {
-                            row!(
-                                icons::cross_s(13),
-                                widget::Space::with_width(5),
-                                widget::text("Not enabled.").size(13).style(tsubtitle),
-                            )
+                        if rpc_config.enable {
+                            status(icons::clock_s(13), "Waiting for Discord...")
                         } else {
-                            row!(
-                                icons::clock_s(13),
-                                widget::Space::with_width(5),
-                                widget::text("Waiting for Discord...").size(13).style(tsubtitle),
-                            )
+                            status(icons::cross_s(13), "Not enabled.")
                         }
-
                     },
                     PresenceConnectionState::Connected => {
-                        row!(
-                            icons::clock_s(13),
-                            widget::Space::with_width(5),
-                            widget::text("Waiting for activity...").size(13).style(tsubtitle),
-                        )
+                        status(icons::clock_s(13), "Waiting for activity...")
                     },
                     PresenceConnectionState::Active => {
-                        row!(
-                            icons::version_tick_s(13),
-                            widget::Space::with_width(5),
-                            widget::text("Synced!").size(13).style(tsubtitle),
-                        )
+                        status(icons::version_tick_s(13), "Synced!")
                     },
                     PresenceConnectionState::Disconnected => {
-                        row!(
-                            icons::clock_s(13),
-                            widget::Space::with_width(5),
-                            widget::text("Disconnected, waiting for Discord...").size(13).style(tsubtitle),
-                        )
+                        status(icons::clock_s(13), "Disconnected, waiting for Discord...")
                     },
                 },
             ]
@@ -87,22 +74,20 @@ impl MenuLauncherSettings {
                 widget::text("Tweak initial/custom presence, add flavor, change names, let your imagination fly.").size(12).style(tsubtitle),
                 widget::Space::with_height(6),
 
-                row![
-                    column![
-                        rpc_config.basic.view(&format!("{} Presence", if rpc_config.update_on_game_open {"Startup"} else {"Custom"}), RpcMessage::DefaultChanged),
-                        if rpc_config.enable {
-                            column![
-                                button_with_icon(icons::discord_s(16), "Set Now", 12)
-                                    .padding([5, 10])
-                                    .on_press(RpcMessage::SetPresenceNow.into()),
-                                widget::text("Changes will take effect on launcher restart or with the press of the button above.").size(12).style(tsubtitle),
-                            ].spacing(5)
-                        } else {
-                            column![
-                                widget::text("Toggle 'Enable Broadcast' to actually start using presences.").size(12).style(tsubtitle),
-                            ]
-                        },
-                    ].spacing(20),
+                column![
+                    rpc_config.basic.view(&format!("{} Presence", if rpc_config.update_on_game_open {"Startup"} else {"Custom"}), RpcMessage::DefaultChanged),
+                    if rpc_config.enable {
+                        column![
+                            button_with_icon(icons::discord_s(16), "Set Now", 12)
+                                .padding([5, 10])
+                                .on_press(RpcMessage::SetPresenceNow.into()),
+                            widget::text("Changes will take effect on launcher restart or with the press of the button above.").size(12).style(tsubtitle),
+                        ].spacing(5)
+                    } else {
+                        column![
+                            widget::text("Toggle 'Enable Broadcast' to actually start using presences.").size(12).style(tsubtitle),
+                        ]
+                    },
                 ].spacing(20),
             ].spacing(5),
 
@@ -121,7 +106,6 @@ impl MenuLauncherSettings {
                     icons::paintbrush_s(15),
                 ],
                 widget::text("A fancier way to show off your activities. Try this at home!").size(12).style(tsubtitle),
-
             ].spacing(5),
 
             if rpc_config.update_on_game_open {

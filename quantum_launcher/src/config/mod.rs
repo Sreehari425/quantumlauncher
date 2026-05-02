@@ -228,9 +228,6 @@ impl LauncherConfig {
     }
 
     fn fix(&mut self) {
-        if self.ui_antialiasing.is_none() {
-            self.ui_antialiasing = Some(true);
-        }
         if let (Some(accounts), Some(selected)) = (&self.accounts, &self.account_selected) {
             if !accounts.contains_key(selected) {
                 self.account_selected = None;
@@ -242,6 +239,10 @@ impl LauncherConfig {
             if self.java_installs.is_none() {
                 self.java_installs = Some(Vec::new());
             }
+        }
+
+        if let Some(rpc) = &mut self.discord_rpc {
+            rpc.fix();
         }
     }
 

@@ -40,6 +40,14 @@ pub struct RpcConfig {
     _extra: HashMap<String, serde_json::Value>,
 }
 
+impl RpcConfig {
+    pub fn fix(&mut self) {
+        self.basic.fix();
+        self.on_gameopen.fix();
+        self.on_gameexit.fix();
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RpcText {
     pub top_text: Option<String>,
@@ -48,6 +56,32 @@ pub struct RpcText {
     pub bottom_text_url: Option<String>,
     #[serde(flatten)]
     _extra: HashMap<String, serde_json::Value>,
+}
+
+impl RpcText {
+    fn fix(&mut self) {
+        if self.top_text.as_ref().is_some_and(|n| n.is_empty()) {
+            self.top_text = None;
+        }
+        if self.bottom_text.as_ref().is_some_and(|n| n.is_empty()) {
+            self.bottom_text = None;
+        }
+
+        if self
+            .top_text_url
+            .as_ref()
+            .is_some_and(|n| n.trim().is_empty())
+        {
+            self.top_text_url = None;
+        }
+        if self
+            .bottom_text_url
+            .as_ref()
+            .is_some_and(|n| n.trim().is_empty())
+        {
+            self.bottom_text_url = None;
+        }
+    }
 }
 
 const fn competing_default() -> bool {
