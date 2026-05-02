@@ -133,7 +133,9 @@ impl Launcher {
         let rpc_config = self.config.discord_rpc.clone().unwrap_or_default();
 
         if rpc_config.basic.top_text.is_none() && rpc_config.basic.bottom_text.is_none() {
-            return Task::none();
+            return Task::perform(async move { _ = c.clear_activity().await }, |_| {
+                Message::Nothing
+            });
         }
 
         let name = rpc_config.name.clone();
