@@ -41,7 +41,7 @@ pub struct LauncherConfig {
         since = "0.2.0",
         note = "removed feature, field left here for backwards compatibility"
     )]
-    pub java_installs: Option<Vec<String>>,
+    java_installs: Option<Vec<String>>,
 
     /// UI mode (Light/Dark/Auto) set by the user.
     // Since: v0.3
@@ -109,7 +109,7 @@ pub struct LauncherConfig {
     /// Time of last auto-update check result, in seconds since the Unix epoch.
     // Since: TBD
     #[cfg(feature = "auto_update")]
-    pub last_update_check: Option<u64>,
+    last_update_check: Option<u64>,
 
     /// Preserve fields when downgrading
     #[serde(flatten)]
@@ -228,9 +228,6 @@ impl LauncherConfig {
     }
 
     fn fix(&mut self) {
-        if self.ui_antialiasing.is_none() {
-            self.ui_antialiasing = Some(true);
-        }
         if let (Some(accounts), Some(selected)) = (&self.accounts, &self.account_selected) {
             if !accounts.contains_key(selected) {
                 self.account_selected = None;
@@ -242,6 +239,10 @@ impl LauncherConfig {
             if self.java_installs.is_none() {
                 self.java_installs = Some(Vec::new());
             }
+        }
+
+        if let Some(rpc) = &mut self.discord_rpc {
+            rpc.fix();
         }
     }
 
@@ -366,7 +367,7 @@ pub struct ConfigAccount {
     pub uuid: String,
 
     /// Currently unimplemented, does nothing.
-    pub skin: Option<String>, // TODO: Add skin visualization?
+    skin: Option<String>, // TODO: Add skin visualization?
 
     /// Type of account (default: `Microsoft`)
     pub account_type: Option<AccountType>,
@@ -501,13 +502,14 @@ impl AfterLaunchBehavior {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Default)]
 pub enum UiWindowDecorations {
-    #[serde(rename = "system")]
-    #[default]
-    System,
     #[serde(rename = "left")]
     Left,
     #[serde(rename = "right")]
     Right,
+    #[serde(rename = "system")]
+    #[default]
+    #[serde(other)]
+    System,
 }
 
 /*impl Default for UiWindowDecorations {
