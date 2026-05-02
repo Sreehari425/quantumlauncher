@@ -86,15 +86,7 @@ impl Launcher {
                 }
 
                 // On disable
-                block_on(async {
-                    if let Some(c) = &self.discord_ipc_client {
-                        let _ = c.close().await;
-                    }
-                });
-
-                let mut p = self.discord_connection_state.lock().unwrap();
-                *p = PresenceConnectionState::Uninitialized;
-                self.discord_ipc_client = None;
+                self.uninitialize_presence();
             }
             RpcMessage::DefaultChanged(op) => {
                 rpc.basic.apply(op);
@@ -115,10 +107,23 @@ impl Launcher {
             RpcMessage::SetPresenceNow => return self.set_custom_discord_presence(),
             RpcMessage::ResetPresence => {
                 self.config.reset_presence();
+                self.uninitialize_presence();
             }
             RpcMessage::StatusDisplayTypePicked(dt) => rpc.status_display_type = dt,
         }
         Task::none()
+    }
+
+    fn uninitialize_presence(&mut self) {
+        block_on(async {
+            if let Some(c) = &self.discord_ipc_client {
+                let _ = c.close().await;
+            }
+        });
+
+        let mut p = self.discord_connection_state.lock().unwrap();
+        *p = PresenceConnectionState::Uninitialized;
+        self.discord_ipc_client = None;
     }
 
     fn set_custom_discord_presence(&self) -> Task<Message> {
