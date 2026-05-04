@@ -19,6 +19,7 @@ TODO: Add screenshots
 
 - Resource packs, shaders and datapacks can now be managed from the
   Mods screen, and are visible in the list
+- Added "Copy ID" context menu option in Mods list
 
 TODO: Add better datapack handling
 

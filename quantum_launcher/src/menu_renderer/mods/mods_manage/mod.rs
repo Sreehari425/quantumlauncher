@@ -105,8 +105,10 @@ impl MenuEditMods {
                         .on_press(ManageModsMessage::DeleteSelected.into()),
                     ctx_button_icon(icons::file_info_s(CTXI_SIZE), "Mod Details")
                         .on_press_with(|| ModDescriptionMessage::Open(id.clone()).into()),
+                    ctx_button_empty("Copy ID")
+                        .on_press_with(|| Message::CoreCopyText(id.get_internal_id().to_string())),
                 ]
-                .spacing(4),
+                .spacing(2),
                 *x,
                 y.clamp(0.0, window_height - 130.0),
                 150,
