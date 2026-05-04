@@ -147,7 +147,24 @@ impl DirWatcher {
 
     pub fn has_changed(&self) -> bool {
         let mut has_changed = false;
-        while let Ok(_event) = self.recv.try_recv() {
+        while let Ok(event) = self.recv.try_recv() {
+            if let notify::EventKind::Access(notify::event::AccessKind::Open(
+                notify::event::AccessMode::Any,
+            )) = event.kind
+            {
+                let a = &event.attrs;
+                if a.tracker().is_none()
+                    && a.flag().is_none()
+                    && a.info().is_none()
+                    && a.source().is_none()
+                {
+                    // Bogus spam event
+                    // TODO: Test on Windows and macOS
+                    // (tested on Linux)
+                    continue;
+                }
+            }
+
             has_changed = true;
         }
         has_changed

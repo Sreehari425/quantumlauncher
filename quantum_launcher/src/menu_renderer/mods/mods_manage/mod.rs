@@ -9,7 +9,8 @@ use crate::{
     state::{
         EditPresetsMessage, ImageState, InstallFabricMessage, InstallModsMessage,
         InstallOptifineMessage, InstallPaperMessage, ManageJarModsMessage, ManageModsMessage,
-        MenuEditMods, MenuEditModsModal, Message, ModDescriptionMessage, SelectedState,
+        MenuEditMods, MenuEditModsModal, Message, ModDescriptionMessage, ModListEntry,
+        SelectedState,
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
@@ -421,19 +422,27 @@ impl MenuEditMods {
                 .style(|t: &LauncherTheme, s| t.style_button(s, StyleButton::RoundDark))
         };
 
+        let warn_no_loader = self.file_data.config.mod_type.is_vanilla()
+            && self.sorted_mods_list.iter().any(|n| {
+                if let ModListEntry::Local(l) = n {
+                    l.1 == QueryType::Mods
+                } else {
+                    true
+                }
+            });
+
         widget::container(
             column![
                 widget::Column::new()
                     .push_maybe(
-                        (self.file_data.config.mod_type.is_vanilla() && !self.sorted_mods_list.is_empty())
-                        .then_some(
-                            widget::container(
-                                widget::text(
-                                    // WARN: No loader installed
-                                    "You haven't installed any mod loader! Install Fabric/Forge/Quilt/NeoForge as per your mods"
-                                ).size(12)
-                            ).padding(10).width(Length::Fill).style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)),
+                        warn_no_loader.then_some(widget::container(
+                            widget::text(
+                                // WARN: No loader installed
+                                "You haven't installed any mod loader! Install Fabric/Forge/Quilt/NeoForge as per your mods"
+                            ).size(12)
                         )
+                        .width(Length::Fill)
+                        .style(|n: &LauncherTheme| n.style_container_sharp_box(0.0, Color::ExtraDark)))
                     )
                     .push(
                         row![
