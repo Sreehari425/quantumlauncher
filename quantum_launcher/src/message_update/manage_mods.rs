@@ -148,9 +148,11 @@ impl Launcher {
                 self.update_mod_index();
             }
             ManageModsMessage::LocalDeleteFinished(Ok(())) => {}
-            ManageModsMessage::LocalIndexLoaded(hash_set) => {
+            ManageModsMessage::LocalFilesLoaded(files, query_type) => {
                 if let State::EditMods(menu) = &mut self.state {
-                    menu.locally_installed_mods = hash_set;
+                    menu.locally_installed_mods
+                        .retain(|n| n.1 != query_type || files.contains(n));
+                    menu.locally_installed_mods.extend(files);
                 }
             }
             ManageModsMessage::ToggleSelected => return self.manage_mods_toggle_selected(),
@@ -430,11 +432,7 @@ impl Launcher {
         let toggle_local = Task::perform(
             ql_mod_manager::store::toggle_mods_local(ids_local, instance_name.clone()),
             |n| ManageModsMessage::ToggleFinished(n.strerr()).into(),
-        )
-        .chain(MenuEditMods::update_locally_installed_mods(
-            &menu.file_data.mod_index,
-            &instance_name,
-        ));
+        );
 
         Task::batch([toggle_downloaded, toggle_local])
     }

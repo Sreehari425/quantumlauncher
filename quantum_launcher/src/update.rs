@@ -10,7 +10,7 @@ use owo_colors::OwoColorize;
 use crate::launcher_update::UpdateCheckInfo;
 use crate::{
     state::{
-        AutoSaveKind, CustomJarState, DirWatcher, GameProcess, InfoMessage, Launcher,
+        AutoSaveKind, CustomJarState, FsWatcher, GameProcess, InfoMessage, Launcher,
         LauncherSettingsMessage, ManageModsMessage, MenuExportInstance, MenuLicense, MenuWelcome,
         Message, ProgressBar, State, get_entries,
     },
@@ -149,8 +149,8 @@ impl Launcher {
                     tasks.push(CustomJarState::load());
                 }
 
-                let mut watch_reload = |watcher: Option<&DirWatcher>, kind| {
-                    if watcher.is_some_and(DirWatcher::has_changed) {
+                let mut watch_reload = |watcher: Option<&FsWatcher>, kind| {
+                    if watcher.is_some_and(FsWatcher::has_changed) {
                         tasks.push(Task::perform(get_entries(kind), Message::CoreListLoaded));
                     }
                 };
@@ -433,7 +433,7 @@ impl Launcher {
 
         if self_watcher.is_none() {
             let dir = kind.get_root_directory();
-            let watcher = match DirWatcher::new(dir) {
+            let watcher = match FsWatcher::new(dir) {
                 Ok(n) => n,
                 Err(err) => {
                     err!("Couldn't start dir watcher! {err}");

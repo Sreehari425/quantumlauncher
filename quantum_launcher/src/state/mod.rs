@@ -75,8 +75,8 @@ pub struct Launcher {
 
     pub client_list: Option<Vec<String>>,
     pub server_list: Option<Vec<String>>,
-    pub client_watcher: Option<DirWatcher>,
-    pub server_watcher: Option<DirWatcher>,
+    pub client_watcher: Option<FsWatcher>,
+    pub server_watcher: Option<FsWatcher>,
 
     pub processes: HashMap<Instance, GameProcess>,
     pub logs: HashMap<Instance, InstanceLog>,
@@ -110,7 +110,7 @@ pub struct WindowState {
 
 pub struct CustomJarState {
     pub choices: Vec<String>,
-    pub watcher: DirWatcher,
+    pub watcher: FsWatcher,
 }
 
 impl CustomJarState {
@@ -121,13 +121,13 @@ impl CustomJarState {
     }
 }
 
-pub struct DirWatcher {
+pub struct FsWatcher {
     recv: Receiver<notify::Event>,
     _watcher: notify::RecommendedWatcher,
 }
 
-impl DirWatcher {
-    pub fn new<P: AsRef<Path>>(path: P) -> notify::Result<DirWatcher> {
+impl FsWatcher {
+    pub fn new<P: AsRef<Path>>(path: P) -> notify::Result<FsWatcher> {
         let (tx, recv) = mpsc::channel();
 
         // `notify` runs callbacks in its own thread.
@@ -139,7 +139,7 @@ impl DirWatcher {
         let path = path.as_ref();
         watcher.watch(path, notify::RecursiveMode::NonRecursive)?;
 
-        Ok(DirWatcher {
+        Ok(FsWatcher {
             recv,
             _watcher: watcher,
         })

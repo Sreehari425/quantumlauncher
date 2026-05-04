@@ -78,9 +78,8 @@ impl Launcher {
                 self.autosave_launcher_config();
             }
             State::EditMods(menu) => {
-                let instance_selection = self.selected_instance.as_ref().unwrap();
-                let update_locally_installed_mods = menu.tick(instance_selection);
-                return update_locally_installed_mods;
+                let instance = self.selected_instance.as_ref().unwrap();
+                return menu.tick(instance);
             }
             State::InstallFabric(menu) => {
                 if let MenuInstallFabric::Loaded {
@@ -397,7 +396,7 @@ pub fn sort_dependencies(
 }
 
 impl MenuEditMods {
-    fn tick(&mut self, instance_selection: &Instance) -> Task<Message> {
+    fn tick(&mut self, instance: &Instance) -> Task<Message> {
         self.sorted_mods_list =
             sort_dependencies(&self.file_data.mod_index.mods, &self.locally_installed_mods);
 
@@ -408,7 +407,15 @@ impl MenuEditMods {
             }
         }
 
-        MenuEditMods::update_locally_installed_mods(&self.file_data.mod_index, instance_selection)
+        if let Some(project_type) = self.file_data.content_watcher.tick() {
+            MenuEditMods::update_locally_installed_mods(
+                &self.file_data.mod_index,
+                instance,
+                project_type,
+            )
+        } else {
+            Task::none()
+        }
     }
 }
 

@@ -2,15 +2,15 @@ use crate::{
     Launcher, Message,
     menu_renderer::back_to_launch_screen,
     state::{
-        AutoSaveKind, EditModsFileData, EditModsSelection, EditModsUiState, EditModsUpdates,
-        EditPresetsMessage, InfoMessage, LaunchTab, LogState, ManageModsMessage, MenuEditMods,
-        MenuInstallForge, MenuInstallOptifine, ProgressBar, SelectedState, State,
+        AutoSaveKind, ContentWatcher, EditModsFileData, EditModsSelection, EditModsUiState,
+        EditModsUpdates, EditPresetsMessage, InfoMessage, LaunchTab, LogState, ManageModsMessage,
+        MenuEditMods, MenuInstallForge, MenuInstallOptifine, ProgressBar, SelectedState, State,
     },
     tick::sort_dependencies,
 };
 use iced::{Task, futures::executor::block_on, widget::scrollable::AbsoluteOffset};
 use ql_core::{
-    GenericProgress, Instance, IntoIoError, IntoStringError, JsonFileError, err,
+    GenericProgress, Instance, IntoIoError, IntoStringError, err,
     file_utils::exists,
     json::{VersionDetails, instance_config::InstanceConfigJson},
 };
@@ -109,15 +109,19 @@ impl Launcher {
         async fn inner(
             this: &mut Launcher,
             info_message: Option<InfoMessage>,
-        ) -> Result<Task<Message>, JsonFileError> {
+        ) -> Result<Task<Message>, String> {
             let instance = this.selected_instance.as_ref().unwrap();
 
-            let config = InstanceConfigJson::read(instance).await?;
-            let details = Box::new(VersionDetails::load(instance).await?);
+            let config = InstanceConfigJson::read(instance).await.strerr()?;
+            let details = Box::new(VersionDetails::load(instance).await.strerr()?);
+            let mod_index = ModIndex::load(instance).await.strerr()?;
 
-            let mod_index = ModIndex::load(instance).await?;
+            let dotmc_dir = instance.get_dot_minecraft_path();
+
             let update_local_mods_task =
-                MenuEditMods::update_locally_installed_mods(&mod_index, instance);
+                Task::batch(QueryType::INDEX_SUPPORTED.iter().map(|n| {
+                    MenuEditMods::update_locally_installed_mods(&mod_index, instance, *n)
+                }));
 
             let locally_installed_mods = HashSet::new();
             let sorted_mods_list = sort_dependencies(&mod_index.mods, &locally_installed_mods);
@@ -155,6 +159,7 @@ impl Launcher {
                     config,
                     mod_index,
                     details,
+                    content_watcher: ContentWatcher::new(&dotmc_dir),
                 },
                 locally_installed_mods,
                 search: None,
@@ -177,35 +182,24 @@ impl Launcher {
         let (j_sender, j_receiver): (Sender<GenericProgress>, Receiver<GenericProgress>) =
             std::sync::mpsc::channel();
 
-        let instance_selection = self.selected_instance.clone().unwrap();
-        let instance_selection2 = instance_selection.clone();
+        let instance = self.selected_instance.clone().unwrap();
+        let instance2 = instance.clone();
 
         let command = Task::perform(
             async move {
                 if matches!(kind, ForgeKind::NeoForge) {
                     // TODO: Add UI to specify NeoForge version
-                    loaders::neoforge::install(
-                        None,
-                        instance_selection2,
-                        Some(f_sender),
-                        Some(j_sender),
-                    )
-                    .await
+                    loaders::neoforge::install(None, instance2, Some(f_sender), Some(j_sender))
+                        .await
                 } else {
-                    loaders::forge::install(
-                        None,
-                        instance_selection2,
-                        Some(f_sender),
-                        Some(j_sender),
-                    )
-                    .await
+                    loaders::forge::install(None, instance2, Some(f_sender), Some(j_sender)).await
                 }
                 .strerr()?;
                 if matches!(kind, ForgeKind::OptiFine) {
-                    copy_optifine_over(&instance_selection)
+                    copy_optifine_over(&instance)
                         .await
                         .map_err(|n| format!("Couldn't install OptiFine with Forge:\n{n}"))?;
-                    loaders::optifine::uninstall(instance_selection.get_name().to_owned(), false)
+                    loaders::optifine::uninstall(instance.get_name().to_owned(), false)
                         .await
                         .strerr()?;
                 }
@@ -347,18 +341,19 @@ impl Launcher {
 
 pub async fn get_locally_installed_mods(
     dot_mc: PathBuf,
-    blacklist: Vec<String>,
+    blacklist: HashSet<String>,
+    project_type: QueryType,
 ) -> HashSet<LocalMod> {
-    let dirs = [
-        ("mods", QueryType::Mods),
-        ("resourcepacks", QueryType::ResourcePacks),
-        ("texturepacks", QueryType::ResourcePacks),
-        ("shaderpacks", QueryType::Shaders),
-        ("datapacks", QueryType::DataPacks),
-    ];
+    let dirs: &[&str] = match project_type {
+        QueryType::Mods => &["mods"],
+        QueryType::ResourcePacks => &["resourcepacks", "texturepacks"],
+        QueryType::Shaders => &["shaderpacks"],
+        QueryType::DataPacks => &["datapacks"],
+        QueryType::ModPacks => return HashSet::new(),
+    };
     let mut set = HashSet::new();
 
-    for (dir, project_type) in dirs {
+    for dir in dirs {
         let mods_dir_path = dot_mc.join(dir);
 
         let mut dir = match tokio::fs::read_dir(&mods_dir_path).await {
@@ -377,18 +372,27 @@ pub async fn get_locally_installed_mods(
             let Some(file_name) = path.file_name().and_then(OsStr::to_str) else {
                 continue;
             };
-            if blacklist.contains(&file_name.to_owned()) {
+            if blacklist.contains(file_name) {
                 continue;
             }
-            let Some(extension) = path.extension() else {
-                continue;
-            };
-            if extension.eq_ignore_ascii_case("jar")
-                || extension.eq_ignore_ascii_case("zip")
-                || extension.eq_ignore_ascii_case("disabled")
-            {
-                set.insert(LocalMod(Arc::from(file_name), project_type));
+            if let Ok(f) = entry.file_type().await {
+                if f.is_dir() {
+                    if project_type == QueryType::Mods {
+                        continue;
+                    }
+                } else {
+                    let Some(extension) = path.extension() else {
+                        continue;
+                    };
+                    if !(extension.eq_ignore_ascii_case("jar")
+                        || extension.eq_ignore_ascii_case("zip")
+                        || extension.eq_ignore_ascii_case("disabled"))
+                    {
+                        continue;
+                    }
+                }
             }
+            set.insert(LocalMod(Arc::from(file_name), project_type));
         }
     }
     set

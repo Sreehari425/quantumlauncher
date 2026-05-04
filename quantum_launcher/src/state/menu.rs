@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
     time::Instant,
 };
@@ -11,7 +11,7 @@ use crate::{
         sidebar::{FolderId, SDragLocation, SidebarSelection},
     },
     message_handler::get_locally_installed_mods,
-    state::NotesMessage,
+    state::{FsWatcher, NotesMessage},
 };
 use ezshortcut::Shortcut;
 use frostmark::MarkState;
@@ -23,8 +23,10 @@ use ql_core::{
     DownloadProgress, GenericProgress, Instance, InstanceKind, IntoStringError, ListEntry,
     OptifineUniqueVersion,
     file_utils::DirItem,
+    flags::log_verbose,
     jarmod::JarMods,
     json::{InstanceConfigJson, VersionDetails, instance_config::MainClassMode},
+    pt,
 };
 use ql_mod_manager::{
     loaders::paper::PaperVersion,
@@ -293,21 +295,27 @@ pub struct MenuEditMods {
 
 impl MenuEditMods {
     pub fn toggle_local_mods_in_ui(&mut self, ids_local: &[LocalMod]) {
-        self.selection.selected_mods.retain(|n| {
+        let remove_old = |n: &SelectedMod| {
             if let SelectedMod::Local(l) = n {
                 !ids_local.contains(l)
             } else {
                 true
             }
-        });
+        };
+
+        let add_new = || {
+            ids_local
+                .iter()
+                .map(|n| LocalMod(Arc::from(ql_mod_manager::store::flip_filename(&n.0)), n.1))
+        };
+
+        self.selection.selected_mods.retain(remove_old);
         self.selection
             .selected_mods
-            .extend(ids_local.iter().map(|n| {
-                SelectedMod::Local(LocalMod(
-                    Arc::from(ql_mod_manager::store::flip_filename(&n.0)),
-                    n.1,
-                ))
-            }));
+            .extend(add_new().map(SelectedMod::Local));
+        self.locally_installed_mods
+            .retain(|l| !ids_local.contains(l));
+        self.locally_installed_mods.extend(add_new());
     }
 }
 
@@ -338,6 +346,87 @@ pub struct EditModsFileData {
     pub mod_index: ModIndex,
     // TODO: Use this for dynamically adjusting installable loader buttons
     pub details: Box<VersionDetails>,
+
+    pub content_watcher: ContentWatcher,
+}
+
+pub struct ContentWatcher {
+    pub mods: Option<FsWatcher>,
+    pub resource_packs: Option<FsWatcher>,
+    pub texture_packs: Option<FsWatcher>,
+    pub shaders: Option<FsWatcher>,
+    pub data_packs: Option<FsWatcher>,
+}
+
+impl ContentWatcher {
+    pub fn new(dotmc_dir: &Path) -> Self {
+        let watch = |dir| FsWatcher::new(dotmc_dir.join(dir)).ok();
+
+        Self {
+            mods: watch("mods"),
+            resource_packs: watch("resourcepacks"),
+            texture_packs: watch("texturepacks"),
+            shaders: watch("shaderpacks"),
+            data_packs: watch("datapacks"),
+        }
+    }
+
+    pub fn tick(&self) -> Option<QueryType> {
+        if let Some(w) = &self.mods {
+            if w.has_changed() {
+                if log_verbose() {
+                    pt!("Watch: dir changed (mods)");
+                }
+                return Some(QueryType::Mods);
+            }
+        }
+        if let Some(w) = &self.resource_packs {
+            if w.has_changed() {
+                if log_verbose() {
+                    pt!("Watch: dir changed (resourcepacks)");
+                }
+                return Some(QueryType::ResourcePacks);
+            }
+        }
+        if let Some(w) = &self.texture_packs {
+            if w.has_changed() {
+                if log_verbose() {
+                    pt!("Watch: dir changed (texturepacks)");
+                }
+                return Some(QueryType::ResourcePacks);
+            }
+        }
+        if let Some(w) = &self.shaders {
+            if w.has_changed() {
+                if log_verbose() {
+                    pt!("Watch: dir changed (shaderpacks)");
+                }
+                return Some(QueryType::Shaders);
+            }
+        }
+        if let Some(w) = &self.data_packs {
+            if w.has_changed() {
+                if log_verbose() {
+                    pt!("Watch: dir changed (datapacks)");
+                }
+                return Some(QueryType::DataPacks);
+            }
+        }
+
+        None
+    }
+
+    #[allow(unused)] // Just for type safety
+    pub fn get(&self, query_type: QueryType) -> Option<&FsWatcher> {
+        match query_type {
+            QueryType::Mods => &self.mods,
+            QueryType::Shaders => &self.shaders,
+            QueryType::ModPacks => return None,
+            QueryType::DataPacks => &self.data_packs,
+            QueryType::ResourcePacks => &self.resource_packs,
+        }
+        .as_ref()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -381,17 +470,25 @@ impl MenuEditMods {
     pub fn update_locally_installed_mods(
         idx: &ModIndex,
         selected_instance: &Instance,
+        project_type: QueryType,
     ) -> Task<Message> {
-        let mut blacklist = Vec::new();
+        let mut blacklist = HashSet::new();
         for mod_info in idx.mods.values() {
+            if mod_info.project_type != project_type {
+                continue;
+            }
             for file in &mod_info.files {
-                blacklist.push(file.filename.clone());
-                blacklist.push(format!("{}.disabled", file.filename));
+                blacklist.insert(file.filename.clone());
+                blacklist.insert(format!("{}.disabled", file.filename));
             }
         }
         Task::perform(
-            get_locally_installed_mods(selected_instance.get_dot_minecraft_path(), blacklist),
-            |n| ManageModsMessage::LocalIndexLoaded(n).into(),
+            get_locally_installed_mods(
+                selected_instance.get_dot_minecraft_path(),
+                blacklist,
+                project_type,
+            ),
+            move |n| ManageModsMessage::LocalFilesLoaded(n, project_type).into(),
         )
     }
 

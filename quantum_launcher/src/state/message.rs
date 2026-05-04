@@ -121,7 +121,7 @@ pub enum ManageModsMessage {
     DeleteOptiforge(Arc<str>),
     DeleteFinished(Res<Vec<ModId>>),
     LocalDeleteFinished(Res),
-    LocalIndexLoaded(HashSet<LocalMod>),
+    LocalFilesLoaded(HashSet<LocalMod>, QueryType),
 
     ToggleSelected,
     ToggleFinished(Res),
