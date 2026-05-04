@@ -3,10 +3,10 @@ use crate::{
     menu_renderer::back_to_launch_screen,
     state::{
         AutoSaveKind, ContentWatcher, EditModsFileData, EditModsSelection, EditModsUiState,
-        EditModsUpdates, EditPresetsMessage, InfoMessage, LaunchTab, LogState, ManageModsMessage,
-        MenuEditMods, MenuInstallForge, MenuInstallOptifine, ProgressBar, SelectedState, State,
+        EditModsUpdates, EditPresetsMessage, FsWatcher, InfoMessage, LaunchTab, LogState,
+        ManageModsMessage, MenuEditMods, MenuInstallForge, MenuInstallOptifine, ProgressBar,
+        SelectedState, State,
     },
-    tick::sort_dependencies,
 };
 use iced::{Task, futures::executor::block_on, widget::scrollable::AbsoluteOffset};
 use ql_core::{
@@ -124,10 +124,9 @@ impl Launcher {
                 }));
 
             let locally_installed_mods = HashSet::new();
-            let sorted_mods_list = sort_dependencies(&mod_index.mods, &locally_installed_mods);
 
             this.state = State::EditMods(MenuEditMods {
-                sorted_mods_list,
+                sorted_mods_list: Vec::new(),
                 selection: EditModsSelection {
                     selected_mods: HashSet::new(),
                     shift_selected_mods: HashSet::new(),
@@ -160,6 +159,7 @@ impl Launcher {
                     mod_index,
                     details,
                     content_watcher: ContentWatcher::new(&dotmc_dir),
+                    index_watcher: FsWatcher::new(ModIndex::get_path(instance)).strerr()?,
                 },
                 locally_installed_mods,
                 search: None,

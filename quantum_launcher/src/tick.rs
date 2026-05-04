@@ -1,21 +1,17 @@
-use std::{
-    cmp::Ordering,
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use iced::{Rectangle, Task, widget::text_editor};
 use ql_core::{
     Instance, IntoIoError, IntoJsonError, IntoStringError, JsonFileError, constants::OS_NAME,
     json::InstanceConfigJson,
 };
-use ql_mod_manager::store::{LocalMod, ModConfig, ModId, ModIndex};
+use ql_mod_manager::store::ModIndex;
 
 use crate::state::{
     AutoSaveKind, EditInstanceMessage, GameProcess, InstallModsMessage, InstanceLog, LaunchModal,
-    LaunchTab, Launcher, LogState, ManageJarModsMessage, MenuCreateInstance, MenuEditMods,
-    MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuLaunch, MenuLoginMS,
-    MenuModsDownload, MenuRecommendedMods, Message, ModListEntry, State,
+    LaunchTab, Launcher, LogState, ManageJarModsMessage, ManageModsMessage, MenuCreateInstance,
+    MenuEditMods, MenuExportInstance, MenuInstallFabric, MenuInstallOptifine, MenuLaunch,
+    MenuLoginMS, MenuModsDownload, MenuRecommendedMods, Message, State,
 };
 use crate::{config::SIDEBAR_WIDTH, state::InfoMessage};
 
@@ -358,47 +354,9 @@ impl MenuModsDownload {
     }
 }
 
-pub fn sort_dependencies(
-    downloaded_mods: &HashMap<ModId, ModConfig>,
-    locally_installed_mods: &HashSet<LocalMod>,
-) -> Vec<ModListEntry> {
-    let mut entries: Vec<ModListEntry> = downloaded_mods
-        .iter()
-        .map(|(id, c)| ModListEntry::Downloaded {
-            id: id.clone(),
-            config: Box::new(c.clone()),
-        })
-        .chain(locally_installed_mods.iter().map(ModListEntry::from))
-        .collect();
-
-    entries.sort_by(|val1, val2| match (val1, val2) {
-        (ModListEntry::Downloaded { .. }, ModListEntry::Local(_)) => Ordering::Less,
-        (ModListEntry::Local(_), ModListEntry::Downloaded { .. }) => Ordering::Greater,
-
-        (
-            ModListEntry::Downloaded { config: c1, .. },
-            ModListEntry::Downloaded { config: c2, .. },
-        ) => match (c1.manually_installed, c2.manually_installed) {
-            (true, false) => Ordering::Less,
-            (false, true) => Ordering::Greater,
-            _ => match c1.project_type.cmp(&c2.project_type) {
-                Ordering::Equal => c1.name.cmp(&c2.name),
-                other => other,
-            },
-        },
-        (ModListEntry::Local(l1), ModListEntry::Local(l2)) => match l1.1.cmp(&l2.1) {
-            Ordering::Equal => l1.0.cmp(&l2.0),
-            other => other,
-        },
-    });
-
-    entries
-}
-
 impl MenuEditMods {
     fn tick(&mut self, instance: &Instance) -> Task<Message> {
-        self.sorted_mods_list =
-            sort_dependencies(&self.file_data.mod_index.mods, &self.locally_installed_mods);
+        self.sort_mods();
 
         if let Some(progress) = &mut self.updates.progress {
             progress.tick();
@@ -407,7 +365,7 @@ impl MenuEditMods {
             }
         }
 
-        if let Some(project_type) = self.file_data.content_watcher.tick() {
+        let t1 = if let Some(project_type) = self.file_data.content_watcher.tick() {
             MenuEditMods::update_locally_installed_mods(
                 &self.file_data.mod_index,
                 instance,
@@ -415,7 +373,18 @@ impl MenuEditMods {
             )
         } else {
             Task::none()
-        }
+        };
+
+        let t2 = if self.file_data.index_watcher.has_changed() {
+            let i = instance.clone();
+            Task::perform(async move { ModIndex::load(&i).await.strerr() }, |n| {
+                ManageModsMessage::IndexLoaded(n).into()
+            })
+        } else {
+            Task::none()
+        };
+
+        Task::batch([t1, t2])
     }
 }
 

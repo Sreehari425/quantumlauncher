@@ -111,6 +111,7 @@ pub enum EditInstanceMessage {
 #[derive(Debug, Clone)]
 pub enum ManageModsMessage {
     Open,
+    IndexLoaded(Res<ModIndex>),
     ListScrolled(AbsoluteOffset),
     /// Simple, dumb selection
     SelectEnsure(Arc<str>, Option<ModId>, QueryType),
@@ -120,11 +121,10 @@ pub enum ManageModsMessage {
     DeleteSelected,
     DeleteOptiforge(Arc<str>),
     DeleteFinished(Res<Vec<ModId>>),
-    LocalDeleteFinished(Res),
+
     LocalFilesLoaded(HashSet<LocalMod>, QueryType),
 
     ToggleSelected,
-    ToggleFinished(Res),
     ToggleOne(ModId),
     ToggleOneLocal(LocalMod),
 
@@ -472,6 +472,7 @@ pub enum LaunchMessage {
 pub enum Message {
     Nothing,
     Error(String),
+    Done(Res),
     Multiple(Vec<Message>),
     ShowScreen(String),
 

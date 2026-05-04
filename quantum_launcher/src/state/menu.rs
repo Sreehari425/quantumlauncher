@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
     sync::Arc,
@@ -317,6 +318,43 @@ impl MenuEditMods {
             .retain(|l| !ids_local.contains(l));
         self.locally_installed_mods.extend(add_new());
     }
+
+    pub fn sort_mods(&mut self) {
+        let downloaded_mods = &self.file_data.mod_index.mods;
+        let locally_installed_mods = &self.locally_installed_mods;
+
+        let mut entries: Vec<ModListEntry> = downloaded_mods
+            .iter()
+            .map(|(id, c)| ModListEntry::Downloaded {
+                id: id.clone(),
+                config: Box::new(c.clone()),
+            })
+            .chain(locally_installed_mods.iter().map(ModListEntry::from))
+            .collect();
+
+        entries.sort_by(|val1, val2| match (val1, val2) {
+            (ModListEntry::Downloaded { .. }, ModListEntry::Local(_)) => Ordering::Less,
+            (ModListEntry::Local(_), ModListEntry::Downloaded { .. }) => Ordering::Greater,
+
+            (
+                ModListEntry::Downloaded { config: c1, .. },
+                ModListEntry::Downloaded { config: c2, .. },
+            ) => match (c1.manually_installed, c2.manually_installed) {
+                (true, false) => Ordering::Less,
+                (false, true) => Ordering::Greater,
+                _ => match c1.project_type.cmp(&c2.project_type) {
+                    Ordering::Equal => c1.name.cmp(&c2.name),
+                    other => other,
+                },
+            },
+            (ModListEntry::Local(l1), ModListEntry::Local(l2)) => match l1.1.cmp(&l2.1) {
+                Ordering::Equal => l1.0.cmp(&l2.0),
+                other => other,
+            },
+        });
+
+        self.sorted_mods_list = entries;
+    }
 }
 
 pub struct EditModsUpdates {
@@ -348,6 +386,7 @@ pub struct EditModsFileData {
     pub details: Box<VersionDetails>,
 
     pub content_watcher: ContentWatcher,
+    pub index_watcher: FsWatcher,
 }
 
 pub struct ContentWatcher {

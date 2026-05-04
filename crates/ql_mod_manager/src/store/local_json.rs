@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     io::ErrorKind,
+    path::PathBuf,
     sync::Arc,
 };
 
@@ -53,11 +54,16 @@ impl ModIndex {
     }
 
     pub async fn save(&mut self, instance: &Instance) -> Result<(), JsonFileError> {
-        let index_dir = instance.get_dot_minecraft_path().join("mod_index.json");
+        let path = Self::get_path(instance);
 
         let index_str = serde_json::to_string(&self).json_to()?;
-        fs::write(&index_dir, &index_str).await.path(index_dir)?;
+        fs::write(&path, &index_str).await.path(path)?;
         Ok(())
+    }
+
+    #[must_use]
+    pub fn get_path(instance: &Instance) -> PathBuf {
+        instance.get_dot_minecraft_path().join("mod_index.json")
     }
 
     fn new(instance: &Instance) -> Self {

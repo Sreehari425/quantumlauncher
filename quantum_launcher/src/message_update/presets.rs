@@ -128,10 +128,14 @@ impl Launcher {
             return;
         };
 
-        let selected_mods = menu
-            .sorted_mods_list
-            .iter()
-            .filter(|n| n.project_type() == QueryType::Mods)
+        // I'm anyway overhauling this thing in another PR
+        let mods = || {
+            menu.sorted_mods_list
+                .iter()
+                .filter(|n| n.project_type() == QueryType::Mods)
+        };
+
+        let selected_mods = mods()
             .filter_map(|n| n.is_manually_installed().then_some(n.clone().into()))
             .collect::<HashSet<_>>();
 
@@ -141,7 +145,7 @@ impl Launcher {
             is_building: false,
             include_config: true,
             progress: None,
-            sorted_mods_list: menu.sorted_mods_list.clone(),
+            sorted_mods_list: mods().cloned().collect(),
             drag_and_drop_hovered: false,
         };
 

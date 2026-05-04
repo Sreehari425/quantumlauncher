@@ -3,7 +3,7 @@ use iced::{futures::executor::block_on, keyboard::Modifiers};
 use ql_core::file_utils::exists;
 use ql_core::json::VersionDetails;
 use ql_core::{Instance, IntoIoError, IntoStringError, err, jarmod::JarMods};
-use ql_mod_manager::store::{DirStructure, LocalMod, ModId, ModIndex, QueryType, SelectedMod};
+use ql_mod_manager::store::{DirStructure, LocalMod, ModId, QueryType, SelectedMod};
 use std::{collections::HashSet, path::PathBuf};
 
 use crate::state::{
@@ -20,10 +20,14 @@ impl Launcher {
 
             ManageModsMessage::AddFileDone(Err(err))
             | ManageModsMessage::DeleteFinished(Err(err))
-            | ManageModsMessage::LocalDeleteFinished(Err(err))
-            | ManageModsMessage::ToggleFinished(Err(err))
+            | ManageModsMessage::IndexLoaded(Err(err))
             | ManageModsMessage::UpdatePerformDone(Err(err)) => self.set_error(err),
 
+            ManageModsMessage::IndexLoaded(Ok(idx)) => {
+                if let State::EditMods(menu) = &mut self.state {
+                    menu.file_data.mod_index = idx;
+                }
+            }
             ManageModsMessage::ListScrolled(offset) => {
                 if let State::EditMods(menu) = &mut self.state {
                     menu.ui_state.list_scroll = offset;
@@ -114,7 +118,7 @@ impl Launcher {
                             }
                             Ok(())
                         },
-                        |n| ManageModsMessage::LocalDeleteFinished(n).into(),
+                        Message::Done,
                     );
 
                     return Task::batch([delete_downloaded_command, delete_local_command]);
@@ -138,17 +142,13 @@ impl Launcher {
                         }
                     }
                 }
-                return Task::perform(delete_file_wrapper(mods_dir.join(&*name)), |n| {
-                    ManageModsMessage::LocalDeleteFinished(n).into()
-                });
+                return Task::perform(delete_file_wrapper(mods_dir.join(&*name)), Message::Done);
             }
             ManageModsMessage::DeleteFinished(Ok(_)) => {
                 if let State::EditMods(menu) = &mut self.state {
                     menu.selection.selected_mods.clear();
                 }
-                self.update_mod_index();
             }
-            ManageModsMessage::LocalDeleteFinished(Ok(())) => {}
             ManageModsMessage::LocalFilesLoaded(files, query_type) => {
                 if let State::EditMods(menu) = &mut self.state {
                     menu.locally_installed_mods
@@ -158,11 +158,8 @@ impl Launcher {
             }
             ManageModsMessage::ToggleSelected => return self.manage_mods_toggle_selected(),
 
-            ManageModsMessage::ToggleFinished(Ok(())) => self.update_mod_index(),
-
             ManageModsMessage::UpdatePerform => return self.apply_mod_updates(),
             ManageModsMessage::UpdatePerformDone(Ok((file, should_write_changelog))) => {
-                self.update_mod_index();
                 if let State::EditMods(menu) = &mut self.state {
                     menu.updates.available.clear();
                     menu.ui_state.info_message = if let Some(file) = file {
@@ -314,15 +311,17 @@ impl Launcher {
                 }
             }
             ManageModsMessage::ToggleOne(id) => {
-                let instance_name = self.selected_instance.clone().unwrap();
                 if let State::EditMods(menu) = &mut self.state {
                     if let Some(m) = menu.file_data.mod_index.mods.get_mut(&id) {
                         m.enabled = !m.enabled;
                     }
                 }
                 return Task::perform(
-                    ql_mod_manager::store::toggle_mods(vec![id], instance_name),
-                    |n| ManageModsMessage::ToggleFinished(n.strerr()).into(),
+                    ql_mod_manager::store::toggle_mods(
+                        vec![id],
+                        self.selected_instance.clone().unwrap(),
+                    ),
+                    |n| Message::Done(n.strerr()),
                 );
             }
             ManageModsMessage::ToggleOneLocal(local) => {
@@ -334,7 +333,7 @@ impl Launcher {
                         vec![local],
                         self.selected_instance.clone().unwrap(),
                     ),
-                    |n| ManageModsMessage::ToggleFinished(n.strerr()).into(),
+                    |n| Message::Done(n.strerr()),
                 );
             }
         }
@@ -397,11 +396,11 @@ impl Launcher {
 
         let toggle_downloaded = Task::perform(
             ql_mod_manager::store::toggle_mods(ids_downloaded.clone(), instance_name.clone()),
-            |n| ManageModsMessage::ToggleFinished(n.strerr()).into(),
+            |n| Message::Done(n.strerr()),
         );
         let toggle_local = Task::perform(
             ql_mod_manager::store::toggle_mods_local(ids_local, instance_name.clone()),
-            |n| ManageModsMessage::ToggleFinished(n.strerr()).into(),
+            |n| Message::Done(n.strerr()),
         );
 
         Task::batch([toggle_downloaded, toggle_local])
@@ -462,15 +461,6 @@ impl Launcher {
             ql_mod_manager::store::delete_mods(ids, selected_instance),
             |n| ManageModsMessage::DeleteFinished(n.strerr()).into(),
         )
-    }
-
-    fn update_mod_index(&mut self) {
-        if let State::EditMods(menu) = &mut self.state {
-            match block_on(ModIndex::load(self.selected_instance.as_ref().unwrap())).strerr() {
-                Ok(idx) => menu.file_data.mod_index = idx,
-                Err(err) => self.set_error(err),
-            }
-        }
     }
 
     pub fn update_manage_jar_mods(&mut self, msg: ManageJarModsMessage) -> Task<Message> {
@@ -872,5 +862,40 @@ impl MenuEditMods {
     pub fn scroll_fix(&self) -> Task<Message> {
         let id = widget::scrollable::Id::new("MenuEditMods:mods");
         widget::scrollable::scroll_to(id, self.ui_state.list_scroll)
+    }
+}
+
+impl ManageModsMessage {
+    pub fn edits_mod_list(&self) -> bool {
+        match self {
+            ManageModsMessage::Open
+            | ManageModsMessage::IndexLoaded(_)
+            | ManageModsMessage::DeleteOptiforge(_)
+            | ManageModsMessage::DeleteSelected
+            | ManageModsMessage::DeleteFinished(_)
+            | ManageModsMessage::LocalFilesLoaded(_, _)
+            | ManageModsMessage::UpdatePerformDone(_)
+            | ManageModsMessage::AddFileDone(_)
+            | ManageModsMessage::ToggleSelected
+            | ManageModsMessage::ToggleOne(_)
+            | ManageModsMessage::ToggleOneLocal(_) => true,
+
+            ManageModsMessage::SelectEnsure(_, _, _)
+            | ManageModsMessage::SelectMod(_, _, _)
+            | ManageModsMessage::SelectAll
+            | ManageModsMessage::ListScrolled(_)
+            | ManageModsMessage::UpdateCheck
+            | ManageModsMessage::UpdateCheckResult(_)
+            | ManageModsMessage::UpdateCheckToggle(_, _)
+            | ManageModsMessage::UpdatePerform
+            | ManageModsMessage::AddFile(_, _)
+            | ManageModsMessage::SetSearch(_)
+            | ManageModsMessage::SetContentFilter(_)
+            | ManageModsMessage::RightClick(_)
+            | ManageModsMessage::SetModal(_)
+            | ManageModsMessage::AddFileSelected(_, _, _)
+            | ManageModsMessage::CurseforgeManualToggleDelete(_)
+            | ManageModsMessage::SetInfoMessage(_) => false,
+        }
     }
 }

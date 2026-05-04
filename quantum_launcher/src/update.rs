@@ -20,8 +20,8 @@ use crate::{
 impl Launcher {
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::Nothing | Message::CoreCleanComplete(Ok(())) => {}
-            Message::Error(err) => self.set_error(err),
+            Message::Nothing | Message::CoreCleanComplete(Ok(())) | Message::Done(Ok(())) => {}
+            Message::Error(err) | Message::Done(Err(err)) => self.set_error(err),
             Message::Multiple(msgs) => {
                 let mut task = Task::none();
                 for msg in msgs {
@@ -59,7 +59,6 @@ impl Launcher {
             Message::MainMenu(msg) => return self.update_main_menu(msg),
             Message::Sidebar(msg) => return self.update_sidebar(msg),
             Message::Account(msg) => return self.update_account(msg),
-            Message::ManageMods(msg) => return self.update_manage_mods(msg),
             Message::ExportMods(msg) => return self.update_export_mods(msg),
             Message::ManageJarMods(msg) => return self.update_manage_jar_mods(msg),
             Message::RecommendedMods(msg) => return self.update_recommended_mods(msg),
@@ -75,6 +74,17 @@ impl Launcher {
                 Ok(n) => return n,
                 Err(e) => self.set_error(e),
             },
+
+            Message::ManageMods(msg) => {
+                let sort = msg.edits_mod_list();
+                let t = self.update_manage_mods(msg);
+                if sort {
+                    if let State::EditMods(menu) = &mut self.state {
+                        menu.sort_mods();
+                    }
+                }
+                return t;
+            }
 
             Message::DeleteInstanceMenu => self.go_to_delete_instance_menu(),
             Message::DeleteInstance => return self.delete_instance_confirm(),
