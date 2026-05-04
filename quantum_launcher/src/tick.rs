@@ -182,7 +182,7 @@ impl Launcher {
             | State::InstallPaper(_)
             | State::CreateShortcut(_)
             | State::ModDescription(_)
-            | State::ExportMods(_) => {}
+            | State::ExportModsText(_) => {}
         }
 
         Task::none()

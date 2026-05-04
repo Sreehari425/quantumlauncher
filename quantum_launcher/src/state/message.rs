@@ -147,12 +147,12 @@ pub enum ManageModsMessage {
     SetSearch(Option<String>),
     SetContentFilter(Option<QueryType>),
 
-    ExportMenuOpen,
     CurseforgeManualToggleDelete(bool),
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum ExportModsMessage {
+pub enum ExportModsTextMessage {
+    Open,
     ExportAsPlainText,
     ExportAsMarkdown,
     CopyMarkdownToClipboard,
@@ -493,7 +493,7 @@ pub enum Message {
     InstallOptifine(InstallOptifineMessage),
     InstallFabric(InstallFabricMessage),
     EditPresets(EditPresetsMessage),
-    ExportMods(ExportModsMessage),
+    ExportMods(ExportModsTextMessage),
     RecommendedMods(RecommendedModMessage),
     MainMenu(MainMenuMessage),
     Sidebar(SidebarMessage),
@@ -577,7 +577,7 @@ from_m!(InstallMods, InstallModsMessage);
 from_m!(InstallOptifine, InstallOptifineMessage);
 from_m!(InstallFabric, InstallFabricMessage);
 from_m!(EditPresets, EditPresetsMessage);
-from_m!(ExportMods, ExportModsMessage);
+from_m!(ExportMods, ExportModsTextMessage);
 from_m!(RecommendedMods, RecommendedModMessage);
 from_m!(Account, AccountMessage);
 from_m!(CreateInstance, CreateInstanceMessage);

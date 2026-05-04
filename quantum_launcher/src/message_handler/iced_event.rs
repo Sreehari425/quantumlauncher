@@ -348,7 +348,7 @@ impl Launcher {
                 | MenuInstallFabric::Loaded { progress: None, .. },
             )
             | State::EditJarMods(_)
-            | State::ExportMods(_)
+            | State::ExportModsText(_)
             | State::ManagePresets(MenuEditPresets {
                 is_building: false,
                 progress: None,

@@ -7,10 +7,10 @@ use crate::{
     },
     message_handler::ForgeKind,
     state::{
-        EditPresetsMessage, ImageState, InstallFabricMessage, InstallModsMessage,
-        InstallOptifineMessage, InstallPaperMessage, ManageJarModsMessage, ManageModsMessage,
-        MenuEditMods, MenuEditModsModal, Message, ModDescriptionMessage, ModListEntry,
-        SelectedState,
+        EditPresetsMessage, ExportModsTextMessage, ImageState, InstallFabricMessage,
+        InstallModsMessage, InstallOptifineMessage, InstallPaperMessage, ManageJarModsMessage,
+        ManageModsMessage, MenuEditMods, MenuEditModsModal, Message, ModDescriptionMessage,
+        ModListEntry, SelectedState,
     },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
@@ -84,7 +84,7 @@ impl MenuEditMods {
                     ctx_button_icon(icons::refresh_s(CTXI_SIZE), "Check for updates")
                         .on_press(ManageModsMessage::UpdateCheck.into()),
                     ctx_button_icon(icons::file_info_s(CTXI_SIZE), "Export list as text")
-                        .on_press(ManageModsMessage::ExportMenuOpen.into()),
+                        .on_press(ExportModsTextMessage::Open.into()),
                     ctx_button_icon(icons::file_zip_s(CTXI_SIZE), "Export QMP Preset")
                         .on_press(EditPresetsMessage::Open.into()),
                     widget::horizontal_rule(1).style(barthin),

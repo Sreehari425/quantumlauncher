@@ -7,9 +7,10 @@ use ql_mod_manager::store::{DirStructure, LocalMod, ModId, ModIndex, QueryType, 
 use std::{collections::HashSet, path::PathBuf};
 
 use crate::state::{
-    AutoSaveKind, ExportModsMessage, InfoMessage, InfoMessageKind, Launcher, ManageJarModsMessage,
-    ManageModsMessage, MenuCurseforgeManualDownload, MenuEditJarMods, MenuEditMods,
-    MenuEditModsModal, Message, ProgressBar, SelectedState, State,
+    AutoSaveKind, ExportModsTextMessage, InfoMessage, InfoMessageKind, Launcher,
+    ManageJarModsMessage, ManageModsMessage, MenuCurseforgeManualDownload, MenuEditJarMods,
+    MenuEditMods, MenuEditModsModal, MenuExportModsText, Message, ProgressBar, SelectedState,
+    State,
 };
 
 impl Launcher {
@@ -263,37 +264,6 @@ impl Launcher {
                             menu.selection.state = SelectedState::All;
                         }
                     }
-                }
-            }
-            ManageModsMessage::ExportMenuOpen => {
-                if let State::EditMods(menu) = &mut self.state {
-                    // Navigate to the export menu with the current selection and mod data
-                    use crate::state::MenuExportMods;
-
-                    self.state = State::ExportMods(MenuExportMods {
-                        selected_mods: if menu.selection.selected_mods.is_empty() {
-                            menu.file_data
-                                .mod_index
-                                .mods
-                                .iter()
-                                .filter_map(|(id, mod_info)| {
-                                    mod_info
-                                        .manually_installed
-                                        .then_some(SelectedMod::Downloaded {
-                                            name: mod_info.name.clone(),
-                                            id: id.clone(),
-                                        })
-                                })
-                                .chain(
-                                    menu.locally_installed_mods
-                                        .iter()
-                                        .map(|n| SelectedMod::Local(n.clone())),
-                                )
-                                .collect()
-                        } else {
-                            menu.selection.selected_mods.clone()
-                        },
-                    });
                 }
             }
             ManageModsMessage::SetModal(modal) => {
@@ -742,25 +712,54 @@ impl Launcher {
         }
     }
 
-    pub fn update_export_mods(&mut self, msg: ExportModsMessage) -> Task<Message> {
+    pub fn update_export_mods(&mut self, msg: ExportModsTextMessage) -> Task<Message> {
         match msg {
-            ExportModsMessage::ExportAsPlainText => {
-                if let State::ExportMods(menu) = &self.state {
+            ExportModsTextMessage::Open => {
+                let State::EditMods(menu) = &mut self.state else {
+                    return Task::none();
+                };
+                self.state = State::ExportModsText(MenuExportModsText {
+                    selected_mods: if menu.selection.selected_mods.is_empty() {
+                        menu.file_data
+                            .mod_index
+                            .mods
+                            .iter()
+                            .filter_map(|(id, mod_info)| {
+                                mod_info
+                                    .manually_installed
+                                    .then_some(SelectedMod::Downloaded {
+                                        name: mod_info.name.clone(),
+                                        id: id.clone(),
+                                    })
+                            })
+                            .chain(
+                                menu.locally_installed_mods
+                                    .iter()
+                                    .map(|n| SelectedMod::Local(n.clone())),
+                            )
+                            .collect()
+                    } else {
+                        menu.selection.selected_mods.clone()
+                    },
+                });
+            }
+            ExportModsTextMessage::ExportAsPlainText => {
+                if let State::ExportModsText(menu) = &self.state {
                     return Self::export_to_file(Self::export_mods_plain_text(&menu.selected_mods));
                 }
             }
-            ExportModsMessage::ExportAsMarkdown => {
-                if let State::ExportMods(menu) = &self.state {
+            ExportModsTextMessage::ExportAsMarkdown => {
+                if let State::ExportModsText(menu) = &self.state {
                     return Self::export_to_file(Self::export_mods_markdown(&menu.selected_mods));
                 }
             }
-            ExportModsMessage::CopyMarkdownToClipboard => {
-                if let State::ExportMods(menu) = &self.state {
+            ExportModsTextMessage::CopyMarkdownToClipboard => {
+                if let State::ExportModsText(menu) = &self.state {
                     return iced::clipboard::write(Self::export_mods_markdown(&menu.selected_mods));
                 }
             }
-            ExportModsMessage::CopyPlainTextToClipboard => {
-                if let State::ExportMods(menu) = &self.state {
+            ExportModsTextMessage::CopyPlainTextToClipboard => {
+                if let State::ExportModsText(menu) = &self.state {
                     return iced::clipboard::write(Self::export_mods_plain_text(
                         &menu.selected_mods,
                     ));
