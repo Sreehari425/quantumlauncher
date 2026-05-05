@@ -332,7 +332,10 @@ impl Launcher {
 
             State::License(_) => {
                 if affect {
-                    return (true, self.go_to_launcher_settings(LauncherSettingsTab::About));
+                    return (
+                        true,
+                        self.go_to_launcher_settings(LauncherSettingsTab::About),
+                    );
                 }
             }
             State::ConfirmAction { no, .. } => {

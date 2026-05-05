@@ -32,8 +32,7 @@ use crate::{IntoIoError, JsonDownloadError, download, error::IoError};
 #[allow(clippy::doc_markdown)]
 pub static LAUNCHER_DIR: LazyLock<PathBuf> = LazyLock::new(|| get_launcher_dir().unwrap());
 
-static PORTABLE_WARNING: LazyLock<Mutex<Option<String>>> =
-    LazyLock::new(|| Mutex::new(None));
+static PORTABLE_WARNING: LazyLock<Mutex<Option<String>>> = LazyLock::new(|| Mutex::new(None));
 
 fn set_portable_warning(message: impl Into<String>) -> bool {
     if let Ok(mut warning) = PORTABLE_WARNING.lock() {
@@ -47,7 +46,10 @@ fn set_portable_warning(message: impl Into<String>) -> bool {
 
 #[must_use]
 pub fn take_portable_warning() -> Option<String> {
-    PORTABLE_WARNING.lock().ok().and_then(|mut warning| warning.take())
+    PORTABLE_WARNING
+        .lock()
+        .ok()
+        .and_then(|mut warning| warning.take())
 }
 
 /// Returns the path to the QuantumLauncher root folder.
@@ -85,7 +87,10 @@ pub fn get_launcher_dir() -> Result<PathBuf, IoError> {
                 ) {
                     if let Some(fallback_dir) = dirs::data_dir().map(|d| d.join("QuantumLauncher"))
                     {
-                        if std::fs::create_dir_all(&fallback_dir).path(&fallback_dir).is_ok() {
+                        if std::fs::create_dir_all(&fallback_dir)
+                            .path(&fallback_dir)
+                            .is_ok()
+                        {
                             let warning = "Portable data path is read-only. Portable mode was disabled and the system data directory is being used instead.";
                             if set_portable_warning(warning) {
                                 eprintln!("{warning}");

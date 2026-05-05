@@ -612,8 +612,13 @@ impl std::fmt::Display for LauncherSettingsTab {
 }
 
 impl LauncherSettingsTab {
-    pub const ALL: &'static [Self] =
-        &[Self::UserInterface, Self::Presence, Self::Game, Self::Location, Self::About];
+    pub const ALL: &'static [Self] = &[
+        Self::UserInterface,
+        Self::Presence,
+        Self::Game,
+        Self::Location,
+        Self::About,
+    ];
 
     pub const fn next(self) -> Self {
         match self {

@@ -6,8 +6,8 @@ use ql_core::LAUNCHER_DIR;
 use crate::{
     icons,
     menu_renderer::{Column, button_with_icon, checkered_list, tsubtitle},
-    stylesheet::color::Color,
     state::{LauncherSettingsMessage, MenuLauncherSettings, Message, PathKind},
+    stylesheet::color::Color,
 };
 
 pub(super) fn view(menu: &MenuLauncherSettings) -> Column<'_> {
@@ -307,18 +307,22 @@ fn status_badge<'a>(
 ) -> widget::Container<'a, Message, crate::stylesheet::styles::LauncherTheme> {
     widget::container(
         widget::row![
-            widget::text("●").size(10).style(move |_| widget::text::Style {
-                color: Some(accent_color),
-            }),
-            widget::text(label).size(12).style(
-                |t: &crate::stylesheet::styles::LauncherTheme| widget::text::Style {
-                    color: Some(if t.is_light() {
-                        iced::Color::BLACK
-                    } else {
-                        iced::Color::WHITE
-                    }),
-                },
-            ),
+            widget::text("●")
+                .size(10)
+                .style(move |_| widget::text::Style {
+                    color: Some(accent_color),
+                }),
+            widget::text(label)
+                .size(12)
+                .style(
+                    |t: &crate::stylesheet::styles::LauncherTheme| widget::text::Style {
+                        color: Some(if t.is_light() {
+                            iced::Color::BLACK
+                        } else {
+                            iced::Color::WHITE
+                        }),
+                    },
+                ),
         ]
         .spacing(6)
         .align_y(Alignment::Center),
