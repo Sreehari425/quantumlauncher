@@ -296,8 +296,7 @@ impl Launcher {
                 if let Ok(exe) = std::env::current_exe() {
                     let _ = std::process::Command::new(exe).spawn();
                 }
-                ql_core::file_utils::cleanup_running_file();
-                std::process::exit(0);
+                self.close_launcher();
             }
             LauncherSettingsMessage::ToggleSafeMode(t) => {
                 if t {
@@ -441,8 +440,7 @@ impl Launcher {
                 if let Ok(exe) = std::env::current_exe() {
                     let _ = std::process::Command::new(exe).spawn();
                 }
-                ql_core::file_utils::cleanup_running_file();
-                std::process::exit(0);
+                self.close_launcher();
             }
             LauncherSettingsMessage::DisablePortableMode => {
                 self.state = State::ConfirmAction {
@@ -463,8 +461,7 @@ impl Launcher {
                 if let Ok(exe) = std::env::current_exe() {
                     let _ = std::process::Command::new(exe).spawn();
                 }
-                ql_core::file_utils::cleanup_running_file();
-                std::process::exit(0);
+                self.close_launcher();
             }
             LauncherSettingsMessage::PickPortablePath => {
                 if let Some(path) = rfd::FileDialog::new()
@@ -601,8 +598,7 @@ impl Launcher {
                 if let Ok(exe) = std::env::current_exe() {
                     let _ = std::process::Command::new(exe).spawn();
                 }
-                ql_core::file_utils::cleanup_running_file();
-                std::process::exit(0);
+                self.close_launcher();
             }
             LauncherSettingsMessage::DisableSystemRedirect => {
                 self.state = State::ConfirmAction {
@@ -622,8 +618,7 @@ impl Launcher {
                 if let Ok(exe) = std::env::current_exe() {
                     let _ = std::process::Command::new(exe).spawn();
                 }
-                ql_core::file_utils::cleanup_running_file();
-                std::process::exit(0);
+                self.close_launcher();
             }
             LauncherSettingsMessage::PickSystemRedirectPath => {
                 if let Some(path) = rfd::FileDialog::new()
