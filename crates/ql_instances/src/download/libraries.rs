@@ -265,7 +265,7 @@ impl GameDownloader {
         if lib_file_path.exists() {
             if let Ok(existing_bytes) = fs::read(&lib_file_path).await {
                 // Verify size matches if available
-                if let Some(expected_size) = artifact.size.as_u64() {
+                if let Some(expected_size) = artifact.get_size() {
                     if existing_bytes.len() as u64 == expected_size {
                         pt!(
                             "Library already exists with correct size, skipping: {}",
