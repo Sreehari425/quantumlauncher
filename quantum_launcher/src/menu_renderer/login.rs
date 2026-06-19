@@ -1,4 +1,7 @@
-use iced::{Alignment, Length, widget};
+use iced::{
+    Alignment, Length,
+    widget::{self, column, row},
+};
 
 use crate::{
     icons,
@@ -162,11 +165,9 @@ impl MenuLoginAlternate {
         let status: Element =
             if self.is_loading {
                 let dots = ".".repeat((tick_timer % 3) + 1);
-                widget::column![widget::text!("Loading{dots}")]
-                    .padding(8)
-                    .into()
+                column![widget::text!("Loading{dots}")].padding(8).into()
             } else {
-                widget::column![
+                column![
                     button_with_icon(icons::checkmark(), "Login", 16)
                         .on_press(AccountMessage::AltLogin.into())
                 ]
@@ -196,13 +197,13 @@ impl MenuLoginAlternate {
             password_input.font(iced::Font::with_name("Password Asterisks"))
         };
 
-        widget::column![
+        column![
             back_button().on_press(if self.is_from_welcome_screen {
                 Message::WelcomeContinueToAuth
             } else {
                 AccountMessage::Selected(NEW_ACCOUNT_NAME.to_owned()).into()
             }),
-            widget::column![
+            column![
                 widget::text(if self.is_littleskin {
                     "LittleSkin Login"
                 } else {
@@ -216,7 +217,7 @@ impl MenuLoginAlternate {
                         .padding(padding)
                         .on_input(|n| AccountMessage::AltUsernameInput(n).into())
                 ),
-                widget::row![
+                row![
                     widget::text("Password:").size(12),
                     widget::checkbox("Show", self.show_password)
                         .size(12)
@@ -227,7 +228,7 @@ impl MenuLoginAlternate {
                 center_x(password_input),
                 widget::Column::new()
                     .push_maybe(self.otp.as_deref().map(|otp| {
-                        widget::column![
+                        column![
                             widget::text("OTP:").size(12),
                             widget::text_input("Enter Username/Email...", otp)
                                 .padding(padding)
@@ -241,7 +242,7 @@ impl MenuLoginAlternate {
                     ),
                 status,
                 widget::Space::with_height(5),
-                widget::row![
+                row![
                     widget::text("Or").size(14),
                     widget::button(widget::text("Create an account").size(14)).on_press(
                         Message::CoreOpenLink(
@@ -277,26 +278,26 @@ impl MenuLoginAlternate {
             }
         };
 
-        let code_row = widget::row![
+        let code_row = row![
             widget::text!("Code: {}", oauth.user_code).size(16),
             widget::button(widget::text("Copy").size(13))
                 .on_press(Message::CoreCopyText(oauth.user_code.clone())),
         ]
         .align_y(Alignment::Center)
         .spacing(10);
-        let url_row = widget::row![
+        let url_row = row![
             widget::text!("Link: {}", oauth.verification_uri).size(16),
             widget::button(widget::text("Open").size(13))
                 .on_press(Message::CoreOpenLink(oauth.verification_uri.clone())),
         ]
         .align_y(Alignment::Center)
         .spacing(10);
-        widget::column![
+        column![
             widget::vertical_space(),
             widget::text("LittleSkin Device Login").size(20),
             widget::text("Open this link and enter the code:").size(14),
             widget::Space::with_height(5),
-            widget::container(widget::column![code_row, url_row]).padding(10),
+            widget::container(column![code_row, url_row]).padding(10),
             widget::Space::with_height(5),
             widget::text!("Expires in: {}s", time_left).size(13),
             widget::vertical_space(),
@@ -317,15 +318,15 @@ impl MenuLoginAlternate {
 
 impl MenuLoginMS {
     pub fn view<'a>(&self) -> Element<'a> {
-        widget::column![
+        column![
             back_button().on_press(if self.is_from_welcome_screen {
                 Message::WelcomeContinueToAuth
             } else {
                 AccountMessage::Selected(NEW_ACCOUNT_NAME.to_owned()).into()
             }),
-            widget::row!(
+            row![
                 widget::horizontal_space(),
-                widget::column!(
+                column![
                     widget::vertical_space(),
                     widget::text("Login to Microsoft").size(20),
                     "Open this link and enter the code:",
@@ -334,11 +335,11 @@ impl MenuLoginMS {
                     widget::text!("Link: {}", self.url),
                     widget::button("Open").on_press(Message::CoreOpenLink(self.url.clone())),
                     widget::vertical_space(),
-                )
+                ]
                 .spacing(5)
                 .align_x(Alignment::Center),
                 widget::horizontal_space()
-            )
+            ]
         ]
         .padding(10)
         .into()

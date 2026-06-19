@@ -14,9 +14,9 @@ use crate::{
     config::sidebar::SidebarSelection,
     state::{
         ADD_JAR_NAME, AutoSaveKind, CustomJarState, EditInstanceMessage, EditInstanceRam,
-        EditInstanceRename, LaunchTab, Launcher, MainMenuMessage, MenuCreateInstance,
+        EditInstanceRename, FsWatcher, LaunchTab, Launcher, MainMenuMessage, MenuCreateInstance,
         MenuEditInstance, MenuLaunch, Message, NONE_JAR_NAME, OPEN_FOLDER_JAR_NAME, ProgressBar,
-        REMOVE_JAR_NAME, State, dir_watch, get_entries,
+        REMOVE_JAR_NAME, State, get_entries,
     },
 };
 
@@ -106,7 +106,7 @@ impl Launcher {
                 {
                     menu.config.ram_in_mb = 2f32.powf(new_slider_value) as usize;
                     menu.state_ram.slider_value = new_slider_value;
-                    menu.state_ram.slider_text = format_memory(menu.config.ram_in_mb);
+                    menu.state_ram.slider_text = format_memory_mb(menu.config.ram_in_mb);
                     menu.state_ram.memory_input = menu.config.ram_in_mb.to_string();
                 }
             }
@@ -120,7 +120,7 @@ impl Launcher {
                         if mb > 0 {
                             menu.config.ram_in_mb = mb;
                             menu.state_ram.slider_value = f32::log2(mb as f32);
-                            menu.state_ram.slider_text = format_memory(mb);
+                            menu.state_ram.slider_text = format_memory_mb(mb);
                         }
                     }
                     menu.state_ram.memory_input = input;
@@ -293,7 +293,7 @@ impl Launcher {
                 config,
                 state_ram: EditInstanceRam {
                     slider_value,
-                    slider_text: format_memory(memory_mb),
+                    slider_text: format_memory_mb(memory_mb),
                     memory_input: memory_mb.to_string(),
                     system: sysinfo::System::new_with_specifics(
                         sysinfo::RefreshKind::nothing()
@@ -372,7 +372,7 @@ impl Launcher {
         if let Some(cx) = &mut self.custom_jar {
             cx.choices = choices;
         } else {
-            let watcher = match dir_watch(LAUNCHER_DIR.join("custom_jars")) {
+            let watcher = match FsWatcher::new(LAUNCHER_DIR.join("custom_jars")) {
                 Ok(n) => n,
                 Err(err) => {
                     err!("Couldn't load list of custom jars (2)! {err}");
@@ -513,12 +513,12 @@ impl EditInstanceMessage {
     }
 }
 
-fn format_memory(memory_bytes: usize) -> String {
+fn format_memory_mb(mb_bytes: usize) -> String {
     const MB_TO_GB: usize = 1024;
 
-    if memory_bytes >= MB_TO_GB {
-        format!("{:.2} GB", memory_bytes as f64 / MB_TO_GB as f64)
+    if mb_bytes >= MB_TO_GB {
+        format!("{:.2} GB", mb_bytes as f64 / MB_TO_GB as f64)
     } else {
-        format!("{memory_bytes} MB")
+        format!("{mb_bytes} MB")
     }
 }
