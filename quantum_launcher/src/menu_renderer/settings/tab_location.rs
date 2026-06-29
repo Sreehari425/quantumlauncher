@@ -112,10 +112,7 @@ fn view_portable_mode_section(menu: &MenuLauncherSettings) -> Column<'_> {
             temp_path
         )
         .on_input(|s| {
-            Message::LauncherSettings(LauncherSettingsMessage::SetTempPath(
-                PathKind::Portable,
-                s,
-            ))
+            Message::LauncherSettings(LauncherSettingsMessage::SetTempPath(PathKind::Portable, s))
         })
         .padding(6)
         .size(13)
