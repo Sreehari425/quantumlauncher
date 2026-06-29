@@ -92,71 +92,69 @@ fn view_portable_mode_section(menu: &MenuLauncherSettings) -> Column<'_> {
     ]
     .spacing(5);
 
-    if is_active {
-        let (current_path, current_flags) = match status {
-            Some(s) => (
-                s.path
-                    .as_ref()
-                    .map(|p| p.to_string_lossy().into_owned())
-                    .unwrap_or_default(),
-                &s.flags,
-            ),
-            _ => (String::new(), &HashSet::new()),
-        };
+    let (current_path, current_flags) = match status {
+        Some(s) => (
+            s.path
+                .as_ref()
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_default(),
+            &s.flags,
+        ),
+        _ => (String::new(), &HashSet::new()),
+    };
 
-        let has_changes =
-            temp_path != &current_path || &menu.temp_paths.portable_flags != current_flags;
+    let has_changes =
+        temp_path != &current_path || &menu.temp_paths.portable_flags != current_flags;
 
-        let mut path_row = widget::row![
-            widget::text_input(
-                "Leave blank to store right next to the executable.",
-                temp_path
-            )
-            .on_input(|s| {
-                Message::LauncherSettings(LauncherSettingsMessage::SetTempPath(
-                    PathKind::Portable,
-                    s,
-                ))
-            })
-            .padding(6)
-            .size(13)
-            .font(crate::menu_renderer::FONT_MONO)
-            .width(Length::FillPortion(3)),
-            button_with_icon(icons::folder_s(12), "Browse", 12)
-                .padding([5, 10])
+    let mut path_row = widget::row![
+        widget::text_input(
+            "Leave blank to store right next to the executable.",
+            temp_path
+        )
+        .on_input(|s| {
+            Message::LauncherSettings(LauncherSettingsMessage::SetTempPath(
+                PathKind::Portable,
+                s,
+            ))
+        })
+        .padding(6)
+        .size(13)
+        .font(crate::menu_renderer::FONT_MONO)
+        .width(Length::FillPortion(3)),
+        button_with_icon(icons::folder_s(12), "Browse", 12)
+            .padding([5, 10])
+            .on_press(Message::LauncherSettings(
+                LauncherSettingsMessage::PickPortablePath,
+            )),
+    ]
+    .spacing(8)
+    .align_y(Alignment::Center);
+
+    if has_changes && is_active {
+        path_row = path_row.push(
+            widget::button(widget::text("Apply Changes").size(13))
+                .padding([5, 15])
                 .on_press(Message::LauncherSettings(
-                    LauncherSettingsMessage::PickPortablePath,
+                    LauncherSettingsMessage::EnablePortableMode,
                 )),
-        ]
-        .spacing(8)
-        .align_y(Alignment::Center);
-
-        if has_changes {
-            path_row = path_row.push(
-                widget::button(widget::text("Apply Changes").size(13))
-                    .padding([5, 15])
-                    .on_press(Message::LauncherSettings(
-                        LauncherSettingsMessage::EnablePortableMode,
-                    )),
-            );
-        }
-
-        let custom_path_section = widget::column![
-            widget::text("Custom Storage Path (Optional)").size(14),
-            t("Specify a sub-directory path relative to the executable, or an absolute path."),
-            widget::Space::with_height(2),
-            path_row,
-        ]
-        .spacing(5)
-        .padding(iced::Padding {
-            top: 10.0,
-            right: 0.0,
-            bottom: 0.0,
-            left: 25.0,
-        });
-
-        col = col.push(custom_path_section);
+        );
     }
+
+    let custom_path_section = widget::column![
+        widget::text("Custom Storage Path (Optional)").size(14),
+        t("Specify a sub-directory path relative to the executable, or an absolute path."),
+        widget::Space::with_height(2),
+        path_row,
+    ]
+    .spacing(5)
+    .padding(iced::Padding {
+        top: 10.0,
+        right: 0.0,
+        bottom: 0.0,
+        left: 25.0,
+    });
+
+    col = col.push(custom_path_section);
 
     col
 }
@@ -224,68 +222,66 @@ fn view_system_redirect_section(menu: &MenuLauncherSettings) -> Column<'_> {
     col = col.push(widget::Space::with_height(5));
     col = col.push(redirect_checkbox);
 
-    if is_active {
-        let (current_path, current_flags) = match status {
-            Some(s) => (
-                s.path
-                    .as_ref()
-                    .map(|p| p.to_string_lossy().into_owned())
-                    .unwrap_or_default(),
-                &s.flags,
-            ),
-            _ => (String::new(), &HashSet::new()),
-        };
+    let (current_path, current_flags) = match status {
+        Some(s) => (
+            s.path
+                .as_ref()
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_default(),
+            &s.flags,
+        ),
+        _ => (String::new(), &HashSet::new()),
+    };
 
-        let has_changes =
-            temp_path != &current_path || &menu.temp_paths.system_redirect_flags != current_flags;
+    let has_changes =
+        temp_path != &current_path || &menu.temp_paths.system_redirect_flags != current_flags;
 
-        let mut path_row = widget::row![
-            widget::text_input("Enter redirection path...", temp_path)
-                .on_input(|s| {
-                    Message::LauncherSettings(LauncherSettingsMessage::SetTempPath(
-                        PathKind::SystemRedirect,
-                        s,
-                    ))
-                })
-                .padding(6)
-                .size(13)
-                .font(crate::menu_renderer::FONT_MONO)
-                .width(Length::FillPortion(3)),
-            button_with_icon(icons::folder_s(12), "Browse", 12)
-                .padding([5, 10])
+    let mut path_row = widget::row![
+        widget::text_input("Enter redirection path...", temp_path)
+            .on_input(|s| {
+                Message::LauncherSettings(LauncherSettingsMessage::SetTempPath(
+                    PathKind::SystemRedirect,
+                    s,
+                ))
+            })
+            .padding(6)
+            .size(13)
+            .font(crate::menu_renderer::FONT_MONO)
+            .width(Length::FillPortion(3)),
+        button_with_icon(icons::folder_s(12), "Browse", 12)
+            .padding([5, 10])
+            .on_press(Message::LauncherSettings(
+                LauncherSettingsMessage::PickSystemRedirectPath,
+            )),
+    ]
+    .spacing(8)
+    .align_y(Alignment::Center);
+
+    if has_changes && is_active {
+        path_row = path_row.push(
+            widget::button(widget::text("Apply Changes").size(13))
+                .padding([5, 15])
                 .on_press(Message::LauncherSettings(
-                    LauncherSettingsMessage::PickSystemRedirectPath,
+                    LauncherSettingsMessage::EnableSystemRedirect,
                 )),
-        ]
-        .spacing(8)
-        .align_y(Alignment::Center);
-
-        if has_changes {
-            path_row = path_row.push(
-                widget::button(widget::text("Apply Changes").size(13))
-                    .padding([5, 15])
-                    .on_press(Message::LauncherSettings(
-                        LauncherSettingsMessage::EnableSystemRedirect,
-                    )),
-            );
-        }
-
-        let custom_path_section = widget::column![
-            widget::text("Global Redirect Path").size(14),
-            t("All instances will be redirected to this location unless a local portable override exists."),
-            widget::Space::with_height(2),
-            path_row,
-        ]
-        .spacing(5)
-        .padding(iced::Padding {
-            top: 10.0,
-            right: 0.0,
-            bottom: 0.0,
-            left: 25.0,
-        });
-
-        col = col.push(custom_path_section);
+        );
     }
+
+    let custom_path_section = widget::column![
+        widget::text("Global Redirect Path").size(14),
+        t("All instances will be redirected to this location unless a local portable override exists."),
+        widget::Space::with_height(2),
+        path_row,
+    ]
+    .spacing(5)
+    .padding(iced::Padding {
+        top: 10.0,
+        right: 0.0,
+        bottom: 0.0,
+        left: 25.0,
+    });
+
+    col = col.push(custom_path_section);
 
     col
 }
