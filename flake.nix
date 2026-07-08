@@ -3,17 +3,32 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
   outputs =
-    { self, nixpkgs }:
+    {
+      self,
+      nixpkgs,
+      rust-overlay,
+    }: # 2. Include rust-overlay here
     let
       systems = [
         "x86_64-linux"
         "aarch64-linux"
       ];
 
-      forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f (import nixpkgs { inherit system; }));
+      forAllSystems =
+        f:
+        nixpkgs.lib.genAttrs systems (
+          system:
+          f (
+            import nixpkgs {
+              inherit system;
+              overlays = [ (import rust-overlay) ];
+            }
+          )
+        );
     in
     {
       packages = forAllSystems (pkgs: {
@@ -63,6 +78,42 @@
           meta = {
             mainProgram = "quantum_launcher";
           };
+        };
+      });
+
+      devShells = forAllSystems (pkgs: {
+        default = pkgs.mkShell {
+          nativeBuildInputs = [
+            (pkgs.rust-bin.stable."1.85.0".default.override {
+              extensions = [
+                "rust-src"
+                "rust-analyzer"
+              ];
+            })
+            pkgs.pkg-config
+          ];
+
+          buildInputs = with pkgs; [
+            libGL
+            libxkbcommon
+            vulkan-loader
+            wayland
+            wayland-protocols
+            libx11
+            libxcursor
+            libxi
+            libxrandr
+          ];
+
+          LD_LIBRARY_PATH = nixpkgs.lib.makeLibraryPath (
+            with pkgs;
+            [
+              wayland
+              libxkbcommon
+              libGL
+              vulkan-loader
+            ]
+          );
         };
       });
     };
