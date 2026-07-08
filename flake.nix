@@ -152,7 +152,7 @@
         in
         {
           options.programs.quantum-launcher = {
-            enable = lib.mkEnableOption "QuantumLauncher game client";
+            enable = lib.mkEnableOption "the QuantumLauncher Minecraft launcher.";
             package = lib.mkOption {
               type = lib.types.package;
               default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
@@ -180,7 +180,7 @@
         in
         {
           options.programs.quantum-launcher = {
-            enable = lib.mkEnableOption "QuantumLauncher game client via Home Manager";
+            enable = lib.mkEnableOption "the QuantumLauncher Minecraft launcher.";
             package = lib.mkOption {
               type = lib.types.package;
               default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
