@@ -60,6 +60,9 @@
                 ]
               }"
           '';
+          meta = {
+            mainProgram = "quantum_launcher";
+          };
         };
       });
     };
