@@ -16,6 +16,8 @@
       systems = [
         "x86_64-linux"
         "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
       ];
 
       forAllSystems =
@@ -77,9 +79,13 @@
             }"
         '';
 
-        meta = {
-          mainProgram = "quantum_launcher";
+        meta = with pkgs.lib; {
+          description = cargoToml.package.description;
+          homepage = cargoToml.package.homepage;
+          mainProgram = cargoToml.package.name;
+          license = licenses.gpl3Only;
         };
+
       };
     in
     {
