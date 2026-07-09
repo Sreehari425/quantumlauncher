@@ -33,6 +33,7 @@
           f (
             import nixpkgs {
               inherit system;
+              config.allowDeprecatedx86_64Darwin = true;
               overlays = [ (import rust-overlay) ];
             }
           )
@@ -43,7 +44,7 @@
       commonAttrs = pkgs: {
         pname = cargoToml.package.name;
         version = cargoToml.package.version;
-
+        stdenv = pkgs.stdenv;
         cargoLock = {
           lockFile = ./Cargo.lock;
           outputHashes = {
@@ -60,27 +61,29 @@
           makeWrapper
         ];
 
-        buildInputs = with pkgs; [
-          libGL
-          libxkbcommon
-          vulkan-loader
-          wayland
-          wayland-protocols
-          libx11
-          libxcursor
-          libxi
-          libxrandr
-        ];
+        buildInputs =
+          with pkgs;
+          [ libxkbcommon ]
 
-        postInstall = ''
+          ++ lib.optionals stdenv.isLinux [
+            libGL
+            vulkan-loader
+            wayland
+            wayland-protocols
+            libx11
+            libxcursor
+            libxi
+            libxrandr
+          ];
+
+        postInstall = pkgs.lib.optionalString pkgs.stdenv.isLinux ''
           wrapProgram $out/bin/quantum_launcher \
             --prefix LD_LIBRARY_PATH : "${
-              with pkgs;
-              nixpkgs.lib.makeLibraryPath [
-                wayland
-                libxkbcommon
-                libGL
-                vulkan-loader
+              pkgs.lib.makeLibraryPath [
+                pkgs.wayland
+                pkgs.libxkbcommon
+                pkgs.libGL
+                pkgs.vulkan-loader
               ]
             }"
         '';
@@ -102,7 +105,7 @@
         default = pkgs.rustPlatform.buildRustPackage (
           (commonAttrs pkgs)
           // {
-            src = ./.;
+            src = pkgs.lib.cleanSource ./.;
           }
         );
 
@@ -131,15 +134,15 @@
 
           buildInputs = (commonAttrs pkgs).buildInputs;
 
-          LD_LIBRARY_PATH = nixpkgs.lib.makeLibraryPath (
-            with pkgs;
-            [
-              wayland
-              libxkbcommon
-              libGL
-              vulkan-loader
+          LD_LIBRARY_PATH = pkgs.lib.optionalString pkgs.stdenv.isLinux (
+            pkgs.lib.makeLibraryPath [
+              pkgs.wayland
+              pkgs.libxkbcommon
+              pkgs.libGL
+              pkgs.vulkan-loader
             ]
           );
+
         };
       });
 
