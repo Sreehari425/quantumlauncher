@@ -118,13 +118,7 @@ feel free to open a pr to correct it :).
 }
 ```
 
-You'll need `nixgl` as a flake input (`github:nix-community/nixGL`) and to
-pick the variant matching your GPU vendor. This isn't needed at all on
-NixOS.
 
-> This is a common workaround, not something QuantumLauncher's flake can
-> fix on its own nixGL wrapping is inherently host-specific and can't be
-> baked into the package itself.
 
 ## Known limitations
 
