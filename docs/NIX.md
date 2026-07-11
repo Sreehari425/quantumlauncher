@@ -122,6 +122,6 @@ feel free to open a pr to correct it :).
 
 ## Known limitations
 
-- No CI or binary cache is set up yet, so Nix will build QuantumLauncher
-  from source on every machine unless you configure a cache yourself.
+- Tagged releases are published to the project's binary cache. Development
+  builds or commits without cached artifacts will be built locally.
 - macOS and `aarch64-linux` builds are untested.
