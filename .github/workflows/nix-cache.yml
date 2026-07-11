@@ -7,7 +7,21 @@ on:
 
 jobs:
   cache:
-    runs-on: ubuntu-latest
+    name: Cache ${{ matrix.system }}
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: x86_64-linux
+            runner: ubuntu-latest
+
+          - system: aarch64-linux
+            runner: ubuntu-latest
+
+          - system: aarch64-darwin
+            runner: macos-latest
 
     steps:
       - name: Checkout
@@ -20,7 +34,8 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: ql-test
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Build QuantumLauncher
-        run: nix build .#default
+        run: |
+          nix build .#packages.${{ matrix.system }}.default
