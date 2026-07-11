@@ -24,9 +24,16 @@ use crate::{
 impl MenuCreateInstance {
     pub fn view(&self, existing_instances: Option<&[String]>, timer: usize) -> Element<'_> {
         match self {
-            MenuCreateInstance::Choosing(menu) => menu.view(existing_instances, timer),
-            MenuCreateInstance::DownloadingInstance(progress) => column![
-                widget::text("Downloading Instance..").size(20),
+            MenuCreateInstance::Choosing(menu) => menu.view(existing_instances, timer).into(),
+            MenuCreateInstance::DownloadingInstance(progress, kind) => column![
+                widget::text!(
+                    "Downloading {}...",
+                    match kind {
+                        InstanceKind::Server => "Server",
+                        InstanceKind::Client => "Instance",
+                    }
+                )
+                .size(20),
                 progress.view()
             ]
             .padding(10)

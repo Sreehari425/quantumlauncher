@@ -341,7 +341,8 @@ impl Launcher {
     fn instance_redownload_stage(&mut self, stage: ql_core::DownloadProgress) -> Task<Message> {
         let (sender, receiver) = std::sync::mpsc::channel();
         let bar = ProgressBar::with_recv(receiver);
-        self.state = State::Create(MenuCreateInstance::DownloadingInstance(bar));
+        let instance = self.instance().clone();
+        self.state = State::Create(MenuCreateInstance::DownloadingInstance(bar, instance.kind));
 
         Task::perform(
             ql_instances::repeat_stage(self.instance().clone(), stage, Some(sender)),

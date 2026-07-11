@@ -603,7 +603,7 @@ pub struct MenuEditJarMods {
 
 pub enum MenuCreateInstance {
     Choosing(MenuCreateInstanceChoosing),
-    DownloadingInstance(ProgressBar<DownloadProgress>),
+    DownloadingInstance(ProgressBar<DownloadProgress>, InstanceKind),
     ImportingInstance(ProgressBar<GenericProgress>),
 }
 

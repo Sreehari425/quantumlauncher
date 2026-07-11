@@ -237,14 +237,17 @@ then go to "Mods->Add File""#,
 
             let version = selected_version.clone();
             let instance_name = if instance_name.trim().is_empty() {
-                version.name.clone()
+                match kind {
+                    InstanceKind::Server => format!("{} server", version.name),
+                    InstanceKind::Client => version.name.clone(),
+                }
             } else {
                 instance_name.clone()
             };
             let download_assets = *download_assets;
             let kind = *kind;
 
-            self.state = State::Create(MenuCreateInstance::DownloadingInstance(progress));
+            self.state = State::Create(MenuCreateInstance::DownloadingInstance(progress, kind));
 
             return match kind {
                 InstanceKind::Server => Task::perform(
