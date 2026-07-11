@@ -3,7 +3,8 @@ name: Cache Nix Release
 on:
   push:
     tags:
-      - "v*"
+      - "v[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+"
 
 jobs:
   cache:
@@ -22,6 +23,9 @@ jobs:
 
           - system: aarch64-darwin
             runner: macos-latest
+          
+          - system: x86_64-darwin
+            runner: macos-15-intel
 
     steps:
       - name: Checkout
