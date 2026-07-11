@@ -150,7 +150,10 @@ impl Launcher {
                 Err(err) if err.contains("Timeout reached") => {
                     // The system is just lagging, nothing we can do
                 }
-                Err(err) if err.contains("org.freedesktop.portal.Error.NotFound") => {
+                Err(err)
+                    if err.contains("org.freedesktop.portal.Error.NotFound")
+                        || err.contains("org.freedesktop.DBus.Error.NameHasNoOwner") =>
+                {
                     // User is on barebones desktop environment
                     // that doesn't support light/dark mode.
                     // eg: Raspberry Pi OS, LXDE, Openbox, etc
