@@ -1,6 +1,16 @@
 {
   description = "QuantumLauncher";
 
+  nixConfig = {
+    extra-substituters = [
+      "https://ql-test.cachix.org" # THIS IS FOR TESTING ONLY
+    ];
+
+    extra-trusted-public-keys = [
+      "ql-test.cachix.org-1:i6CtPIoD3lSTgxGX6rcR86/dMbjrMHci4H6E1dQCrY8=" # THIS IS FOR TESTING ONLY
+    ];
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
