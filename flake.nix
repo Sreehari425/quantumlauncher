@@ -3,11 +3,11 @@
 
   nixConfig = {
     extra-substituters = [
-      "https://ql-test.cachix.org" # THIS IS FOR TESTING ONLY
+      "https://quantumlauncher.cachix.org"
     ];
 
     extra-trusted-public-keys = [
-      "ql-test.cachix.org-1:i6CtPIoD3lSTgxGX6rcR86/dMbjrMHci4H6E1dQCrY8=" # THIS IS FOR TESTING ONLY
+      "quantumlauncher.cachix.org-1:8y+ba6VjsH9kr988wfhPEYsUt0rAxat0V6CeXLzdWCg="
     ];
   };
 
