@@ -39,7 +39,7 @@ nix-shell
 |---|---|---|
 | `packages.default` | `release-ql` | The tuned release build (LTO, stripped, panic=abort)  |
 | `packages.release` | `release-ql` | Alias of `default` |
-| `packages.release-dbg` | `release-dbg` | Release build with debug symbols, |
+| `packages.release-dbg` | `release-dbg` | Release build with debug symbols |
 
 Build a specific output with:
 
