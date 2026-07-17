@@ -110,61 +110,70 @@
       # ==========================================
       # 1. PACKAGES (For nix run, build, and tags)
       # ==========================================
-      packages = forAllSystems (pkgs: {
-        default = pkgs.rustPlatform.buildRustPackage (
-          (commonAttrs pkgs)
-          // {
-            src = pkgs.lib.cleanSource ./.;
-            buildPhase = ''
-              runHook preBuild
+      packages = forAllSystems (
+        pkgs:
+        let
+          pinnedRustPlatform = pkgs.makeRustPlatform {
+            cargo = pkgs.rust-bin.stable."1.85.0".default;
+            rustc = pkgs.rust-bin.stable."1.85.0".default;
+          };
+        in
+        {
+          default = pinnedRustPlatform.buildRustPackage (
+            (commonAttrs pkgs)
+            // {
+              src = pkgs.lib.cleanSource ./.;
+              buildPhase = ''
+                runHook preBuild
 
-              export CARGO_TARGET_DIR=target
+                export CARGO_TARGET_DIR=target
 
-              cargo build \
-                --offline \
-                --frozen \
-                --profile release-ql
+                cargo build \
+                  --offline \
+                  --frozen \
+                  --profile release-ql
 
-              runHook postBuild
-            '';
+                runHook postBuild
+              '';
 
-            installPhase = ''
-              runHook preInstall
-              mkdir -p $out/bin
-              cp target/release-ql/${cargoToml.package.name} $out/bin/
-              runHook postInstall
-            '';
-          }
-        );
+              installPhase = ''
+                runHook preInstall
+                mkdir -p $out/bin
+                cp target/release-ql/${cargoToml.package.name} $out/bin/
+                runHook postInstall
+              '';
+            }
+          );
 
-        release = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
+          release = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
-        release-dbg = pkgs.rustPlatform.buildRustPackage (
-          (commonAttrs pkgs)
-          // {
-            src = pkgs.lib.cleanSource ./.;
-            buildPhase = ''
-              runHook preBuild
+          release-dbg = pinnedRustPlatform.buildRustPackage (
+            (commonAttrs pkgs)
+            // {
+              src = pkgs.lib.cleanSource ./.;
+              buildPhase = ''
+                runHook preBuild
 
-              export CARGO_TARGET_DIR=target
+                export CARGO_TARGET_DIR=target
 
-              cargo build \
-                --offline \
-                --frozen \
-                --profile release-dbg
+                cargo build \
+                  --offline \
+                  --frozen \
+                  --profile release-dbg
 
-              runHook postBuild
-            '';
+                runHook postBuild
+              '';
 
-            installPhase = ''
-              runHook preInstall
-              mkdir -p $out/bin
-              cp target/release-dbg/${cargoToml.package.name} $out/bin/
-              runHook postInstall
-            '';
-          }
-        );
-      });
+              installPhase = ''
+                runHook preInstall
+                mkdir -p $out/bin
+                cp target/release-dbg/${cargoToml.package.name} $out/bin/
+                runHook postInstall
+              '';
+            }
+          );
+        }
+      );
       # ==========================================
       # 2. DEVELOPMENT ENVIRONMENT (nix develop)
       # ==========================================
