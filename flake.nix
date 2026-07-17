@@ -86,7 +86,7 @@
           ];
 
         postInstall = pkgs.lib.optionalString pkgs.stdenv.isLinux ''
-          wrapProgram $out/bin/quantum_launcher \
+          wrapProgram $out/bin/${cargoToml.package.name} \
             --prefix LD_LIBRARY_PATH : "${
               pkgs.lib.makeLibraryPath [
                 pkgs.wayland
