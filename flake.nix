@@ -44,7 +44,7 @@
             import nixpkgs {
               inherit system;
               config.allowDeprecatedx86_64Darwin = true;
-              overlays = [ (import rust-overlay) ];
+              overlays = [ rust-overlay.overlays.default ];
             }
           )
         );
