@@ -37,7 +37,7 @@ jobs:
       - name: Setup Cachix
         uses: cachix/cachix-action@v17
         with:
-          name: ql-test
+          name: quantumlauncher
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Build QuantumLauncher
