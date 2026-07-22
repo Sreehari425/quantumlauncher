@@ -244,6 +244,7 @@ pub fn build_lwjgl_maven_metadata_url(version: &str) -> String {
 pub fn build_lwjgl_maven_url(version: &str, module: &str, classifier: Option<&str>) -> String {
     let group_id = get_group_id(version);
     let group_path = group_id.replace('.', "/");
+    let classifier = normalize_lwjgl_classifier(version, module, classifier);
 
     let artifact_id = if is_lwjgl3(version) {
         module.to_string()
@@ -278,6 +279,7 @@ pub fn build_lwjgl_maven_url(version: &str, module: &str, classifier: Option<&st
 pub fn build_lwjgl_library_path(version: &str, module: &str, classifier: Option<&str>) -> String {
     let group_id = get_group_id(version);
     let group_path = group_id.replace('.', "/");
+    let classifier = normalize_lwjgl_classifier(version, module, classifier);
 
     let artifact_id = if is_lwjgl3(version) {
         module.to_string()
@@ -296,6 +298,18 @@ pub fn build_lwjgl_library_path(version: &str, module: &str, classifier: Option<
     };
 
     format!("{group_path}/{artifact_id}/{version}/{filename}")
+}
+
+fn normalize_lwjgl_classifier<'a>(
+    version: &str,
+    module: &str,
+    classifier: Option<&'a str>,
+) -> Option<&'a str> {
+    if is_lwjgl3(version) && module == "lwjgl" && classifier == Some("unsafe") {
+        return None;
+    }
+
+    classifier
 }
 
 /// Fetch available LWJGL versions from Maven Central
