@@ -142,6 +142,8 @@ impl MenuEditInstance {
             sp(),
             self.item_args_prefix(prefix_mode),
             sp(),
+            self.item_env_vars(),
+            sp(),
             args_split_by_space(self.arg_split_by_space),
         ]
         .spacing(7)
@@ -196,6 +198,26 @@ impl MenuEditInstance {
             )
             .spacing(10),
             widget::text(PREFIX_EXPLANATION).size(12).style(tsubtitle),
+        ]
+        .width(Length::Fill)
+        .spacing(7)
+    }
+
+    fn item_env_vars(&self) -> Column<'_> {
+        column![
+            "Environment variables:",
+            get_args_list(
+                self.config
+                    .global_settings
+                    .as_ref()
+                    .and_then(|n| n.env_vars.as_deref()),
+                |n| Message::EditInstance(EditInstanceMessage::EnvVars(n)),
+            ),
+            widget::text(
+                "Format: KEY=VALUE (e.g., JAVA_OPTS=-Xmx2G)\nThese will be set when launching the instance"
+            )
+            .size(12)
+            .style(tsubtitle),
         ]
         .width(Length::Fill)
         .spacing(7)

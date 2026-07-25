@@ -855,6 +855,8 @@ impl GameLauncher {
             command.stdout(Stdio::piped()).stderr(Stdio::piped());
         }
 
+        self.config.apply_env_vars(&mut command);
+
         #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
         {
             // Minecraft 21w19a release date (1.17 snapshot)

@@ -125,6 +125,16 @@ impl Launcher {
                     split,
                 );
             }
+            LauncherSettingsMessage::GlobalEnvVars(msg) => {
+                let split = self.should_split_args();
+                msg.apply(
+                    self.config
+                        .c_global()
+                        .env_vars
+                        .get_or_insert_default(),
+                    split,
+                );
+            }
             LauncherSettingsMessage::ToggleWindowDecorations(b) => {
                 let decor = if b {
                     UiWindowDecorations::default()
