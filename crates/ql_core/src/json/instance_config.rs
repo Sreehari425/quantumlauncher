@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     DEFAULT_RAM_MB_FOR_INSTANCE, Instance, InstanceKind, IntoIoError, IntoJsonError, JsonFileError,
-    Loader,
+    Loader, info,
 };
 
 /// Configuration for a specific instance.
@@ -251,10 +251,10 @@ impl InstanceConfigJson {
         }
     }
 
-    /// Gets formatted environment variables from instance settings.
-    #[must_use]
-    pub fn build_env_vars(&self) -> Vec<String> {
-        self.global_settings
+    /// Applies formatted environment variables from instance settings to the command.
+    pub fn apply_env_vars(&self, cmd: &mut tokio::process::Command) {
+        let env_vars: Vec<String> = self
+            .global_settings
             .as_ref()
             .and_then(|n| n.env_vars.as_ref())
             .map(|vars| {
@@ -263,7 +263,19 @@ impl InstanceConfigJson {
                     .filter(|n| !n.is_empty())
                     .collect()
             })
-            .unwrap_or_default()
+            .unwrap_or_default();
+
+        if env_vars.is_empty() {
+            return;
+        }
+        info!("Environment variables: {env_vars:?}");
+        for env_var in env_vars {
+            if let Some((key, value)) = env_var.split_once('=') {
+                if !key.trim().is_empty() {
+                    cmd.env(key.trim(), value);
+                }
+            }
+        }
     }
 
     #[must_use]
