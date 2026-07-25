@@ -855,6 +855,19 @@ impl GameLauncher {
             command.stdout(Stdio::piped()).stderr(Stdio::piped());
         }
 
+        let env_vars = self.config.build_env_vars();
+
+        if !env_vars.is_empty() {
+            info!("Environment variables: {env_vars:?}");
+            for env_var in env_vars {
+                if let Some((key, value)) = env_var.split_once('=') {
+                    if !key.trim().is_empty() {
+                        command.env(key.trim(), value);
+                    }
+                }
+            }
+        }
+
         #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
         {
             // Minecraft 21w19a release date (1.17 snapshot)

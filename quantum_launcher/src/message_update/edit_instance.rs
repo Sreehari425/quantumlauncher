@@ -58,6 +58,16 @@ macro_rules! iflet_config {
             $body
         });
     };
+
+    ($state:expr, env_vars, |$env_vars:ident| $body:block) => {
+        iflet_config!($state, global_settings: global_settings, {
+            let global_settings =
+                global_settings.get_or_insert_default();
+            let $env_vars =
+                &mut global_settings.env_vars;
+            $body
+        });
+    };
 }
 
 impl Launcher {
@@ -155,6 +165,12 @@ impl Launcher {
             EditInstanceMessage::PreLaunchPrefixModeChanged(mode) => {
                 iflet_config!(&mut self.state, pre_launch_prefix_mode, {
                     *pre_launch_prefix_mode = Some(mode);
+                });
+            }
+            EditInstanceMessage::EnvVars(msg) => {
+                let split = self.should_split_args();
+                iflet_config!(&mut self.state, env_vars, |env_vars| {
+                    msg.apply(env_vars.get_or_insert_default(), split);
                 });
             }
             EditInstanceMessage::RenameToggle => {
@@ -503,6 +519,7 @@ impl EditInstanceMessage {
             EditInstanceMessage::GameArgs(_) |
             EditInstanceMessage::PreLaunchPrefix(_) |
             EditInstanceMessage::PreLaunchPrefixModeChanged(_) |
+            EditInstanceMessage::EnvVars(_) |
             EditInstanceMessage::JavaOverride(_) |
             EditInstanceMessage::JavaOverrideVersion(_) |
             EditInstanceMessage::WindowWidthChanged(_) |

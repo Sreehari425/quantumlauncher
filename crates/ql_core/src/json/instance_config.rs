@@ -251,6 +251,21 @@ impl InstanceConfigJson {
         }
     }
 
+    /// Gets formatted environment variables from instance settings.
+    #[must_use]
+    pub fn build_env_vars(&self) -> Vec<String> {
+        self.global_settings
+            .as_ref()
+            .and_then(|n| n.env_vars.as_ref())
+            .map(|vars| {
+                vars.iter()
+                    .map(|n| n.trim().to_owned())
+                    .filter(|n| !n.is_empty())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     #[must_use]
     pub fn c_global_settings(&mut self) -> &mut GlobalSettings {
         self.global_settings.get_or_insert_default()
@@ -351,6 +366,10 @@ pub struct GlobalSettings {
     /// to the launch command (e.g., "prime-run" for NVIDIA GPU usage on Linux).
     // Since: v0.5.0
     pub pre_launch_prefix: Option<Vec<String>>,
+    /// This is an optional list of environment variables to set
+    /// when launching the instance (e.g., "KEY=VALUE").
+    // Since: v0.5.2
+    pub env_vars: Option<Vec<String>>,
 
     #[serde(flatten)]
     _extra: HashMap<String, serde_json::Value>,
