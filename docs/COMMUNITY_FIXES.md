@@ -144,3 +144,32 @@ sudo apt install x11-xserver-utils
 ### Credits
 
 Discovered and confirmed by [mrmayman](https://github.com/mrmayman).
+
+---
+
+## GLFW error 65548: Wayland window icon not supported (Minecraft 1.18.2 on Wayland)
+
+### Description
+
+When launching Minecraft 1.18.2 (and similar versions) on Linux Wayland desktop environments (hyprland, niri ,...), the game crashes with:
+
+```
+GLFW error 65548: Wayland: The platform does not support setting the window icon
+```
+
+This occurs because GLFW, which Minecraft uses for window management, does not support setting window icons on Wayland. The limitation is at the Wayland protocol level, not in the launcher or game.
+
+### Fix
+
+Add the following environment variable to your instance configuration:
+
+```
+XDG_SESSION_TYPE=x11
+```
+
+This tells GLFW to use the X11 backend instead of Wayland, which works reliably through XWayland (pre-installed on most Linux systems with Wayland support).
+
+
+### Credits
+
+Discovered and confirmed by [Sreehari425](https://github.com/Sreehari425).
