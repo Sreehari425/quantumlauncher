@@ -21,7 +21,7 @@ use crate::{
 };
 
 macro_rules! iflet_config {
-    ($state:expr, $config:ident <- $body:block) => {
+    (c: $state:expr, $config:ident, $body:block) => {
         if let State::Launch(MenuLaunch {
             edit_instance: Some(MenuEditInstance {
                 config: $config, ..
@@ -31,11 +31,11 @@ macro_rules! iflet_config {
         $body
     };
 
-    ($state:expr, $field:ident : $pat:pat, $body:block) => {
+    ($state:expr, $field:ident, $body:block) => {
         if let State::Launch(MenuLaunch {
             edit_instance: Some(MenuEditInstance {
                 config: InstanceConfigJson {
-                    $field: $pat,
+                    $field,
                     ..
                 },
                 ..
@@ -45,26 +45,12 @@ macro_rules! iflet_config {
         $body
     };
 
-    ($state:expr, $field:ident, $body:block) => {
-        iflet_config!($state, $field : $field, $body);
-    };
-
-    ($state:expr, prefix, |$prefix:ident| $body:block) => {
-        iflet_config!($state, global_settings: global_settings, {
+    (g: $state:expr, $field:ident, $body:block) => {
+        iflet_config!($state, global_settings, {
             let global_settings =
                 global_settings.get_or_insert_default();
-            let $prefix =
-                &mut global_settings.pre_launch_prefix;
-            $body
-        });
-    };
-
-    ($state:expr, env_vars, |$env_vars:ident| $body:block) => {
-        iflet_config!($state, global_settings: global_settings, {
-            let global_settings =
-                global_settings.get_or_insert_default();
-            let $env_vars =
-                &mut global_settings.env_vars;
+            let $field =
+                &mut global_settings.$field;
             $body
         });
     };
@@ -88,13 +74,13 @@ impl Launcher {
                 }
             }
             EditInstanceMessage::JavaOverride(n) => {
-                iflet_config!(&mut self.state, config <- {
+                iflet_config!(c: &mut self.state, config, {
                     config.java_override = Some(n);
                     config.java_override_version = None;
                 });
             }
             EditInstanceMessage::JavaOverrideVersion(n) => {
-                iflet_config!(&mut self.state, config <- {
+                iflet_config!(c: &mut self.state, config, {
                     config.java_override_version = Some(n);
                 });
             }
@@ -103,7 +89,7 @@ impl Launcher {
                     .set_title("Select Java Executable (./bin/java)")
                     .pick_file()
                 {
-                    iflet_config!(&mut self.state, config <- {
+                    iflet_config!(c: &mut self.state, config, {
                         config.java_override = Some(file.to_string_lossy().to_string());
                     });
                 }
@@ -136,7 +122,7 @@ impl Launcher {
                     menu.state_ram.memory_input = input;
                 }
             }
-            EditInstanceMessage::LoggingToggle(t) => iflet_config!(&mut self.state, config <- {
+            EditInstanceMessage::LoggingToggle(t) => iflet_config!(c: &mut self.state, config, {
                 config.enable_logger = Some(t);
             }),
             EditInstanceMessage::JavaArgsModeChanged(mode) => {
@@ -158,7 +144,7 @@ impl Launcher {
             }
             EditInstanceMessage::PreLaunchPrefix(msg) => {
                 let split = self.should_split_args();
-                iflet_config!(&mut self.state, prefix, |pre_launch_prefix| {
+                iflet_config!(g: &mut self.state, pre_launch_prefix, {
                     msg.apply(pre_launch_prefix.get_or_insert_default(), split);
                 });
             }
@@ -169,7 +155,7 @@ impl Launcher {
             }
             EditInstanceMessage::EnvVars(msg) => {
                 let split = self.should_split_args();
-                iflet_config!(&mut self.state, env_vars, |env_vars| {
+                iflet_config!(g: &mut self.state, env_vars, {
                     msg.apply(env_vars.get_or_insert_default(), split);
                 });
             }
@@ -199,12 +185,12 @@ impl Launcher {
             EditInstanceMessage::RenameApply => return self.rename_instance(),
             EditInstanceMessage::ConfigSaved(res) => res?,
             EditInstanceMessage::WindowWidthChanged(width) => {
-                iflet_config!(&mut self.state, config <- {
+                iflet_config!(c: &mut self.state, config, {
                     config.c_global_settings().window_width = width.parse::<u32>().ok();
                 });
             }
             EditInstanceMessage::WindowHeightChanged(height) => {
-                iflet_config!(&mut self.state, config <- {
+                iflet_config!(c: &mut self.state, config, {
                     config.c_global_settings().window_height = height.parse::<u32>().ok();
                 });
             }
