@@ -96,6 +96,7 @@ pub enum EditInstanceMessage {
 
     PreLaunchPrefix(ListMessage),
     PreLaunchPrefixModeChanged(PreLaunchPrefixMode),
+    EnvVars(ListMessage),
 
     RenameEdit(String),
     RenameApply,
@@ -312,6 +313,7 @@ pub enum LauncherSettingsMessage {
 
     GlobalJavaArgs(ListMessage),
     GlobalPreLaunchPrefix(ListMessage),
+    GlobalEnvVars(ListMessage),
 
     EnablePortableMode,
     EnablePortableModeConfirm(String, HashSet<String>),
