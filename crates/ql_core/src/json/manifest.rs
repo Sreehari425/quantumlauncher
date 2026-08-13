@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use crate::{IntoJsonError, JsonDownloadError, err, file_utils};
+use crate::{IntoJsonError, JsonDownloadError, file_utils, json::V_A_1_0_15};
 use cfg_if::cfg_if;
 use chrono::DateTime;
 use serde::Deserialize;
@@ -124,7 +124,7 @@ pub struct Version {
     pub r#type: String,
     pub url: String,
     // time: String,
-    pub releaseTime: String,
+    pub releaseTime: DateTime<chrono::FixedOffset>,
 }
 
 impl Version {
@@ -158,16 +158,10 @@ impl Version {
 
         if self.id.starts_with("a1.") {
             // Minecraft a1.0.15: Added multiplayer to alpha
-            let a1_0_15 = DateTime::parse_from_rfc3339("2010-08-03T19:47:25+00:00").unwrap();
-            match DateTime::parse_from_rfc3339(&self.releaseTime) {
-                Ok(dt) => {
-                    if dt < a1_0_15 {
-                        return false;
-                    }
-                }
-                Err(e) => {
-                    err!("Could not parse instance date/time: {e}");
-                }
+            let a1_0_15 =
+                DateTime::parse_from_rfc3339(V_A_1_0_15).expect("statically known to be valid");
+            if self.releaseTime < a1_0_15 {
+                return false;
             }
         }
         true

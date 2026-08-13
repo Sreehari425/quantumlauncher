@@ -1,10 +1,8 @@
 use std::{
-    cmp::Ordering,
     collections::{HashMap, HashSet},
     sync::{Arc, mpsc::Sender},
 };
 
-use chrono::DateTime;
 use ql_core::{
     GenericProgress, Instance, InstanceConfigJson, download, err, file_utils, info,
     json::VersionDetails, pt,
@@ -255,7 +253,7 @@ impl ModDownloader {
             .collect();
 
         // Sort by date published
-        download_versions.sort_by(version_sort);
+        download_versions.sort_by(|a, b| a.date_published.cmp(&b.date_published));
 
         let download_version =
             download_versions
@@ -350,28 +348,6 @@ impl ModDownloader {
 
         self.index.mods.insert(mid(&project_info.id), config);
     }
-}
-
-pub fn version_sort(a: &ModVersion, b: &ModVersion) -> Ordering {
-    let a = &a.date_published;
-    let b = &b.date_published;
-    let a = match DateTime::parse_from_rfc3339(a) {
-        Ok(date) => date,
-        Err(err) => {
-            err!("Couldn't parse date {a}: {err}");
-            return Ordering::Equal;
-        }
-    };
-
-    let b = match DateTime::parse_from_rfc3339(b) {
-        Ok(date) => date,
-        Err(err) => {
-            err!("Couldn't parse date {b}: {err}");
-            return Ordering::Equal;
-        }
-    };
-
-    a.cmp(&b)
 }
 
 fn print_downloading_message(project_info: &ProjectInfo, dependent: Option<&str>) {
