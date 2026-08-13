@@ -17,6 +17,7 @@ use crate::{
 pub static CLIENT: OnceLock<ClientWithMiddleware> = OnceLock::new();
 pub static CLIENT_UNCACHED: LazyLock<Client> = LazyLock::new(Client::new);
 
+#[must_use]
 pub fn build_middleware(path: PathBuf, cache: bool) -> ClientWithMiddleware {
     ClientBuilder::new(Client::new())
         .with(Cache(HttpCache {

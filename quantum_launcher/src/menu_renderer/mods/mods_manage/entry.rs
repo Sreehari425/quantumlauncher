@@ -136,11 +136,9 @@ impl MenuEditMods {
                 id: (*id).clone(),
             });
 
-        let image = config
-            .icon_url
-            .as_ref()
-            .map(|url| images.view(Some(url), Some(ICON_SIZE), Some(ICON_SIZE)))
-            .unwrap_or_else(empty_icon);
+        let image = config.icon_url.as_ref().map_or_else(empty_icon, |url| {
+            images.view(Some(url), Some(ICON_SIZE), Some(ICON_SIZE))
+        });
 
         let toggle: Element = mod_toggler_or_indicator(
             config.project_type,

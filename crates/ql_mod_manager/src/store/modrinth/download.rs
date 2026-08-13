@@ -328,7 +328,7 @@ impl ModDownloader {
             manually_installed,
             enabled: true,
             installed_version: download_version.version_number.clone(),
-            version_release_time: download_version.date_published.clone(),
+            version_release_time: download_version.date_published,
             project_source: StoreBackendType::Modrinth,
             project_type,
             project_type_extra: if let QueryType::ResourcePacks = project_type {

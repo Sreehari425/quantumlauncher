@@ -587,7 +587,7 @@ fn get_sidebar_search_button(
             MainMenuMessage::Modal(None).into()
         } else {
             Message::Multiple(vec![
-                MainMenuMessage::Modal(Some(LaunchModal::SSearch("".to_owned()))).into(),
+                MainMenuMessage::Modal(Some(LaunchModal::SSearch(String::new()))).into(),
                 Message::CoreFocusNext,
             ])
         })
