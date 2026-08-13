@@ -315,7 +315,9 @@ impl Launcher {
                             (n, enabled)
                         })
                         .filter(|(n, _)| {
-                            !(n.name == "mod_index.json" || n.name == "launcher_profiles.json")
+                            !(n.name == "mod_index.json"
+                                || n.name == "launcher_profiles.json"
+                                || n.name == "launcher_profiles_microsoft_store.json")
                         })
                         .collect(),
                     Err(err) => {

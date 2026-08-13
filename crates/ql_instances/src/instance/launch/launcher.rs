@@ -797,8 +797,6 @@ impl GameLauncher {
             delete_junk_file(&forge_dir, "ClientInstaller.java").await?;
             delete_junk_file(&forge_dir, "ForgeInstaller.class").await?;
             delete_junk_file(&forge_dir, "ForgeInstaller.java").await?;
-            delete_junk_file(&forge_dir, "launcher_profiles.json").await?;
-            delete_junk_file(&forge_dir, "launcher_profiles_microsoft_store.json").await?;
 
             let versions_dir = forge_dir.join("versions");
             delete_junk_dir(&versions_dir.join(self.version_json.get_id())).await?;
