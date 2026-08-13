@@ -484,6 +484,7 @@ pub enum Message {
     Error(String),
     Done(Res),
     Multiple(Vec<Message>),
+    #[allow(dead_code)]
     ShowScreen(String),
 
     WelcomeContinueToTheme,

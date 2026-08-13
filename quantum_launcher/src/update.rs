@@ -260,10 +260,7 @@ impl Launcher {
                 self.state = State::ConfirmAction {
                     msg1: format!("uninstall {name}"),
                     msg2: "This should be fine, you can always reinstall it later".to_owned(),
-                    yes: Message::Multiple(vec![
-                        Message::ShowScreen("Uninstalling...".to_owned()),
-                        (*msg).clone(),
-                    ]),
+                    yes: *msg,
                     no: ManageModsMessage::Open.into(),
                 }
             }
