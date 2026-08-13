@@ -34,12 +34,9 @@ impl Launcher {
             CreateInstanceMessage::VersionsLoaded(res) => {
                 self.create_instance_finish_loading_versions_list(res);
             }
-            CreateInstanceMessage::VersionSelected(ver) => {
-                iflet!(self, selected_version, show_category_dropdown; {
-                    *show_category_dropdown = false;
-                    *selected_version = ver;
-                });
-            }
+            CreateInstanceMessage::VersionSelected(ver) => iflet!(self, selected_version; {
+                *selected_version = ver;
+            }),
 
             CreateInstanceMessage::SearchInput(t) => iflet!(self, search_box; {
                 *search_box = t;
@@ -78,10 +75,6 @@ impl Launcher {
                 });
             }
 
-            // Filters dropdown
-            CreateInstanceMessage::ContextMenuToggle => iflet!(self, show_category_dropdown; {
-                *show_category_dropdown = !*show_category_dropdown;
-            }),
             CreateInstanceMessage::CategoryToggle(kind) => iflet!(self, selected_categories; {
                 if selected_categories.contains(&kind) {
                     // Don't allow removing the last category
@@ -200,7 +193,6 @@ then go to "Mods->Add File""#,
             instance_name: String::new(),
             download_assets: true,
             search_box: String::new(),
-            show_category_dropdown: false,
             selected_categories: self.config.c_persistent().get_create_instance_filters(),
             kind,
             sidebar_grid_state,

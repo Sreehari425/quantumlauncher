@@ -345,7 +345,7 @@ impl Launcher {
         self.state = State::Create(MenuCreateInstance::DownloadingInstance(bar, instance.kind));
 
         Task::perform(
-            ql_instances::repeat_stage(self.instance().clone(), stage, Some(sender)),
+            ql_instances::repeat_stage(instance, stage, Some(sender)),
             |t| {
                 if let Err(err) = t {
                     Message::Error(err)
