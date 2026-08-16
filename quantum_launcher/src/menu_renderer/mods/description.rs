@@ -24,34 +24,50 @@ impl MenuModDescription {
             return column![widget::text!("Loading{dots}")].padding(10).into();
         };
 
-        view_project_description(
-            self.description.as_ref(),
-            self.mod_id.get_backend(),
-            ManageModsMessage::Open,
-            details,
+        view_project_description(ProjectDescriptionArgs {
+            description: self.description.as_ref(),
+            backend: self.mod_id.get_backend(),
+            back_msg: ManageModsMessage::Open.into(),
+            hit: details,
             images,
             tick_timer,
-            self.versions.as_ref(),
-            self.selected_version.as_deref(),
-            |version| ModDescriptionMessage::SelectVersion(version).into(),
-            Some(ModDescriptionMessage::DownloadSelectedVersion.into()),
-        )
+            versions: self.versions.as_ref(),
+            selected_version: self.selected_version.as_deref(),
+            version_msg: |version| ModDescriptionMessage::SelectVersion(version).into(),
+            download_msg: Some(ModDescriptionMessage::DownloadSelectedVersion.into()),
+        })
     }
+}
+
+pub struct ProjectDescriptionArgs<'a, T> {
+    pub description: Result<&'a Option<MarkState>, T>,
+    pub backend: StoreBackendType,
+    pub back_msg: Message,
+    pub hit: &'a SearchMod,
+    pub images: &'a ImageState,
+    pub tick_timer: usize,
+    pub versions: Option<&'a Result<Vec<ModVersionInfo>, String>>,
+    pub selected_version: Option<&'a str>,
+    pub version_msg: fn(String) -> Message,
+    pub download_msg: Option<Message>,
 }
 
 /// Renders the mod description page
 pub fn view_project_description<'a, T: iced::advanced::text::IntoFragment<'a>>(
-    description: Result<&'a Option<MarkState>, T>,
-    backend: StoreBackendType,
-    back_msg: impl Into<Message>,
-    hit: &'a SearchMod,
-    images: &'a ImageState,
-    tick_timer: usize,
-    versions: Option<&'a Result<Vec<ModVersionInfo>, String>>,
-    selected_version: Option<&str>,
-    version_msg: fn(String) -> Message,
-    download_msg: Option<Message>,
+    args: ProjectDescriptionArgs<'a, T>,
 ) -> Element<'a> {
+    let ProjectDescriptionArgs {
+        description,
+        backend,
+        back_msg,
+        hit,
+        images,
+        tick_timer,
+        versions,
+        selected_version,
+        version_msg,
+        download_msg,
+    } = args;
     // Parses the Markdown description of the mod.
     let markdown_description: Element = match description {
         Ok(Some(desc)) => MarkWidget::new(desc)
@@ -90,7 +106,7 @@ pub fn view_project_description<'a, T: iced::advanced::text::IntoFragment<'a>>(
         row![
             button_with_icon(icons::back_s(12), "Back", 13)
                 .padding([5, 8])
-                .on_press(back_msg.into()),
+                .on_press(back_msg),
             widget::Space::with_width(0),
             images.view(hit.icon_url.as_deref(), Some(20.0), Some(20.0)),
             widget::text(&*hit.title)
