@@ -113,9 +113,9 @@ impl MenuEditMods {
                             .get(id)
                             .is_some_and(|n| n.pinned_version.is_some())
                         {
-                            "Unpin"
+                            "Unpin (allow updates)"
                         } else {
-                            "Pin"
+                            "Pin (ignore updates)"
                         }
                     )
                     .on_press(ManageModsMessage::TogglePin(id.clone()).into()),
