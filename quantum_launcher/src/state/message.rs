@@ -184,6 +184,7 @@ pub enum InstallModsMessage {
     VersionsLoaded(Res<(ModId, Vec<ModVersionInfo>)>),
     SelectVersion(String),
     DownloadSelectedVersion,
+    DownloadSelectedVersionConfirmed(ModId, String),
     IndexUpdated(Res<ModIndex>),
     Scrolled(widget::scrollable::Viewport),
 
@@ -475,6 +476,7 @@ pub enum ModDescriptionMessage {
     VersionsLoaded(Res<(ModId, Vec<ModVersionInfo>)>),
     SelectVersion(String),
     DownloadSelectedVersion,
+    DownloadSelectedVersionConfirmed(ModId, String),
 }
 
 #[derive(Debug, Clone)]

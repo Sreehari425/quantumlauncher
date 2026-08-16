@@ -20,8 +20,9 @@ mod shortcuts;
 use crate::state::{
     self, GameLogMessage, InfoMessage, InstallFabricMessage, InstallModsMessage,
     InstallOptifineMessage, InstallPaperMessage, InstanceNotes, Launcher, LauncherSettingsTab,
-    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLaunch, MenuModDescription,
-    Message, ModDescriptionMessage, NotesMessage, ProgressBar, State, WindowMessage,
+    ManageModsMessage, MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLaunch,
+    MenuModDescription, Message, ModDescriptionMessage, NotesMessage, ProgressBar, State,
+    WindowMessage,
 };
 
 pub use discord_rpc::PresenceConnectionState;
@@ -558,27 +559,60 @@ impl Launcher {
                 }
             }
             ModDescriptionMessage::DownloadSelectedVersion => {
-                if let State::ModDescription(menu) = &self.state {
-                    if let Some(version) = menu.selected_version.clone() {
-                        let id = menu.mod_id.clone();
-                        let instance = self.instance().clone();
-                        let (sender, receiver) = std::sync::mpsc::channel();
-                        self.state = State::ImportModpack(ProgressBar::with_recv(receiver));
-                        return Task::perform(
-                            async move {
-                                ql_mod_manager::store::download_mod_version(
-                                    &id,
-                                    &version,
-                                    &instance,
-                                    Some(sender),
-                                )
-                                .await
-                                .map(|n| (id, n))
-                            },
-                            |res| InstallModsMessage::DownloadComplete(res.strerr()).into(),
-                        );
+                let Some((id, version)) = (|| -> Option<(store::ModId, String)> {
+                    if let State::ModDescription(menu) = &self.state {
+                        Some((menu.mod_id.clone(), menu.selected_version.clone()?))
+                    } else {
+                        None
                     }
+                })() else {
+                    return Task::none();
+                };
+                let incompatible = if let State::ModDescription(menu) = &self.state {
+                    menu.selected_version
+                        .as_deref()
+                        .and_then(|id| {
+                            menu.versions
+                                .as_ref()?
+                                .as_ref()
+                                .ok()?
+                                .iter()
+                                .find(|v| v.id.as_ref() == id)
+                        })
+                        .is_some_and(|v| !v.compatible)
+                } else {
+                    false
+                };
+                if incompatible {
+                    self.state = State::ConfirmAction {
+                        msg1: "download an incompatible mod version".to_owned(),
+                        msg2: "This version may not work with this Minecraft version or loader. Continue anyway?".to_owned(),
+                        yes: ModDescriptionMessage::DownloadSelectedVersionConfirmed(id, version).into(),
+                        no: ManageModsMessage::Open.into(),
+                    };
+                    return Task::none();
                 }
+                return self.update_mod_description(
+                    ModDescriptionMessage::DownloadSelectedVersionConfirmed(id, version),
+                );
+            }
+            ModDescriptionMessage::DownloadSelectedVersionConfirmed(id, version) => {
+                let instance = self.instance().clone();
+                let (sender, receiver) = std::sync::mpsc::channel();
+                self.state = State::ImportModpack(ProgressBar::with_recv(receiver));
+                return Task::perform(
+                    async move {
+                        ql_mod_manager::store::download_mod_version(
+                            &id,
+                            &version,
+                            &instance,
+                            Some(sender),
+                        )
+                        .await
+                        .map(|n| (id, n))
+                    },
+                    |res| InstallModsMessage::DownloadComplete(res.strerr()).into(),
+                );
             }
         }
         Task::none()

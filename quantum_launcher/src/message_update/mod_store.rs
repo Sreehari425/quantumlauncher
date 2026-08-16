@@ -187,23 +187,47 @@ impl Launcher {
                 }
             }
             InstallModsMessage::DownloadSelectedVersion => {
-                let (id, version) = if let State::ModsDownload(menu) = &self.state {
-                    let Some(version) = menu.selected_version.clone() else {
-                        return Task::none();
-                    };
-                    let Some(index) = menu.opened_mod else {
-                        return Task::none();
-                    };
-                    let Some(results) = &menu.results else {
-                        return Task::none();
-                    };
-                    let Some(hit) = results.mods.get(index) else {
-                        return Task::none();
-                    };
-                    (ModId::from_pair(&hit.id, results.backend), version)
-                } else {
+                let Some((id, version)) = (|| -> Option<(ModId, String)> {
+                    if let State::ModsDownload(menu) = &self.state {
+                        let version = menu.selected_version.clone()?;
+                        let index = menu.opened_mod?;
+                        let hit = menu.results.as_ref()?.mods.get(index)?;
+                        Some((ModId::from_pair(&hit.id, menu.backend), version))
+                    } else {
+                        None
+                    }
+                })() else {
                     return Task::none();
                 };
+                let incompatible = if let State::ModsDownload(menu) = &self.state {
+                    menu.selected_version
+                        .as_deref()
+                        .and_then(|id| {
+                            menu.versions
+                                .as_ref()?
+                                .as_ref()
+                                .ok()?
+                                .iter()
+                                .find(|v| v.id.as_ref() == id)
+                        })
+                        .is_some_and(|v| !v.compatible)
+                } else {
+                    false
+                };
+                if incompatible {
+                    self.state = State::ConfirmAction {
+                        msg1: "download an incompatible mod version".to_owned(),
+                        msg2: "This version may not work with this Minecraft version or loader. Continue anyway?".to_owned(),
+                        yes: InstallModsMessage::DownloadSelectedVersionConfirmed(id, version).into(),
+                        no: InstallModsMessage::BackToMainScreen.into(),
+                    };
+                    return Task::none();
+                }
+                return self.update_install_mods(
+                    InstallModsMessage::DownloadSelectedVersionConfirmed(id, version),
+                );
+            }
+            InstallModsMessage::DownloadSelectedVersionConfirmed(id, version) => {
                 let instance = self.instance().clone();
                 let (sender, receiver) = std::sync::mpsc::channel();
                 self.state = State::ImportModpack(ProgressBar::with_recv(receiver));

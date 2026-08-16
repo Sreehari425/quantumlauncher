@@ -143,14 +143,16 @@ impl ModDownloader {
         )?;
         self.send_progress(1, "Loaded project information");
 
-        if let QueryType::Mods | QueryType::ModPacks = query_type {
-            if !self.has_compatible_loader(&project_info) {
-                if let Some(loader) = &self.loader {
-                    pt!("Mod {} doesn't support {loader}", project_info.title);
-                } else {
-                    err!("Mod {} doesn't support unknown loader!", project_info.title);
+        if selected_version.is_none() {
+            if let QueryType::Mods | QueryType::ModPacks = query_type {
+                if !self.has_compatible_loader(&project_info) {
+                    if let Some(loader) = &self.loader {
+                        pt!("Mod {} doesn't support {loader}", project_info.title);
+                    } else {
+                        err!("Mod {} doesn't support unknown loader!", project_info.title);
+                    }
+                    return Ok(());
                 }
-                return Ok(());
             }
         }
 
@@ -291,13 +293,14 @@ impl ModDownloader {
                 None => v.game_versions.contains(&self.version),
             })
             .filter(|v| {
-                if let (Some(loader), QueryType::Mods | QueryType::ModPacks) =
-                    (self.loader, project_type)
-                {
-                    v.loaders.iter().any(|n| n == loader)
-                } else {
-                    true
-                }
+                selected_version.is_some()
+                    || if let (Some(loader), QueryType::Mods | QueryType::ModPacks) =
+                        (self.loader, project_type)
+                    {
+                        v.loaders.iter().any(|n| n == loader)
+                    } else {
+                        true
+                    }
             })
             .cloned()
             .collect();
