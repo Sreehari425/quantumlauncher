@@ -164,18 +164,20 @@ impl Launcher {
 
             ManageModsMessage::UpdatePerform => return self.apply_mod_updates(),
             ManageModsMessage::UpdatePerformDone(Ok((file, should_write_changelog))) => {
-                if let State::EditMods(menu) = &mut self.state {
-                    menu.updates.available.clear();
-                    menu.ui_state.info_message = if let Some(file) = file {
-                        Some(InfoMessage {
-                            text: format!("{} written to disk", file.filename),
-                            kind: InfoMessageKind::AtPath(file.path),
-                        })
-                    } else {
-                        should_write_changelog
-                            .then(|| InfoMessage::error("Changelog was not written to disk"))
-                    };
-                }
+                let info_message = if let Some(file) = file {
+                    Some(InfoMessage {
+                        text: format!("{} written to disk", file.filename),
+                        kind: InfoMessageKind::AtPath(file.path),
+                    })
+                } else {
+                    should_write_changelog
+                        .then(|| InfoMessage::error("Changelog was not written to disk"))
+                };
+
+                // The updater writes a fresh mod_index.json and may replace
+                // files on disk. Rebuild this menu immediately so its indexed
+                // entries and local-file scan cannot show stale duplicates.
+                return self.go_to_edit_mods_menu(info_message);
             }
 
             ManageModsMessage::UpdateCheck => {

@@ -498,7 +498,9 @@ impl Backend for CurseforgeBackend {
     ) -> Result<HashSet<CurseforgeNotAllowed>, ModError> {
         let _guard = lock().await;
         let mut downloader = ModDownloader::new(instance.clone(), sender).await?;
-        downloader.ensure_essential_mods().await?;
+        if !ids.is_empty() {
+            downloader.ensure_essential_mods().await?;
+        }
         downloader.query_cache.extend(
             CFSearchResult::get_from_ids(ids)
                 .await?
