@@ -198,6 +198,7 @@ pub enum InstallModsMessage {
     SearchResult(Res<SearchResult>),
     Download(usize),
     DownloadComplete(Res<(ModId, HashSet<CurseforgeNotAllowed>)>),
+    DownloadCompleteToStore(Res<(ModId, HashSet<CurseforgeNotAllowed>)>),
     InstallModpack(ModId),
     Uninstall(usize),
     UninstallComplete(Res<Vec<ModId>>),

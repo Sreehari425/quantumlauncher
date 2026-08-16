@@ -677,7 +677,7 @@ impl Launcher {
                         .await
                         .map(|n| (id, n))
                     },
-                    |res| InstallModsMessage::DownloadComplete(res.strerr()).into(),
+                    |res| InstallModsMessage::DownloadCompleteToStore(res.strerr()).into(),
                 );
             }
         }

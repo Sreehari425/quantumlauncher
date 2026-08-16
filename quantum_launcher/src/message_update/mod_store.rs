@@ -26,7 +26,8 @@ impl Launcher {
             | InstallModsMessage::DownloadComplete(Err(err))
             | InstallModsMessage::SearchResult(Err(err))
             | InstallModsMessage::IndexUpdated(Err(err))
-            | InstallModsMessage::UninstallComplete(Err(err)) => {
+            | InstallModsMessage::UninstallComplete(Err(err))
+            | InstallModsMessage::DownloadCompleteToStore(Err(err)) => {
                 self.set_error(err);
             }
             InstallModsMessage::VersionsLoaded(Ok((_id, versions))) => {
@@ -286,20 +287,42 @@ impl Launcher {
                             .await
                             .map(|n| (id, n))
                     },
-                    |n| InstallModsMessage::DownloadComplete(n.strerr()).into(),
+                    |n| InstallModsMessage::DownloadCompleteToStore(n.strerr()).into(),
                 );
             }
             InstallModsMessage::DownloadComplete(Ok((id, not_allowed))) => {
-                let _ = id;
-                let task = self.go_to_edit_mods_menu(None);
-
-                if not_allowed.is_empty() {
-                    return task;
+                if !not_allowed.is_empty() {
+                    self.state = State::CurseforgeManualDownload(MenuCurseforgeManualDownload {
+                        not_allowed,
+                        delete_mods: true,
+                    });
+                    return Task::none();
                 }
-                self.state = State::CurseforgeManualDownload(MenuCurseforgeManualDownload {
-                    not_allowed,
-                    delete_mods: true,
+
+                if let State::ModsDownload(menu) = &mut self.state {
+                    menu.mods_download_in_progress.remove(&id);
+                }
+                let instance = self.instance().clone();
+                return Task::perform(async move { ModIndex::load(&instance).await }, |res| {
+                    InstallModsMessage::IndexUpdated(res.strerr()).into()
                 });
+            }
+            InstallModsMessage::DownloadCompleteToStore(Ok((_id, not_allowed))) => {
+                if !not_allowed.is_empty() {
+                    self.state = State::CurseforgeManualDownload(MenuCurseforgeManualDownload {
+                        not_allowed,
+                        delete_mods: true,
+                    });
+                    return Task::none();
+                }
+
+                return match block_on(self.open_mods_store()) {
+                    Ok(task) => task,
+                    Err(err) => {
+                        self.set_error(err);
+                        Task::none()
+                    }
+                };
             }
             InstallModsMessage::IndexUpdated(Ok(idx)) => {
                 if let State::ModsDownload(menu) = &mut self.state {
@@ -365,7 +388,7 @@ impl Launcher {
                             .await
                             .map(|not_allowed| (id, not_allowed))
                     },
-                    |n| InstallModsMessage::DownloadComplete(n.strerr()).into(),
+                    |n| InstallModsMessage::DownloadCompleteToStore(n.strerr()).into(),
                 );
             }
             InstallModsMessage::Uninstall(index) => {
