@@ -22,7 +22,7 @@ mod update;
 
 pub use add_file::add_files;
 pub use curseforge::CurseforgeBackend;
-pub use delete::{delete_mod_named, delete_mods};
+pub use delete::{delete_mod_named, delete_mods, delete_mods_for_update};
 pub use error::{GameExpectation, ModError};
 pub use id::ModId;
 pub use local_json::{ModConfig, ModFile, ModIndex};
