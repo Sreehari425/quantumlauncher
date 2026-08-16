@@ -287,7 +287,7 @@ impl CurseforgeBackend {
             }
         }
         let mut response = load_files_page(id, &params).await?;
-        if all_versions {
+        if all_versions || !include_incompatible {
             let mut seen_ids: HashSet<i32> = response.data.iter().map(|file| file.id).collect();
             let mut page_index = 1;
             loop {

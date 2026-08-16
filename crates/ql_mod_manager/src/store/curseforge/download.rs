@@ -12,7 +12,7 @@ use ql_core::{
 use crate::store::{
     CurseforgeNotAllowed, DirStructure, ModConfig, ModError, ModFile, ModId, ModIndex, QueryType,
     StoreBackendType,
-    curseforge::{ModQuery, get_query_type},
+    curseforge::{CurseforgeFileQuery, ModQuery, get_query_type},
     install_modpack,
 };
 
@@ -132,16 +132,20 @@ impl<'a> ModDownloader<'a> {
 
         let query_type = get_query_type(response.class_id).await?;
 
-        let (file_query, file_id) = response
-            .get_file(
-                response.name.clone(),
-                id,
-                self.version.clone(),
-                self.loader,
-                query_type,
-                self.selected_file,
-            )
-            .await?;
+        let (file_query, file_id) = if let Some(file_id) = self.selected_file {
+            (CurseforgeFileQuery::load(id, file_id).await?, file_id)
+        } else {
+            response
+                .get_file(
+                    response.name.clone(),
+                    id,
+                    self.version.clone(),
+                    self.loader,
+                    query_type,
+                    None,
+                )
+                .await?
+        };
 
         let filename = file_query.data.fileName.clone();
         pt!("File: {}", filename.bright_black());

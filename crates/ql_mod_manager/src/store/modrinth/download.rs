@@ -157,9 +157,12 @@ impl ModDownloader {
         }
 
         print_downloading_message(&project_info, dependent);
-        let download_version = self
-            .get_download_version(&id, Some(&project_info.title), query_type, selected_version)
-            .await?;
+        let download_version = if let Some(version_id) = selected_version {
+            ModVersion::download_by_id(version_id).await?
+        } else {
+            self.get_download_version(&id, Some(&project_info.title), query_type, None)
+                .await?
+        };
         self.send_progress(1, "Loaded selected version");
 
         let mut dependency_list = HashSet::new();
@@ -284,7 +287,7 @@ impl ModDownloader {
         selected_version: Option<&str>,
     ) -> Result<ModVersion, ModError> {
         pt!("Getting download info");
-        let download_info = ModVersion::download(id).await?;
+        let download_info = ModVersion::download_all(id).await?;
 
         let mut download_versions: Vec<ModVersion> = download_info
             .iter()

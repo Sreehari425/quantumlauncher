@@ -34,34 +34,33 @@ impl ModrinthBackend {
         include_incompatible: bool,
         all_versions: bool,
     ) -> Result<Vec<ModVersionInfo>, ModError> {
-        let mut versions = ModVersion::download_page(id, 0).await?;
-        if all_versions {
-            let mut seen_ids: HashSet<Arc<str>> = versions.iter().map(|v| v.id.clone()).collect();
-            let mut offset = versions.len();
-            loop {
-                let page = ModVersion::download_page(id, offset).await?;
-                if page.is_empty() {
-                    break;
-                }
-                let page_len = page.len();
-                let previous_len = versions.len();
-                versions.extend(page.into_iter().filter(|v| seen_ids.insert(v.id.clone())));
-                offset += page_len;
-                if versions.len() == previous_len {
-                    break;
-                }
-            }
-        }
         let details = ql_core::json::VersionDetails::load(instance).await?;
         let config = ql_core::InstanceConfigJson::read(instance).await?;
         let mc = details.get_id();
         let loader = config.mod_type.to_modrinth_str();
+
+        let first_page_ids = if include_incompatible && !all_versions {
+            ModVersion::download_page(id, 0)
+                .await?
+                .into_iter()
+                .map(|version| version.id)
+                .collect()
+        } else {
+            HashSet::new()
+        };
+
+        let versions = ModVersion::download_all(id).await?;
         Ok(versions
             .into_iter()
             .filter_map(|v| {
                 let compatible = v.game_versions.iter().any(|n| n == mc)
                     && (config.mod_type.is_vanilla() || v.loaders.iter().any(|n| n == loader));
-                (include_incompatible || compatible).then_some(ModVersionInfo {
+                let visible = if include_incompatible && !all_versions {
+                    first_page_ids.contains(&v.id) || compatible
+                } else {
+                    include_incompatible || compatible
+                };
+                visible.then_some(ModVersionInfo {
                     id: v.id,
                     name: v.name.to_string(),
                     date_published: v.date_published,
@@ -171,7 +170,7 @@ impl Backend for ModrinthBackend {
         version: &str,
         loader: Loader,
     ) -> Result<(DateTime<chrono::FixedOffset>, String), ModError> {
-        let download_info = ModVersion::download(id).await?;
+        let download_info = ModVersion::download_all(id).await?;
         let version = version.to_owned();
 
         let mut download_versions: Vec<ModVersion> = download_info
