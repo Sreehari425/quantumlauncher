@@ -126,6 +126,7 @@ pub enum ManageModsMessage {
 
     ToggleSelected,
     ToggleOne(ModId),
+    TogglePin(ModId),
     ToggleOneLocal(LocalMod),
 
     UpdateCheck,

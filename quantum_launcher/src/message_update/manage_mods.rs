@@ -330,6 +330,28 @@ impl Launcher {
                     |n| Message::Done(n.strerr()),
                 );
             }
+            ManageModsMessage::TogglePin(id) => {
+                let instance = self.selected_instance.clone().unwrap();
+                let index = if let State::EditMods(menu) = &mut self.state {
+                    if let Some(config) = menu.file_data.mod_index.mods.get_mut(&id) {
+                        config.pinned_version = if config.pinned_version.is_some() {
+                            None
+                        } else {
+                            Some(config.installed_version.clone())
+                        };
+                    }
+                    menu.file_data.mod_index.clone()
+                } else {
+                    return Task::none();
+                };
+                return Task::perform(
+                    async move {
+                        let mut index = index;
+                        index.save(&instance).await
+                    },
+                    |n| Message::Done(n.strerr()),
+                );
+            }
             ManageModsMessage::ToggleOneLocal(local) => {
                 if let State::EditMods(menu) = &mut self.state {
                     menu.toggle_local_mods_in_ui(std::slice::from_ref(&local));
@@ -894,6 +916,7 @@ impl ManageModsMessage {
             | ManageModsMessage::AddFileDone(_)
             | ManageModsMessage::ToggleSelected
             | ManageModsMessage::ToggleOne(_)
+            | ManageModsMessage::TogglePin(_)
             | ManageModsMessage::ToggleOneLocal(_) => true,
 
             ManageModsMessage::SelectEnsure(_, _, _)
