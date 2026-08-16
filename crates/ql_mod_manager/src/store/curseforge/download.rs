@@ -29,6 +29,7 @@ pub struct ModDownloader<'a> {
     pub not_allowed: HashSet<CurseforgeNotAllowed>,
     already_installed: HashSet<String>,
     pub sender: Option<&'a Sender<GenericProgress>>,
+    pub selected_file: Option<i32>,
 }
 
 impl<'a> ModDownloader<'a> {
@@ -48,6 +49,7 @@ impl<'a> ModDownloader<'a> {
             query_cache: HashMap::new(),
             not_allowed: HashSet::new(),
             sender,
+            selected_file: None,
         })
     }
 
@@ -63,6 +65,7 @@ impl<'a> ModDownloader<'a> {
             already_installed: HashSet::new(),
             query_cache: HashMap::new(),
             sender: None,
+            selected_file: None,
             not_allowed: HashSet::new(),
         })
     }
@@ -81,6 +84,7 @@ impl<'a> ModDownloader<'a> {
                 self.version.clone(),
                 self.loader,
                 query_type,
+                self.selected_file,
             )
             .await?;
 
@@ -135,6 +139,7 @@ impl<'a> ModDownloader<'a> {
                 self.version.clone(),
                 self.loader,
                 query_type,
+                self.selected_file,
             )
             .await?;
 
@@ -218,6 +223,7 @@ impl<'a> ModDownloader<'a> {
         self.index.mods.insert(
             id_mod.clone(),
             ModConfig {
+                pinned_version: None,
                 name: response.name.clone(),
                 manually_installed: dependent.is_none(),
                 installed_version: file_query.data.displayName.clone(),

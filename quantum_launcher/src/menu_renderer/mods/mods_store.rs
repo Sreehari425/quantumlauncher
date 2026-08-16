@@ -279,6 +279,10 @@ impl MenuModsDownload {
             hit,
             images,
             tick_timer,
+            self.versions.as_ref(),
+            self.selected_version.as_deref(),
+            |version| InstallModsMessage::SelectVersion(version).into(),
+            Some(InstallModsMessage::DownloadSelectedVersion.into()),
         )
     }
 }

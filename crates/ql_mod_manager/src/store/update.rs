@@ -124,6 +124,9 @@ pub async fn check_for_updates(instance: Instance) -> Result<Vec<(ModId, String)
             .mods
             .into_iter()
             .map(|(mod_id, installed_mod)| async move {
+                if installed_mod.pinned_version.is_some() {
+                    return Ok(None);
+                }
                 let (download_version_time, download_version) =
                     get_latest_version_date(loader, &mod_id, version).await?;
 

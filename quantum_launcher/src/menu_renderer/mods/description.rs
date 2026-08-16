@@ -3,14 +3,17 @@ use iced::{
     Alignment, Length,
     widget::{self, column, row, text::Wrapping},
 };
-use ql_mod_manager::store::{SearchMod, StoreBackendType};
+use ql_mod_manager::store::{ModVersionInfo, SearchMod, StoreBackendType};
 
 use crate::{
     icons,
     menu_renderer::{
         Element, FONT_DEFAULT, FONT_MONO, barthin, button_with_icon, tooltip, tsubtitle, underline,
     },
-    state::{ImageState, InstallModsMessage, ManageModsMessage, MenuModDescription, Message},
+    state::{
+        ImageState, InstallModsMessage, ManageModsMessage, MenuModDescription, Message,
+        ModDescriptionMessage,
+    },
     stylesheet::{color::Color, styles::LauncherTheme, widgets::StyleButton},
 };
 
@@ -28,6 +31,10 @@ impl MenuModDescription {
             details,
             images,
             tick_timer,
+            self.versions.as_ref(),
+            self.selected_version.as_deref(),
+            |version| ModDescriptionMessage::SelectVersion(version).into(),
+            Some(ModDescriptionMessage::DownloadSelectedVersion.into()),
         )
     }
 }
@@ -40,6 +47,10 @@ pub fn view_project_description<'a, T: iced::advanced::text::IntoFragment<'a>>(
     hit: &'a SearchMod,
     images: &'a ImageState,
     tick_timer: usize,
+    versions: Option<&'a Result<Vec<ModVersionInfo>, String>>,
+    selected_version: Option<&str>,
+    version_msg: fn(String) -> Message,
+    download_msg: Option<Message>,
 ) -> Element<'a> {
     // Parses the Markdown description of the mod.
     let markdown_description: Element = match description {
@@ -113,6 +124,50 @@ pub fn view_project_description<'a, T: iced::advanced::text::IntoFragment<'a>>(
     let side_description = scroll(column![markdown_description].padding(20), 2)
         .style(LauncherTheme::style_scrollable_flat_dark);
 
+    let version_view: Element =
+        match versions {
+            Some(Ok(items)) => {
+                column![
+                    widget::horizontal_rule(1).style(barthin),
+                    widget::text("Versions").size(20),
+                    widget::column(items.iter().map(|v| {
+                        let selected = selected_version == Some(v.id.as_ref());
+                        let label = if selected {
+                            format!("✓ {}", v.name)
+                        } else {
+                            v.name.clone()
+                        };
+                        widget::button(widget::text(label).size(13).style(
+                            move |t: &LauncherTheme| {
+                                if selected {
+                                    t.style_text(Color::SecondLight)
+                                } else {
+                                    t.style_text(Color::Light)
+                                }
+                            },
+                        ))
+                        .on_press(version_msg(v.id.to_string()))
+                        .into()
+                    }))
+                    .spacing(3),
+                ]
+                .push_maybe(selected_version.map(|_| {
+                    widget::text("Selected version marked with ✓")
+                        .size(12)
+                        .style(tsubtitle)
+                }))
+                .push_maybe(selected_version.and(download_msg).map(|msg| {
+                    widget::button(widget::text("Download selected version")).on_press(msg)
+                }))
+                .spacing(5)
+                .into()
+            }
+            Some(Err(err)) => widget::text(err).size(12).into(),
+            None => widget::text("Loading versions...")
+                .size(12)
+                .style(tsubtitle)
+                .into(),
+        };
     let side_extra_info = scroll(
         column![
             widget::text(&hit.description)
@@ -138,6 +193,7 @@ pub fn view_project_description<'a, T: iced::advanced::text::IntoFragment<'a>>(
             }))
             .spacing(5),
         ]
+        .push(version_view)
         .push_maybe((!hit.gallery.is_empty()).then(|| {
             column![
                 widget::horizontal_rule(1).style(barthin),

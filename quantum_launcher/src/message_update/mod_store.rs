@@ -29,6 +29,12 @@ impl Launcher {
             | InstallModsMessage::UninstallComplete(Err(err)) => {
                 self.set_error(err);
             }
+            InstallModsMessage::VersionsLoaded(Ok((_id, versions))) => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    menu.versions = Some(Ok(versions));
+                }
+            }
+            InstallModsMessage::VersionsLoaded(Err(err)) => self.set_error(err),
 
             InstallModsMessage::SearchResult(Ok(search)) => {
                 if let State::ModsDownload(menu) = &mut self.state {
@@ -116,6 +122,7 @@ impl Launcher {
                                 InstallModsMessage::LoadedDescription(n.strerr()).into()
                             });
                             let id2 = id.clone();
+                            let id3 = id.clone();
                             let t2 = Task::perform(
                                 async move { store::get_info(&id2).await },
                                 move |n| {
@@ -126,7 +133,18 @@ impl Launcher {
                                     .into()
                                 },
                             );
-                            return Task::batch([t1, t2]);
+                            let instance = self.instance().clone();
+                            let include = self.config.show_incompatible_mod_versions;
+                            let version_id = id3.clone();
+                            let t3 = Task::perform(
+                                async move {
+                                    store::get_versions(&version_id, &instance, include)
+                                        .await
+                                        .map(|v| (version_id, v))
+                                },
+                                |n| InstallModsMessage::VersionsLoaded(n.strerr()).into(),
+                            );
+                            return Task::batch([t1, t2, t3]);
                         }
                     }
                 }
@@ -163,19 +181,44 @@ impl Launcher {
             InstallModsMessage::Download(index) => {
                 return self.mod_download(index);
             }
-            InstallModsMessage::DownloadComplete(Ok((id, not_allowed))) => {
-                let task = if let State::ModsDownload(menu) = &mut self.state {
-                    menu.mods_download_in_progress.remove(&id);
-                    Task::none()
+            InstallModsMessage::SelectVersion(version) => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    menu.selected_version = Some(version);
+                }
+            }
+            InstallModsMessage::DownloadSelectedVersion => {
+                let (id, version) = if let State::ModsDownload(menu) = &self.state {
+                    let Some(version) = menu.selected_version.clone() else {
+                        return Task::none();
+                    };
+                    let Some(index) = menu.opened_mod else {
+                        return Task::none();
+                    };
+                    let Some(results) = &menu.results else {
+                        return Task::none();
+                    };
+                    let Some(hit) = results.mods.get(index) else {
+                        return Task::none();
+                    };
+                    (ModId::from_pair(&hit.id, results.backend), version)
                 } else {
-                    match block_on(self.open_mods_store()) {
-                        Ok(n) => n,
-                        Err(err) => {
-                            self.set_error(err);
-                            Task::none()
-                        }
-                    }
+                    return Task::none();
                 };
+                let instance = self.instance().clone();
+                let (sender, receiver) = std::sync::mpsc::channel();
+                self.state = State::ImportModpack(ProgressBar::with_recv(receiver));
+                return Task::perform(
+                    async move {
+                        store::download_mod_version(&id, &version, &instance, Some(sender))
+                            .await
+                            .map(|n| (id, n))
+                    },
+                    |n| InstallModsMessage::DownloadComplete(n.strerr()).into(),
+                );
+            }
+            InstallModsMessage::DownloadComplete(Ok((id, not_allowed))) => {
+                let _ = id;
+                let task = self.go_to_edit_mods_menu(None);
 
                 if not_allowed.is_empty() {
                     return task;
@@ -312,6 +355,8 @@ impl Launcher {
             is_loading_continuation: false,
             has_continuation_ended: false,
             description: None,
+            versions: None,
+            selected_version: None,
             categories: ModCategoryState::default(),
             force_open_source: false,
 

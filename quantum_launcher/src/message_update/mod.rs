@@ -18,10 +18,10 @@ mod settings;
 mod shortcuts;
 
 use crate::state::{
-    self, GameLogMessage, InfoMessage, InstallFabricMessage, InstallOptifineMessage,
-    InstallPaperMessage, InstanceNotes, Launcher, LauncherSettingsTab, MenuInstallFabric,
-    MenuInstallOptifine, MenuInstallPaper, MenuLaunch, MenuModDescription, Message,
-    ModDescriptionMessage, NotesMessage, ProgressBar, State, WindowMessage,
+    self, GameLogMessage, InfoMessage, InstallFabricMessage, InstallModsMessage,
+    InstallOptifineMessage, InstallPaperMessage, InstanceNotes, Launcher, LauncherSettingsTab,
+    MenuInstallFabric, MenuInstallOptifine, MenuInstallPaper, MenuLaunch, MenuModDescription,
+    Message, ModDescriptionMessage, NotesMessage, ProgressBar, State, WindowMessage,
 };
 
 pub use discord_rpc::PresenceConnectionState;
@@ -509,15 +509,30 @@ impl Launcher {
                         ModDescriptionMessage::LoadedDescription(res.map(|n| n.1).strerr()).into()
                     })
                     .abortable();
+                let id3 = mod_id.clone();
+                let instance = self.instance().clone();
+                let include = self.config.show_incompatible_mod_versions;
+                let version_id = id3.clone();
+                let (load_versions, h3) = Task::perform(
+                    async move {
+                        ql_mod_manager::store::get_versions(&version_id, &instance, include)
+                            .await
+                            .map(|v| (version_id, v))
+                    },
+                    |res| ModDescriptionMessage::VersionsLoaded(res.strerr()).into(),
+                )
+                .abortable();
 
                 self.state = State::ModDescription(MenuModDescription {
                     description: Ok(None),
                     details: None,
                     mod_id,
-                    _handle: [h1.abort_on_drop(), h2.abort_on_drop()],
+                    versions: None,
+                    selected_version: None,
+                    _handle: [h1.abort_on_drop(), h2.abort_on_drop(), h3.abort_on_drop()],
                 });
 
-                return Task::batch([load_details, load_description]);
+                return Task::batch([load_details, load_description, load_versions]);
             }
             ModDescriptionMessage::LoadedDetails(details) => match details {
                 Ok(details) => {
@@ -530,6 +545,39 @@ impl Launcher {
             ModDescriptionMessage::LoadedDescription(desc) => {
                 if let State::ModDescription(menu) = &mut self.state {
                     menu.description = desc.map(|n| Some(MarkState::with_html_and_markdown(&n)));
+                }
+            }
+            ModDescriptionMessage::VersionsLoaded(res) => {
+                if let State::ModDescription(menu) = &mut self.state {
+                    menu.versions = Some(res.map(|(_, v)| v));
+                }
+            }
+            ModDescriptionMessage::SelectVersion(version) => {
+                if let State::ModDescription(menu) = &mut self.state {
+                    menu.selected_version = Some(version);
+                }
+            }
+            ModDescriptionMessage::DownloadSelectedVersion => {
+                if let State::ModDescription(menu) = &self.state {
+                    if let Some(version) = menu.selected_version.clone() {
+                        let id = menu.mod_id.clone();
+                        let instance = self.instance().clone();
+                        let (sender, receiver) = std::sync::mpsc::channel();
+                        self.state = State::ImportModpack(ProgressBar::with_recv(receiver));
+                        return Task::perform(
+                            async move {
+                                ql_mod_manager::store::download_mod_version(
+                                    &id,
+                                    &version,
+                                    &instance,
+                                    Some(sender),
+                                )
+                                .await
+                                .map(|n| (id, n))
+                            },
+                            |res| InstallModsMessage::DownloadComplete(res.strerr()).into(),
+                        );
+                    }
                 }
             }
         }

@@ -95,6 +95,19 @@ pub async fn delete_mods(ids: Vec<ModId>, instance: Instance) -> Result<Vec<ModI
     Ok(ids)
 }
 
+/// Removes every indexed store entry with this project name before replacement.
+/// This is needed because the same project can have been installed from either backend.
+pub async fn delete_mod_named(name: &str, instance: Instance) -> Result<Vec<ModId>, ModError> {
+    let index = ModIndex::load(&instance).await?;
+    let ids = index
+        .mods
+        .iter()
+        .filter(|(_, config)| config.name.as_ref() == name)
+        .map(|(id, _)| id.clone())
+        .collect();
+    delete_mods(ids, instance).await
+}
+
 async fn delete_mod(index: &mut ModIndex, id: &ModId, dirs: &DirStructure) -> Result<(), ModError> {
     if let Some(mod_info) = index.mods.remove(id) {
         let Some(content_dir) = dirs.get(mod_info.project_type) else {

@@ -681,6 +681,8 @@ pub struct MenuModsDownload {
     pub query: String,
     pub results: Option<SearchResult>,
     pub description: Option<MarkState>,
+    pub versions: Option<Result<Vec<ql_mod_manager::store::ModVersionInfo>, String>>,
+    pub selected_version: Option<String>,
     pub categories: ModCategoryState,
 
     pub mod_descriptions: HashMap<ModId, String>,
@@ -906,7 +908,9 @@ pub struct MenuModDescription {
     pub description: Result<Option<MarkState>, String>,
     pub details: Option<SearchMod>,
     pub mod_id: ModId,
-    pub _handle: [iced::task::Handle; 2],
+    pub versions: Option<Result<Vec<ql_mod_manager::store::ModVersionInfo>, String>>,
+    pub selected_version: Option<String>,
+    pub _handle: [iced::task::Handle; 3],
 }
 
 /// The enum that represents which menu is opened currently.

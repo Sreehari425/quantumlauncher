@@ -70,8 +70,13 @@ impl Mod {
         version: String,
         loader: Option<&str>,
         query_type: QueryType,
+        selected_file: Option<i32>,
     ) -> Result<(CurseforgeFileQuery, i32), ModError> {
-        let Some(file) = (if let QueryType::Mods | QueryType::ModPacks = query_type {
+        let Some(file) = (if let Some(file_id) = selected_file {
+            self.latest_files_indexes
+                .iter()
+                .find(|n| n.fileId == file_id)
+        } else if let QueryType::Mods | QueryType::ModPacks = query_type {
             if let (Some(loader), true) = (
                 loader,
                 self.iter_files(version.clone())
@@ -198,6 +203,7 @@ impl CurseforgeFileQuery {
 #[derive(Deserialize, Clone, Debug)]
 #[allow(non_snake_case)]
 pub struct CurseforgeFile {
+    pub id: i32,
     pub fileName: String,
     pub downloadUrl: Option<String>,
     pub gameVersions: Vec<String>,
@@ -258,6 +264,101 @@ impl CFSearchResult {
 }
 
 pub struct CurseforgeBackend;
+
+impl CurseforgeBackend {
+    pub async fn get_versions(
+        id: &str,
+        instance: &ql_core::Instance,
+        include_incompatible: bool,
+    ) -> Result<Vec<crate::store::ModVersionInfo>, ModError> {
+        let details = ql_core::json::VersionDetails::load(instance).await?;
+        let config = ql_core::InstanceConfigJson::read(instance).await?;
+        let mc = details.get_id().to_owned();
+        let loader = config.mod_type.not_vanilla().map(|n| n.to_curseforge_num());
+        let mut params = HashMap::from([("pageSize", "100".to_owned())]);
+        if !include_incompatible {
+            params.insert("gameVersion", mc.clone());
+            if let Some(loader) = &loader {
+                params.insert("modLoaderType", (*loader).to_owned());
+            }
+        }
+        let response_text = send_request(&format!("mods/{id}/files"), &params).await?;
+        let response: CurseforgeFilesResponse =
+            serde_json::from_str(&response_text).json(response_text)?;
+        let mut out = Vec::new();
+        for file in response.data {
+            let compatible = file.gameVersions.iter().any(|version| version == &mc)
+                && loader.is_none_or(|_| true);
+            if !include_incompatible && !compatible {
+                continue;
+            }
+            out.push(crate::store::ModVersionInfo {
+                id: Arc::from(file.id.to_string()),
+                name: file.displayName,
+                date_published: file.fileDate,
+                game_versions: file.gameVersions,
+                loaders: Vec::new(),
+                compatible,
+            });
+        }
+        Ok(out)
+    }
+
+    pub async fn download_version(
+        id: &str,
+        version_id: &str,
+        instance: &ql_core::Instance,
+        sender: Option<Sender<GenericProgress>>,
+    ) -> Result<HashSet<CurseforgeNotAllowed>, ModError> {
+        if let Some(sender) = &sender {
+            _ = sender.send(GenericProgress {
+                done: 0,
+                total: 3,
+                message: Some("Preparing selected version".to_owned()),
+                has_finished: false,
+            });
+        }
+        let project = crate::store::get_info(&ModId::Curseforge(Arc::from(id))).await?;
+        crate::store::delete_mod_named(&project.title, instance.clone()).await?;
+        if let Some(sender) = &sender {
+            _ = sender.send(GenericProgress {
+                done: 1,
+                total: 3,
+                message: Some("Removed installed version".to_owned()),
+                has_finished: false,
+            });
+        }
+        let _guard = lock().await;
+        let mut downloader = ModDownloader::new(instance.clone(), sender.as_ref()).await?;
+        downloader.selected_file = Some(version_id.parse().map_err(|_| ModError::NoFilesFound)?);
+        if let Some(sender) = &sender {
+            _ = sender.send(GenericProgress {
+                done: 2,
+                total: 3,
+                message: Some("Downloading selected version".to_owned()),
+                has_finished: false,
+            });
+        }
+        downloader.download(id, None).await?;
+        if let Some(config) = downloader
+            .index
+            .mods
+            .get_mut(&ModId::Curseforge(Arc::from(id)))
+        {
+            config.pinned_version = Some(version_id.to_owned());
+        }
+        downloader.index.save(instance).await?;
+        if let Some(sender) = &sender {
+            _ = sender.send(GenericProgress::finished());
+        }
+        Ok(downloader.not_allowed)
+    }
+}
+
+#[derive(Deserialize)]
+struct CurseforgeFilesResponse {
+    data: Vec<CurseforgeFile>,
+}
 
 impl Backend for CurseforgeBackend {
     async fn search(query: super::Query, offset: usize) -> Result<SearchResult, ModError> {
@@ -365,6 +466,7 @@ impl Backend for CurseforgeBackend {
                 version.to_owned(),
                 loader,
                 query_type,
+                None,
             )
             .await?;
 

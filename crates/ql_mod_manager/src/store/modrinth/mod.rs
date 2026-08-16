@@ -13,7 +13,9 @@ use versions::ModVersion;
 
 use crate::{
     rate_limiter::{RATE_LIMITER, lock},
-    store::{Category, ModId, QueryType, SearchMod, StoreBackendType, types::GalleryItem},
+    store::{
+        Category, ModId, ModVersionInfo, QueryType, SearchMod, StoreBackendType, types::GalleryItem,
+    },
 };
 
 use super::{Backend, CurseforgeNotAllowed, ModError, Query, SearchResult};
@@ -24,6 +26,80 @@ mod search;
 mod versions;
 
 pub struct ModrinthBackend;
+
+impl ModrinthBackend {
+    pub async fn get_versions(
+        id: &str,
+        instance: &Instance,
+        include_incompatible: bool,
+    ) -> Result<Vec<ModVersionInfo>, ModError> {
+        let versions = ModVersion::download(id).await?;
+        let details = ql_core::json::VersionDetails::load(instance).await?;
+        let config = ql_core::InstanceConfigJson::read(instance).await?;
+        let mc = details.get_id();
+        let loader = config.mod_type.to_modrinth_str();
+        Ok(versions
+            .into_iter()
+            .filter_map(|v| {
+                let compatible = v.game_versions.iter().any(|n| n == mc)
+                    && (config.mod_type.is_vanilla() || v.loaders.iter().any(|n| n == loader));
+                (include_incompatible || compatible).then_some(ModVersionInfo {
+                    id: v.id,
+                    name: v.name.to_string(),
+                    date_published: v.date_published,
+                    game_versions: v.game_versions,
+                    loaders: v.loaders,
+                    compatible,
+                })
+            })
+            .collect())
+    }
+
+    pub async fn download_version(
+        id: &str,
+        version_id: &str,
+        instance: &Instance,
+        sender: Option<Sender<GenericProgress>>,
+    ) -> Result<HashSet<CurseforgeNotAllowed>, ModError> {
+        if let Some(sender) = &sender {
+            _ = sender.send(GenericProgress {
+                done: 0,
+                total: 3,
+                message: Some("Preparing selected version".to_owned()),
+                has_finished: false,
+            });
+        }
+        let project = crate::store::get_info(&ModId::Modrinth(Arc::from(id))).await?;
+        crate::store::delete_mod_named(&project.title, instance.clone()).await?;
+        if let Some(sender) = &sender {
+            _ = sender.send(GenericProgress {
+                done: 1,
+                total: 3,
+                message: Some("Removed installed version".to_owned()),
+                has_finished: false,
+            });
+        }
+        let _guard = lock().await;
+        if let Some(sender) = &sender {
+            _ = sender.send(GenericProgress {
+                done: 2,
+                total: 3,
+                message: Some("Downloading selected version".to_owned()),
+                has_finished: false,
+            });
+        }
+        let progress_sender = sender.clone();
+        let mut downloader = download::ModDownloader::new(instance, sender).await?;
+        downloader
+            .download_version(id.into(), None, true, version_id)
+            .await?;
+        downloader.index.save(instance).await?;
+        if let Some(sender) = &progress_sender {
+            _ = sender.send(GenericProgress::finished());
+        }
+        Ok(HashSet::new())
+    }
+}
 
 impl Backend for ModrinthBackend {
     async fn search(query: Query, offset: usize) -> Result<SearchResult, ModError> {

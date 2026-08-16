@@ -25,8 +25,8 @@ use ql_instances::auth::{
 use ql_mod_manager::{
     loaders::{fabric, paper::PaperVersion},
     store::{
-        Category, CurseforgeNotAllowed, LocalMod, ModId, ModIndex, QueryType, RecommendedMod,
-        SearchMod, SearchResult, StoreBackendType,
+        Category, CurseforgeNotAllowed, LocalMod, ModId, ModIndex, ModVersionInfo, QueryType,
+        RecommendedMod, SearchMod, SearchResult, StoreBackendType,
     },
 };
 
@@ -181,6 +181,9 @@ pub enum InstallModsMessage {
     Click(usize),
     LoadedDescription(Res<(ModId, String)>),
     LoadedExtendedInfo(Res<(ModId, SearchMod)>),
+    VersionsLoaded(Res<(ModId, Vec<ModVersionInfo>)>),
+    SelectVersion(String),
+    DownloadSelectedVersion,
     IndexUpdated(Res<ModIndex>),
     Scrolled(widget::scrollable::Viewport),
 
@@ -305,6 +308,7 @@ pub enum LauncherSettingsMessage {
     ToggleWindowSize(bool),
     ToggleInstanceRemembering(bool),
     ToggleCaching(bool),
+    ToggleIncompatibleModVersions(bool),
     ToggleModUpdateChangelog(bool),
     AfterLaunchBehaviorChanged(crate::config::AfterLaunchBehavior),
     #[allow(unused)]
@@ -468,6 +472,9 @@ pub enum ModDescriptionMessage {
     Open(ModId),
     LoadedDetails(Res<SearchMod>),
     LoadedDescription(Res<String>),
+    VersionsLoaded(Res<(ModId, Vec<ModVersionInfo>)>),
+    SelectVersion(String),
+    DownloadSelectedVersion,
 }
 
 #[derive(Debug, Clone)]
