@@ -33,8 +33,15 @@ impl MenuModDescription {
             tick_timer,
             versions: self.versions.as_ref(),
             selected_version: self.selected_version.as_deref(),
+            version_game_filter: self.version_game_filter.as_deref(),
+            version_loader_filter: self.version_loader_filter.as_deref(),
             versions_only: self.show_all_versions,
             version_msg: |version| ModDescriptionMessage::SelectVersion(version).into(),
+            download_version_msg: |version| ModDescriptionMessage::DownloadVersion(version).into(),
+            game_filter_msg: |filter| ModDescriptionMessage::SetVersionGameFilter(filter).into(),
+            loader_filter_msg: |filter| {
+                ModDescriptionMessage::SetVersionLoaderFilter(filter).into()
+            },
             download_msg: Some(ModDescriptionMessage::DownloadSelectedVersion.into()),
             show_all_msg: Some(ModDescriptionMessage::ShowAllVersions.into()),
             versions_back_msg: Some(ModDescriptionMessage::BackFromVersions.into()),
@@ -51,8 +58,13 @@ pub struct ProjectDescriptionArgs<'a, T> {
     pub tick_timer: usize,
     pub versions: Option<&'a Result<Vec<ModVersionInfo>, String>>,
     pub selected_version: Option<&'a str>,
+    pub version_game_filter: Option<&'a str>,
+    pub version_loader_filter: Option<&'a str>,
     pub versions_only: bool,
     pub version_msg: fn(String) -> Message,
+    pub download_version_msg: fn(String) -> Message,
+    pub game_filter_msg: fn(Option<String>) -> Message,
+    pub loader_filter_msg: fn(Option<String>) -> Message,
     pub download_msg: Option<Message>,
     pub show_all_msg: Option<Message>,
     pub versions_back_msg: Option<Message>,
@@ -71,9 +83,14 @@ pub fn view_project_description<'a, T: iced::advanced::text::IntoFragment<'a>>(
         tick_timer,
         versions,
         selected_version,
+        version_game_filter,
+        version_loader_filter,
         versions_only,
         version_msg,
-        download_msg,
+        download_version_msg,
+        game_filter_msg,
+        loader_filter_msg,
+        download_msg: _download_msg,
         show_all_msg,
         versions_back_msg,
     } = args;
@@ -153,56 +170,148 @@ pub fn view_project_description<'a, T: iced::advanced::text::IntoFragment<'a>>(
     let side_description = scroll(column![markdown_description].padding(20), 2)
         .style(LauncherTheme::style_scrollable_flat_dark);
 
-    let version_view: Element =
-        match versions {
-            Some(Ok(items)) => {
-                column![
-                    widget::horizontal_rule(1).style(barthin),
-                    widget::text("Versions").size(20),
-                    widget::column(items.iter().map(|v| {
-                        let selected = selected_version == Some(v.id.as_ref());
-                        let label = if selected {
-                            format!("✓ {}", v.name)
-                        } else {
-                            v.name.clone()
-                        };
-                        widget::button(widget::text(label).size(13).style(
-                            move |t: &LauncherTheme| {
-                                if selected {
-                                    t.style_text(Color::SecondLight)
-                                } else {
-                                    t.style_text(Color::Light)
-                                }
-                            },
-                        ))
-                        .width(Length::Shrink)
-                        .on_press(version_msg(v.id.to_string()))
-                        .into()
-                    }))
-                    .width(Length::Fill)
-                    .spacing(3),
-                ]
-                .push_maybe(selected_version.map(|_| {
-                    widget::text("Selected version marked with ✓")
-                        .size(12)
-                        .style(tsubtitle)
-                }))
-                .push_maybe((!versions_only && items.len() >= 100).then(|| {
-                    widget::button(widget::text("Show all versions").size(13))
-                        .on_press(show_all_msg.clone().expect("show all message"))
-                }))
-                .push_maybe(selected_version.and(download_msg).map(|msg| {
-                    widget::button(widget::text("Download selected version")).on_press(msg)
-                }))
-                .spacing(5)
-                .into()
+    let version_view: Element = match versions {
+        Some(Ok(items)) => {
+            let mut game_options = vec!["All".to_owned()];
+            let mut loader_options = vec!["All".to_owned()];
+            for item in items {
+                for game_version in &item.game_versions {
+                    if !game_options.contains(game_version) {
+                        game_options.push(game_version.clone());
+                    }
+                }
+                for loader in &item.loaders {
+                    if !loader_options.contains(loader) {
+                        loader_options.push(loader.clone());
+                    }
+                }
             }
-            Some(Err(err)) => widget::text(err).size(12).into(),
-            None => widget::text("Loading versions...")
-                .size(12)
-                .style(tsubtitle)
-                .into(),
-        };
+
+            let game_filter = version_game_filter.unwrap_or("All");
+            let loader_filter = version_loader_filter.unwrap_or("All");
+            let has_loader_data = loader_options.len() > 1;
+            let filtered_items = items.iter().filter(|item| {
+                (game_filter == "All"
+                    || item
+                        .game_versions
+                        .iter()
+                        .any(|version| version == game_filter))
+                    && (!has_loader_data
+                        || loader_filter == "All"
+                        || item.loaders.iter().any(|loader| loader == loader_filter))
+            });
+
+            let header = widget::container(
+                row![
+                    widget::text("Version").width(Length::FillPortion(3)),
+                    widget::text("Minecraft").width(Length::FillPortion(2)),
+                    widget::text("Loader").width(Length::FillPortion(2)),
+                    widget::text("Published").width(Length::FillPortion(2)),
+                    widget::Space::with_width(90)
+                ]
+                .spacing(8),
+            )
+            .padding([8, 10])
+            .style(|theme: &LauncherTheme| theme.style_container_sharp_box(0.0, Color::ExtraDark));
+
+            let rows = widget::column(filtered_items.map(|item| {
+                let selected = selected_version == Some(item.id.as_ref());
+                let compatibility = if item.compatible {
+                    widget::text("Compatible")
+                        .style(|theme: &LauncherTheme| theme.style_text(Color::SecondLight))
+                } else {
+                    widget::text("Incompatible")
+                        .style(|theme: &LauncherTheme| theme.style_text(Color::SecondDark))
+                };
+                let row_content = row![
+                    widget::button(widget::text(if selected {
+                        format!("✓ {}", item.name)
+                    } else {
+                        item.name.clone()
+                    }))
+                    .width(Length::FillPortion(3))
+                    .padding([7, 8])
+                    .style(move |theme: &LauncherTheme, status| {
+                        theme.style_button(
+                            status,
+                            if selected {
+                                StyleButton::SemiDarkBorder([true; 4])
+                            } else {
+                                StyleButton::FlatDark
+                            },
+                        )
+                    })
+                    .on_press(version_msg(item.id.to_string())),
+                    widget::text(if item.game_versions.is_empty() {
+                        "—".to_owned()
+                    } else {
+                        item.game_versions.join(", ")
+                    })
+                    .width(Length::FillPortion(2)),
+                    widget::text(if item.loaders.is_empty() {
+                        "—".to_owned()
+                    } else {
+                        item.loaders.join(", ")
+                    })
+                    .width(Length::FillPortion(2)),
+                    widget::column![
+                        widget::text(item.date_published.format("%Y-%m-%d").to_string()),
+                        compatibility
+                    ]
+                    .width(Length::FillPortion(2)),
+                    widget::button(widget::text("Download").size(12))
+                        .padding([6, 8])
+                        .on_press(download_version_msg(item.id.to_string()))
+                ]
+                .align_y(Alignment::Center)
+                .spacing(8)
+                .padding([3, 0]);
+
+                widget::container(row_content)
+                    .width(Length::Fill)
+                    .padding([2, 0])
+                    .into()
+            }))
+            .width(Length::Fill)
+            .spacing(2);
+
+            let show_all = (!versions_only && items.len() >= 100).then(|| {
+                widget::button(widget::text("Show all versions").size(13))
+                    .on_press(show_all_msg.clone().expect("show all message"))
+            });
+
+            let filter_bar = row![
+                widget::text("Minecraft:").size(12),
+                widget::pick_list(game_options, Some(game_filter.to_owned()), move |value| {
+                    game_filter_msg((value != "All").then_some(value))
+                }),
+                widget::text("Loader:").size(12),
+                widget::pick_list(
+                    loader_options,
+                    Some(loader_filter.to_owned()),
+                    move |value| loader_filter_msg((value != "All").then_some(value))
+                )
+            ]
+            .spacing(8)
+            .align_y(Alignment::Center);
+
+            column![
+                widget::horizontal_rule(1).style(barthin),
+                widget::text("Versions").size(20),
+                filter_bar,
+                header,
+                rows
+            ]
+            .push_maybe(show_all)
+            .spacing(5)
+            .into()
+        }
+        Some(Err(err)) => widget::text(err).size(12).into(),
+        None => widget::text("Loading versions...")
+            .size(12)
+            .style(tsubtitle)
+            .into(),
+    };
 
     if versions_only {
         return column![

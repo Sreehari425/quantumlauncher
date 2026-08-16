@@ -512,13 +512,30 @@ impl Launcher {
                     .abortable();
                 let id3 = mod_id.clone();
                 let instance = self.instance().clone();
+                let current_version = block_on(ql_core::json::VersionDetails::load(&instance))
+                    .ok()
+                    .map(|details| details.get_id().to_owned());
+                let current_loader = block_on(ql_core::InstanceConfigJson::read(&instance))
+                    .ok()
+                    .and_then(|config| {
+                        config
+                            .mod_type
+                            .not_vanilla()
+                            .map(|loader| loader.to_modrinth_str().to_owned())
+                    });
                 let include = self.config.show_incompatible_mod_versions;
                 let version_id = id3.clone();
+                let instance_for_task = instance.clone();
                 let (load_versions, h3) = Task::perform(
                     async move {
-                        ql_mod_manager::store::get_versions(&version_id, &instance, include, false)
-                            .await
-                            .map(|v| (version_id, v))
+                        ql_mod_manager::store::get_versions(
+                            &version_id,
+                            &instance_for_task,
+                            include,
+                            false,
+                        )
+                        .await
+                        .map(|v| (version_id, v))
                     },
                     |res| ModDescriptionMessage::VersionsLoaded(res.strerr()).into(),
                 )
@@ -530,6 +547,8 @@ impl Launcher {
                     mod_id,
                     versions: None,
                     selected_version: None,
+                    version_game_filter: current_version,
+                    version_loader_filter: current_loader,
                     show_all_versions: false,
                     _handle: [h1.abort_on_drop(), h2.abort_on_drop(), h3.abort_on_drop()],
                 });
@@ -557,6 +576,22 @@ impl Launcher {
             ModDescriptionMessage::SelectVersion(version) => {
                 if let State::ModDescription(menu) = &mut self.state {
                     menu.selected_version = Some(version);
+                }
+            }
+            ModDescriptionMessage::DownloadVersion(version) => {
+                if let State::ModDescription(menu) = &mut self.state {
+                    menu.selected_version = Some(version);
+                }
+                return self.update_mod_description(ModDescriptionMessage::DownloadSelectedVersion);
+            }
+            ModDescriptionMessage::SetVersionGameFilter(filter) => {
+                if let State::ModDescription(menu) = &mut self.state {
+                    menu.version_game_filter = filter;
+                }
+            }
+            ModDescriptionMessage::SetVersionLoaderFilter(filter) => {
+                if let State::ModDescription(menu) = &mut self.state {
+                    menu.version_loader_filter = filter;
                 }
             }
             ModDescriptionMessage::ShowAllVersions => {

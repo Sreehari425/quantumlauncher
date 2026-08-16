@@ -187,6 +187,22 @@ impl Launcher {
                     menu.selected_version = Some(version);
                 }
             }
+            InstallModsMessage::DownloadVersion(version) => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    menu.selected_version = Some(version);
+                }
+                return self.update_install_mods(InstallModsMessage::DownloadSelectedVersion);
+            }
+            InstallModsMessage::SetVersionGameFilter(filter) => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    menu.version_game_filter = filter;
+                }
+            }
+            InstallModsMessage::SetVersionLoaderFilter(filter) => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    menu.version_loader_filter = filter;
+                }
+            }
             InstallModsMessage::ShowAllVersions => {
                 let Some((version_id, instance, include)) = (|| {
                     if let State::ModsDownload(menu) = &mut self.state {
@@ -397,6 +413,11 @@ impl Launcher {
             Box::new(VersionDetails::load(instance).await?)
         };
         let mod_index = ModIndex::load(instance).await?;
+        let version_game_filter = Some(version_json.get_id().to_owned());
+        let version_loader_filter = config
+            .mod_type
+            .not_vanilla()
+            .map(|loader| loader.to_modrinth_str().to_owned());
 
         let menu = MenuModsDownload {
             scroll_offset: AbsoluteOffset::default(),
@@ -414,6 +435,8 @@ impl Launcher {
             description: None,
             versions: None,
             selected_version: None,
+            version_game_filter,
+            version_loader_filter,
             show_all_versions: false,
             categories: ModCategoryState::default(),
             force_open_source: false,

@@ -683,6 +683,8 @@ pub struct MenuModsDownload {
     pub description: Option<MarkState>,
     pub versions: Option<Result<Vec<ql_mod_manager::store::ModVersionInfo>, String>>,
     pub selected_version: Option<String>,
+    pub version_game_filter: Option<String>,
+    pub version_loader_filter: Option<String>,
     pub show_all_versions: bool,
     pub categories: ModCategoryState,
 
@@ -911,6 +913,8 @@ pub struct MenuModDescription {
     pub mod_id: ModId,
     pub versions: Option<Result<Vec<ql_mod_manager::store::ModVersionInfo>, String>>,
     pub selected_version: Option<String>,
+    pub version_game_filter: Option<String>,
+    pub version_loader_filter: Option<String>,
     pub show_all_versions: bool,
     pub _handle: [iced::task::Handle; 3],
 }
