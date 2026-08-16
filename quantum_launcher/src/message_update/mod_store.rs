@@ -138,7 +138,7 @@ impl Launcher {
                             let version_id = id3.clone();
                             let t3 = Task::perform(
                                 async move {
-                                    store::get_versions(&version_id, &instance, include)
+                                    store::get_versions(&version_id, &instance, include, false)
                                         .await
                                         .map(|v| (version_id, v))
                                 },
@@ -153,6 +153,7 @@ impl Launcher {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.opened_mod = None;
                     menu.description = None;
+                    menu.show_all_versions = false;
                     return iced::widget::scrollable::scroll_to(
                         iced::widget::scrollable::Id::new("MenuModsDownload:main:mods_list"),
                         menu.scroll_offset,
@@ -184,6 +185,38 @@ impl Launcher {
             InstallModsMessage::SelectVersion(version) => {
                 if let State::ModsDownload(menu) = &mut self.state {
                     menu.selected_version = Some(version);
+                }
+            }
+            InstallModsMessage::ShowAllVersions => {
+                let Some((version_id, instance, include)) = (|| {
+                    if let State::ModsDownload(menu) = &mut self.state {
+                        let index = menu.opened_mod?;
+                        let hit = menu.results.as_ref()?.mods.get(index)?;
+                        menu.show_all_versions = true;
+                        menu.versions = None;
+                        Some((
+                            ModId::from_pair(&hit.id, menu.backend),
+                            self.instance().clone(),
+                            self.config.show_incompatible_mod_versions,
+                        ))
+                    } else {
+                        None
+                    }
+                })() else {
+                    return Task::none();
+                };
+                return Task::perform(
+                    async move {
+                        store::get_versions(&version_id, &instance, include, true)
+                            .await
+                            .map(|versions| (version_id, versions))
+                    },
+                    |n| InstallModsMessage::VersionsLoaded(n.strerr()).into(),
+                );
+            }
+            InstallModsMessage::BackFromVersions => {
+                if let State::ModsDownload(menu) = &mut self.state {
+                    menu.show_all_versions = false;
                 }
             }
             InstallModsMessage::DownloadSelectedVersion => {
@@ -381,6 +414,7 @@ impl Launcher {
             description: None,
             versions: None,
             selected_version: None,
+            show_all_versions: false,
             categories: ModCategoryState::default(),
             force_open_source: false,
 

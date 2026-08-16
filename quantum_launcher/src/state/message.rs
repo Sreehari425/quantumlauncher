@@ -184,6 +184,8 @@ pub enum InstallModsMessage {
     LoadedExtendedInfo(Res<(ModId, SearchMod)>),
     VersionsLoaded(Res<(ModId, Vec<ModVersionInfo>)>),
     SelectVersion(String),
+    ShowAllVersions,
+    BackFromVersions,
     DownloadSelectedVersion,
     DownloadSelectedVersionConfirmed(ModId, String),
     IndexUpdated(Res<ModIndex>),
@@ -476,6 +478,8 @@ pub enum ModDescriptionMessage {
     LoadedDescription(Res<String>),
     VersionsLoaded(Res<(ModId, Vec<ModVersionInfo>)>),
     SelectVersion(String),
+    ShowAllVersions,
+    BackFromVersions,
     DownloadSelectedVersion,
     DownloadSelectedVersionConfirmed(ModId, String),
 }

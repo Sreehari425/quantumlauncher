@@ -282,8 +282,11 @@ impl MenuModsDownload {
             tick_timer,
             versions: self.versions.as_ref(),
             selected_version: self.selected_version.as_deref(),
+            versions_only: self.show_all_versions,
             version_msg: |version| InstallModsMessage::SelectVersion(version).into(),
             download_msg: Some(InstallModsMessage::DownloadSelectedVersion.into()),
+            show_all_msg: Some(InstallModsMessage::ShowAllVersions.into()),
+            versions_back_msg: Some(InstallModsMessage::BackFromVersions.into()),
         })
     }
 }

@@ -32,8 +32,26 @@ impl ModrinthBackend {
         id: &str,
         instance: &Instance,
         include_incompatible: bool,
+        all_versions: bool,
     ) -> Result<Vec<ModVersionInfo>, ModError> {
-        let versions = ModVersion::download(id).await?;
+        let mut versions = ModVersion::download_page(id, 0).await?;
+        if all_versions {
+            let mut seen_ids: HashSet<Arc<str>> = versions.iter().map(|v| v.id.clone()).collect();
+            let mut offset = versions.len();
+            loop {
+                let page = ModVersion::download_page(id, offset).await?;
+                if page.is_empty() {
+                    break;
+                }
+                let page_len = page.len();
+                let previous_len = versions.len();
+                versions.extend(page.into_iter().filter(|v| seen_ids.insert(v.id.clone())));
+                offset += page_len;
+                if versions.len() == previous_len {
+                    break;
+                }
+            }
+        }
         let details = ql_core::json::VersionDetails::load(instance).await?;
         let config = ql_core::InstanceConfigJson::read(instance).await?;
         let mc = details.get_id();

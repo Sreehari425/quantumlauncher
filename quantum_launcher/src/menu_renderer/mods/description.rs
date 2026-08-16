@@ -33,8 +33,11 @@ impl MenuModDescription {
             tick_timer,
             versions: self.versions.as_ref(),
             selected_version: self.selected_version.as_deref(),
+            versions_only: self.show_all_versions,
             version_msg: |version| ModDescriptionMessage::SelectVersion(version).into(),
             download_msg: Some(ModDescriptionMessage::DownloadSelectedVersion.into()),
+            show_all_msg: Some(ModDescriptionMessage::ShowAllVersions.into()),
+            versions_back_msg: Some(ModDescriptionMessage::BackFromVersions.into()),
         })
     }
 }
@@ -48,8 +51,11 @@ pub struct ProjectDescriptionArgs<'a, T> {
     pub tick_timer: usize,
     pub versions: Option<&'a Result<Vec<ModVersionInfo>, String>>,
     pub selected_version: Option<&'a str>,
+    pub versions_only: bool,
     pub version_msg: fn(String) -> Message,
     pub download_msg: Option<Message>,
+    pub show_all_msg: Option<Message>,
+    pub versions_back_msg: Option<Message>,
 }
 
 /// Renders the mod description page
@@ -65,8 +71,11 @@ pub fn view_project_description<'a, T: iced::advanced::text::IntoFragment<'a>>(
         tick_timer,
         versions,
         selected_version,
+        versions_only,
         version_msg,
         download_msg,
+        show_all_msg,
+        versions_back_msg,
     } = args;
     // Parses the Markdown description of the mod.
     let markdown_description: Element = match description {
@@ -106,7 +115,11 @@ pub fn view_project_description<'a, T: iced::advanced::text::IntoFragment<'a>>(
         row![
             button_with_icon(icons::back_s(12), "Back", 13)
                 .padding([5, 8])
-                .on_press(back_msg),
+                .on_press(if versions_only {
+                    versions_back_msg.unwrap_or(back_msg)
+                } else {
+                    back_msg
+                }),
             widget::Space::with_width(0),
             images.view(hit.icon_url.as_deref(), Some(20.0), Some(20.0)),
             widget::text(&*hit.title)
@@ -162,15 +175,21 @@ pub fn view_project_description<'a, T: iced::advanced::text::IntoFragment<'a>>(
                                 }
                             },
                         ))
+                        .width(Length::Shrink)
                         .on_press(version_msg(v.id.to_string()))
                         .into()
                     }))
+                    .width(Length::Fill)
                     .spacing(3),
                 ]
                 .push_maybe(selected_version.map(|_| {
                     widget::text("Selected version marked with ✓")
                         .size(12)
                         .style(tsubtitle)
+                }))
+                .push_maybe((!versions_only && items.len() >= 100).then(|| {
+                    widget::button(widget::text("Show all versions").size(13))
+                        .on_press(show_all_msg.clone().expect("show all message"))
                 }))
                 .push_maybe(selected_version.and(download_msg).map(|msg| {
                     widget::button(widget::text("Download selected version")).on_press(msg)
@@ -184,6 +203,18 @@ pub fn view_project_description<'a, T: iced::advanced::text::IntoFragment<'a>>(
                 .style(tsubtitle)
                 .into(),
         };
+
+    if versions_only {
+        return column![
+            top_bar,
+            widget::horizontal_rule(1),
+            widget::container(widget::scrollable(version_view).height(Length::Fill))
+                .padding(20)
+                .width(Length::Fill)
+                .height(Length::Fill)
+        ]
+        .into();
+    }
     let side_extra_info = scroll(
         column![
             widget::text(&hit.description)

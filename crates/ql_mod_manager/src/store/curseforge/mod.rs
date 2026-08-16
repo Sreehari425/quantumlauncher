@@ -270,21 +270,44 @@ impl CurseforgeBackend {
         id: &str,
         instance: &ql_core::Instance,
         include_incompatible: bool,
+        all_versions: bool,
     ) -> Result<Vec<crate::store::ModVersionInfo>, ModError> {
         let details = ql_core::json::VersionDetails::load(instance).await?;
         let config = ql_core::InstanceConfigJson::read(instance).await?;
         let mc = details.get_id().to_owned();
         let loader = config.mod_type.not_vanilla().map(|n| n.to_curseforge_num());
-        let mut params = HashMap::from([("pageSize", "100".to_owned())]);
+        let mut params = HashMap::from([
+            ("pageSize", "100".to_owned()),
+            ("pageIndex", "0".to_owned()),
+        ]);
         if !include_incompatible {
             params.insert("gameVersion", mc.clone());
             if let Some(loader) = &loader {
                 params.insert("modLoaderType", (*loader).to_owned());
             }
         }
-        let response_text = send_request(&format!("mods/{id}/files"), &params).await?;
-        let response: CurseforgeFilesResponse =
-            serde_json::from_str(&response_text).json(response_text)?;
+        let mut response = load_files_page(id, &params).await?;
+        if all_versions {
+            let mut seen_ids: HashSet<i32> = response.data.iter().map(|file| file.id).collect();
+            let mut page_index = 1;
+            loop {
+                params.insert("pageIndex", page_index.to_string());
+                let next = load_files_page(id, &params).await?;
+                if next.data.is_empty() {
+                    break;
+                }
+                let previous_len = response.data.len();
+                response.data.extend(
+                    next.data
+                        .into_iter()
+                        .filter(|file| seen_ids.insert(file.id)),
+                );
+                page_index += 1;
+                if response.data.len() == previous_len {
+                    break;
+                }
+            }
+        }
         let mut out = Vec::new();
         for file in response.data {
             let compatible = file.gameVersions.iter().any(|version| version == &mc)
@@ -358,6 +381,14 @@ impl CurseforgeBackend {
 #[derive(Deserialize)]
 struct CurseforgeFilesResponse {
     data: Vec<CurseforgeFile>,
+}
+
+async fn load_files_page(
+    id: &str,
+    params: &HashMap<&str, String>,
+) -> Result<CurseforgeFilesResponse, ModError> {
+    let response_text = send_request(&format!("mods/{id}/files"), params).await?;
+    Ok(serde_json::from_str(&response_text).json(response_text)?)
 }
 
 impl Backend for CurseforgeBackend {

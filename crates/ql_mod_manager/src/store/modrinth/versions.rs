@@ -31,9 +31,13 @@ pub struct ModVersion {
 
 impl ModVersion {
     pub async fn download(project_id: &str) -> Result<Vec<Self>, ModError> {
+        Self::download_page(project_id, 0).await
+    }
+
+    pub async fn download_page(project_id: &str, offset: usize) -> Result<Vec<Self>, ModError> {
         RATE_LIMITER.lock().await;
         let url = format!(
-            "https://api.modrinth.com/v2/project/{project_id}/version?include_changelog=false"
+            "https://api.modrinth.com/v2/project/{project_id}/version?include_changelog=false&limit=100&offset={offset}"
         );
         Ok(file_utils::download_file_to_json(&url, true).await?)
     }

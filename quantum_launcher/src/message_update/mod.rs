@@ -516,7 +516,7 @@ impl Launcher {
                 let version_id = id3.clone();
                 let (load_versions, h3) = Task::perform(
                     async move {
-                        ql_mod_manager::store::get_versions(&version_id, &instance, include)
+                        ql_mod_manager::store::get_versions(&version_id, &instance, include, false)
                             .await
                             .map(|v| (version_id, v))
                     },
@@ -530,6 +530,7 @@ impl Launcher {
                     mod_id,
                     versions: None,
                     selected_version: None,
+                    show_all_versions: false,
                     _handle: [h1.abort_on_drop(), h2.abort_on_drop(), h3.abort_on_drop()],
                 });
 
@@ -556,6 +557,36 @@ impl Launcher {
             ModDescriptionMessage::SelectVersion(version) => {
                 if let State::ModDescription(menu) = &mut self.state {
                     menu.selected_version = Some(version);
+                }
+            }
+            ModDescriptionMessage::ShowAllVersions => {
+                let Some((id, instance, include)) = (|| {
+                    if let State::ModDescription(menu) = &mut self.state {
+                        menu.show_all_versions = true;
+                        menu.versions = None;
+                        Some((
+                            menu.mod_id.clone(),
+                            self.instance().clone(),
+                            self.config.show_incompatible_mod_versions,
+                        ))
+                    } else {
+                        None
+                    }
+                })() else {
+                    return Task::none();
+                };
+                return Task::perform(
+                    async move {
+                        ql_mod_manager::store::get_versions(&id, &instance, include, true)
+                            .await
+                            .map(|versions| (id, versions))
+                    },
+                    |n| ModDescriptionMessage::VersionsLoaded(n.strerr()).into(),
+                );
+            }
+            ModDescriptionMessage::BackFromVersions => {
+                if let State::ModDescription(menu) = &mut self.state {
+                    menu.show_all_versions = false;
                 }
             }
             ModDescriptionMessage::DownloadSelectedVersion => {

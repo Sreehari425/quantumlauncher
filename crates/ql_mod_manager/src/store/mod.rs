@@ -198,13 +198,14 @@ pub async fn get_versions(
     id: &ModId,
     instance: &Instance,
     include_incompatible: bool,
+    all_versions: bool,
 ) -> Result<Vec<ModVersionInfo>, ModError> {
     match id {
         ModId::Modrinth(n) => {
-            ModrinthBackend::get_versions(n, instance, include_incompatible).await
+            ModrinthBackend::get_versions(n, instance, include_incompatible, all_versions).await
         }
         ModId::Curseforge(n) => {
-            CurseforgeBackend::get_versions(n, instance, include_incompatible).await
+            CurseforgeBackend::get_versions(n, instance, include_incompatible, all_versions).await
         }
     }
 }
