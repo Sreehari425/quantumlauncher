@@ -183,8 +183,8 @@ impl MenuEditMods {
 
         let select = select_box(
             row![]
-                .push_maybe(pin)
                 .push(toggle)
+                .push_maybe(pin)
                 .push(image)
                 .push(widget::Space::with_width(1))
                 .push(name)
