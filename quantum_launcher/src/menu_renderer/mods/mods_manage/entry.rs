@@ -149,9 +149,6 @@ impl MenuEditMods {
             is_enabled,
             config.manually_installed,
         );
-        // The pin is an indicator only. Pinning and unpinning is intentionally
-        // kept in the row context menu so it cannot be confused with the
-        // enable/disable toggle.
         let pin: Element = if config.pinned_version.is_some() {
             icons::pin_s(14)
                 .style(|theme: &LauncherTheme| theme.style_text(Color::SecondLight))
