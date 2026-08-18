@@ -152,11 +152,13 @@ impl MenuEditMods {
         // The pin is an indicator only. Pinning and unpinning is intentionally
         // kept in the row context menu so it cannot be confused with the
         // enable/disable toggle.
-        let pin: Option<Element> = config.pinned_version.is_some().then(|| {
+        let pin: Element = if config.pinned_version.is_some() {
             icons::pin_s(14)
                 .style(|theme: &LauncherTheme| theme.style_text(Color::SecondLight))
                 .into()
-        });
+        } else {
+            widget::Space::with_width(14).into()
+        };
 
         let is_enabled_ui = is_enabled || !config.project_type.is_toggleable();
         let name = widget::text(&*config.name)
@@ -184,7 +186,7 @@ impl MenuEditMods {
         let select = select_box(
             row![]
                 .push(toggle)
-                .push_maybe(pin)
+                .push(pin)
                 .push(image)
                 .push(widget::Space::with_width(1))
                 .push(name)
