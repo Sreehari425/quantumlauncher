@@ -248,7 +248,11 @@ pub async fn get_versions(
         format!("0.{version}.")
     } else {
         // Release version
-        let mut start_pattern = version[2..].to_owned();
+        // NeoForge historically omits Minecraft's leading `1.` (e.g. MC
+        // 1.21.5 maps to NeoForge 21.5.x). Minecraft 26.1+ uses a different
+        // version scheme, and NeoForge keeps that full prefix (e.g. 26.3.x).
+        let version = version.strip_prefix("1.").unwrap_or(version);
+        let mut start_pattern = version.to_owned();
         if !start_pattern.contains('.') {
             // "20" (in 1.20) -> "20.0" (in 1.20.0)
             // Ensures there are a constant number of parts in the version.
