@@ -289,7 +289,7 @@ fn filter_versions<S: AsRef<str>>(versions: &[S], version: &str) -> Vec<String> 
                 && if let Some(p) = end_pattern {
                     n.ends_with(p)
                 } else {
-                    !n.contains("-snapshot-")
+                    !n.contains("snapshot-")
                 }
         })
         .map(str::to_owned)
@@ -406,14 +406,14 @@ mod tests {
         "26.10.",
         "26.11.",
         // New snapshots (YY.X-snapshot-X)
-        "26.1.-snapshot-1",
-        "26.1.-snapshot-11",
-        "26.1.-snapshot-2",
-        "26.1.-snapshot-3",
-        "26.2.-snapshot-1",
-        "26.2.-snapshot-2",
-        "26.10.-snapshot-1",
-        "26.11.-snapshot-1",
+        "26.1.snapshot-1",
+        "26.1.snapshot-11",
+        "26.1.snapshot-2",
+        "26.1.snapshot-3",
+        "26.2.snapshot-1",
+        "26.2.snapshot-2",
+        "26.10.snapshot-1",
+        "26.11.snapshot-1",
     ];
 
     #[test]
@@ -450,8 +450,8 @@ mod tests {
     #[test]
     fn new_snapshot_exact() {
         let filtered = filter_versions(SAMPLE_VERSIONS, "26.1-snapshot-1");
-        assert_eq!(filtered, vec!["26.1.-snapshot-1"]);
+        assert_eq!(filtered, vec!["26.1.snapshot-1"]);
         let filtered = filter_versions(SAMPLE_VERSIONS, "26.1-snapshot-11");
-        assert_eq!(filtered, vec!["26.1.-snapshot-11"]);
+        assert_eq!(filtered, vec!["26.1.snapshot-11"]);
     }
 }
